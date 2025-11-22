@@ -1,0 +1,158 @@
+Hotel booking App similar to airnb Recommendation Platform – Design
+Document - Phase 1
+1. Introduction
+This document outlines the functional, UX, and technical design for a two-sided accommodation
+marketplace application serving Guests and Property Owners/Hoteliers. The goal is to provide a
+scalable, intuitive, and high-performing mobile application that supports discovery, and property
+management.
+2. Product Overview
+The system enables:
+● Guests can discover and filter stays such as hotels, villas, hostels, lodges, and resorts.
+● Owners can list, manage, and optimize their properties, set availability and prices.
+● Admin to manage moderation, platform analytics, and support operations.
+The solution includes web applications and an admin dashboard.
+3. User Roles
+● Guest User
+● Property Owner/Hotelier
+● Admin (Web Dashboard)
+Each role has distinct modules and permissions.
+4. WebApp Modules & Design Specifications
+4.1 Splash / Welcome Screen
+● Animated logo, brand theme background.
+● Language detection + manual switch.
+● Links: Terms, Privacy.
+● Auto-navigation to Login/Signup.
+● "Browse as Guest" option.
+4.2 Login / Signup
+● Role selection: Guest / Owner.
+● Options: Mobile OTP, Email/Password, Google, Facebook, Apple.
+● Owner onboarding wizard.
+● Input validation, CAPTCHA, password visibility toggle.
+● Multi-language support.
+4.3 Onboarding & Personalization
+For Guests:
+● Collect basic profile details.
+● Preference wizard: trip purpose, property type, budget, amenities.
+● Option to enable location access.
+● Skip option available.
+For Owners:
+● Guided introduction.
+● Property Listing Wizard:
+○ Property Type
+○ Basic Info + Map Pin
+○ Photo/Video upload
+○ Description with language support
+○ Amenities selection
+○ Rules
+○ Room setup (price, occupancy)
+○ Seasonal rates calendar
+○ Add-ons (meals, transfers)
+○ Bank/KYC
+○ Payment plan selection
+○ Preview & Publish
+5. Guest Experience Flows
+5.1 Home Dashboard
+● Search bar with autocomplete.
+● Featured/Trending sections.
+● Deals near you.
+● Recommended categories.
+● Quick shortcuts: Wishlist, Map.
+5.2 Search, Filter & Results
+● Destination field with suggestions.
+● Travel calendar with occupancy indicators.
+● Filters: Price, ratings, amenities, property type, cancellation, payment method.
+● Sort options.
+● Toggle: List / Map view.
+● Results cards with pricing, images, ratings.
+5.3 Property Details Page
+● Image gallery with zoom.
+● Host profile.
+● Rooms with pricing and availability.
+● Facilities grid.
+● Add-ons.
+● Policies.
+● Reviews + photos.
+● Map + navigation.
+● Contact the host.
+5.4 My Wishlist
+● List wishlisted properties.
+5.5 Guest Profile
+● Personal details
+● Preferences
+● Saved payments
+● Wishlist
+● Account deletion
+6. Owner Experience Flows
+6.1 My Properties
+● List/grid view.
+● Status markers: Published, Draft, Pending.
+● Add/Edit property.
+6.2 Property Management
+● Calendar for availability.
+● Edit rooms, amenities, policies.
+● Set blackout dates, special pricing.
+● Add-ons management.
+6.3 Owner Dashboard
+● KPIs: Views, rating.
+● Alerts: messages, notifications.
+● Quick actions: Edit listing, Block room, update pricing.
+● Mini analytics & weekly/monthly graphs.
+6.4 Messaging Center
+● Guest chat.
+● Templates for quick replies.
+6.6 Reviews
+● Reply capability.
+● Guest review prompts.
+7. Notifications Center
+● Messages, query.
+● Review reminders.
+● Approval Notifications.
+8. Help & Support
+● Multi-category FAQ.
+● Live chat, email.
+● Bug reporting + screenshot.
+● Dispute escalation.
+● Emergency line.
+9. App Settings
+● Language & currency.
+● Accessibility: font size.
+● Privacy settings.
+10. Admin Dashboard
+● User and property management.
+● Moderation tools.
+● Review / Approvals workflows.
+● Push notifications/promotions.
+● Analytics.
+11. Technical Design Overview
+11.1 Architecture
+● Modular microservices or layered monolithic backend.
+● Web app: React / Flutter.
+● API: REST + WebSockets for chat.
+● Database: SQL + NoSQL hybrid.
+● CDN for images & media.
+● Cloud hosting with auto-scaling.
+11.2 Key Integrations
+● Authentication (OTP, OAuth)
+● Maps (Google Maps)
+● SMS/Email notifications
+● File storage (CDN/ Azure Storage)
+● Chat module
+11.3 Security
+● SSL everywhere
+● Encrypted PII
+● Role-based access
+● Audit logs
+11.4 Performance
+● Lazy loading
+● Caching strategies
+● Image optimization
+12. Accessibility & Compliance
+● W3C accessibility
+● Alt tags
+● Dynamic font scaling
+● GDPR/IT compliance
+14. Effort & Cost Estimates (INR)
+14.1 Assumptions
+● Platform: (React / Flutter)
+● Backend: .NET with REST APIs
+● Admin Panel: Web dashboard
