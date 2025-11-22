@@ -704,6 +704,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.patch("/api/reviews/:id/helpful", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      
+      if (!userId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      const review = await storage.getReview(req.params.id);
+      
+      if (!review) {
+        return res.status(404).json({ message: "Review not found" });
+      }
+
+      const updated = await storage.incrementReviewHelpful(req.params.id);
+      
+      if (!updated) {
+        return res.status(500).json({ message: "Failed to update review" });
+      }
+
+      res.json(updated);
+    } catch (error) {
+      console.error("Error marking review as helpful:", error);
+      res.status(500).json({ message: "Failed to mark review as helpful" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

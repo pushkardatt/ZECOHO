@@ -597,6 +597,32 @@ export class DatabaseStorage implements IStorage {
     return updated;
   }
 
+  async incrementReviewHelpful(reviewId: string): Promise<(Review & { guest: User }) | undefined> {
+    await db
+      .update(reviews)
+      .set({
+        helpful: sql`${reviews.helpful} + 1`,
+      })
+      .where(eq(reviews.id, reviewId));
+
+    const result = await db
+      .select({
+        review: reviews,
+        guest: users,
+      })
+      .from(reviews)
+      .leftJoin(users, eq(reviews.guestId, users.id))
+      .where(eq(reviews.id, reviewId))
+      .limit(1);
+
+    if (result.length === 0) return undefined;
+
+    return {
+      ...result[0].review,
+      guest: result[0].guest!,
+    };
+  }
+
   async getAverageRating(propertyId: string): Promise<number> {
     const result = await db
       .select({ avg: sql<number>`COALESCE(AVG(${reviews.rating}), 0)` })

@@ -1,12 +1,35 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useRoute, useLocation } from "wouter";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Separator } from "@/components/ui/separator";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import { 
   Heart, 
   MapPin, 
@@ -15,11 +38,24 @@ import {
   Bed, 
   Bath,
   Check,
-  MessageCircle
+  MessageCircle,
+  ThumbsUp
 } from "lucide-react";
 import type { Property, Amenity } from "@shared/schema";
+import { insertReviewSchema } from "@shared/schema";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
+
+const reviewFormSchema = insertReviewSchema
+  .pick({ rating: true, comment: true })
+  .extend({
+    rating: z.coerce.number().min(1, "Please select a rating").max(5),
+    comment: z.string().min(10, "Review must be at least 10 characters"),
+  });
+
+const ownerResponseSchema = z.object({
+  ownerResponse: z.string().min(10, "Response must be at least 10 characters"),
+});
 
 export default function PropertyDetails() {
   const [, params] = useRoute("/properties/:id");
@@ -31,10 +67,56 @@ export default function PropertyDetails() {
   const [checkIn, setCheckIn] = useState("");
   const [checkOut, setCheckOut] = useState("");
   const [guests, setGuests] = useState(2);
+  const [reviewDialogOpen, setReviewDialogOpen] = useState(false);
+  const [ownerResponseDialogOpen, setOwnerResponseDialogOpen] = useState(false);
+  const [selectedReviewId, setSelectedReviewId] = useState<string | null>(null);
+  const getHelpfulStorageKey = () => user?.id ? `markedHelpfulReviews_${user.id}` : 'markedHelpfulReviews';
+  
+  const [markedHelpfulReviews, setMarkedHelpfulReviews] = useState<Set<string>>(() => {
+    if (typeof window !== 'undefined' && user?.id) {
+      const stored = localStorage.getItem(getHelpfulStorageKey());
+      return stored ? new Set(JSON.parse(stored)) : new Set();
+    }
+    return new Set();
+  });
+  
+  useEffect(() => {
+    if (typeof window !== 'undefined' && user?.id) {
+      const stored = localStorage.getItem(getHelpfulStorageKey());
+      if (stored) {
+        setMarkedHelpfulReviews(new Set(JSON.parse(stored)));
+      }
+    }
+  }, [user?.id]);
+
+  const reviewForm = useForm<z.infer<typeof reviewFormSchema>>({
+    resolver: zodResolver(reviewFormSchema),
+    defaultValues: {
+      rating: 5,
+      comment: "",
+    },
+  });
+
+  const ownerResponseForm = useForm<z.infer<typeof ownerResponseSchema>>({
+    resolver: zodResolver(ownerResponseSchema),
+    defaultValues: {
+      ownerResponse: "",
+    },
+  });
 
   const { data: property, isLoading } = useQuery<Property>({
     queryKey: ["/api/properties", propertyId],
     enabled: !!propertyId,
+  });
+
+  const { data: reviews = [] } = useQuery<any[]>({
+    queryKey: ["/api/properties", propertyId, "reviews"],
+    enabled: !!propertyId,
+  });
+
+  const { data: userBookings = [] } = useQuery<any[]>({
+    queryKey: ["/api/bookings"],
+    enabled: user?.userRole === "guest",
   });
 
   const { data: wishlists = [] } = useQuery<any[]>({
@@ -138,6 +220,134 @@ export default function PropertyDetails() {
       toast({
         title: "Error",
         description: error.message || "Failed to start conversation",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const availableBookingToReview = useMemo(() => {
+    if (!user || user.userRole !== "guest" || !propertyId) return null;
+    
+    const completedBookings = userBookings
+      .filter((booking: any) => 
+        booking.propertyId === propertyId && 
+        booking.status === "completed" &&
+        new Date(booking.checkOut) < new Date()
+      )
+      .sort((a: any, b: any) => new Date(b.checkOut).getTime() - new Date(a.checkOut).getTime());
+    
+    const reviewedBookingIds = new Set(
+      reviews
+        .filter((review: any) => review.guestId === user.id)
+        .map((review: any) => review.bookingId)
+    );
+    
+    return completedBookings.find((booking: any) => !reviewedBookingIds.has(booking.id)) || null;
+  }, [user, userBookings, reviews, propertyId]);
+
+  const canReview = !!availableBookingToReview;
+
+  const submitReviewMutation = useMutation({
+    mutationFn: async (data: { propertyId: string; bookingId: string; rating: number; comment: string }) => {
+      return await apiRequest("POST", "/api/reviews", data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/properties", propertyId, "reviews"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/properties", propertyId] });
+      setReviewDialogOpen(false);
+      reviewForm.reset({ rating: 5, comment: "" });
+      toast({
+        title: "Review Submitted",
+        description: "Thank you for your feedback!",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to submit review",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleReviewSubmit = (formData: z.infer<typeof reviewFormSchema>) => {
+    if (!propertyId) {
+      toast({
+        title: "Error",
+        description: "Property ID not found",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!availableBookingToReview) {
+      toast({
+        title: "Error",
+        description: "No available booking to review. You may have already reviewed all your completed stays.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    submitReviewMutation.mutate({
+      propertyId,
+      bookingId: availableBookingToReview.id,
+      rating: formData.rating,
+      comment: formData.comment,
+    });
+  };
+
+  const ownerResponseMutation = useMutation({
+    mutationFn: async ({ reviewId, data }: { reviewId: string; data: z.infer<typeof ownerResponseSchema> }) => {
+      return await apiRequest("PATCH", `/api/reviews/${reviewId}/response`, data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/properties", propertyId, "reviews"] });
+      setOwnerResponseDialogOpen(false);
+      ownerResponseForm.reset({ ownerResponse: "" });
+      setSelectedReviewId(null);
+      toast({
+        title: "Response Added",
+        description: "Your response has been posted",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to add response",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const createOwnerResponseSubmitHandler = (reviewId: string) => {
+    return (data: z.infer<typeof ownerResponseSchema>) => {
+      ownerResponseMutation.mutate({ reviewId, data });
+    };
+  };
+
+  const helpfulMutation = useMutation({
+    mutationFn: async (reviewId: string) => {
+      return await apiRequest("PATCH", `/api/reviews/${reviewId}/helpful`, {});
+    },
+    onSuccess: (_data, reviewId) => {
+      setMarkedHelpfulReviews((prev) => {
+        const updated = new Set(prev).add(reviewId);
+        if (typeof window !== 'undefined') {
+          localStorage.setItem(getHelpfulStorageKey(), JSON.stringify(Array.from(updated)));
+        }
+        return updated;
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/properties", propertyId, "reviews"] });
+      toast({
+        title: "Marked as Helpful",
+        description: "Thank you for your feedback!",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to mark as helpful",
         variant: "destructive",
       });
     },
@@ -433,6 +643,267 @@ export default function PropertyDetails() {
                 <p className="text-muted-foreground">{property.policies}</p>
               </div>
             )}
+
+            {/* Reviews Section */}
+            <div>
+              <div className="flex items-center justify-between mb-6">
+                <div>
+                  <h2 className="text-xl font-semibold mb-2">
+                    Reviews {reviews.length > 0 && `(${reviews.length})`}
+                  </h2>
+                  {property.rating && Number(property.rating) > 0 && (
+                    <div className="flex items-center gap-2">
+                      <Star className="h-5 w-5 fill-current text-yellow-500" />
+                      <span className="text-lg font-semibold">{Number(property.rating).toFixed(1)}</span>
+                      <span className="text-muted-foreground">• {property.reviewCount} reviews</span>
+                    </div>
+                  )}
+                </div>
+                
+                {canReview && (
+                  <Dialog open={reviewDialogOpen} onOpenChange={setReviewDialogOpen}>
+                    <DialogTrigger asChild>
+                      <Button data-testid="button-write-review">Write a Review</Button>
+                    </DialogTrigger>
+                    <DialogContent className="sm:max-w-[500px]">
+                      <DialogHeader>
+                        <DialogTitle>Write a Review</DialogTitle>
+                        <DialogDescription>
+                          Share your experience with other travelers
+                        </DialogDescription>
+                      </DialogHeader>
+                      <Form {...reviewForm}>
+                        <form onSubmit={reviewForm.handleSubmit(handleReviewSubmit)} className="space-y-4">
+                          <FormField
+                            control={reviewForm.control}
+                            name="rating"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Rating</FormLabel>
+                                <FormControl>
+                                  <RadioGroup
+                                    value={String(field.value ?? 5)}
+                                    onValueChange={(value) => field.onChange(Number(value))}
+                                    className="flex gap-1"
+                                  >
+                                    {[1, 2, 3, 4, 5].map((star) => (
+                                      <div key={star} className="relative">
+                                        <RadioGroupItem
+                                          value={String(star)}
+                                          id={`rating-${star}`}
+                                          className="peer sr-only"
+                                          data-testid={`button-rating-${star}`}
+                                        />
+                                        <label
+                                          htmlFor={`rating-${star}`}
+                                          className="cursor-pointer hover:scale-110 transition-transform"
+                                        >
+                                          <Star
+                                            className={`h-8 w-8 transition-colors ${
+                                              star <= Number(field.value ?? 5)
+                                                ? "fill-yellow-500 text-yellow-500"
+                                                : "text-muted-foreground hover:text-yellow-300"
+                                            }`}
+                                          />
+                                        </label>
+                                      </div>
+                                    ))}
+                                  </RadioGroup>
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          <FormField
+                            control={reviewForm.control}
+                            name="comment"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Your Review</FormLabel>
+                                <FormControl>
+                                  <Textarea
+                                    {...field}
+                                    placeholder="Tell us about your stay..."
+                                    rows={6}
+                                    data-testid="textarea-review-comment"
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          <div className="flex gap-2 justify-end">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              onClick={() => setReviewDialogOpen(false)}
+                              data-testid="button-cancel-review"
+                            >
+                              Cancel
+                            </Button>
+                            <Button
+                              type="submit"
+                              disabled={submitReviewMutation.isPending}
+                              data-testid="button-submit-review"
+                            >
+                              {submitReviewMutation.isPending ? "Submitting..." : "Submit Review"}
+                            </Button>
+                          </div>
+                        </form>
+                      </Form>
+                    </DialogContent>
+                  </Dialog>
+                )}
+              </div>
+
+              {reviews.length > 0 ? (
+                <div className="space-y-6">
+                  {reviews.map((review: any) => (
+                    <Card key={review.id} data-testid={`card-review-${review.id}`}>
+                      <CardContent className="p-6">
+                        <div className="flex items-start gap-4">
+                          <Avatar>
+                            <AvatarImage src={review.guestProfileImageUrl} />
+                            <AvatarFallback>
+                              {review.guestFirstName?.[0]}{review.guestLastName?.[0]}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="flex-1 space-y-3">
+                            <div>
+                              <div className="flex items-center justify-between gap-2 mb-1">
+                                <h4 className="font-semibold" data-testid={`text-reviewer-name-${review.id}`}>
+                                  {review.guestFirstName} {review.guestLastName}
+                                </h4>
+                                <span className="text-sm text-muted-foreground">
+                                  {new Date(review.createdAt).toLocaleDateString()}
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-1 mb-2">
+                                {[1, 2, 3, 4, 5].map((star) => (
+                                  <Star
+                                    key={star}
+                                    className={`h-4 w-4 ${
+                                      star <= review.rating
+                                        ? "fill-yellow-500 text-yellow-500"
+                                        : "text-muted-foreground"
+                                    }`}
+                                  />
+                                ))}
+                              </div>
+                            </div>
+                            
+                            <p className="text-muted-foreground leading-relaxed" data-testid={`text-review-comment-${review.id}`}>
+                              {review.comment}
+                            </p>
+
+                            {review.ownerResponse && (
+                              <div className="mt-4 pl-4 border-l-2 border-muted">
+                                <p className="text-sm font-semibold mb-1">Response from owner</p>
+                                <p className="text-sm text-muted-foreground" data-testid={`text-owner-response-${review.id}`}>
+                                  {review.ownerResponse}
+                                </p>
+                              </div>
+                            )}
+
+                            <div className="flex items-center gap-3 pt-2">
+                              <Button
+                                variant={markedHelpfulReviews.has(review.id) ? "default" : "ghost"}
+                                size="sm"
+                                onClick={() => helpfulMutation.mutate(review.id)}
+                                disabled={helpfulMutation.isPending || markedHelpfulReviews.has(review.id)}
+                                data-testid={`button-helpful-${review.id}`}
+                              >
+                                <ThumbsUp className={`h-4 w-4 mr-1 ${markedHelpfulReviews.has(review.id) ? "fill-current" : ""}`} />
+                                {markedHelpfulReviews.has(review.id) ? "Marked Helpful" : "Helpful"} {review.helpful > 0 && `(${review.helpful})`}
+                              </Button>
+
+                              {user?.id === property.ownerId && !review.ownerResponse && (
+                                <Dialog
+                                  open={ownerResponseDialogOpen && selectedReviewId === review.id}
+                                  onOpenChange={(open) => {
+                                    setOwnerResponseDialogOpen(open);
+                                    if (open) {
+                                      setSelectedReviewId(review.id);
+                                    } else {
+                                      setSelectedReviewId(null);
+                                      ownerResponseForm.reset();
+                                    }
+                                  }}
+                                >
+                                  <DialogTrigger asChild>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      data-testid={`button-respond-${review.id}`}
+                                    >
+                                      Respond
+                                    </Button>
+                                  </DialogTrigger>
+                                  <DialogContent className="sm:max-w-[500px]">
+                                    <DialogHeader>
+                                      <DialogTitle>Respond to Review</DialogTitle>
+                                      <DialogDescription>
+                                        Share your response with {review.guestFirstName}
+                                      </DialogDescription>
+                                    </DialogHeader>
+                                    <Form {...ownerResponseForm}>
+                                      <form onSubmit={ownerResponseForm.handleSubmit(createOwnerResponseSubmitHandler(review.id))} className="space-y-4">
+                                        <FormField
+                                          control={ownerResponseForm.control}
+                                          name="ownerResponse"
+                                          render={({ field }) => (
+                                            <FormItem>
+                                              <FormControl>
+                                                <Textarea
+                                                  {...field}
+                                                  placeholder="Thank you for your feedback..."
+                                                  rows={4}
+                                                  data-testid="textarea-owner-response"
+                                                />
+                                              </FormControl>
+                                              <FormMessage />
+                                            </FormItem>
+                                          )}
+                                        />
+                                        <div className="flex gap-2 justify-end">
+                                          <Button
+                                            type="button"
+                                            variant="outline"
+                                            onClick={() => {
+                                              setOwnerResponseDialogOpen(false);
+                                              setSelectedReviewId(null);
+                                              ownerResponseForm.reset();
+                                            }}
+                                            data-testid="button-cancel-response"
+                                          >
+                                            Cancel
+                                          </Button>
+                                          <Button
+                                            type="submit"
+                                            disabled={ownerResponseMutation.isPending}
+                                            data-testid="button-submit-response"
+                                          >
+                                            {ownerResponseMutation.isPending ? "Posting..." : "Post Response"}
+                                          </Button>
+                                        </div>
+                                      </form>
+                                    </Form>
+                                  </DialogContent>
+                                </Dialog>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-12 text-muted-foreground">
+                  <p>No reviews yet. Be the first to review this property!</p>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Booking Card */}
