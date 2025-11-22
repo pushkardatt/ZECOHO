@@ -234,23 +234,23 @@ export default function Profile() {
 
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <Label htmlFor="budgetMin">Budget min (USD)</Label>
+                        <Label htmlFor="budgetMin">Budget min (INR)</Label>
                         <Input
                           id="budgetMin"
                           type="number"
                           {...register("budgetMin")}
-                          step="10"
+                          step="1000"
                           min="0"
                           data-testid="input-budget-min"
                         />
                       </div>
                       <div>
-                        <Label htmlFor="budgetMax">Budget max (USD)</Label>
+                        <Label htmlFor="budgetMax">Budget max (INR)</Label>
                         <Input
                           id="budgetMax"
                           type="number"
                           {...register("budgetMax")}
-                          step="10"
+                          step="1000"
                           min="0"
                           data-testid="input-budget-max"
                         />

@@ -64,6 +64,18 @@ The platform supports various property types including hotels, villas, hostels, 
 - Enabled unauthenticated browsing of property listings and details
 - Authentication required only for bookings and wishlists
 
+**Currency Conversion to INR** ✅
+- Converted all pricing from USD to INR for Indian market launch
+- Updated seed data: multiplied all property prices by 89 (USD to INR conversion rate)
+- Modified all UI components to display ₹ symbol instead of $ throughout the application
+- Applied Indian number formatting (toLocaleString('en-IN')) for proper comma placement
+- Updated property price ranges from $0-$1000 to ₹0-₹89,000 in search filters
+- Modified form labels: "Price per night (USD)" → "Price per night (INR)"
+- Updated user preferences budget fields to show INR instead of USD
+- Sample converted prices: $185/night → ₹16,465/night, $450/night → ₹40,050/night
+- Booking calculations correctly use INR values without additional conversion
+- Files modified: seed-data.ts, PropertyCard.tsx, property-details.tsx, add-property.tsx, owner-properties.tsx, search.tsx, profile.tsx
+
 ## User Preferences
 
 Preferred communication style: Simple, everyday language.
