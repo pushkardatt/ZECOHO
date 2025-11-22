@@ -3,7 +3,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
-import { insertPropertySchema, insertRoomSchema, insertWishlistSchema, insertUserPreferencesSchema, insertBookingSchema } from "@shared/schema";
+import { insertPropertySchema, insertRoomSchema, insertWishlistSchema, insertUserPreferencesSchema, insertBookingSchema, insertMessageSchema, insertReviewSchema } from "@shared/schema";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
@@ -523,6 +523,184 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error deleting booking:", error);
       res.status(500).json({ message: "Failed to delete booking" });
+    }
+  });
+
+  // Conversation routes
+  app.get("/api/conversations", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const conversations = await storage.getConversationsByUser(userId);
+      res.json(conversations);
+    } catch (error) {
+      console.error("Error fetching conversations:", error);
+      res.status(500).json({ message: "Failed to fetch conversations" });
+    }
+  });
+
+  app.post("/api/conversations", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || user.userRole !== "guest") {
+        return res.status(403).json({ message: "Only guests can start conversations" });
+      }
+
+      const { propertyId } = req.body;
+      
+      if (!propertyId) {
+        return res.status(400).json({ message: "Property ID is required" });
+      }
+
+      const conversation = await storage.getOrCreateConversation(propertyId, userId);
+      res.json(conversation);
+    } catch (error: any) {
+      console.error("Error creating conversation:", error);
+      res.status(500).json({ message: error.message || "Failed to create conversation" });
+    }
+  });
+
+  // Message routes
+  app.get("/api/conversations/:id/messages", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const conversation = await storage.getConversation(req.params.id);
+      
+      if (!conversation) {
+        return res.status(404).json({ message: "Conversation not found" });
+      }
+
+      if (conversation.guestId !== userId && conversation.ownerId !== userId) {
+        return res.status(403).json({ message: "Not authorized to view this conversation" });
+      }
+
+      const limit = req.query.limit ? Number(req.query.limit) : 50;
+      const messages = await storage.getMessagesByConversation(req.params.id, limit);
+      
+      await storage.markMessagesAsRead(req.params.id, userId);
+      
+      res.json(messages);
+    } catch (error) {
+      console.error("Error fetching messages:", error);
+      res.status(500).json({ message: "Failed to fetch messages" });
+    }
+  });
+
+  app.post("/api/conversations/:id/messages", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const conversation = await storage.getConversation(req.params.id);
+      
+      if (!conversation) {
+        return res.status(404).json({ message: "Conversation not found" });
+      }
+
+      if (conversation.guestId !== userId && conversation.ownerId !== userId) {
+        return res.status(403).json({ message: "Not authorized to send messages in this conversation" });
+      }
+
+      const validatedData = insertMessageSchema.parse({
+        ...req.body,
+        conversationId: req.params.id,
+        senderId: userId,
+      });
+
+      const message = await storage.createMessage(validatedData);
+      res.json(message);
+    } catch (error: any) {
+      console.error("Error creating message:", error);
+      if (error.name === "ZodError") {
+        return res.status(400).json({ message: "Invalid message data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to create message" });
+    }
+  });
+
+  // Review routes
+  app.get("/api/properties/:id/reviews", async (req, res) => {
+    try {
+      const reviews = await storage.getReviewsByProperty(req.params.id);
+      res.json(reviews);
+    } catch (error) {
+      console.error("Error fetching reviews:", error);
+      res.status(500).json({ message: "Failed to fetch reviews" });
+    }
+  });
+
+  app.post("/api/reviews", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || user.userRole !== "guest") {
+        return res.status(403).json({ message: "Only guests can leave reviews" });
+      }
+
+      const validatedData = insertReviewSchema.parse({
+        ...req.body,
+        guestId: userId,
+      });
+
+      if (validatedData.bookingId) {
+        const booking = await storage.getBooking(validatedData.bookingId);
+        
+        if (!booking) {
+          return res.status(404).json({ message: "Booking not found" });
+        }
+
+        if (booking.guestId !== userId) {
+          return res.status(403).json({ message: "You can only review your own bookings" });
+        }
+
+        if (booking.status !== "completed") {
+          return res.status(400).json({ message: "You can only review completed bookings" });
+        }
+      }
+
+      const review = await storage.createReview(validatedData);
+      res.json(review);
+    } catch (error: any) {
+      console.error("Error creating review:", error);
+      if (error.name === "ZodError") {
+        return res.status(400).json({ message: "Invalid review data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to create review" });
+    }
+  });
+
+  app.patch("/api/reviews/:id/response", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || user.userRole !== "owner") {
+        return res.status(403).json({ message: "Only owners can respond to reviews" });
+      }
+
+      const review = await storage.getReview(req.params.id);
+      
+      if (!review) {
+        return res.status(404).json({ message: "Review not found" });
+      }
+
+      const property = await storage.getProperty(review.propertyId);
+      
+      if (!property || property.ownerId !== userId) {
+        return res.status(403).json({ message: "Not authorized to respond to this review" });
+      }
+
+      const { response } = req.body;
+      
+      if (!response || typeof response !== "string") {
+        return res.status(400).json({ message: "Response is required" });
+      }
+
+      const updated = await storage.updateOwnerResponse(req.params.id, response);
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating review response:", error);
+      res.status(500).json({ message: "Failed to update review response" });
     }
   });
 
