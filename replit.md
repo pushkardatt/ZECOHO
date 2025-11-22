@@ -1,8 +1,8 @@
-# StayScape - Hotel Booking Platform
+# ZECOHO - Hotel Booking Platform
 
 ## Overview
 
-StayScape is a two-sided marketplace application for accommodation bookings, inspired by Airbnb. It connects guests with property owners/hoteliers, supporting various property types like hotels, villas, and apartments. The platform caters to three user roles: Guests, Property Owners, and Admins. Key capabilities include property discovery with advanced filtering, wishlist management, owner property management, a booking system with availability tracking, and user preference customization. The project aims to capture market potential by offering a robust and intuitive booking experience, with recent updates focusing on an Indian market launch (INR currency conversion) and a "Discover India" destinations feature.
+ZECOHO is a two-sided marketplace application for accommodation bookings, inspired by Airbnb. It connects guests with property owners/hoteliers, supporting various property types like hotels, villas, and apartments. The platform caters to three user roles: Guests, Property Owners, and Admins. Key capabilities include property discovery with advanced filtering, wishlist management, owner property management, a booking system with availability tracking, and user preference customization. The project aims to capture market potential by offering a robust and intuitive booking experience, with recent updates focusing on an Indian market launch (INR currency conversion) and a "Discover India" destinations feature.
 
 ## User Preferences
 
