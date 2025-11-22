@@ -57,6 +57,14 @@ export const bookingStatusEnum = pgEnum("booking_status", [
   "completed",
 ]);
 
+// KYC status enum
+export const kycStatusEnum = pgEnum("kyc_status", [
+  "not_started",
+  "pending",
+  "verified",
+  "rejected",
+]);
+
 // User storage table - mandatory for Replit Auth
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -65,6 +73,12 @@ export const users = pgTable("users", {
   lastName: varchar("last_name"),
   profileImageUrl: varchar("profile_image_url"),
   userRole: userRoleEnum("user_role").notNull().default("guest"),
+  phone: varchar("phone", { length: 20 }),
+  kycAddress: text("kyc_address"),
+  governmentIdType: varchar("government_id_type", { length: 50 }),
+  governmentIdNumber: varchar("government_id_number", { length: 100 }),
+  kycStatus: kycStatusEnum("kyc_status").notNull().default("not_started"),
+  kycVerifiedAt: timestamp("kyc_verified_at"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

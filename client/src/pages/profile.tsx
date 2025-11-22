@@ -61,15 +61,25 @@ export default function Profile() {
     resolver: zodResolver(preferencesFormSchema),
     defaultValues: {
       userId: user?.id || "",
-      tripPurpose: preferences?.tripPurpose || "",
-      budgetMin: preferences?.budgetMin || "0",
-      budgetMax: preferences?.budgetMax || "1000",
-      preferredPropertyTypes: preferences?.preferredPropertyTypes || [],
-      preferredAmenities: preferences?.preferredAmenities || [],
+      tripPurpose: "",
+      budgetMin: "0",
+      budgetMax: "89000",
+      preferredPropertyTypes: [],
+      preferredAmenities: [],
     },
   });
 
   const preferredPropertyTypes = watch("preferredPropertyTypes") || [];
+
+  useEffect(() => {
+    if (preferences) {
+      setValue("tripPurpose", preferences.tripPurpose || "");
+      setValue("budgetMin", preferences.budgetMin || "0");
+      setValue("budgetMax", preferences.budgetMax || "89000");
+      setValue("preferredPropertyTypes", preferences.preferredPropertyTypes || []);
+      setValue("preferredAmenities", preferences.preferredAmenities || []);
+    }
+  }, [preferences, setValue]);
 
   const savePreferencesMutation = useMutation({
     mutationFn: async (data: PreferencesFormData) => {
