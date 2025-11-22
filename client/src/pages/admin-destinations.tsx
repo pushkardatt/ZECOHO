@@ -100,6 +100,7 @@ export default function AdminDestinations() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/destinations"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/destinations/featured"] });
       toast({ title: "Success", description: "Destination created successfully" });
       setIsDialogOpen(false);
       form.reset();

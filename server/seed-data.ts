@@ -22,6 +22,12 @@ async function seedData() {
         firstName: "Sarah",
         lastName: "Anderson",
         userRole: "owner",
+        phone: "+91-9876543210",
+        kycAddress: "123 Marina Street, Mumbai, Maharashtra 400001, India",
+        governmentIdType: "Aadhaar",
+        governmentIdNumber: "1234-5678-9012",
+        kycStatus: "verified",
+        kycVerifiedAt: new Date("2024-01-15"),
       },
       {
         id: owner2Id,
@@ -29,6 +35,12 @@ async function seedData() {
         firstName: "Michael",
         lastName: "Chen",
         userRole: "owner",
+        phone: "+91-9876543211",
+        kycAddress: "456 Park Avenue, Bangalore, Karnataka 560001, India",
+        governmentIdType: "Passport",
+        governmentIdNumber: "P1234567",
+        kycStatus: "verified",
+        kycVerifiedAt: new Date("2024-02-20"),
       },
       {
         id: owner3Id,
@@ -36,6 +48,12 @@ async function seedData() {
         firstName: "Elena",
         lastName: "Rodriguez",
         userRole: "owner",
+        phone: "+91-9876543212",
+        kycAddress: "789 Lake Road, Delhi, Delhi 110001, India",
+        governmentIdType: "Aadhaar",
+        governmentIdNumber: "9876-5432-1098",
+        kycStatus: "verified",
+        kycVerifiedAt: new Date("2024-03-10"),
       },
       {
         id: guest1Id,
@@ -63,6 +81,48 @@ async function seedData() {
     console.log("Creating sample properties...");
 
     const propertiesData = [
+      {
+        title: "Beachfront Villa in Goa",
+        description: "Stunning beachfront villa in North Goa with direct access to pristine beaches. Features a private pool, modern amenities, and panoramic ocean views. Perfect for families or groups looking for a luxurious beach getaway. Walking distance to beach shacks, restaurants, and water sports activities.",
+        propertyType: "villa",
+        destination: "Goa",
+        pricePerNight: "35550", // ₹35,550/night (~$400)
+        maxGuests: 8,
+        bedrooms: 4,
+        bathrooms: 3,
+        images: ["https://images.unsplash.com/photo-1571003123894-1f0594d2b5d9"],
+        ownerId: owner1Id,
+        status: "published",
+        amenityIds: [amenityMap["Wifi"], amenityMap["Pool"], amenityMap["Air conditioning"], amenityMap["Beach access"], amenityMap["Kitchen"]],
+      },
+      {
+        title: "Traditional Houseboat in Kerala",
+        description: "Experience Kerala's backwaters aboard a traditional houseboat with all modern comforts. Private chef prepares authentic Kerala cuisine, air-conditioned bedrooms, and sundeck for panoramic views. Cruise through serene backwaters, witness village life, and enjoy unforgettable sunsets.",
+        propertyType: "cottage",
+        destination: "Kerala",
+        pricePerNight: "26775", // ₹26,775/night (~$300)
+        maxGuests: 4,
+        bedrooms: 2,
+        bathrooms: 2,
+        images: ["https://images.unsplash.com/photo-1602002418082-a4443e081dd1"],
+        ownerId: owner2Id,
+        status: "published",
+        amenityIds: [amenityMap["Wifi"], amenityMap["Kitchen"], amenityMap["Air conditioning"], amenityMap["Washer"]],
+      },
+      {
+        title: "Mountain Resort in Ladakh",
+        description: "Eco-friendly mountain resort offering breathtaking views of the Himalayas and Indus Valley. Spacious rooms with traditional Ladakhi architecture, modern heating systems, and organic farm-to-table dining. Perfect base for exploring monasteries, trekking, and experiencing high-altitude desert landscapes.",
+        propertyType: "resort",
+        destination: "Ladakh",
+        pricePerNight: "22240", // ₹22,240/night (~$250)
+        maxGuests: 6,
+        bedrooms: 3,
+        bathrooms: 2,
+        images: ["https://images.unsplash.com/photo-1571896349842-33c89424de2d"],
+        ownerId: owner3Id,
+        status: "published",
+        amenityIds: [amenityMap["Wifi"], amenityMap["Heating"], amenityMap["Gym"], amenityMap["Dedicated workspace"]],
+      },
       {
         title: "Charming Parisian Loft",
         description: "Experience authentic Parisian living in this beautifully renovated loft in the heart of Le Marais. Features exposed brick walls, original wooden beams, and floor-to-ceiling windows overlooking a quiet courtyard. Walking distance to Notre-Dame, the Louvre, and countless cafes and bistros.",
