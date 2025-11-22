@@ -15,7 +15,7 @@ import { useAuth } from "@/hooks/useAuth";
 
 export default function Search() {
   const { user } = useAuth();
-  const [priceRange, setPriceRange] = useState([0, 1000]);
+  const [priceRange, setPriceRange] = useState([0, 89000]);
   const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
   const [minGuests, setMinGuests] = useState(1);
   const [showFilters, setShowFilters] = useState(true);
@@ -110,15 +110,15 @@ export default function Search() {
               <CardContent className="space-y-4">
                 <Slider
                   min={0}
-                  max={1000}
-                  step={10}
+                  max={89000}
+                  step={1000}
                   value={priceRange}
                   onValueChange={setPriceRange}
                   data-testid="slider-price"
                 />
                 <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">${priceRange[0]}</span>
-                  <span className="text-muted-foreground">${priceRange[1]}</span>
+                  <span className="text-muted-foreground">₹{priceRange[0].toLocaleString('en-IN')}</span>
+                  <span className="text-muted-foreground">₹{priceRange[1].toLocaleString('en-IN')}</span>
                 </div>
               </CardContent>
             </Card>
