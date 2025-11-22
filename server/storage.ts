@@ -159,6 +159,11 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(wishlists).where(eq(wishlists.userId, userId));
   }
 
+  async getWishlistById(id: string): Promise<Wishlist | undefined> {
+    const [wishlist] = await db.select().from(wishlists).where(eq(wishlists.id, id));
+    return wishlist;
+  }
+
   async createWishlist(wishlistData: InsertWishlist): Promise<Wishlist> {
     const [wishlist] = await db
       .insert(wishlists)

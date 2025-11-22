@@ -170,6 +170,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/properties/:id/rooms", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || user.userRole !== "owner") {
+        return res.status(403).json({ message: "Only owners can add rooms" });
+      }
+
       const property = await storage.getProperty(req.params.id);
       
       if (!property) {
@@ -180,14 +186,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Not authorized to add rooms to this property" });
       }
 
-      const room = await storage.createRoom({
+      // Validate with Zod schema
+      const validatedData = insertRoomSchema.parse({
         ...req.body,
         propertyId: req.params.id,
       });
+
+      const room = await storage.createRoom(validatedData);
       
       res.json(room);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error creating room:", error);
+      if (error.name === "ZodError") {
+        return res.status(400).json({ message: "Invalid room data", errors: error.errors });
+      }
       res.status(500).json({ message: "Failed to create room" });
     }
   });
@@ -238,6 +250,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete("/api/wishlists/:id", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || user.userRole !== "guest") {
+        return res.status(403).json({ message: "Only guests can remove wishlist items" });
+      }
+
+      // Verify ownership before deletion
+      const wishlist = await storage.getWishlistById(req.params.id);
+      if (!wishlist) {
+        return res.status(404).json({ message: "Wishlist item not found" });
+      }
+
+      if (wishlist.userId !== userId) {
+        return res.status(403).json({ message: "Not authorized to delete this wishlist item" });
+      }
+
       await storage.deleteWishlist(req.params.id);
       res.json({ message: "Wishlist item removed successfully" });
     } catch (error) {

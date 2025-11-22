@@ -2,6 +2,7 @@
 import { sql, relations } from 'drizzle-orm';
 import {
   index,
+  uniqueIndex,
   jsonb,
   pgTable,
   timestamp,
@@ -118,7 +119,7 @@ export const wishlists = pgTable("wishlists", {
   propertyId: varchar("property_id").notNull().references(() => properties.id, { onDelete: "cascade" }),
   createdAt: timestamp("created_at").defaultNow(),
 }, (table) => ({
-  uniqueUserProperty: index("unique_user_property").on(table.userId, table.propertyId),
+  uniqueUserProperty: uniqueIndex("unique_user_property").on(table.userId, table.propertyId),
 }));
 
 // User preferences table
