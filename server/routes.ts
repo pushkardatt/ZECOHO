@@ -3,7 +3,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
-import { insertPropertySchema, insertRoomSchema, insertWishlistSchema, insertUserPreferencesSchema, insertBookingSchema, insertMessageSchema, insertReviewSchema } from "@shared/schema";
+import { insertPropertySchema, insertRoomSchema, insertWishlistSchema, insertUserPreferencesSchema, insertBookingSchema, insertMessageSchema, insertReviewSchema, updateKYCSchema, becomeOwnerSchema } from "@shared/schema";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
@@ -30,22 +30,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "User not found" });
       }
 
-      const { firstName, lastName, phone, kycAddress, governmentIdType, governmentIdNumber, userRole } = req.body;
-      
-      const updatedUser = await storage.upsertUser({
-        ...currentUser,
-        ...(firstName && { firstName }),
-        ...(lastName && { lastName }),
-        ...(phone && { phone }),
-        ...(kycAddress && { kycAddress }),
-        ...(governmentIdType && { governmentIdType }),
-        ...(governmentIdNumber && { governmentIdNumber, kycStatus: "pending" }),
-        ...(userRole && { userRole }),
-      });
+      // If trying to become an owner, require all KYC fields
+      if (req.body.userRole === "owner") {
+        const validatedData = becomeOwnerSchema.parse(req.body);
+        
+        const updatedUser = await storage.upsertUser({
+          ...currentUser,
+          firstName: validatedData.firstName,
+          lastName: validatedData.lastName,
+          phone: validatedData.phone,
+          kycAddress: validatedData.kycAddress,
+          governmentIdType: validatedData.governmentIdType,
+          governmentIdNumber: validatedData.governmentIdNumber,
+          kycStatus: "pending",
+          userRole: "owner",
+        });
 
+        return res.json(updatedUser);
+      }
+
+      // For other updates, use less strict validation
+      const validatedData = updateKYCSchema.parse(req.body);
+      
+      const updateData: any = { ...currentUser };
+      if (validatedData.firstName) updateData.firstName = validatedData.firstName;
+      if (validatedData.lastName) updateData.lastName = validatedData.lastName;
+      if (validatedData.phone) updateData.phone = validatedData.phone;
+      if (validatedData.kycAddress) updateData.kycAddress = validatedData.kycAddress;
+      if (validatedData.governmentIdType) updateData.governmentIdType = validatedData.governmentIdType;
+      if (validatedData.governmentIdNumber) {
+        updateData.governmentIdNumber = validatedData.governmentIdNumber;
+        updateData.kycStatus = "pending";
+      }
+
+      const updatedUser = await storage.upsertUser(updateData);
       res.json(updatedUser);
     } catch (error) {
       console.error("Error updating user KYC:", error);
+      if (error instanceof Error && error.name === "ZodError") {
+        return res.status(400).json({ message: "Invalid KYC data", error: error.message });
+      }
       res.status(500).json({ message: "Failed to update user" });
     }
   });
@@ -92,12 +116,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Only owners can create properties" });
       }
 
+      // Require KYC to be at least pending before allowing property creation
+      if (!user.kycStatus || user.kycStatus === "not_started" || user.kycStatus === "rejected") {
+        return res.status(403).json({ message: "Please complete KYC verification before listing properties" });
+      }
+
       const validatedData = insertPropertySchema.parse(req.body);
-      const { amenityIds, ...propertyData } = validatedData;
+      const { amenityIds, status, ...propertyData } = validatedData;
       
+      // Always force status to "pending" for new properties - prevent bypass
       const property = await storage.createProperty({
         ...propertyData,
         ownerId: userId,
+        status: "pending",
       });
 
       // Set amenities if provided

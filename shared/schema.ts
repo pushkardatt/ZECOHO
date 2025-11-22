@@ -362,6 +362,7 @@ export type InsertReview = typeof reviews.$inferInsert;
 // Insert schemas
 export const insertPropertySchema = createInsertSchema(properties).omit({
   id: true,
+  ownerId: true,
   createdAt: true,
   updatedAt: true,
   rating: true,
@@ -413,4 +414,26 @@ export const insertReviewSchema = createInsertSchema(reviews).omit({
   ownerResponseAt: true,
 }).extend({
   rating: z.number().min(1).max(5),
+});
+
+// KYC update schema - validates owner registration flow
+export const updateKYCSchema = z.object({
+  firstName: z.string().min(1, "First name is required").optional(),
+  lastName: z.string().min(1, "Last name is required").optional(),
+  phone: z.string().min(10, "Valid phone number is required").optional(),
+  kycAddress: z.string().min(10, "Full address is required").optional(),
+  governmentIdType: z.enum(["aadhaar", "pan", "passport", "driving_license", "voter_id"]).optional(),
+  governmentIdNumber: z.string().min(5, "Valid ID number is required").optional(),
+  userRole: z.enum(["guest", "owner"]).optional(),
+});
+
+// Schema for becoming an owner - requires all KYC fields
+export const becomeOwnerSchema = z.object({
+  firstName: z.string().min(1, "First name is required"),
+  lastName: z.string().min(1, "Last name is required"),
+  phone: z.string().min(10, "Valid phone number is required"),
+  kycAddress: z.string().min(10, "Full address is required"),
+  governmentIdType: z.enum(["aadhaar", "pan", "passport", "driving_license", "voter_id"]),
+  governmentIdNumber: z.string().min(5, "Valid ID number is required"),
+  userRole: z.literal("owner"),
 });

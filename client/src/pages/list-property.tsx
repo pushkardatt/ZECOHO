@@ -167,12 +167,25 @@ export default function ListProperty() {
   });
 
   const onPersonalDetailsSubmit = async (data: PersonalDetailsData) => {
-    await updateUserMutation.mutateAsync({ ...data, userRole: "owner" });
+    // Just save personal details, don't change role yet
+    await updateUserMutation.mutateAsync(data);
     setCurrentStep(2);
   };
 
   const onKYCSubmit = async (data: KYCData) => {
-    await updateUserMutation.mutateAsync(data);
+    // Collect all data from both step 1 and step 2, then promote to owner
+    const personalData = {
+      firstName: personalForm.getValues("firstName"),
+      lastName: personalForm.getValues("lastName"),
+      phone: personalForm.getValues("phone"),
+    };
+    
+    // Send complete KYC data with role promotion
+    await updateUserMutation.mutateAsync({
+      ...personalData,
+      ...data,
+      userRole: "owner",
+    });
     setCurrentStep(3);
   };
 
