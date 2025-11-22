@@ -12,14 +12,10 @@ import {
   Star, 
   Users, 
   Bed, 
-  Bath, 
-  Wifi, 
-  Car, 
-  Coffee, 
-  Wind,
+  Bath,
   Check
 } from "lucide-react";
-import type { Property } from "@shared/schema";
+import type { Property, Amenity } from "@shared/schema";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
 
@@ -37,6 +33,11 @@ export default function PropertyDetails() {
   const { data: wishlists = [] } = useQuery<any[]>({
     queryKey: ["/api/wishlists"],
     enabled: user?.userRole === "guest",
+  });
+
+  const { data: propertyAmenities = [] } = useQuery<Amenity[]>({
+    queryKey: ["/api/properties", propertyId, "/amenities"],
+    enabled: !!propertyId,
   });
 
   const isWishlisted = wishlists.some((w: any) => w.propertyId === propertyId);
@@ -75,13 +76,6 @@ export default function PropertyDetails() {
       });
     },
   });
-
-  const amenitiesData = [
-    { icon: Wifi, label: "Wifi" },
-    { icon: Car, label: "Free parking" },
-    { icon: Coffee, label: "Kitchen" },
-    { icon: Wind, label: "Air conditioning" },
-  ];
 
   if (isLoading) {
     return (
@@ -243,14 +237,20 @@ export default function PropertyDetails() {
             {/* Amenities */}
             <div>
               <h2 className="text-xl font-semibold mb-4">What this place offers</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {amenitiesData.map((amenity, idx) => (
-                  <div key={idx} className="flex items-center gap-3">
-                    <amenity.icon className="h-5 w-5 text-muted-foreground" />
-                    <span>{amenity.label}</span>
-                  </div>
-                ))}
-              </div>
+              {propertyAmenities.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {propertyAmenities.map((amenity) => (
+                    <div key={amenity.id} className="flex items-center gap-3">
+                      <Check className="h-5 w-5 text-primary" />
+                      <span>{amenity.name}</span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-muted-foreground">
+                  No amenities listed for this property
+                </div>
+              )}
             </div>
 
             {/* Policies */}

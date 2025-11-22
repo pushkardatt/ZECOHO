@@ -13,6 +13,8 @@ import {
   type InsertProperty,
   type Room,
   type InsertRoom,
+  type Amenity,
+  type InsertAmenity,
   type Wishlist,
   type InsertWishlist,
   type UserPreferences,
@@ -53,6 +55,12 @@ export interface IStorage {
   // User preferences operations
   getUserPreferences(userId: string): Promise<UserPreferences | undefined>;
   upsertUserPreferences(preferences: InsertUserPreferences): Promise<UserPreferences>;
+
+  // Amenity operations
+  getAllAmenities(): Promise<Amenity[]>;
+  createAmenity(amenity: InsertAmenity): Promise<Amenity>;
+  getPropertyAmenities(propertyId: string): Promise<Amenity[]>;
+  setPropertyAmenities(propertyId: string, amenityIds: string[]): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -198,6 +206,45 @@ export class DatabaseStorage implements IStorage {
       })
       .returning();
     return prefs;
+  }
+
+  // Amenity operations
+  async getAllAmenities(): Promise<Amenity[]> {
+    return await db.select().from(amenities);
+  }
+
+  async createAmenity(amenityData: InsertAmenity): Promise<Amenity> {
+    const [amenity] = await db.insert(amenities).values(amenityData).returning();
+    return amenity;
+  }
+
+  async getPropertyAmenities(propertyId: string): Promise<Amenity[]> {
+    const results = await db
+      .select({
+        id: amenities.id,
+        name: amenities.name,
+        icon: amenities.icon,
+        category: amenities.category,
+      })
+      .from(propertyAmenities)
+      .innerJoin(amenities, eq(propertyAmenities.amenityId, amenities.id))
+      .where(eq(propertyAmenities.propertyId, propertyId));
+    return results;
+  }
+
+  async setPropertyAmenities(propertyId: string, amenityIds: string[]): Promise<void> {
+    // Delete existing amenities
+    await db.delete(propertyAmenities).where(eq(propertyAmenities.propertyId, propertyId));
+    
+    // Insert new amenities
+    if (amenityIds.length > 0) {
+      await db.insert(propertyAmenities).values(
+        amenityIds.map(amenityId => ({
+          propertyId,
+          amenityId,
+        }))
+      );
+    }
   }
 }
 

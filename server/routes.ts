@@ -64,10 +64,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const validatedData = insertPropertySchema.parse(req.body);
+      const { amenityIds, ...propertyData } = validatedData;
+      
       const property = await storage.createProperty({
-        ...validatedData,
+        ...propertyData,
         ownerId: userId,
       });
+
+      // Set amenities if provided
+      if (amenityIds && amenityIds.length > 0) {
+        await storage.setPropertyAmenities(property.id, amenityIds);
+      }
       
       res.json(property);
     } catch (error: any) {
@@ -100,7 +107,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Validate with partial schema
       const validatedData = insertPropertySchema.partial().parse(req.body);
-      const updated = await storage.updateProperty(req.params.id, validatedData);
+      const { amenityIds, ...propertyData } = validatedData;
+      
+      const updated = await storage.updateProperty(req.params.id, propertyData);
+
+      // Update amenities if provided
+      if (amenityIds !== undefined) {
+        await storage.setPropertyAmenities(req.params.id, amenityIds);
+      }
+
       res.json(updated);
     } catch (error: any) {
       console.error("Error updating property:", error);
@@ -303,6 +318,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Invalid preferences data", errors: error.errors });
       }
       res.status(500).json({ message: "Failed to save preferences" });
+    }
+  });
+
+  // Amenities routes
+  app.get("/api/amenities", async (req, res) => {
+    try {
+      const amenities = await storage.getAllAmenities();
+      res.json(amenities);
+    } catch (error) {
+      console.error("Error fetching amenities:", error);
+      res.status(500).json({ message: "Failed to fetch amenities" });
+    }
+  });
+
+  app.get("/api/properties/:id/amenities", async (req, res) => {
+    try {
+      const amenities = await storage.getPropertyAmenities(req.params.id);
+      res.json(amenities);
+    } catch (error) {
+      console.error("Error fetching property amenities:", error);
+      res.status(500).json({ message: "Failed to fetch property amenities" });
     }
   });
 

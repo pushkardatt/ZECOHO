@@ -1,12 +1,13 @@
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
   SelectContent,
@@ -18,7 +19,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
-import { insertPropertySchema } from "@shared/schema";
+import { insertPropertySchema, type Amenity } from "@shared/schema";
 import { z } from "zod";
 import hotelImage from "@assets/generated_images/modern_hotel_room.png";
 import cabinImage from "@assets/generated_images/mountain_cabin_exterior.png";
@@ -35,6 +36,7 @@ export default function AddProperty() {
   const { toast } = useToast();
   const [step, setStep] = useState(1);
   const totalSteps = 3;
+  const [selectedAmenities, setSelectedAmenities] = useState<string[]>([]);
 
   const {
     register,
@@ -58,9 +60,16 @@ export default function AddProperty() {
   const propertyType = watch("propertyType");
   const images = watch("images") || [];
 
+  const { data: amenities = [] } = useQuery<Amenity[]>({
+    queryKey: ["/api/amenities"],
+  });
+
   const createPropertyMutation = useMutation({
     mutationFn: async (data: FormData) => {
-      return await apiRequest("POST", "/api/properties", data);
+      return await apiRequest("POST", "/api/properties", {
+        ...data,
+        amenityIds: selectedAmenities,
+      });
     },
     onSuccess: () => {
       toast({
@@ -275,6 +284,41 @@ export default function AddProperty() {
                       rows={3}
                       data-testid="textarea-policies"
                     />
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Amenities</CardTitle>
+                  <p className="text-sm text-muted-foreground">
+                    Select all amenities that your property offers
+                  </p>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                    {amenities.map((amenity) => (
+                      <div key={amenity.id} className="flex items-center space-x-2">
+                        <Checkbox
+                          id={amenity.id}
+                          checked={selectedAmenities.includes(amenity.id)}
+                          onCheckedChange={(checked) => {
+                            setSelectedAmenities(
+                              checked
+                                ? [...selectedAmenities, amenity.id]
+                                : selectedAmenities.filter((id) => id !== amenity.id)
+                            );
+                          }}
+                          data-testid={`checkbox-amenity-${amenity.name.toLowerCase().replace(/\s+/g, '-')}`}
+                        />
+                        <label
+                          htmlFor={amenity.id}
+                          className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                        >
+                          {amenity.name}
+                        </label>
+                      </div>
+                    ))}
                   </div>
                 </CardContent>
               </Card>
