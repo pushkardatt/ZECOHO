@@ -7,6 +7,7 @@ import {
   propertyAmenities,
   wishlists,
   userPreferences,
+  bookings,
   type User,
   type UpsertUser,
   type Property,
@@ -19,9 +20,11 @@ import {
   type InsertWishlist,
   type UserPreferences,
   type InsertUserPreferences,
+  type Booking,
+  type InsertBooking,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, gte, lte, inArray, sql } from "drizzle-orm";
+import { eq, and, gte, lte, lt, gt, inArray, sql, or, not } from "drizzle-orm";
 
 // Interface for storage operations
 export interface IStorage {
@@ -61,6 +64,15 @@ export interface IStorage {
   createAmenity(amenity: InsertAmenity): Promise<Amenity>;
   getPropertyAmenities(propertyId: string): Promise<Amenity[]>;
   setPropertyAmenities(propertyId: string, amenityIds: string[]): Promise<void>;
+
+  // Booking operations
+  createBooking(booking: InsertBooking): Promise<Booking>;
+  getBooking(id: string): Promise<Booking | undefined>;
+  getBookingsByProperty(propertyId: string): Promise<Booking[]>;
+  getBookingsByGuest(guestId: string): Promise<Booking[]>;
+  getPropertyBookedDates(propertyId: string, startDate: Date, endDate: Date): Promise<{ checkIn: Date; checkOut: Date }[]>;
+  updateBookingStatus(id: string, status: "pending" | "confirmed" | "cancelled" | "completed"): Promise<Booking | undefined>;
+  deleteBooking(id: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -245,6 +257,78 @@ export class DatabaseStorage implements IStorage {
         }))
       );
     }
+  }
+
+  // Booking operations
+  async createBooking(bookingData: InsertBooking): Promise<Booking> {
+    const [booking] = await db.insert(bookings).values(bookingData).returning();
+    return booking;
+  }
+
+  async getBooking(id: string): Promise<Booking | undefined> {
+    const [booking] = await db.select().from(bookings).where(eq(bookings.id, id));
+    return booking;
+  }
+
+  async getBookingsByProperty(propertyId: string): Promise<Booking[]> {
+    return await db
+      .select()
+      .from(bookings)
+      .where(eq(bookings.propertyId, propertyId))
+      .orderBy(sql`${bookings.checkIn} DESC`);
+  }
+
+  async getBookingsByGuest(guestId: string): Promise<Booking[]> {
+    return await db
+      .select()
+      .from(bookings)
+      .where(eq(bookings.guestId, guestId))
+      .orderBy(sql`${bookings.checkIn} DESC`);
+  }
+
+  async getPropertyBookedDates(
+    propertyId: string,
+    startDate: Date,
+    endDate: Date
+  ): Promise<{ checkIn: Date; checkOut: Date }[]> {
+    const results = await db
+      .select({
+        checkIn: bookings.checkIn,
+        checkOut: bookings.checkOut,
+      })
+      .from(bookings)
+      .where(
+        and(
+          eq(bookings.propertyId, propertyId),
+          inArray(bookings.status, ["pending", "confirmed"]),
+          not(
+            or(
+              lte(bookings.checkOut, startDate),
+              gte(bookings.checkIn, endDate)
+            )
+          )
+        )
+      );
+    return results.map(r => ({
+      checkIn: new Date(r.checkIn),
+      checkOut: new Date(r.checkOut),
+    }));
+  }
+
+  async updateBookingStatus(
+    id: string,
+    status: "pending" | "confirmed" | "cancelled" | "completed"
+  ): Promise<Booking | undefined> {
+    const [updated] = await db
+      .update(bookings)
+      .set({ status, updatedAt: new Date() })
+      .where(eq(bookings.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteBooking(id: string): Promise<void> {
+    await db.delete(bookings).where(eq(bookings.id, id));
   }
 }
 

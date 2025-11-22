@@ -3,7 +3,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
-import { insertPropertySchema, insertRoomSchema, insertWishlistSchema, insertUserPreferencesSchema } from "@shared/schema";
+import { insertPropertySchema, insertRoomSchema, insertWishlistSchema, insertUserPreferencesSchema, insertBookingSchema } from "@shared/schema";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
@@ -339,6 +339,190 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching property amenities:", error);
       res.status(500).json({ message: "Failed to fetch property amenities" });
+    }
+  });
+
+  // Booking routes
+  app.post("/api/bookings", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || user.userRole !== "guest") {
+        return res.status(403).json({ message: "Only guests can create bookings" });
+      }
+
+      const validatedData = insertBookingSchema.parse({
+        ...req.body,
+        guestId: userId,
+      });
+
+      // Check if property exists and prevent self-booking
+      const property = await storage.getProperty(validatedData.propertyId);
+      if (!property) {
+        return res.status(404).json({ message: "Property not found" });
+      }
+
+      if (property.ownerId === userId) {
+        return res.status(403).json({ message: "You cannot book your own property" });
+      }
+
+      // Check for date overlaps
+      const checkIn = new Date(validatedData.checkIn);
+      const checkOut = new Date(validatedData.checkOut);
+
+      if (checkIn >= checkOut) {
+        return res.status(400).json({ message: "Check-out must be after check-in" });
+      }
+
+      const bookedDates = await storage.getPropertyBookedDates(
+        validatedData.propertyId,
+        checkIn,
+        checkOut
+      );
+
+      if (bookedDates.length > 0) {
+        return res.status(400).json({ 
+          message: "Selected dates are not available. Please choose different dates." 
+        });
+      }
+
+      // Calculate total price server-side (don't trust client)
+      const nights = Math.ceil((checkOut.getTime() - checkIn.getTime()) / (1000 * 60 * 60 * 24));
+      const totalPrice = nights * Number(property.pricePerNight);
+      
+      const booking = await storage.createBooking({
+        ...validatedData,
+        totalPrice: totalPrice.toString(),
+      });
+      res.json(booking);
+    } catch (error: any) {
+      console.error("Error creating booking:", error);
+      if (error.name === "ZodError") {
+        return res.status(400).json({ message: "Invalid booking data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to create booking" });
+    }
+  });
+
+  app.get("/api/bookings/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const booking = await storage.getBooking(req.params.id);
+      
+      if (!booking) {
+        return res.status(404).json({ message: "Booking not found" });
+      }
+
+      const property = await storage.getProperty(booking.propertyId);
+      
+      if (booking.guestId !== userId && property?.ownerId !== userId) {
+        return res.status(403).json({ message: "Not authorized to view this booking" });
+      }
+      
+      res.json(booking);
+    } catch (error) {
+      console.error("Error fetching booking:", error);
+      res.status(500).json({ message: "Failed to fetch booking" });
+    }
+  });
+
+  app.get("/api/bookings", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user) {
+        return res.status(401).json({ message: "User not found" });
+      }
+
+      let bookings;
+      if (user.userRole === "guest") {
+        bookings = await storage.getBookingsByGuest(userId);
+      } else {
+        const properties = await storage.getProperties({ ownerId: userId });
+        const propertyIds = properties.map(p => p.id);
+        bookings = (await Promise.all(
+          propertyIds.map(id => storage.getBookingsByProperty(id))
+        )).flat();
+      }
+      
+      res.json(bookings);
+    } catch (error) {
+      console.error("Error fetching bookings:", error);
+      res.status(500).json({ message: "Failed to fetch bookings" });
+    }
+  });
+
+  app.get("/api/properties/:id/booked-dates", async (req, res) => {
+    try {
+      const { startDate, endDate } = req.query;
+      
+      if (!startDate || !endDate) {
+        return res.status(400).json({ message: "startDate and endDate are required" });
+      }
+
+      const bookedDates = await storage.getPropertyBookedDates(
+        req.params.id,
+        new Date(startDate as string),
+        new Date(endDate as string)
+      );
+      
+      res.json(bookedDates);
+    } catch (error) {
+      console.error("Error fetching booked dates:", error);
+      res.status(500).json({ message: "Failed to fetch booked dates" });
+    }
+  });
+
+  app.patch("/api/bookings/:id/status", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const booking = await storage.getBooking(req.params.id);
+      
+      if (!booking) {
+        return res.status(404).json({ message: "Booking not found" });
+      }
+
+      const property = await storage.getProperty(booking.propertyId);
+      
+      if (booking.guestId !== userId && property?.ownerId !== userId) {
+        return res.status(403).json({ message: "Not authorized to update this booking" });
+      }
+
+      const { status } = req.body;
+      if (!["pending", "confirmed", "cancelled", "completed"].includes(status)) {
+        return res.status(400).json({ message: "Invalid status" });
+      }
+      
+      const updated = await storage.updateBookingStatus(req.params.id, status);
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating booking status:", error);
+      res.status(500).json({ message: "Failed to update booking status" });
+    }
+  });
+
+  app.delete("/api/bookings/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const booking = await storage.getBooking(req.params.id);
+      
+      if (!booking) {
+        return res.status(404).json({ message: "Booking not found" });
+      }
+
+      const property = await storage.getProperty(booking.propertyId);
+      
+      if (booking.guestId !== userId && property?.ownerId !== userId) {
+        return res.status(403).json({ message: "Not authorized to delete this booking" });
+      }
+
+      await storage.deleteBooking(req.params.id);
+      res.json({ message: "Booking deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting booking:", error);
+      res.status(500).json({ message: "Failed to delete booking" });
     }
   });
 

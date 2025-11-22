@@ -49,6 +49,14 @@ export const propertyStatusEnum = pgEnum("property_status", [
   "pending",
 ]);
 
+// Booking status enum
+export const bookingStatusEnum = pgEnum("booking_status", [
+  "pending",
+  "confirmed",
+  "cancelled",
+  "completed",
+]);
+
 // User storage table - mandatory for Replit Auth
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -133,11 +141,26 @@ export const userPreferences = pgTable("user_preferences", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// Bookings table
+export const bookings = pgTable("bookings", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  propertyId: varchar("property_id").notNull().references(() => properties.id, { onDelete: "cascade" }),
+  guestId: varchar("guest_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  checkIn: timestamp("check_in").notNull(),
+  checkOut: timestamp("check_out").notNull(),
+  totalPrice: decimal("total_price", { precision: 10, scale: 2 }).notNull(),
+  guests: integer("guests").notNull().default(1),
+  status: bookingStatusEnum("status").notNull().default("pending"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Relations
 export const usersRelations = relations(users, ({ many, one }) => ({
   properties: many(properties),
   wishlists: many(wishlists),
   preferences: one(userPreferences),
+  bookingsAsGuest: many(bookings, { relationName: "guestBookings" }),
 }));
 
 export const propertiesRelations = relations(properties, ({ one, many }) => ({
@@ -148,6 +171,7 @@ export const propertiesRelations = relations(properties, ({ one, many }) => ({
   rooms: many(rooms),
   amenities: many(propertyAmenities),
   wishlists: many(wishlists),
+  bookings: many(bookings),
 }));
 
 export const roomsRelations = relations(rooms, ({ one }) => ({
@@ -186,6 +210,18 @@ export const userPreferencesRelations = relations(userPreferences, ({ one }) => 
   }),
 }));
 
+export const bookingsRelations = relations(bookings, ({ one }) => ({
+  property: one(properties, {
+    fields: [bookings.propertyId],
+    references: [properties.id],
+  }),
+  guest: one(users, {
+    fields: [bookings.guestId],
+    references: [users.id],
+    relationName: "guestBookings",
+  }),
+}));
+
 // Types
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
@@ -204,6 +240,9 @@ export type InsertWishlist = typeof wishlists.$inferInsert;
 
 export type UserPreferences = typeof userPreferences.$inferSelect;
 export type InsertUserPreferences = typeof userPreferences.$inferInsert;
+
+export type Booking = typeof bookings.$inferSelect;
+export type InsertBooking = typeof bookings.$inferInsert;
 
 // Insert schemas
 export const insertPropertySchema = createInsertSchema(properties).omit({
@@ -226,5 +265,11 @@ export const insertWishlistSchema = createInsertSchema(wishlists).omit({
 });
 
 export const insertUserPreferencesSchema = createInsertSchema(userPreferences).omit({
+  updatedAt: true,
+});
+
+export const insertBookingSchema = createInsertSchema(bookings).omit({
+  id: true,
+  createdAt: true,
   updatedAt: true,
 });
