@@ -163,12 +163,12 @@ export default function Search() {
               </CardContent>
             </Card>
 
-            {(selectedTypes.length > 0 || priceRange[0] > 0 || priceRange[1] < 1000 || minGuests > 1 || searchDestination) && (
+            {(selectedTypes.length > 0 || priceRange[0] > 0 || priceRange[1] < 89000 || minGuests > 1 || searchDestination) && (
               <Button
                 variant="outline"
                 className="w-full"
                 onClick={() => {
-                  setPriceRange([0, 1000]);
+                  setPriceRange([0, 89000]);
                   setSelectedTypes([]);
                   setMinGuests(1);
                   setSearchDestination("");
