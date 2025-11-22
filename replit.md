@@ -4,7 +4,40 @@
 
 StayScape is a two-sided marketplace application for accommodation bookings, inspired by Airbnb's design language. The platform connects guests seeking unique stays with property owners/hoteliers who list and manage their accommodations. The application serves three user roles: Guests (who discover and book properties), Property Owners (who list and manage their properties), and Admins (who oversee platform operations).
 
-The platform supports various property types including hotels, villas, hostels, lodges, resorts, apartments, cabins, and cottages. Key features include property discovery with advanced filtering, wishlist management, owner property management dashboard, and user preference customization.
+The platform supports various property types including hotels, villas, hostels, lodges, resorts, apartments, cabins, and cottages. Key features include property discovery with advanced filtering, wishlist management, owner property management dashboard, booking system with availability tracking, and user preference customization.
+
+## Recent Updates (November 22, 2025)
+
+### Completed Features
+
+**Property Amenities System** ✅
+- Created amenities table with many-to-many relationship to properties
+- Implemented complete CRUD operations in storage layer
+- Seeded database with 20+ amenities (Wifi, Kitchen, Pool, AC, Parking, etc.)
+- Integrated amenity selection into property creation/edit forms
+- Updated PropertyCard and PropertyDetails to display amenities
+
+**Booking System** ✅
+- Created bookings table schema with comprehensive fields (propertyId, guestId, checkIn/Out, totalPrice, guests, status)
+- Implemented server-side booking validation (guest-only, no self-booking, overlap detection)
+- Built date overlap prevention using Drizzle SQL queries
+- Added server-side pricing calculation
+- Created frontend booking form with date pickers and guest selector
+- Bookings can be created successfully with proper validation
+
+**Seed Data with Images** ✅
+- Populated database with 12 properties across global destinations (Paris, Tokyo, NYC, Bali, Barcelona, Malibu, Brooklyn, Cape Town, Iceland, Dubai, Kyoto, Switzerland)
+- Fixed critical schema bug: Updated from single `imageUrl` to `images` array
+- All properties include Unsplash images, assigned amenities, and pricing ($85-$450/night)
+- Created 5 test users (3 owners, 2 guests)
+- Added 5 wishlist entries
+- Created 3 sample bookings with various statuses
+- All properties display correctly with images in the UI
+
+**Routing Improvements**
+- Added `/properties` route for intuitive URL structure (in addition to `/search`)
+- Enabled unauthenticated browsing of property listings and details
+- Authentication required only for bookings and wishlists
 
 ## User Preferences
 

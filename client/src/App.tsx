@@ -35,6 +35,7 @@ function Router() {
         </>
       )}
       <Route path="/search" component={Search} />
+      <Route path="/properties" component={Search} />
       <Route path="/properties/:id" component={PropertyDetails} />
       <Route component={NotFound} />
     </Switch>
