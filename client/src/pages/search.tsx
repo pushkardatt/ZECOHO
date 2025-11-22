@@ -3,12 +3,13 @@ import { useQuery } from "@tanstack/react-query";
 import { PropertyCard } from "@/components/PropertyCard";
 import { SearchBar } from "@/components/SearchBar";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import { Skeleton } from "@/components/ui/skeleton";
-import { SlidersHorizontal } from "lucide-react";
+import { SlidersHorizontal, X } from "lucide-react";
 import type { Property } from "@shared/schema";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -18,6 +19,7 @@ export default function Search() {
   const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
   const [minGuests, setMinGuests] = useState(1);
   const [showFilters, setShowFilters] = useState(true);
+  const [searchDestination, setSearchDestination] = useState("");
 
   const { data: properties = [], isLoading } = useQuery<Property[]>({
     queryKey: ["/api/properties"],
@@ -39,8 +41,22 @@ export default function Search() {
     { value: "hostel", label: "Hostels" },
   ];
 
+  const handleSearch = ({ destination }: { destination?: string; checkIn?: string; checkOut?: string; guests?: number }) => {
+    if (destination !== undefined) {
+      setSearchDestination(destination);
+    }
+  };
+
   const filteredProperties = properties.filter((property) => {
     if (property.status !== "published") return false;
+    
+    if (searchDestination && searchDestination.trim().length > 0) {
+      const searchLower = searchDestination.toLowerCase().trim();
+      const destinationLower = property.destination.toLowerCase();
+      if (!destinationLower.includes(searchLower)) {
+        return false;
+      }
+    }
     
     const price = Number(property.pricePerNight);
     if (price < priceRange[0] || price > priceRange[1]) return false;
@@ -67,7 +83,7 @@ export default function Search() {
         <div className="container px-4 md:px-6 py-4">
           <div className="flex items-center gap-4">
             <div className="flex-1">
-              <SearchBar compact />
+              <SearchBar compact onSearch={handleSearch} />
             </div>
             <Button
               variant="outline"
@@ -147,7 +163,7 @@ export default function Search() {
               </CardContent>
             </Card>
 
-            {(selectedTypes.length > 0 || priceRange[0] > 0 || priceRange[1] < 1000 || minGuests > 1) && (
+            {(selectedTypes.length > 0 || priceRange[0] > 0 || priceRange[1] < 1000 || minGuests > 1 || searchDestination) && (
               <Button
                 variant="outline"
                 className="w-full"
@@ -155,6 +171,7 @@ export default function Search() {
                   setPriceRange([0, 1000]);
                   setSelectedTypes([]);
                   setMinGuests(1);
+                  setSearchDestination("");
                 }}
                 data-testid="button-clear-filters"
               >
@@ -169,6 +186,21 @@ export default function Search() {
               <h1 className="text-2xl font-semibold mb-2">
                 {filteredProperties.length} {filteredProperties.length === 1 ? "stay" : "stays"} available
               </h1>
+              {searchDestination && (
+                <div className="flex items-center gap-2 mt-3">
+                  <span className="text-sm text-muted-foreground">Searching for:</span>
+                  <Badge variant="secondary" className="gap-1" data-testid="badge-destination-filter">
+                    {searchDestination}
+                    <button
+                      onClick={() => setSearchDestination("")}
+                      className="ml-1 hover:bg-muted rounded-full p-0.5"
+                      data-testid="button-clear-destination"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </Badge>
+                </div>
+              )}
             </div>
 
             {isLoading ? (
@@ -204,6 +236,7 @@ export default function Search() {
                     setPriceRange([0, 1000]);
                     setSelectedTypes([]);
                     setMinGuests(1);
+                    setSearchDestination("");
                   }}
                 >
                   Clear filters
