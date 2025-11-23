@@ -68,9 +68,15 @@ app.use((req, res, next) => {
 export default async function runApp(
   setup: (app: Express, server: Server) => Promise<void>,
 ) {
-  // Add health check endpoint - responds immediately
+  // Add health check endpoint at the very beginning - responds immediately without database access
+  // This MUST be before any other middleware/routes so it responds quickly for deployment health checks
   app.get('/health', (_req, res) => {
     res.status(200).json({ status: 'ok' });
+  });
+
+  // Also handle root path as a health check for deployment systems
+  app.head('/', (_req, res) => {
+    res.status(200).send();
   });
 
   const server = await registerRoutes(app);

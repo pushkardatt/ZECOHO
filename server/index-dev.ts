@@ -32,8 +32,15 @@ export async function setupVite(app: Express, server: Server) {
   });
 
   app.use(vite.middlewares);
+  
+  // SPA catch-all route - but skip API and health check endpoints
   app.use("*", async (req, res, next) => {
     const url = req.originalUrl;
+    
+    // Skip API routes and health checks - let them be handled by earlier middleware
+    if (url.startsWith("/api") || url === "/health" || url === "/") {
+      return next();
+    }
 
     try {
       const clientTemplate = path.resolve(
