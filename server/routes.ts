@@ -906,6 +906,93 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Admin routes for property management
+  app.get("/api/admin/properties", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || user.userRole !== "admin") {
+        return res.status(403).json({ message: "Only admins can access this endpoint" });
+      }
+
+      const properties = await storage.getProperties();
+      res.json(properties);
+    } catch (error) {
+      console.error("Error fetching admin properties:", error);
+      res.status(500).json({ message: "Failed to fetch properties" });
+    }
+  });
+
+  app.patch("/api/admin/properties/:id/approve", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || user.userRole !== "admin") {
+        return res.status(403).json({ message: "Only admins can approve properties" });
+      }
+
+      const property = await storage.getProperty(req.params.id);
+      
+      if (!property) {
+        return res.status(404).json({ message: "Property not found" });
+      }
+
+      const updated = await storage.updateProperty(req.params.id, { status: "published" });
+      res.json(updated);
+    } catch (error) {
+      console.error("Error approving property:", error);
+      res.status(500).json({ message: "Failed to approve property" });
+    }
+  });
+
+  app.patch("/api/admin/properties/:id/reject", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || user.userRole !== "admin") {
+        return res.status(403).json({ message: "Only admins can reject properties" });
+      }
+
+      const property = await storage.getProperty(req.params.id);
+      
+      if (!property) {
+        return res.status(404).json({ message: "Property not found" });
+      }
+
+      const updated = await storage.updateProperty(req.params.id, { status: "draft" });
+      res.json(updated);
+    } catch (error) {
+      console.error("Error rejecting property:", error);
+      res.status(500).json({ message: "Failed to reject property" });
+    }
+  });
+
+  app.delete("/api/admin/properties/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || user.userRole !== "admin") {
+        return res.status(403).json({ message: "Only admins can delete properties" });
+      }
+
+      const property = await storage.getProperty(req.params.id);
+      
+      if (!property) {
+        return res.status(404).json({ message: "Property not found" });
+      }
+
+      await storage.deleteProperty(req.params.id);
+      res.json({ message: "Property deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting property:", error);
+      res.status(500).json({ message: "Failed to delete property" });
+    }
+  });
+
   // Object Storage routes for file uploads
   app.post("/api/objects/upload", isAuthenticated, async (req: any, res) => {
     try {

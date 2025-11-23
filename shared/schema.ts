@@ -28,7 +28,7 @@ export const sessions = pgTable(
 );
 
 // User roles enum
-export const userRoleEnum = pgEnum("user_role", ["guest", "owner"]);
+export const userRoleEnum = pgEnum("user_role", ["guest", "owner", "admin"]);
 
 // Property types enum
 export const propertyTypeEnum = pgEnum("property_type", [

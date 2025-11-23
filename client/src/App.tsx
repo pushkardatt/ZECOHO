@@ -19,6 +19,7 @@ import Profile from "@/pages/profile";
 import Destinations from "@/pages/destinations";
 import DestinationDetails from "@/pages/destination-details";
 import AdminDestinations from "@/pages/admin-destinations";
+import AdminProperties from "@/pages/admin-properties";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -39,6 +40,7 @@ function Router() {
           <Route path="/owner/properties/new" component={AddProperty} />
           <Route path="/owner/properties/:id/edit" component={AddProperty} />
           <Route path="/admin/destinations" component={AdminDestinations} />
+          <Route path="/admin/properties" component={AdminProperties} />
           <Route path="/profile" component={Profile} />
         </>
       )}
