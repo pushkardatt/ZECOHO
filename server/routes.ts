@@ -45,6 +45,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Test/Development admin login endpoint - only for testing admin features
+  app.post('/api/test/admin-login', async (req: any, res) => {
+    try {
+      // This is a development-only endpoint for testing
+      // In production, this should not exist
+      const user = await storage.getUser('test-admin-user');
+      
+      if (!user || user.userRole !== 'admin') {
+        return res.status(403).json({ message: "Test admin user not found or not admin" });
+      }
+
+      // Set up a fake session for testing
+      req.user = {
+        claims: { sub: 'test-admin-user' },
+        access_token: 'test-token',
+        expires_at: Math.floor(Date.now() / 1000) + 3600,
+      };
+      req.session.passport = { user: { claims: { sub: 'test-admin-user' } } };
+      
+      res.json({ 
+        message: "Test admin session created", 
+        user: { ...user, testSessionActive: true }
+      });
+    } catch (error) {
+      console.error("Error in test admin login:", error);
+      res.status(500).json({ message: "Test admin login failed" });
+    }
+  });
+
   app.patch('/api/user/kyc', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
