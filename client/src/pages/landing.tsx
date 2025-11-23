@@ -39,7 +39,7 @@ export default function Landing() {
         
         <div className="relative z-10 container px-4 md:px-6 text-center">
           <h1 className="text-5xl md:text-6xl font-bold text-white mb-4" data-testid="text-hero-title">
-            Find your perfect stay
+            Ready to start your journey?
           </h1>
           <p className="text-xl md:text-2xl text-white/90 mb-8 max-w-2xl mx-auto">
             Discover unique accommodations from hotels to villas, hostels to resorts
@@ -121,7 +121,6 @@ export default function Landing() {
 
       {/* CTA Section */}
       <div className="container px-4 md:px-6 py-16 text-center">
-        <h2 className="text-3xl font-semibold mb-4">Ready to start your journey?</h2>
         <p className="text-lg text-muted-foreground mb-8 max-w-2xl mx-auto">
           Join thousands of travelers finding their perfect stay
         </p>
