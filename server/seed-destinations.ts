@@ -190,14 +190,3 @@ async function seedDestinations() {
 }
 
 export { seedDestinations };
-
-// Run if executed directly
-seedDestinations()
-  .then(() => {
-    console.log("Destinations seed completed successfully");
-    process.exit(0);
-  })
-  .catch((error) => {
-    console.error("Destinations seed failed:", error);
-    process.exit(1);
-  });
