@@ -389,6 +389,9 @@ export const insertPropertySchema = createInsertSchema(properties).omit({
 }).extend({
   amenityIds: z.array(z.string()).optional(),
   videos: z.array(z.string()).default([]),
+  pricePerNight: z.string().or(z.number()).pipe(z.coerce.number()),
+  latitude: z.string().or(z.number()).nullable().optional().pipe(z.coerce.number().nullable().optional()),
+  longitude: z.string().or(z.number()).nullable().optional().pipe(z.coerce.number().nullable().optional()),
 });
 
 export const insertRoomSchema = createInsertSchema(rooms).omit({

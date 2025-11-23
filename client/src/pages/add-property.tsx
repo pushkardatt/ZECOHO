@@ -139,8 +139,8 @@ export default function AddProperty() {
     createPropertyMutation.mutate({
       ...data,
       videos: videos.length > 0 ? videos : data.videos,
-      latitude: selectedPlace?.latitude ? selectedPlace.latitude.toString() : data.latitude,
-      longitude: selectedPlace?.longitude ? selectedPlace.longitude.toString() : data.longitude,
+      latitude: selectedPlace?.latitude ? selectedPlace.latitude : data.latitude,
+      longitude: selectedPlace?.longitude ? selectedPlace.longitude : data.longitude,
     });
   };
 
@@ -315,7 +315,7 @@ export default function AddProperty() {
                     <Input
                       id="pricePerNight"
                       type="number"
-                      {...register("pricePerNight")}
+                      {...register("pricePerNight", { valueAsNumber: true })}
                       step="0.01"
                       min="0"
                       placeholder="10000.00"
