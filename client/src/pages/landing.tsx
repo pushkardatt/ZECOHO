@@ -38,16 +38,28 @@ export default function Landing() {
         </div>
         
         <div className="relative z-10 container px-4 md:px-6 text-center">
-          <Button 
-            size="sm"
-            variant="outline" 
-            className="bg-white/10 backdrop-blur-md border-white/20 text-white hover:bg-white/20 mb-4"
-            asChild
-          >
-            <a href="/api/login" data-testid="button-create-account-top">
-              Create your account
-            </a>
-          </Button>
+          <div className="flex justify-center gap-3 mb-4">
+            <Button 
+              size="sm"
+              variant="outline" 
+              className="bg-white/10 backdrop-blur-md border-white/20 text-white hover:bg-white/20"
+              asChild
+            >
+              <a href="/api/login" data-testid="button-login-top">
+                Login
+              </a>
+            </Button>
+            <Button 
+              size="sm"
+              variant="outline" 
+              className="bg-white/20 backdrop-blur-md border-white/30 text-white hover:bg-white/30"
+              asChild
+            >
+              <a href="/api/login" data-testid="button-create-account-top">
+                Create your account
+              </a>
+            </Button>
+          </div>
           
           <h1 className="text-5xl md:text-6xl font-bold text-white mb-4" data-testid="text-hero-title">
             Ready to start your journey?
