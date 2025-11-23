@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { insertPropertySchema, type Amenity } from "@shared/schema";
 import { z } from "zod";
@@ -112,6 +112,7 @@ export default function AddProperty() {
         title: "Success",
         description: "Property created successfully",
       });
+      queryClient.invalidateQueries({ queryKey: ["/api/owner/properties"] });
       setLocation("/owner/properties");
     },
     onError: (error: Error) => {
