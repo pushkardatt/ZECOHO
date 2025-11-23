@@ -74,6 +74,7 @@ export interface IStorage {
   // Amenity operations
   getAllAmenities(): Promise<Amenity[]>;
   createAmenity(amenity: InsertAmenity): Promise<Amenity>;
+  createAmenitiesIgnoreDuplicates(amenities: InsertAmenity[]): Promise<void>;
   getPropertyAmenities(propertyId: string): Promise<Amenity[]>;
   setPropertyAmenities(propertyId: string, amenityIds: string[]): Promise<void>;
 
@@ -266,6 +267,15 @@ export class DatabaseStorage implements IStorage {
   async createAmenity(amenityData: InsertAmenity): Promise<Amenity> {
     const [amenity] = await db.insert(amenities).values(amenityData).returning();
     return amenity;
+  }
+
+  async createAmenitiesIgnoreDuplicates(amenitiesData: InsertAmenity[]): Promise<void> {
+    if (amenitiesData.length === 0) return;
+    
+    await db.insert(amenities)
+      .values(amenitiesData)
+      .onConflictDoNothing()
+      .execute();
   }
 
   async getPropertyAmenities(propertyId: string): Promise<Amenity[]> {

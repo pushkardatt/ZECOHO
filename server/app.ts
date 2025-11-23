@@ -68,12 +68,10 @@ app.use((req, res, next) => {
 export default async function runApp(
   setup: (app: Express, server: Server) => Promise<void>,
 ) {
-  // Seed amenities on app start
-  try {
-    await seedAmenities();
-  } catch (error) {
-    console.warn("Amenities seed failed or already seeded:", error);
-  }
+  // Add health check endpoint - responds immediately
+  app.get('/health', (_req, res) => {
+    res.status(200).json({ status: 'ok' });
+  });
 
   const server = await registerRoutes(app);
 
@@ -100,5 +98,11 @@ export default async function runApp(
     reusePort: true,
   }, () => {
     log(`serving on port ${port}`);
+    
+    // Seed amenities AFTER server starts listening
+    // This prevents health check timeouts during startup
+    seedAmenities().catch(error => {
+      console.error("Failed to seed amenities:", error);
+    });
   });
 }

@@ -60,22 +60,15 @@ async function seedAmenities() {
   console.log("Seeding amenities...");
   
   try {
-    // Check if amenities already exist
-    const existing = await storage.getAllAmenities();
-    if (existing.length > 0) {
-      console.log(`Found ${existing.length} existing amenities, skipping seed.`);
-      return;
-    }
-
-    // Create amenities
-    for (const amenity of amenitiesData) {
-      await storage.createAmenity(amenity);
-    }
+    // Bulk insert with ON CONFLICT DO NOTHING to handle duplicates gracefully
+    await storage.createAmenitiesIgnoreDuplicates(amenitiesData);
     
-    console.log(`Successfully seeded ${amenitiesData.length} amenities!`);
+    // Get final count to report
+    const existing = await storage.getAllAmenities();
+    console.log(`Amenities available: ${existing.length}`);
   } catch (error) {
     console.error("Error seeding amenities:", error);
-    throw error;
+    // Don't throw - allow app to continue even if seeding fails
   }
 }
 
