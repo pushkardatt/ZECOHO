@@ -33,12 +33,36 @@ export async function setupVite(app: Express, server: Server) {
 
   app.use(vite.middlewares);
   
-  // SPA catch-all route - but skip API and health check endpoints
+  // Dedicated handler for '/' - serves the SPA immediately
+  app.get('/', async (req, res, next) => {
+    try {
+      const clientTemplate = path.resolve(
+        import.meta.dirname,
+        "..",
+        "client",
+        "index.html",
+      );
+
+      // always reload the index.html file from disk incase it changes
+      let template = await fs.promises.readFile(clientTemplate, "utf-8");
+      template = template.replace(
+        `src="/src/main.tsx"`,
+        `src="/src/main.tsx?v=${nanoid()}"`,
+      );
+      const page = await vite.transformIndexHtml(req.originalUrl, template);
+      res.status(200).set({ "Content-Type": "text/html" }).end(page);
+    } catch (e) {
+      vite.ssrFixStacktrace(e as Error);
+      next(e);
+    }
+  });
+  
+  // SPA catch-all route for all other paths - but skip API and health check endpoints
   app.use("*", async (req, res, next) => {
     const url = req.originalUrl;
     
     // Skip API routes and health checks - let them be handled by earlier middleware
-    if (url.startsWith("/api") || url === "/health" || url === "/") {
+    if (url.startsWith("/api") || url === "/health") {
       return next();
     }
 

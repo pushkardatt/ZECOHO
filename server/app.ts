@@ -105,10 +105,14 @@ export default async function runApp(
   }, () => {
     log(`serving on port ${port}`);
     
-    // Seed amenities AFTER server starts listening
-    // This prevents health check timeouts during startup
-    seedAmenities().catch(error => {
-      console.error("Failed to seed amenities:", error);
-    });
+    // Seed amenities in the background ONLY in development, or if explicitly enabled
+    // Skip seeding in production to avoid startup delays and health check timeouts
+    const shouldSeedAmenities = process.env.NODE_ENV !== 'production' || process.env.SEED_AMENITIES === 'true';
+    
+    if (shouldSeedAmenities) {
+      // Fire-and-forget seeding - don't await, don't chain .catch()
+      // Just invoke the function and let it run in the background
+      seedAmenities();
+    }
   });
 }
