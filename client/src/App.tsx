@@ -35,13 +35,13 @@ function Router() {
           <Route path="/list-property" component={ListProperty} />
           <Route path="/wishlist" component={Wishlist} />
           <Route path="/messages" component={Messages} />
+          <Route path="/owner/properties" component={OwnerProperties} />
           <Route path="/owner/properties/new" component={AddProperty} />
           <Route path="/owner/properties/:id/edit" component={AddProperty} />
           <Route path="/admin/destinations" component={AdminDestinations} />
           <Route path="/profile" component={Profile} />
         </>
       )}
-      <Route path="/owner/properties" component={OwnerProperties} />
       <Route path="/search" component={Search} />
       <Route path="/properties" component={Search} />
       <Route path="/properties/:id" component={PropertyDetails} />

@@ -29,7 +29,30 @@ export default function OwnerProperties() {
 
   const { data: properties = [], isLoading } = useQuery<Property[]>({
     queryKey: ["/api/owner/properties"],
+    enabled: isAuthenticated && !authLoading,
   });
+
+  // Show loading state while auth is being verified
+  if (authLoading) {
+    return (
+      <div className="min-h-screen pb-16">
+        <div className="container px-4 md:px-6 py-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[...Array(3)].map((_, i) => (
+              <Card key={i}>
+                <Skeleton className="aspect-[4/3] rounded-t-lg" />
+                <CardContent className="p-4 space-y-2">
+                  <Skeleton className="h-6 w-3/4" />
+                  <Skeleton className="h-4 w-1/2" />
+                  <Skeleton className="h-8 w-full" />
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const getStatusBadge = (status: string) => {
     const variants: Record<string, { variant: "default" | "secondary" | "outline"; label: string }> = {
