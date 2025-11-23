@@ -95,6 +95,7 @@ export const properties = pgTable("properties", {
   latitude: decimal("latitude", { precision: 10, scale: 7 }),
   longitude: decimal("longitude", { precision: 10, scale: 7 }),
   images: text("images").array().notNull().default(sql`ARRAY[]::text[]`),
+  videos: text("videos").array().notNull().default(sql`ARRAY[]::text[]`),
   pricePerNight: decimal("price_per_night", { precision: 10, scale: 2 }).notNull(),
   maxGuests: integer("max_guests").notNull().default(2),
   bedrooms: integer("bedrooms").notNull().default(1),
@@ -387,6 +388,7 @@ export const insertPropertySchema = createInsertSchema(properties).omit({
   reviewCount: true,
 }).extend({
   amenityIds: z.array(z.string()).optional(),
+  videos: z.array(z.string()).default([]),
 });
 
 export const insertRoomSchema = createInsertSchema(rooms).omit({
