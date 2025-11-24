@@ -7,7 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
-import { Home as HomeIcon, MapPin, Calendar, DollarSign, Check, Shield, TrendingDown, Sparkles, Award } from "lucide-react";
+import { Home as HomeIcon, MapPin, Calendar, DollarSign, Check, Shield, TrendingDown, Sparkles, Award, Handshake, Users } from "lucide-react";
 import type { Property, Destination } from "@shared/schema";
 import heroImage from "@assets/generated_images/luxury_villa_hero_image.png";
 
@@ -48,7 +48,7 @@ export default function Home() {
         <div className="container mx-auto flex flex-col md:flex-row items-center justify-center gap-2 text-center">
           <Sparkles className="h-5 w-5 animate-pulse" />
           <p className="font-bold text-base md:text-lg">
-            🎉 100% ZERO Commission • Pay Only What You See • Save More on Every Booking!
+            🎉 Connect Directly with Hoteliers • 100% ZERO Commission • Save More on Every Booking!
           </p>
           <Sparkles className="h-5 w-5 animate-pulse" />
         </div>
@@ -73,13 +73,13 @@ export default function Home() {
           </div>
 
           <h1 className="text-5xl md:text-6xl font-bold text-white mb-4 leading-tight">
-            Book Hotels at True Prices
+            Connect Directly with Hoteliers
           </h1>
           <p className="text-xl md:text-2xl text-white/95 mb-3 font-semibold">
-            No Hidden Fees • No Commission • No Surprises
+            Book at True Prices • No Middleman • No Commission
           </p>
           <p className="text-base md:text-lg text-white/80 mb-8 max-w-2xl mx-auto">
-            Save up to 20% compared to other platforms. At ZECOHO, you pay exactly what the hotel charges — nothing more!
+            Deal directly with property owners and save up to 20%. At ZECOHO, you pay exactly what the hotelier charges — nothing more!
           </p>
           
           <div className="flex justify-center mb-6">
@@ -89,12 +89,12 @@ export default function Home() {
           {/* Trust Indicators */}
           <div className="flex flex-wrap items-center justify-center gap-6 text-white/90 text-sm">
             <div className="flex items-center gap-2">
-              <Check className="h-4 w-4 text-emerald-400" />
-              <span>Transparent Pricing</span>
+              <Handshake className="h-4 w-4 text-emerald-400" />
+              <span>Direct Contact with Hoteliers</span>
             </div>
             <div className="flex items-center gap-2">
               <Check className="h-4 w-4 text-emerald-400" />
-              <span>Direct Hotel Rates</span>
+              <span>100% Transparent Pricing</span>
             </div>
             <div className="flex items-center gap-2">
               <Check className="h-4 w-4 text-emerald-400" />
@@ -110,12 +110,25 @@ export default function Home() {
           <div className="text-center mb-12">
             <h2 className="text-3xl md:text-4xl font-bold mb-3">Why Choose ZECOHO?</h2>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              Your journey, our passion. Experience the difference of commission-free booking.
+              Connect directly with hoteliers. Experience the difference of commission-free booking. Your journey, our passion.
             </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto">
             {/* Benefit 1 */}
+            <Card className="text-center p-6 border-2 border-emerald-100 dark:border-emerald-900">
+              <div className="flex justify-center mb-4">
+                <div className="rounded-full bg-emerald-100 dark:bg-emerald-900 p-4">
+                  <Handshake className="h-8 w-8 text-emerald-600 dark:text-emerald-400" />
+                </div>
+              </div>
+              <h3 className="text-xl font-semibold mb-3">Direct Connection to Hoteliers</h3>
+              <p className="text-muted-foreground">
+                No middleman, no markup. Connect directly with property owners and build genuine relationships. Book at the source!
+              </p>
+            </Card>
+
+            {/* Benefit 2 */}
             <Card className="text-center p-6 border-2 border-emerald-100 dark:border-emerald-900">
               <div className="flex justify-center mb-4">
                 <div className="rounded-full bg-emerald-100 dark:bg-emerald-900 p-4">
@@ -128,7 +141,7 @@ export default function Home() {
               </p>
             </Card>
 
-            {/* Benefit 2 */}
+            {/* Benefit 3 */}
             <Card className="text-center p-6 border-2 border-emerald-100 dark:border-emerald-900">
               <div className="flex justify-center mb-4">
                 <div className="rounded-full bg-emerald-100 dark:bg-emerald-900 p-4">
@@ -138,19 +151,6 @@ export default function Home() {
               <h3 className="text-xl font-semibold mb-3">100% Transparent Pricing</h3>
               <p className="text-muted-foreground">
                 What you see is what you pay. No service fees, booking fees, or surprise charges at checkout.
-              </p>
-            </Card>
-
-            {/* Benefit 3 */}
-            <Card className="text-center p-6 border-2 border-emerald-100 dark:border-emerald-900">
-              <div className="flex justify-center mb-4">
-                <div className="rounded-full bg-emerald-100 dark:bg-emerald-900 p-4">
-                  <Award className="h-8 w-8 text-emerald-600 dark:text-emerald-400" />
-                </div>
-              </div>
-              <h3 className="text-xl font-semibold mb-3">Best Price Guaranteed</h3>
-              <p className="text-muted-foreground">
-                Get the same properties at lower prices than booking.com, Airbnb, or any other platform.
               </p>
             </Card>
           </div>

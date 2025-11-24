@@ -2,7 +2,7 @@
 
 ## Overview
 
-ZECOHO ("Your Journey, Our Passion") is a ZERO COMMISSION hotel booking platform — a two-sided marketplace connecting guests with property owners directly. Unlike traditional platforms that charge 15-25% commission, ZECOHO charges ZERO fees, passing 100% of the savings to customers. The platform features three user roles (Guests, Property Owners, Admins), property discovery with advanced filtering, wishlist management, booking system, and user preference customization. Recent updates include a complete landing page overhaul emphasizing the zero-commission value proposition, comprehensive Indian destinations database (65 destinations), and 56+ properties across India.
+ZECOHO ("Your Journey, Our Passion") is a ZERO COMMISSION hotel booking platform that enables guests to connect directly with hoteliers — eliminating the middleman entirely. Unlike traditional platforms that charge 15-25% commission, ZECOHO charges ZERO fees, passing 100% of the savings to customers. The platform features three user roles (Guests, Property Owners, Admins), property discovery with advanced filtering, wishlist management, booking system, and user preference customization. Recent updates include a complete landing page overhaul emphasizing direct hotelier connections and zero-commission value proposition, comprehensive Indian destinations database (65 destinations), and 56+ properties across India.
 
 ## User Preferences
 
