@@ -2,7 +2,7 @@
 
 ## Overview
 
-ZECOHO is a two-sided marketplace application for accommodation bookings, inspired by Airbnb. It connects guests with property owners/hoteliers, supporting various property types like hotels, villas, and apartments. The platform caters to three user roles: Guests, Property Owners, and Admins. Key capabilities include property discovery with advanced filtering, wishlist management, owner property management, a booking system with availability tracking, and user preference customization. The project aims to capture market potential by offering a robust and intuitive booking experience, with recent updates focusing on an Indian market launch (INR currency conversion) and a "Discover India" destinations feature.
+ZECOHO ("Your Journey, Our Passion") is a ZERO COMMISSION hotel booking platform — a two-sided marketplace connecting guests with property owners directly. Unlike traditional platforms that charge 15-25% commission, ZECOHO charges ZERO fees, passing 100% of the savings to customers. The platform features three user roles (Guests, Property Owners, Admins), property discovery with advanced filtering, wishlist management, booking system, and user preference customization. Recent updates include a complete landing page overhaul emphasizing the zero-commission value proposition, comprehensive Indian destinations database (65 destinations), and 56+ properties across India.
 
 ## User Preferences
 
@@ -28,12 +28,14 @@ The application uses **PostgreSQL** via Neon's serverless driver. **Drizzle ORM*
 
 ### System Features
 
+-   **ZERO Commission Model**: Platform's core differentiator — no booking fees, service fees, or commission charges for customers.
+-   **Landing Page Value Proposition**: Prominent ZERO commission messaging, savings calculator showing 15-20% cost comparison vs competitors, trust indicators, and transparent pricing guarantees.
 -   **Property Amenities System**: CRUD operations for amenities with many-to-many property relationships.
 -   **Booking System**: Comprehensive booking table, server-side validation (no self-booking, overlap detection), pricing calculation, and a frontend booking form.
 -   **Messaging System**: Real-time communication via WebSockets, conversation management, and unread message tracking.
 -   **Review System**: Allows guests to submit reviews for completed bookings, owners to respond, and users to mark reviews as helpful.
 -   **KYC & Property Listing Feature**: A multi-step wizard for property owners, including personal details, KYC verification (address, government ID), and property information submission, with role promotion and property approval workflows.
--   **Destinations Feature**: Curated destinations (e.g., "Discover India") with dedicated browsing pages, search functionality, and integration with property listings.
+-   **Destinations Feature**: Curated 65 Indian destinations across all states with autocomplete search, 56+ properties covering major cities, tourist spots, hill stations, heritage sites, and adventure destinations.
 
 ## External Dependencies
 

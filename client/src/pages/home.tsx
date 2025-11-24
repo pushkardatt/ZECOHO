@@ -7,7 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
-import { Home as HomeIcon, MapPin, Calendar } from "lucide-react";
+import { Home as HomeIcon, MapPin, Calendar, DollarSign, Check, Shield, TrendingDown, Sparkles, Award } from "lucide-react";
 import type { Property, Destination } from "@shared/schema";
 import heroImage from "@assets/generated_images/luxury_villa_hero_image.png";
 
@@ -43,6 +43,148 @@ export default function Home() {
 
   return (
     <div className="min-h-screen">
+      {/* ZERO Commission Banner - Top Priority */}
+      <div className="bg-gradient-to-r from-emerald-600 via-emerald-500 to-teal-500 text-white py-3 px-4 md:px-6">
+        <div className="container mx-auto flex flex-col md:flex-row items-center justify-center gap-2 text-center">
+          <Sparkles className="h-5 w-5 animate-pulse" />
+          <p className="font-bold text-base md:text-lg">
+            🎉 100% ZERO Commission • Pay Only What You See • Save More on Every Booking!
+          </p>
+          <Sparkles className="h-5 w-5 animate-pulse" />
+        </div>
+      </div>
+
+      {/* Hero Section with ZERO Commission Focus */}
+      <div className="relative h-[600px] flex items-center justify-center mb-8">
+        <div 
+          className="absolute inset-0 bg-cover bg-center"
+          style={{ backgroundImage: `url(${heroImage})` }}
+        >
+          <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-black/40 to-black/60" />
+        </div>
+        
+        <div className="relative z-10 container px-4 md:px-6 text-center">
+          {/* ZERO Commission Badge */}
+          <div className="mb-6 flex justify-center">
+            <Badge className="bg-emerald-500 hover:bg-emerald-600 text-white px-6 py-2 text-sm font-bold border-2 border-white/20">
+              <DollarSign className="h-4 w-4 mr-2" />
+              ZERO COMMISSION PLATFORM
+            </Badge>
+          </div>
+
+          <h1 className="text-5xl md:text-6xl font-bold text-white mb-4 leading-tight">
+            Book Hotels at True Prices
+          </h1>
+          <p className="text-xl md:text-2xl text-white/95 mb-3 font-semibold">
+            No Hidden Fees • No Commission • No Surprises
+          </p>
+          <p className="text-base md:text-lg text-white/80 mb-8 max-w-2xl mx-auto">
+            Save up to 20% compared to other platforms. At ZECOHO, you pay exactly what the hotel charges — nothing more!
+          </p>
+          
+          <div className="flex justify-center mb-6">
+            <SearchBar onSearch={handleSearch} />
+          </div>
+
+          {/* Trust Indicators */}
+          <div className="flex flex-wrap items-center justify-center gap-6 text-white/90 text-sm">
+            <div className="flex items-center gap-2">
+              <Check className="h-4 w-4 text-emerald-400" />
+              <span>Transparent Pricing</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Check className="h-4 w-4 text-emerald-400" />
+              <span>Direct Hotel Rates</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Check className="h-4 w-4 text-emerald-400" />
+              <span>Instant Confirmation</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ZERO Commission Benefits Section */}
+      <div className="bg-gradient-to-b from-emerald-50 to-white dark:from-emerald-950/20 dark:to-background py-16 px-4 md:px-6">
+        <div className="container mx-auto">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl md:text-4xl font-bold mb-3">Why Choose ZECOHO?</h2>
+            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+              Your journey, our passion. Experience the difference of commission-free booking.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto">
+            {/* Benefit 1 */}
+            <Card className="text-center p-6 border-2 border-emerald-100 dark:border-emerald-900">
+              <div className="flex justify-center mb-4">
+                <div className="rounded-full bg-emerald-100 dark:bg-emerald-900 p-4">
+                  <TrendingDown className="h-8 w-8 text-emerald-600 dark:text-emerald-400" />
+                </div>
+              </div>
+              <h3 className="text-xl font-semibold mb-3">Save 15-20% Per Booking</h3>
+              <p className="text-muted-foreground">
+                Other platforms charge hotels 15-25% commission. We charge ZERO. Those savings go directly to you!
+              </p>
+            </Card>
+
+            {/* Benefit 2 */}
+            <Card className="text-center p-6 border-2 border-emerald-100 dark:border-emerald-900">
+              <div className="flex justify-center mb-4">
+                <div className="rounded-full bg-emerald-100 dark:bg-emerald-900 p-4">
+                  <Shield className="h-8 w-8 text-emerald-600 dark:text-emerald-400" />
+                </div>
+              </div>
+              <h3 className="text-xl font-semibold mb-3">100% Transparent Pricing</h3>
+              <p className="text-muted-foreground">
+                What you see is what you pay. No service fees, booking fees, or surprise charges at checkout.
+              </p>
+            </Card>
+
+            {/* Benefit 3 */}
+            <Card className="text-center p-6 border-2 border-emerald-100 dark:border-emerald-900">
+              <div className="flex justify-center mb-4">
+                <div className="rounded-full bg-emerald-100 dark:bg-emerald-900 p-4">
+                  <Award className="h-8 w-8 text-emerald-600 dark:text-emerald-400" />
+                </div>
+              </div>
+              <h3 className="text-xl font-semibold mb-3">Best Price Guaranteed</h3>
+              <p className="text-muted-foreground">
+                Get the same properties at lower prices than booking.com, Airbnb, or any other platform.
+              </p>
+            </Card>
+          </div>
+
+          {/* Savings Example */}
+          <div className="mt-12 max-w-3xl mx-auto">
+            <Card className="bg-gradient-to-r from-emerald-500 to-teal-500 text-white p-8">
+              <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+                <div className="flex-1">
+                  <h3 className="text-2xl font-bold mb-2">See The Difference</h3>
+                  <p className="text-white/90 mb-4">Booking a ₹10,000/night property for 3 nights:</p>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between items-center">
+                      <span>Other Platforms:</span>
+                      <span className="font-semibold line-through">₹36,000 + ₹5,400 fees = ₹41,400</span>
+                    </div>
+                    <div className="flex justify-between items-center text-lg">
+                      <span className="font-bold">ZECOHO:</span>
+                      <span className="font-bold">₹30,000 (₹0 fees)</span>
+                    </div>
+                  </div>
+                </div>
+                <div className="text-center">
+                  <div className="bg-white text-emerald-600 rounded-lg px-6 py-4">
+                    <p className="text-sm font-semibold mb-1">You Save</p>
+                    <p className="text-4xl font-bold">₹11,400</p>
+                  </div>
+                </div>
+              </div>
+            </Card>
+          </div>
+        </div>
+      </div>
+
       {/* List Your Property CTA Banner */}
       <div className="bg-primary text-white py-4 px-4 md:px-6">
         <div className="container mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
@@ -50,7 +192,7 @@ export default function Home() {
             <HomeIcon className="h-6 w-6" />
             <div>
               <h3 className="font-semibold text-lg">Become a Property Owner</h3>
-              <p className="text-sm text-white/90">List your property and start earning today</p>
+              <p className="text-sm text-white/90">List your property and reach customers directly — zero commission for you too!</p>
             </div>
           </div>
           <Button 
@@ -62,34 +204,6 @@ export default function Home() {
           >
             List Your Property
           </Button>
-        </div>
-      </div>
-
-      {/* Hero Section */}
-      <div className="relative h-[500px] flex items-center justify-center mb-12">
-        <div 
-          className="absolute inset-0 bg-cover bg-center"
-          style={{ backgroundImage: `url(${heroImage})` }}
-        >
-          <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/30 to-black/50" />
-        </div>
-        
-        <div className="relative z-10 container px-4 md:px-6 text-center">
-          <div className="mb-3">
-            <span className="text-sm font-semibold text-white/80 tracking-wider uppercase">
-              Powered by ZECOHO
-            </span>
-          </div>
-          <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">
-            Welcome back, {user?.firstName || "Guest"}!
-          </h1>
-          <p className="text-lg md:text-xl text-white/90 mb-8">
-            Where would you like to go?
-          </p>
-          
-          <div className="flex justify-center">
-            <SearchBar onSearch={handleSearch} />
-          </div>
         </div>
       </div>
 
