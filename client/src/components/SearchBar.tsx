@@ -58,17 +58,23 @@ export function SearchBar({
 
   // Fetch destinations with search - use backend filtering for better performance
   const { data: filteredDestinations = [] } = useQuery({
-    queryKey: ['/api/destinations', destination],
+    queryKey: ['destination-search', destination],
     queryFn: async () => {
-      if (destination.trim().length === 0) {
+      const trimmed = destination.trim();
+      if (trimmed.length === 0) {
         return [];
       }
-      const searchParams = new URLSearchParams({ search: destination.trim() });
-      const res = await fetch(`/api/destinations?${searchParams}`);
+      console.log('[SearchBar] Fetching destinations with search:', trimmed);
+      const url = `/api/destinations?search=${encodeURIComponent(trimmed)}`;
+      console.log('[SearchBar] Request URL:', url);
+      const res = await fetch(url);
       if (!res.ok) throw new Error('Failed to fetch destinations');
-      return res.json();
+      const data = await res.json();
+      console.log('[SearchBar] Received destinations:', data.length);
+      return data;
     },
     staleTime: 0, // Don't cache search results
+    enabled: destination.trim().length > 0, // Only run query when there's input
   });
 
   // Close suggestions when clicking outside
