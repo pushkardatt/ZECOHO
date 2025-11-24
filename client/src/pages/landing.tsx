@@ -38,7 +38,7 @@ export default function Landing() {
         </div>
         
         <div className="relative z-10 container px-4 md:px-6 text-center">
-          <div className="flex justify-center gap-3 mb-4">
+          <div className="flex justify-center gap-3 mb-6">
             <Button 
               size="sm"
               variant="outline" 
@@ -61,9 +61,18 @@ export default function Landing() {
             </Button>
           </div>
           
-          <h1 className="text-5xl md:text-6xl font-bold text-white mb-4" data-testid="text-hero-title">
+          <div className="mb-6" data-testid="brand-logo">
+            <h1 className="text-6xl md:text-7xl font-extrabold text-white tracking-tight mb-2">
+              ZECOHO
+            </h1>
+            <p className="text-lg md:text-xl text-white/80 font-light tracking-wide">
+              Your Journey, Our Passion
+            </p>
+          </div>
+          
+          <h2 className="text-4xl md:text-5xl font-bold text-white mb-4" data-testid="text-hero-title">
             Ready to start your journey?
-          </h1>
+          </h2>
           <p className="text-xl md:text-2xl text-white/90 mb-8 max-w-2xl mx-auto">
             Discover unique accommodations from hotels to villas, hostels to resorts
           </p>

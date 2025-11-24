@@ -126,9 +126,9 @@ export function SearchBar({ onSearch, compact = false }: SearchBarProps) {
   }
 
   return (
-    <div className="w-full max-w-4xl" ref={suggestionsRef}>
+    <div className="w-full max-w-4xl relative" ref={suggestionsRef}>
       <div className="bg-white rounded-lg shadow-lg p-2 flex items-center gap-2 w-full">
-        <div className="flex-1 px-4 py-2 border-r relative">
+        <div className="flex-1 px-4 py-2 border-r">
           <label className="text-xs font-semibold block mb-1">Destination</label>
           <div className="relative">
             <MapPin className="absolute left-0 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -144,23 +144,6 @@ export function SearchBar({ onSearch, compact = false }: SearchBarProps) {
               className="w-full pl-6 bg-transparent focus:outline-none text-sm"
               data-testid="input-destination-full"
             />
-            
-            {/* Suggestions dropdown - positioned outside of rounded container */}
-            {showSuggestions && filteredDestinations.length > 0 && (
-              <div className="absolute top-full left-0 right-0 mt-1 bg-white border rounded-md shadow-md z-50 max-h-60 overflow-y-auto">
-                {filteredDestinations.map((dest: any) => (
-                  <button
-                    key={dest.id}
-                    onClick={() => handleSelectDestination(dest.name)}
-                    className="w-full text-left px-4 py-2 hover:bg-muted text-sm transition-colors"
-                    data-testid={`suggestion-destination-${dest.id}`}
-                  >
-                    <MapPin className="inline h-3 w-3 mr-2 text-muted-foreground" />
-                    {dest.name}
-                  </button>
-                ))}
-              </div>
-            )}
           </div>
         </div>
       
@@ -217,6 +200,28 @@ export function SearchBar({ onSearch, compact = false }: SearchBarProps) {
           Search
         </Button>
       </div>
+      
+      {/* Suggestions dropdown - positioned absolutely relative to outer container */}
+      {showSuggestions && filteredDestinations.length > 0 && (
+        <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-card border rounded-md shadow-lg z-[100] max-h-60 overflow-y-auto">
+          {filteredDestinations.map((dest: any) => (
+            <button
+              key={dest.id}
+              onClick={() => handleSelectDestination(dest.name)}
+              className="w-full text-left px-4 py-3 hover:bg-muted text-sm transition-colors border-b last:border-b-0"
+              data-testid={`suggestion-destination-${dest.id}`}
+            >
+              <MapPin className="inline h-4 w-4 mr-2 text-muted-foreground" />
+              <span className="font-medium">{dest.name}</span>
+              {dest.state && (
+                <span className="text-muted-foreground ml-2 text-xs">
+                  {dest.state}, {dest.country || 'India'}
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
