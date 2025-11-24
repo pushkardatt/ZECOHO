@@ -13,16 +13,35 @@ interface SearchBarProps {
     guests: number;
   }) => void;
   compact?: boolean;
+  initialDestination?: string;
+  initialCheckIn?: string;
+  initialCheckOut?: string;
+  initialGuests?: number;
 }
 
-export function SearchBar({ onSearch, compact = false }: SearchBarProps) {
+export function SearchBar({ 
+  onSearch, 
+  compact = false,
+  initialDestination = "",
+  initialCheckIn = "",
+  initialCheckOut = "",
+  initialGuests = 2,
+}: SearchBarProps) {
   const { isAuthenticated } = useAuth();
-  const [destination, setDestination] = useState("");
-  const [checkIn, setCheckIn] = useState("");
-  const [checkOut, setCheckOut] = useState("");
-  const [guests, setGuests] = useState(2);
+  const [destination, setDestination] = useState(initialDestination);
+  const [checkIn, setCheckIn] = useState(initialCheckIn);
+  const [checkOut, setCheckOut] = useState(initialCheckOut);
+  const [guests, setGuests] = useState(initialGuests);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const suggestionsRef = useRef<HTMLDivElement>(null);
+
+  // Update state when initial props change (for navigation to search page with params)
+  useEffect(() => {
+    setDestination(initialDestination);
+    setCheckIn(initialCheckIn);
+    setCheckOut(initialCheckOut);
+    setGuests(initialGuests);
+  }, [initialDestination, initialCheckIn, initialCheckOut, initialGuests]);
 
   // Mutation to save search history
   const saveSearchMutation = useMutation({

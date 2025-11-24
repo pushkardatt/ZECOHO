@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 import { PropertyCard } from "@/components/PropertyCard";
 import { SearchBar } from "@/components/SearchBar";
 import { Button } from "@/components/ui/button";
@@ -15,11 +16,35 @@ import { useAuth } from "@/hooks/useAuth";
 
 export default function Search() {
   const { user } = useAuth();
+  const [location] = useLocation();
   const [priceRange, setPriceRange] = useState([0, 89000]);
   const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
   const [minGuests, setMinGuests] = useState(1);
   const [showFilters, setShowFilters] = useState(true);
   const [searchDestination, setSearchDestination] = useState("");
+  const [initialSearchValues, setInitialSearchValues] = useState({
+    destination: "",
+    checkIn: "",
+    checkOut: "",
+    guests: 2,
+  });
+
+  // Parse URL query parameters on mount
+  useEffect(() => {
+    const searchParams = new URLSearchParams(window.location.search);
+    const destination = searchParams.get("destination") || "";
+    const checkIn = searchParams.get("checkIn") || "";
+    const checkOut = searchParams.get("checkOut") || "";
+    const guests = searchParams.get("guests");
+    
+    setSearchDestination(destination);
+    setInitialSearchValues({
+      destination,
+      checkIn,
+      checkOut,
+      guests: guests ? parseInt(guests) : 2,
+    });
+  }, [location]);
 
   const { data: properties = [], isLoading } = useQuery<Property[]>({
     queryKey: ["/api/properties"],
@@ -83,7 +108,14 @@ export default function Search() {
         <div className="container px-4 md:px-6 py-4">
           <div className="flex items-center gap-4">
             <div className="flex-1">
-              <SearchBar compact onSearch={handleSearch} />
+              <SearchBar 
+                compact 
+                onSearch={handleSearch}
+                initialDestination={initialSearchValues.destination}
+                initialCheckIn={initialSearchValues.checkIn}
+                initialCheckOut={initialSearchValues.checkOut}
+                initialGuests={initialSearchValues.guests}
+              />
             </div>
             <Button
               variant="outline"
