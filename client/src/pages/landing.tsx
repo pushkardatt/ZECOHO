@@ -142,9 +142,9 @@ export default function Landing() {
               <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
                 <Mountain className="h-8 w-8 text-primary" />
               </div>
-              <h3 className="text-xl font-semibold mb-2">Save 15-20%</h3>
+              <h3 className="text-xl font-semibold mb-2">Maximum Savings</h3>
               <p className="text-muted-foreground">
-                Other platforms charge 15-25% commission. We charge ZERO. Those savings go to YOU!
+                Other platforms charge commission. We charge ZERO. Those savings go to YOU!
               </p>
             </div>
           </div>
@@ -155,7 +155,7 @@ export default function Landing() {
       <div className="container px-4 md:px-6 py-16 text-center">
         <h3 className="text-3xl font-bold mb-4">Start Saving Today</h3>
         <p className="text-lg text-muted-foreground mb-8 max-w-2xl mx-auto">
-          Join thousands of smart travelers booking directly with hoteliers and saving 15-20% on every stay
+          Join thousands of smart travelers booking directly with hoteliers and saving on every stay
         </p>
         <Button size="lg" asChild data-testid="button-cta-login">
           <a href="/api/login">Start Booking at ZERO Commission</a>
