@@ -11,7 +11,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { Building2, FileText, User, MapPin, Phone, Mail } from "lucide-react";
+import { Building2, FileText, User, MapPin, Phone, Mail, Loader2 } from "lucide-react";
 import { useState } from "react";
 
 const kycSchema = z.object({
@@ -44,6 +44,7 @@ type KYCFormData = z.infer<typeof kycSchema>;
 export default function KYC() {
   const { toast } = useToast();
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [isPincodeLookup, setIsPincodeLookup] = useState(false);
 
   const form = useForm<KYCFormData>({
     resolver: zodResolver(kycSchema),
@@ -65,6 +66,46 @@ export default function KYC() {
       description: "",
     },
   });
+
+  // PIN code lookup function
+  const handlePincodeChange = async (pincode: string) => {
+    // Only lookup if we have a 6-digit PIN code
+    if (pincode.length === 6 && /^\d{6}$/.test(pincode)) {
+      setIsPincodeLookup(true);
+      try {
+        const response = await fetch(`https://api.postalpincode.in/pincode/${pincode}`);
+        const data = await response.json();
+        
+        if (data && data[0]?.Status === "Success" && data[0]?.PostOffice?.length > 0) {
+          const postOffice = data[0].PostOffice[0];
+          
+          // Auto-populate city and state
+          form.setValue("city", postOffice.District || "");
+          form.setValue("state", postOffice.State || "");
+          
+          toast({
+            title: "PIN Code Found!",
+            description: `${postOffice.District}, ${postOffice.State}`,
+          });
+        } else {
+          toast({
+            title: "Invalid PIN Code",
+            description: "Please enter a valid Indian PIN code or manually enter city and state.",
+            variant: "destructive",
+          });
+        }
+      } catch (error) {
+        console.error("PIN code lookup error:", error);
+        toast({
+          title: "Lookup Failed",
+          description: "Unable to fetch PIN code details. Please enter city and state manually.",
+          variant: "destructive",
+        });
+      } finally {
+        setIsPincodeLookup(false);
+      }
+    }
+  };
 
   const submitKYC = useMutation({
     mutationFn: async (data: KYCFormData) => {
@@ -288,7 +329,39 @@ export default function KYC() {
                     )}
                   />
 
-                  <div className="grid md:grid-cols-3 gap-4">
+                  {/* PIN Code First - Auto-populates City & State */}
+                  <FormField
+                    control={form.control}
+                    name="pincode"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>PIN Code</FormLabel>
+                        <FormControl>
+                          <div className="relative">
+                            <Input 
+                              placeholder="Enter 6-digit PIN code (e.g., 400001)" 
+                              {...field}
+                              onChange={(e) => {
+                                field.onChange(e);
+                                handlePincodeChange(e.target.value);
+                              }}
+                              maxLength={6}
+                              data-testid="input-pincode" 
+                            />
+                            {isPincodeLookup && (
+                              <Loader2 className="absolute right-3 top-3 h-4 w-4 animate-spin text-muted-foreground" />
+                            )}
+                          </div>
+                        </FormControl>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Enter PIN code to auto-fill city and state, or skip and enter manually
+                        </p>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <div className="grid md:grid-cols-2 gap-4">
                     <FormField
                       control={form.control}
                       name="city"
@@ -298,6 +371,9 @@ export default function KYC() {
                           <FormControl>
                             <Input placeholder="Mumbai" {...field} data-testid="input-city" />
                           </FormControl>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Auto-filled from PIN code or enter manually
+                          </p>
                           <FormMessage />
                         </FormItem>
                       )}
@@ -312,20 +388,9 @@ export default function KYC() {
                           <FormControl>
                             <Input placeholder="Maharashtra" {...field} data-testid="input-state" />
                           </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="pincode"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Pincode</FormLabel>
-                          <FormControl>
-                            <Input placeholder="400001" {...field} data-testid="input-pincode" />
-                          </FormControl>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Auto-filled from PIN code or enter manually
+                          </p>
                           <FormMessage />
                         </FormItem>
                       )}
