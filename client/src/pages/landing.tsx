@@ -55,8 +55,8 @@ export default function Landing() {
               className="bg-white/20 backdrop-blur-md border-white/30 text-white hover:bg-white/30"
               asChild
             >
-              <a href="/api/login" data-testid="button-create-account-top">
-                Create your account
+              <a href="/kyc" data-testid="button-list-hotel-top">
+                List Your Hotel
               </a>
             </Button>
           </div>

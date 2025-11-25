@@ -242,6 +242,35 @@ export const searchHistory = pgTable("search_history", {
   index("idx_user_created").on(table.userId, table.createdAt),
 ]);
 
+// KYC Applications table - stores property owner verification applications
+export const kycApplications = pgTable("kyc_applications", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  firstName: varchar("first_name", { length: 100 }).notNull(),
+  lastName: varchar("last_name", { length: 100 }).notNull(),
+  email: varchar("email", { length: 255 }).notNull(),
+  phone: varchar("phone", { length: 20 }).notNull(),
+  propertyName: varchar("property_name", { length: 255 }).notNull(),
+  propertyType: varchar("property_type", { length: 50 }).notNull(),
+  propertyAddress: text("property_address").notNull(),
+  city: varchar("city", { length: 100 }).notNull(),
+  state: varchar("state", { length: 100 }).notNull(),
+  pincode: varchar("pincode", { length: 10 }).notNull(),
+  businessName: varchar("business_name", { length: 255 }).notNull(),
+  gstNumber: varchar("gst_number", { length: 20 }),
+  panNumber: varchar("pan_number", { length: 20 }).notNull(),
+  numberOfRooms: integer("number_of_rooms").notNull(),
+  description: text("description").notNull(),
+  status: kycStatusEnum("status").notNull().default("pending"),
+  reviewedBy: varchar("reviewed_by").references(() => users.id, { onDelete: "set null" }),
+  reviewedAt: timestamp("reviewed_at"),
+  reviewNotes: text("review_notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("idx_status_created").on(table.status, table.createdAt),
+  index("idx_email").on(table.email),
+]);
+
 // Relations
 export const usersRelations = relations(users, ({ many, one }) => ({
   properties: many(properties),
@@ -368,6 +397,13 @@ export const searchHistoryRelations = relations(searchHistory, ({ one }) => ({
   }),
 }));
 
+export const kycApplicationsRelations = relations(kycApplications, ({ one }) => ({
+  reviewer: one(users, {
+    fields: [kycApplications.reviewedBy],
+    references: [users.id],
+  }),
+}));
+
 // Types
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
@@ -398,6 +434,9 @@ export type InsertMessage = typeof messages.$inferInsert;
 
 export type Review = typeof reviews.$inferSelect;
 export type InsertReview = typeof reviews.$inferInsert;
+
+export type KycApplication = typeof kycApplications.$inferSelect;
+export type InsertKycApplication = typeof kycApplications.$inferInsert;
 
 // Insert schemas
 export const insertPropertySchema = createInsertSchema(properties).omit({
@@ -458,6 +497,16 @@ export const insertReviewSchema = createInsertSchema(reviews).omit({
   ownerResponseAt: true,
 }).extend({
   rating: z.number().min(1).max(5),
+});
+
+export const insertKycApplicationSchema = createInsertSchema(kycApplications).omit({
+  id: true,
+  status: true,
+  reviewedBy: true,
+  reviewedAt: true,
+  reviewNotes: true,
+  createdAt: true,
+  updatedAt: true,
 });
 
 // KYC update schema - validates owner registration flow

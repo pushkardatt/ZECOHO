@@ -13,6 +13,7 @@ import {
   reviews,
   destinations,
   searchHistory,
+  kycApplications,
   type User,
   type UpsertUser,
   type Property,
@@ -37,6 +38,8 @@ import {
   type InsertDestination,
   type SearchHistory,
   type InsertSearchHistory,
+  type KycApplication,
+  type InsertKycApplication,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, gte, lte, lt, gt, inArray, sql, or, not } from "drizzle-orm";
@@ -121,6 +124,11 @@ export interface IStorage {
   createSearchHistory(userId: string, search: InsertSearchHistory): Promise<SearchHistory>;
   getUserSearchHistory(userId: string, limit?: number): Promise<SearchHistory[]>;
   deleteSearchHistory(id: string): Promise<void>;
+
+  // KYC Application operations
+  createKycApplication(application: InsertKycApplication): Promise<KycApplication>;
+  getKycApplicationsByStatus(status: "pending" | "verified" | "rejected"): Promise<KycApplication[]>;
+  updateKycApplicationStatus(id: string, status: "verified" | "rejected", reviewedBy: string, reviewNotes?: string): Promise<KycApplication | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -777,6 +785,43 @@ export class DatabaseStorage implements IStorage {
 
   async deleteSearchHistory(id: string): Promise<void> {
     await db.delete(searchHistory).where(eq(searchHistory.id, id));
+  }
+
+  // KYC Application operations
+  async createKycApplication(applicationData: InsertKycApplication): Promise<KycApplication> {
+    const [application] = await db
+      .insert(kycApplications)
+      .values(applicationData)
+      .returning();
+    return application;
+  }
+
+  async getKycApplicationsByStatus(status: "pending" | "verified" | "rejected"): Promise<KycApplication[]> {
+    return await db
+      .select()
+      .from(kycApplications)
+      .where(eq(kycApplications.status, status))
+      .orderBy(kycApplications.createdAt);
+  }
+
+  async updateKycApplicationStatus(
+    id: string,
+    status: "verified" | "rejected",
+    reviewedBy: string,
+    reviewNotes?: string
+  ): Promise<KycApplication | undefined> {
+    const [updated] = await db
+      .update(kycApplications)
+      .set({
+        status,
+        reviewedBy,
+        reviewedAt: new Date(),
+        reviewNotes,
+        updatedAt: new Date(),
+      })
+      .where(eq(kycApplications.id, id))
+      .returning();
+    return updated;
   }
 }
 

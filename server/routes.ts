@@ -3,7 +3,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
-import { insertPropertySchema, insertRoomSchema, insertWishlistSchema, insertUserPreferencesSchema, insertBookingSchema, insertMessageSchema, insertReviewSchema, insertDestinationSchema, insertSearchHistorySchema, updateKYCSchema, becomeOwnerSchema } from "@shared/schema";
+import { insertPropertySchema, insertRoomSchema, insertWishlistSchema, insertUserPreferencesSchema, insertBookingSchema, insertMessageSchema, insertReviewSchema, insertDestinationSchema, insertSearchHistorySchema, updateKYCSchema, becomeOwnerSchema, insertKycApplicationSchema } from "@shared/schema";
 import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
 import { ObjectPermission } from "./objectAcl";
 
@@ -71,6 +71,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error in test admin login:", error);
       res.status(500).json({ message: "Test admin login failed" });
+    }
+  });
+
+  // KYC Application submission - public endpoint for property owners
+  app.post('/api/kyc/submit', async (req: any, res) => {
+    try {
+      const validatedData = insertKycApplicationSchema.parse(req.body);
+      
+      const application = await storage.createKycApplication(validatedData);
+      
+      res.json({ 
+        message: "KYC application submitted successfully", 
+        applicationId: application.id 
+      });
+    } catch (error) {
+      console.error("Error submitting KYC application:", error);
+      if (error instanceof Error && error.name === "ZodError") {
+        return res.status(400).json({ message: "Invalid application data", error: error.message });
+      }
+      res.status(500).json({ message: "Failed to submit KYC application" });
     }
   });
 
