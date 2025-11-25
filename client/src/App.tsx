@@ -21,6 +21,7 @@ import Destinations from "@/pages/destinations";
 import DestinationDetails from "@/pages/destination-details";
 import AdminDestinations from "@/pages/admin-destinations";
 import AdminProperties from "@/pages/admin-properties";
+import AdminKYC from "@/pages/admin-kyc";
 import AdminAccess from "@/pages/admin-access";
 import KYC from "@/pages/kyc";
 import DevAdminLogin from "@/pages/dev-admin-login";
@@ -48,6 +49,7 @@ function Router() {
           <Route path="/owner/properties/:id/edit" component={AddProperty} />
           <Route path="/admin/destinations" component={AdminDestinations} />
           <Route path="/admin/properties" component={AdminProperties} />
+          <Route path="/admin/kyc" component={AdminKYC} />
           <Route path="/profile" component={Profile} />
         </>
       )}

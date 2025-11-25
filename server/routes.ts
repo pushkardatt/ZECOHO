@@ -158,6 +158,70 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Admin KYC routes
+  app.get("/api/admin/kyc", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || user.userRole !== "admin") {
+        return res.status(403).json({ message: "Only admins can view KYC applications" });
+      }
+
+      const applications = await storage.getAllKycApplications();
+      res.json(applications);
+    } catch (error) {
+      console.error("Error fetching KYC applications:", error);
+      res.status(500).json({ message: "Failed to fetch KYC applications" });
+    }
+  });
+
+  app.patch("/api/admin/kyc/:id/verified", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || user.userRole !== "admin") {
+        return res.status(403).json({ message: "Only admins can verify KYC applications" });
+      }
+
+      const { reviewNotes } = req.body;
+      const application = await storage.updateKycApplicationStatus(
+        req.params.id,
+        "verified",
+        reviewNotes
+      );
+
+      res.json(application);
+    } catch (error) {
+      console.error("Error verifying KYC application:", error);
+      res.status(500).json({ message: "Failed to verify KYC application" });
+    }
+  });
+
+  app.patch("/api/admin/kyc/:id/rejected", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || user.userRole !== "admin") {
+        return res.status(403).json({ message: "Only admins can reject KYC applications" });
+      }
+
+      const { reviewNotes } = req.body;
+      const application = await storage.updateKycApplicationStatus(
+        req.params.id,
+        "rejected",
+        reviewNotes
+      );
+
+      res.json(application);
+    } catch (error) {
+      console.error("Error rejecting KYC application:", error);
+      res.status(500).json({ message: "Failed to reject KYC application" });
+    }
+  });
+
   // Properties routes
   app.get("/api/properties", async (req, res) => {
     try {

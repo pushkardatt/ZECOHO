@@ -42,7 +42,7 @@ import {
   type InsertKycApplication,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, gte, lte, lt, gt, inArray, sql, or, not } from "drizzle-orm";
+import { eq, and, gte, lte, lt, gt, inArray, sql, or, not, desc } from "drizzle-orm";
 
 // Interface for storage operations
 export interface IStorage {
@@ -127,9 +127,10 @@ export interface IStorage {
 
   // KYC Application operations
   createKycApplication(userId: string, application: InsertKycApplication): Promise<KycApplication>;
+  getAllKycApplications(): Promise<KycApplication[]>;
   getKycApplicationsByStatus(status: "pending" | "verified" | "rejected"): Promise<KycApplication[]>;
   getUserKycApplication(userId: string): Promise<KycApplication | undefined>;
-  updateKycApplicationStatus(id: string, status: "verified" | "rejected", reviewedBy: string, reviewNotes?: string): Promise<KycApplication | undefined>;
+  updateKycApplicationStatus(id: string, status: "verified" | "rejected", reviewNotes?: string): Promise<KycApplication | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -425,7 +426,7 @@ export class DatabaseStorage implements IStorage {
       SELECT 
         c.*,
         p.id as property_id, p.title as property_title, p.destination as property_destination, 
-        p.price_per_night as property_price_per_night, p.images as property_images,
+        p.price_per_night as property_price_per_night, p.images as property_images, p.videos as property_videos,
         p.property_type as property_type, p.max_guests as property_max_guests,
         p.owner_id as property_owner_id, p.status as property_status, p.rating as property_rating,
         p.review_count as property_review_count, p.description as property_description,
@@ -472,6 +473,7 @@ export class DatabaseStorage implements IStorage {
         destination: row.property_destination,
         pricePerNight: row.property_price_per_night,
         images: row.property_images,
+        videos: row.property_videos,
         propertyType: row.property_type,
         maxGuests: row.property_max_guests,
         ownerId: row.property_owner_id,
@@ -831,17 +833,23 @@ export class DatabaseStorage implements IStorage {
     return application;
   }
 
+  async getAllKycApplications(): Promise<KycApplication[]> {
+    const applications = await db
+      .select()
+      .from(kycApplications)
+      .orderBy(desc(kycApplications.createdAt));
+    return applications;
+  }
+
   async updateKycApplicationStatus(
     id: string,
     status: "verified" | "rejected",
-    reviewedBy: string,
     reviewNotes?: string
   ): Promise<KycApplication | undefined> {
     const [updated] = await db
       .update(kycApplications)
       .set({
         status,
-        reviewedBy,
         reviewedAt: new Date(),
         reviewNotes,
         updatedAt: new Date(),

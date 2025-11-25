@@ -8,7 +8,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
-import { Home, Heart, User, LogOut, Menu, Building, MessageCircle, History, PlusCircle } from "lucide-react";
+import { Home, Heart, User, LogOut, Menu, Building, MessageCircle, History, PlusCircle, Shield, Settings, FileText, MapPin } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery } from "@tanstack/react-query";
@@ -52,6 +52,13 @@ export function Header() {
               {user?.userRole === "owner" && (
                 <Badge variant="secondary" className="hidden md:flex">
                   Owner Dashboard
+                </Badge>
+              )}
+              
+              {user?.userRole === "admin" && (
+                <Badge variant="default" className="hidden md:flex">
+                  <Shield className="h-3 w-3 mr-1" />
+                  Admin Panel
                 </Badge>
               )}
               
@@ -104,6 +111,51 @@ export function Header() {
                     <span className="hidden md:inline">My Properties</span>
                   </Button>
                 </Link>
+              )}
+
+              {user?.userRole === "admin" && (
+                <>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button 
+                        variant={location.startsWith("/admin") ? "secondary" : "ghost"}
+                        size="sm"
+                        data-testid="button-admin-menu"
+                      >
+                        <Shield className="h-4 w-4 md:mr-2" />
+                        <span className="hidden md:inline">Admin</span>
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-56">
+                      <div className="px-2 py-1.5">
+                        <p className="text-sm font-semibold flex items-center gap-2">
+                          <Shield className="h-4 w-4" />
+                          Admin Panel
+                        </p>
+                        <p className="text-xs text-muted-foreground">Manage platform content</p>
+                      </div>
+                      <DropdownMenuSeparator />
+                      <Link href="/admin/properties">
+                        <DropdownMenuItem data-testid="link-admin-properties">
+                          <Building className="h-4 w-4 mr-2" />
+                          Manage Properties
+                        </DropdownMenuItem>
+                      </Link>
+                      <Link href="/admin/kyc">
+                        <DropdownMenuItem data-testid="link-admin-kyc">
+                          <FileText className="h-4 w-4 mr-2" />
+                          KYC Applications
+                        </DropdownMenuItem>
+                      </Link>
+                      <Link href="/admin/destinations">
+                        <DropdownMenuItem data-testid="link-admin-destinations">
+                          <MapPin className="h-4 w-4 mr-2" />
+                          Manage Destinations
+                        </DropdownMenuItem>
+                      </Link>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </>
               )}
 
               <Link href="/messages">
