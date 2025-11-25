@@ -22,22 +22,14 @@ const kycSchema = z.object({
   email: z.string().email("Invalid email address"),
   phone: z.string().min(10, "Phone number must be at least 10 digits"),
   
-  // Property Information
-  propertyName: z.string().min(3, "Property name must be at least 3 characters"),
-  propertyType: z.string().min(1, "Please select a property type"),
-  propertyAddress: z.string().min(10, "Please provide complete address"),
+  // Business Information
+  businessName: z.string().min(3, "Business name is required"),
+  businessAddress: z.string().min(10, "Please provide complete business address"),
   city: z.string().min(2, "City is required"),
   state: z.string().min(2, "State is required"),
   pincode: z.string().min(6, "Valid pincode is required"),
-  
-  // Business Information
-  businessName: z.string().min(3, "Business name is required"),
   gstNumber: z.string().optional(),
   panNumber: z.string().min(10, "Valid PAN number is required"),
-  
-  // Additional Information
-  numberOfRooms: z.coerce.number().min(1, "Number of rooms must be at least 1"),
-  description: z.string().min(50, "Please provide at least 50 characters description"),
 });
 
 type KYCFormData = z.infer<typeof kycSchema>;
@@ -54,17 +46,13 @@ export default function KYC() {
       lastName: "",
       email: "",
       phone: "",
-      propertyName: "",
-      propertyType: "",
-      propertyAddress: "",
+      businessName: "",
+      businessAddress: "",
       city: "",
       state: "",
       pincode: "",
-      businessName: "",
       gstNumber: "",
       panNumber: "",
-      numberOfRooms: 0,
-      description: "",
     },
   });
 
@@ -141,22 +129,28 @@ export default function KYC() {
             <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
               <Building2 className="h-8 w-8 text-primary" />
             </div>
-            <CardTitle className="text-2xl">Application Submitted!</CardTitle>
+            <CardTitle className="text-2xl">Verification Submitted!</CardTitle>
             <CardDescription>
-              Thank you for choosing ZECOHO to list your property
+              Thank you for choosing ZECOHO as your property management platform
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="text-center text-muted-foreground">
               <p className="mb-4">
-                We've received your KYC application and our team will review it carefully.
+                We've received your owner verification application and our team will review it carefully.
               </p>
               <p className="mb-4">
-                You'll receive an email within <strong>2-3 business days</strong> with the next steps.
+                You'll receive an email within <strong>2-3 business days</strong> regarding your verification status.
               </p>
-              <p className="text-sm">
-                If you have any questions, feel free to contact our support team.
+              <p className="mb-2">
+                <strong>Next Steps After Approval:</strong>
               </p>
+              <ul className="text-sm text-left max-w-sm mx-auto space-y-1">
+                <li>✓ Add unlimited property listings</li>
+                <li>✓ Upload property images and videos</li>
+                <li>✓ Set your own pricing</li>
+                <li>✓ Connect directly with guests</li>
+              </ul>
             </div>
             <Button 
               className="w-full" 
@@ -175,9 +169,9 @@ export default function KYC() {
     <div className="min-h-screen bg-muted/50 py-12 px-4">
       <div className="container max-w-4xl mx-auto">
         <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold mb-2">List Your Hotel on ZECOHO</h1>
+          <h1 className="text-4xl font-bold mb-2">Become a Property Owner</h1>
           <p className="text-xl text-muted-foreground">
-            Join our platform and reach thousands of travelers at ZERO commission
+            Get verified and start listing your properties at ZERO commission
           </p>
         </div>
 
@@ -185,10 +179,10 @@ export default function KYC() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <FileText className="h-5 w-5" />
-              Property Owner Verification (KYC)
+              Owner Identity Verification (KYC)
             </CardTitle>
             <CardDescription>
-              Please fill in the details below. All fields are required for verification.
+              Complete your identity verification to become a verified property owner. After approval, you can list unlimited properties.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -262,64 +256,25 @@ export default function KYC() {
                   </div>
                 </div>
 
-                {/* Property Information */}
+                {/* Business Address */}
                 <div className="space-y-4">
                   <div className="flex items-center gap-2 mb-4">
-                    <Building2 className="h-5 w-5 text-primary" />
-                    <h3 className="text-lg font-semibold">Property Information</h3>
+                    <MapPin className="h-5 w-5 text-primary" />
+                    <h3 className="text-lg font-semibold">Business Address</h3>
                   </div>
                   
                   <FormField
                     control={form.control}
-                    name="propertyName"
+                    name="businessAddress"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Property Name</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Grand Palace Hotel" {...field} data-testid="input-property-name" />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="propertyType"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Property Type</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                          <FormControl>
-                            <SelectTrigger data-testid="select-property-type">
-                              <SelectValue placeholder="Select property type" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="hotel">Hotel</SelectItem>
-                            <SelectItem value="resort">Resort</SelectItem>
-                            <SelectItem value="villa">Villa</SelectItem>
-                            <SelectItem value="guesthouse">Guest House</SelectItem>
-                            <SelectItem value="apartment">Apartment</SelectItem>
-                            <SelectItem value="homestay">Homestay</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="propertyAddress"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Property Address</FormLabel>
+                        <FormLabel>Complete Business Address</FormLabel>
                         <FormControl>
                           <Textarea 
-                            placeholder="Complete address with landmarks" 
+                            placeholder="Enter your complete business address with landmarks" 
+                            rows={3}
                             {...field} 
-                            data-testid="input-property-address"
+                            data-testid="input-business-address"
                           />
                         </FormControl>
                         <FormMessage />
@@ -417,38 +372,6 @@ export default function KYC() {
                     />
                   </div>
 
-                  <FormField
-                    control={form.control}
-                    name="numberOfRooms"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Number of Rooms</FormLabel>
-                        <FormControl>
-                          <Input type="number" placeholder="20" {...field} data-testid="input-number-of-rooms" />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="description"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Property Description</FormLabel>
-                        <FormControl>
-                          <Textarea 
-                            placeholder="Tell us about your property, amenities, and what makes it special..."
-                            rows={4}
-                            {...field} 
-                            data-testid="input-description"
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
                 </div>
 
                 {/* Business Information */}

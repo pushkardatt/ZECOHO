@@ -74,16 +74,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // KYC Application submission - public endpoint for property owners
-  app.post('/api/kyc/submit', async (req: any, res) => {
+  // KYC Application submission - requires authentication
+  app.post('/api/kyc/submit', isAuthenticated, async (req: any, res) => {
     try {
-      const validatedData = insertKycApplicationSchema.parse(req.body);
+      const userId = req.user.claims.sub;
       
-      const application = await storage.createKycApplication(validatedData);
+      // Check if user already has a KYC application
+      const existingKyc = await storage.getUserKycApplication(userId);
+      if (existingKyc) {
+        return res.status(400).json({ 
+          message: "You have already submitted a KYC application",
+          status: existingKyc.status 
+        });
+      }
+      
+      const validatedData = insertKycApplicationSchema.parse(req.body);
+      const application = await storage.createKycApplication(userId, validatedData);
       
       res.json({ 
         message: "KYC application submitted successfully", 
-        applicationId: application.id 
+        applicationId: application.id,
+        status: application.status
       });
     } catch (error) {
       console.error("Error submitting KYC application:", error);

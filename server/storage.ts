@@ -126,8 +126,9 @@ export interface IStorage {
   deleteSearchHistory(id: string): Promise<void>;
 
   // KYC Application operations
-  createKycApplication(application: InsertKycApplication): Promise<KycApplication>;
+  createKycApplication(userId: string, application: InsertKycApplication): Promise<KycApplication>;
   getKycApplicationsByStatus(status: "pending" | "verified" | "rejected"): Promise<KycApplication[]>;
+  getUserKycApplication(userId: string): Promise<KycApplication | undefined>;
   updateKycApplicationStatus(id: string, status: "verified" | "rejected", reviewedBy: string, reviewNotes?: string): Promise<KycApplication | undefined>;
 }
 
@@ -802,10 +803,13 @@ export class DatabaseStorage implements IStorage {
   }
 
   // KYC Application operations
-  async createKycApplication(applicationData: InsertKycApplication): Promise<KycApplication> {
+  async createKycApplication(userId: string, applicationData: InsertKycApplication): Promise<KycApplication> {
     const [application] = await db
       .insert(kycApplications)
-      .values(applicationData)
+      .values({
+        ...applicationData,
+        userId,
+      })
       .returning();
     return application;
   }
@@ -816,6 +820,15 @@ export class DatabaseStorage implements IStorage {
       .from(kycApplications)
       .where(eq(kycApplications.status, status))
       .orderBy(kycApplications.createdAt);
+  }
+
+  async getUserKycApplication(userId: string): Promise<KycApplication | undefined> {
+    const [application] = await db
+      .select()
+      .from(kycApplications)
+      .where(eq(kycApplications.userId, userId))
+      .limit(1);
+    return application;
   }
 
   async updateKycApplicationStatus(

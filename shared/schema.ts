@@ -242,24 +242,21 @@ export const searchHistory = pgTable("search_history", {
   index("idx_user_created").on(table.userId, table.createdAt),
 ]);
 
-// KYC Applications table - stores property owner verification applications
+// KYC Applications table - stores OWNER IDENTITY VERIFICATION ONLY (not property details)
 export const kycApplications = pgTable("kyc_applications", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   firstName: varchar("first_name", { length: 100 }).notNull(),
   lastName: varchar("last_name", { length: 100 }).notNull(),
   email: varchar("email", { length: 255 }).notNull(),
   phone: varchar("phone", { length: 20 }).notNull(),
-  propertyName: varchar("property_name", { length: 255 }).notNull(),
-  propertyType: varchar("property_type", { length: 50 }).notNull(),
-  propertyAddress: text("property_address").notNull(),
+  businessName: varchar("business_name", { length: 255 }).notNull(),
+  businessAddress: text("business_address").notNull(),
   city: varchar("city", { length: 100 }).notNull(),
   state: varchar("state", { length: 100 }).notNull(),
   pincode: varchar("pincode", { length: 10 }).notNull(),
-  businessName: varchar("business_name", { length: 255 }).notNull(),
   gstNumber: varchar("gst_number", { length: 20 }),
   panNumber: varchar("pan_number", { length: 20 }).notNull(),
-  numberOfRooms: integer("number_of_rooms").notNull(),
-  description: text("description").notNull(),
   status: kycStatusEnum("status").notNull().default("pending"),
   reviewedBy: varchar("reviewed_by").references(() => users.id, { onDelete: "set null" }),
   reviewedAt: timestamp("reviewed_at"),
@@ -268,7 +265,8 @@ export const kycApplications = pgTable("kyc_applications", {
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => [
   index("idx_status_created").on(table.status, table.createdAt),
-  index("idx_email").on(table.email),
+  index("idx_user_id").on(table.userId),
+  uniqueIndex("idx_user_unique_kyc").on(table.userId),
 ]);
 
 // Relations
@@ -398,6 +396,10 @@ export const searchHistoryRelations = relations(searchHistory, ({ one }) => ({
 }));
 
 export const kycApplicationsRelations = relations(kycApplications, ({ one }) => ({
+  user: one(users, {
+    fields: [kycApplications.userId],
+    references: [users.id],
+  }),
   reviewer: one(users, {
     fields: [kycApplications.reviewedBy],
     references: [users.id],
@@ -501,6 +503,7 @@ export const insertReviewSchema = createInsertSchema(reviews).omit({
 
 export const insertKycApplicationSchema = createInsertSchema(kycApplications).omit({
   id: true,
+  userId: true,
   status: true,
   reviewedBy: true,
   reviewedAt: true,
