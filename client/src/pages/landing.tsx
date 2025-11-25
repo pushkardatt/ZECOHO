@@ -74,7 +74,7 @@ export default function Landing() {
             Book Direct. Pay Less. ZERO Commission.
           </h2>
           <p className="text-xl md:text-2xl text-white/90 mb-8 max-w-2xl mx-auto">
-            Connect directly with hoteliers — No middleman, no markup, no hidden fees. Save 15-20% on every booking!
+            Connect directly with hoteliers — No middleman, no markup, no hidden fees.
           </p>
           
           <div className="flex justify-center mb-8">
