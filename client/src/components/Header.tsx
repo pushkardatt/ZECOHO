@@ -8,7 +8,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
-import { Home, Heart, User, LogOut, Menu, Building, MessageCircle, History } from "lucide-react";
+import { Home, Heart, User, LogOut, Menu, Building, MessageCircle, History, PlusCircle } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery } from "@tanstack/react-query";
@@ -124,6 +124,18 @@ export function Header() {
                       {totalUnreadCount > 9 ? '9+' : totalUnreadCount}
                     </Badge>
                   )}
+                </Button>
+              </Link>
+
+              <Link href="/kyc">
+                <Button 
+                  variant="default"
+                  size="sm"
+                  data-testid="button-list-hotel"
+                >
+                  <PlusCircle className="h-4 w-4 md:mr-2" />
+                  <span className="hidden md:inline">List Your Hotel</span>
+                  <span className="md:hidden">List Hotel</span>
                 </Button>
               </Link>
 

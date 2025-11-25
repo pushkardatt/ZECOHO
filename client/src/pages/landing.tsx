@@ -38,7 +38,7 @@ export default function Landing() {
         </div>
         
         <div className="relative z-10 container px-4 md:px-6 text-center">
-          <div className="flex justify-center gap-3 mb-6">
+          <div className="flex justify-center mb-6">
             <Button 
               size="sm"
               variant="outline" 
@@ -47,16 +47,6 @@ export default function Landing() {
             >
               <a href="/api/login" data-testid="button-login-top">
                 Login
-              </a>
-            </Button>
-            <Button 
-              size="sm"
-              variant="outline" 
-              className="bg-white/20 backdrop-blur-md border-white/30 text-white hover:bg-white/30"
-              asChild
-            >
-              <a href="/kyc" data-testid="button-list-hotel-top">
-                List Your Hotel
               </a>
             </Button>
           </div>
