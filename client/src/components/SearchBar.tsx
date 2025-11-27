@@ -132,18 +132,18 @@ export function SearchBar({
         
         {/* Suggestions dropdown - positioned absolutely relative to outer container */}
         {showSuggestions && filteredDestinations.length > 0 && (
-          <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-card border rounded-md shadow-lg z-[100] max-h-60 overflow-y-auto">
+          <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md shadow-2xl max-h-60 overflow-y-auto" style={{ zIndex: 9999 }}>
             {filteredDestinations.map((dest: any) => (
               <button
                 key={dest.id}
                 onClick={() => handleSelectDestination(dest.name)}
-                className="w-full text-left px-4 py-3 hover:bg-muted text-sm transition-colors border-b last:border-b-0"
+                className="w-full text-left px-4 py-3 hover:bg-gray-100 dark:hover:bg-gray-700 text-sm transition-colors border-b border-gray-100 dark:border-gray-700 last:border-b-0 text-gray-900 dark:text-white"
                 data-testid={`suggestion-destination-compact-${dest.id}`}
               >
-                <MapPin className="inline h-4 w-4 mr-2 text-muted-foreground" />
+                <MapPin className="inline h-4 w-4 mr-2 text-gray-500 dark:text-gray-400" />
                 <span className="font-medium">{dest.name}</span>
                 {dest.state && (
-                  <span className="text-muted-foreground ml-2 text-xs">
+                  <span className="text-gray-500 dark:text-gray-400 ml-2 text-xs">
                     {dest.state}, {dest.country || 'India'}
                   </span>
                 )}
@@ -233,18 +233,18 @@ export function SearchBar({
       
       {/* Suggestions dropdown - positioned absolutely relative to outer container */}
       {showSuggestions && filteredDestinations.length > 0 && (
-        <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-card border rounded-md shadow-lg z-[100] max-h-60 overflow-y-auto">
+        <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md shadow-2xl max-h-60 overflow-y-auto" style={{ zIndex: 9999 }}>
           {filteredDestinations.map((dest: any) => (
             <button
               key={dest.id}
               onClick={() => handleSelectDestination(dest.name)}
-              className="w-full text-left px-4 py-3 hover:bg-muted text-sm transition-colors border-b last:border-b-0"
+              className="w-full text-left px-4 py-3 hover:bg-gray-100 dark:hover:bg-gray-700 text-sm transition-colors border-b border-gray-100 dark:border-gray-700 last:border-b-0 text-gray-900 dark:text-white"
               data-testid={`suggestion-destination-${dest.id}`}
             >
-              <MapPin className="inline h-4 w-4 mr-2 text-muted-foreground" />
+              <MapPin className="inline h-4 w-4 mr-2 text-gray-500 dark:text-gray-400" />
               <span className="font-medium">{dest.name}</span>
               {dest.state && (
-                <span className="text-muted-foreground ml-2 text-xs">
+                <span className="text-gray-500 dark:text-gray-400 ml-2 text-xs">
                   {dest.state}, {dest.country || 'India'}
                 </span>
               )}
