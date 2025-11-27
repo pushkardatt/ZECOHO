@@ -9,6 +9,7 @@ import express, {
 
 import { registerRoutes } from "./routes";
 import { seedAmenities } from "./seed-amenities";
+import { seedDestinations } from "./seed-destinations";
 
 export function log(message: string, source = "express") {
   const formattedTime = new Date().toLocaleTimeString("en-US", {
@@ -113,15 +114,11 @@ export default async function runApp(
     }, () => {
       log(`serving on port ${port}`);
       
-      // Seed amenities in the background ONLY in development, or if explicitly enabled
-      // Skip seeding in production to avoid startup delays and health check timeouts
-      const shouldSeedAmenities = process.env.NODE_ENV !== 'production' || process.env.SEED_AMENITIES === 'true';
-      
-      if (shouldSeedAmenities) {
-        // Fire-and-forget seeding - don't await, don't chain .catch()
-        // Just invoke the function and let it run in the background
-        seedAmenities();
-      }
+      // Seed essential data in the background
+      // Both functions check if data exists before inserting, so this is safe to run always
+      // Fire-and-forget seeding - don't await, don't chain .catch()
+      seedAmenities();
+      seedDestinations();
     });
   });
 }
