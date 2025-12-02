@@ -68,7 +68,7 @@ export default function Landing() {
           </p>
           
           <div className="flex justify-center mb-8">
-            <SearchBar onSearch={handleSearch} />
+            <SearchBar onSearch={handleSearch} showDates={false} showGuests={false} />
           </div>
           
           <Button 

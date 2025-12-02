@@ -82,7 +82,7 @@ export default function Home() {
           </p>
           
           <div className="flex justify-center mb-6">
-            <SearchBar onSearch={handleSearch} />
+            <SearchBar onSearch={handleSearch} showDates={false} showGuests={false} />
           </div>
 
           {/* Trust Indicators */}

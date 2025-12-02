@@ -13,6 +13,8 @@ interface SearchBarProps {
     guests: number;
   }) => void;
   compact?: boolean;
+  showDates?: boolean;
+  showGuests?: boolean;
   initialDestination?: string;
   initialCheckIn?: string;
   initialCheckOut?: string;
@@ -22,6 +24,8 @@ interface SearchBarProps {
 export function SearchBar({ 
   onSearch, 
   compact = false,
+  showDates = true,
+  showGuests = true,
   initialDestination = "",
   initialCheckIn = "",
   initialCheckOut = "",
@@ -158,67 +162,73 @@ export function SearchBar({
   return (
     <div className="w-full max-w-4xl relative" ref={suggestionsRef}>
       <div className="bg-white rounded-lg shadow-lg p-2 flex items-center gap-2 w-full">
-        <div className="flex-1 px-4 py-2 border-r">
-          <label className="text-xs font-semibold block mb-1">Destination</label>
+        <div className={`flex-1 px-4 py-2 ${(showDates || showGuests) ? 'border-r' : ''}`}>
+          <label className="text-xs font-semibold block mb-1 text-gray-700">Destination</label>
           <div className="relative">
             <MapPin className="absolute left-0 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <input
               type="text"
-              placeholder="Where are you going?"
+              placeholder="Search any city in India..."
               value={destination}
               onChange={(e) => {
                 setDestination(e.target.value);
                 setShowSuggestions(e.target.value.length > 0);
               }}
               onFocus={() => destination.length > 0 && setShowSuggestions(true)}
-              className="w-full pl-6 bg-transparent focus:outline-none text-sm"
+              className="w-full pl-6 bg-transparent focus:outline-none text-sm text-gray-900"
               data-testid="input-destination-full"
             />
           </div>
         </div>
       
-        <div className="flex-1 px-4 py-2 border-r">
-          <label className="text-xs font-semibold block mb-1">Check in</label>
-          <div className="relative">
-            <Calendar className="absolute left-0 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <input
-              type="date"
-              value={checkIn}
-              onChange={(e) => setCheckIn(e.target.value)}
-              className="w-full pl-6 bg-transparent focus:outline-none text-sm"
-              data-testid="input-checkin"
-            />
-          </div>
-        </div>
+        {showDates && (
+          <>
+            <div className="flex-1 px-4 py-2 border-r">
+              <label className="text-xs font-semibold block mb-1 text-gray-700">Check in</label>
+              <div className="relative">
+                <Calendar className="absolute left-0 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <input
+                  type="date"
+                  value={checkIn}
+                  onChange={(e) => setCheckIn(e.target.value)}
+                  className="w-full pl-6 bg-transparent focus:outline-none text-sm text-gray-900"
+                  data-testid="input-checkin"
+                />
+              </div>
+            </div>
+            
+            <div className={`flex-1 px-4 py-2 ${showGuests ? 'border-r' : ''}`}>
+              <label className="text-xs font-semibold block mb-1 text-gray-700">Check out</label>
+              <div className="relative">
+                <Calendar className="absolute left-0 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <input
+                  type="date"
+                  value={checkOut}
+                  onChange={(e) => setCheckOut(e.target.value)}
+                  className="w-full pl-6 bg-transparent focus:outline-none text-sm text-gray-900"
+                  data-testid="input-checkout"
+                />
+              </div>
+            </div>
+          </>
+        )}
         
-        <div className="flex-1 px-4 py-2 border-r">
-          <label className="text-xs font-semibold block mb-1">Check out</label>
-          <div className="relative">
-            <Calendar className="absolute left-0 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <input
-              type="date"
-              value={checkOut}
-              onChange={(e) => setCheckOut(e.target.value)}
-              className="w-full pl-6 bg-transparent focus:outline-none text-sm"
-              data-testid="input-checkout"
-            />
+        {showGuests && (
+          <div className="flex-1 px-4 py-2">
+            <label className="text-xs font-semibold block mb-1 text-gray-700">Guests</label>
+            <div className="relative">
+              <Users className="absolute left-0 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <input
+                type="number"
+                min="1"
+                value={guests}
+                onChange={(e) => setGuests(Number(e.target.value))}
+                className="w-full pl-6 bg-transparent focus:outline-none text-sm text-gray-900"
+                data-testid="input-guests"
+              />
+            </div>
           </div>
-        </div>
-        
-        <div className="flex-1 px-4 py-2">
-          <label className="text-xs font-semibold block mb-1">Guests</label>
-          <div className="relative">
-            <Users className="absolute left-0 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <input
-              type="number"
-              min="1"
-              value={guests}
-              onChange={(e) => setGuests(Number(e.target.value))}
-              className="w-full pl-6 bg-transparent focus:outline-none text-sm"
-              data-testid="input-guests"
-            />
-          </div>
-        </div>
+        )}
         
         <Button 
           size="lg" 
