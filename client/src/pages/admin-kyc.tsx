@@ -150,6 +150,30 @@ export default function AdminKYC() {
     },
   });
 
+  const revokeVerificationMutation = useMutation({
+    mutationFn: async ({ id }: { id: string }) => {
+      await apiRequest("PATCH", `/api/admin/kyc/${id}/revoke`, {
+        reviewNotes,
+      });
+    },
+    onSuccess: () => {
+      toast({
+        title: "Verification Revoked",
+        description: "User has been demoted to guest and their verification has been revoked.",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/kyc"] });
+      setSelectedApp(null);
+      setReviewNotes("");
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to revoke verification",
+        variant: "destructive",
+      });
+    },
+  });
+
   if (authLoading || !user) {
     return (
       <div className="min-h-screen pb-16">
@@ -440,6 +464,40 @@ export default function AdminKYC() {
                     Approve
                   </Button>
                 </DialogFooter>
+              )}
+
+              {selectedApp.status === "verified" && (
+                <div className="space-y-4">
+                  <div>
+                    <Label htmlFor="revoke-notes">Reason for Revocation</Label>
+                    <Textarea
+                      id="revoke-notes"
+                      placeholder="Enter reason for revoking verification (e.g., policy violation, fraudulent activity)..."
+                      value={reviewNotes}
+                      onChange={(e) => setReviewNotes(e.target.value)}
+                      rows={3}
+                      data-testid="input-revoke-notes"
+                    />
+                  </div>
+                  <DialogFooter className="gap-2">
+                    <Button
+                      variant="outline"
+                      onClick={() => setSelectedApp(null)}
+                      data-testid="button-cancel-revoke"
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      onClick={() => revokeVerificationMutation.mutate({ id: selectedApp.id })}
+                      disabled={revokeVerificationMutation.isPending}
+                      data-testid="button-revoke"
+                    >
+                      <XCircle className="h-4 w-4 mr-2" />
+                      Revoke Verification
+                    </Button>
+                  </DialogFooter>
+                </div>
               )}
             </DialogContent>
           </Dialog>

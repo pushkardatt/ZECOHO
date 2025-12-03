@@ -317,6 +317,56 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Revoke verification - demote owner back to guest
+  app.patch("/api/admin/kyc/:id/revoke", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || user.userRole !== "admin") {
+        return res.status(403).json({ message: "Only admins can revoke KYC verification" });
+      }
+
+      const { reviewNotes } = req.body;
+      
+      // Get the application first
+      const applications = await storage.getAllKycApplications();
+      const application = applications.find(app => app.id === req.params.id);
+      
+      if (!application) {
+        return res.status(404).json({ message: "KYC application not found" });
+      }
+      
+      // Update KYC application status to rejected
+      const updatedApplication = await storage.updateKycApplicationStatus(
+        req.params.id,
+        "rejected",
+        reviewNotes || "Verification revoked by admin"
+      );
+
+      // Demote user back to guest
+      if (application) {
+        const applicantUser = await storage.getUser(application.userId);
+        if (applicantUser) {
+          await storage.upsertUser({
+            ...applicantUser,
+            userRole: "guest",
+            kycStatus: "rejected",
+            kycVerifiedAt: null,
+          });
+        }
+      }
+
+      res.json({ 
+        message: "Verification revoked successfully", 
+        application: updatedApplication 
+      });
+    } catch (error) {
+      console.error("Error revoking KYC verification:", error);
+      res.status(500).json({ message: "Failed to revoke verification" });
+    }
+  });
+
   // Properties routes
   app.get("/api/properties", async (req, res) => {
     try {
