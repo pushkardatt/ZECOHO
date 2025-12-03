@@ -145,16 +145,40 @@ export function Header() {
               )}
 
               {user?.userRole === "owner" && (
-                <Link href="/owner/properties">
-                  <Button 
-                    variant={location.startsWith("/owner") ? "secondary" : "ghost"}
-                    size="sm"
-                    data-testid="link-owner-properties"
-                  >
-                    <Building className="h-4 w-4 md:mr-2" />
-                    <span className="hidden md:inline">My Properties</span>
-                  </Button>
-                </Link>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button 
+                      variant={location.startsWith("/owner") ? "secondary" : "ghost"}
+                      size="sm"
+                      data-testid="button-owner-menu"
+                    >
+                      <Building className="h-4 w-4 md:mr-2" />
+                      <span className="hidden md:inline">My Properties</span>
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-56">
+                    <div className="px-2 py-1.5">
+                      <p className="text-sm font-semibold flex items-center gap-2">
+                        <Building className="h-4 w-4" />
+                        Property Management
+                      </p>
+                      <p className="text-xs text-muted-foreground">Manage your listings</p>
+                    </div>
+                    <DropdownMenuSeparator />
+                    <Link href="/owner/properties">
+                      <DropdownMenuItem data-testid="link-owner-properties">
+                        <Building className="h-4 w-4 mr-2" />
+                        View My Properties
+                      </DropdownMenuItem>
+                    </Link>
+                    <Link href="/owner/properties/new">
+                      <DropdownMenuItem data-testid="link-add-property">
+                        <PlusCircle className="h-4 w-4 mr-2" />
+                        Add New Property
+                      </DropdownMenuItem>
+                    </Link>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               )}
 
               {user?.userRole === "admin" && (
