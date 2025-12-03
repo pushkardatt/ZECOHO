@@ -170,6 +170,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get user's KYC application status
+  app.get('/api/kyc/status', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const application = await storage.getUserKycApplication(userId);
+      
+      if (!application) {
+        return res.status(404).json({ message: "No KYC application found" });
+      }
+      
+      res.json(application);
+    } catch (error) {
+      console.error("Error fetching KYC status:", error);
+      res.status(500).json({ message: "Failed to fetch KYC status" });
+    }
+  });
+
   app.patch('/api/user/kyc', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
@@ -256,6 +273,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         "verified",
         reviewNotes
       );
+
+      // Promote user to owner role when KYC is verified
+      if (application) {
+        const applicantUser = await storage.getUser(application.userId);
+        if (applicantUser) {
+          await storage.upsertUser({
+            ...applicantUser,
+            userRole: "owner",
+            kycStatus: "verified",
+            kycVerifiedAt: new Date(),
+          });
+        }
+      }
 
       res.json(application);
     } catch (error) {

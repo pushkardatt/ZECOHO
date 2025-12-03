@@ -8,11 +8,11 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
-import { Home, Heart, User, LogOut, Menu, Building, MessageCircle, History, PlusCircle, Shield, Settings, FileText, MapPin } from "lucide-react";
+import { Home, Heart, User, LogOut, Menu, Building, MessageCircle, History, PlusCircle, Shield, Settings, FileText, MapPin, CheckCircle, Clock, XCircle } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery } from "@tanstack/react-query";
-import type { Conversation } from "@shared/schema";
+import type { Conversation, KycApplication } from "@shared/schema";
 
 type ConversationWithUnread = Conversation & { unreadCount: number };
 
@@ -25,7 +25,51 @@ export function Header() {
     enabled: !!isAuthenticated,
   });
 
+  // Fetch user's KYC application status
+  const { data: kycApplication } = useQuery<KycApplication>({
+    queryKey: ["/api/kyc/status"],
+    enabled: !!isAuthenticated && user?.userRole === "guest",
+  });
+
   const totalUnreadCount = conversations.reduce((sum, conv) => sum + conv.unreadCount, 0);
+
+  // Determine button behavior based on user role and KYC status
+  const getListPropertyLink = () => {
+    if (user?.userRole === "owner") {
+      return "/owner/properties/new";
+    }
+    return "/kyc";
+  };
+
+  const getKycStatusBadge = () => {
+    if (!kycApplication) return null;
+    
+    switch (kycApplication.status) {
+      case "verified":
+        return (
+          <Badge variant="default" className="bg-green-600 hover:bg-green-700">
+            <CheckCircle className="h-3 w-3 mr-1" />
+            KYC Verified
+          </Badge>
+        );
+      case "pending":
+        return (
+          <Badge variant="secondary">
+            <Clock className="h-3 w-3 mr-1" />
+            KYC Pending
+          </Badge>
+        );
+      case "rejected":
+        return (
+          <Badge variant="destructive">
+            <XCircle className="h-3 w-3 mr-1" />
+            KYC Rejected
+          </Badge>
+        );
+      default:
+        return null;
+    }
+  };
 
   const getInitials = () => {
     if (!user) return "G";
@@ -179,15 +223,22 @@ export function Header() {
                 </Button>
               </Link>
 
-              <Link href="/kyc">
+              {/* Show KYC status badge for guests who have submitted */}
+              {user?.userRole === "guest" && getKycStatusBadge() && (
+                <div className="hidden md:flex">
+                  {getKycStatusBadge()}
+                </div>
+              )}
+
+              <Link href={getListPropertyLink()}>
                 <Button 
                   variant="default"
                   size="sm"
-                  data-testid="button-list-hotel"
+                  data-testid="button-list-property"
                 >
                   <PlusCircle className="h-4 w-4 md:mr-2" />
-                  <span className="hidden md:inline">List Your Hotel</span>
-                  <span className="md:hidden">List Hotel</span>
+                  <span className="hidden md:inline">List Your Property</span>
+                  <span className="md:hidden">List Property</span>
                 </Button>
               </Link>
 
