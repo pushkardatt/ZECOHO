@@ -284,31 +284,39 @@ export function KycDocumentUploader({ value, onChange }: KycDocumentUploaderProp
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-3">
-                      {selectedTypes[category.id] ? (
-                        <ObjectUploader
-                          maxNumberOfFiles={3}
-                          maxFileSize={10485760}
-                          onGetUploadParameters={handleGetUploadParameters}
-                          onComplete={(result) => handleDocumentUpload(category.id, result)}
-                          accept={{
-                            'image/*': ['.jpeg', '.jpg', '.png'],
-                            'application/pdf': ['.pdf'],
-                          }}
-                        >
-                          <Upload className="h-4 w-4 mr-2" />
-                          Upload Document
-                        </ObjectUploader>
-                      ) : (
-                        <Button variant="outline" disabled>
-                          <Upload className="h-4 w-4 mr-2" />
-                          Upload Document
-                        </Button>
-                      )}
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-3">
+                        {selectedTypes[category.id] ? (
+                          <ObjectUploader
+                            maxNumberOfFiles={3}
+                            maxFileSize={10485760}
+                            onGetUploadParameters={handleGetUploadParameters}
+                            onComplete={(result) => handleDocumentUpload(category.id, result)}
+                            accept={{
+                              'image/*': ['.jpeg', '.jpg', '.png'],
+                              'application/pdf': ['.pdf'],
+                            }}
+                          >
+                            <Upload className="h-4 w-4 mr-2" />
+                            Upload {category.documentTypes.find(t => t.value === selectedTypes[category.id])?.label || "Document"}
+                          </ObjectUploader>
+                        ) : (
+                          <Button variant="outline" disabled>
+                            <Upload className="h-4 w-4 mr-2" />
+                            Upload Document
+                          </Button>
+                        )}
+                      </div>
                       {!selectedTypes[category.id] && (
-                        <span className="text-sm text-muted-foreground">
-                          Select document type first
-                        </span>
+                        <p className="text-sm text-muted-foreground">
+                          Select a document type above, then upload your file
+                        </p>
+                      )}
+                      {selectedTypes[category.id] && docs.length === 0 && (
+                        <p className="text-sm text-amber-600 dark:text-amber-400 flex items-center gap-1">
+                          <AlertCircle className="h-4 w-4" />
+                          Click the button above to upload your {category.documentTypes.find(t => t.value === selectedTypes[category.id])?.label}
+                        </p>
                       )}
                     </div>
 
