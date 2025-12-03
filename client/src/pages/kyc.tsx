@@ -127,6 +127,26 @@ export default function KYC() {
   });
 
   const onSubmit = (data: KYCFormData) => {
+    // Validate mandatory documents before submission
+    const missingDocs: string[] = [];
+    
+    if (!kycDocuments.propertyOwnership || kycDocuments.propertyOwnership.length === 0) {
+      missingDocs.push("Property Ownership Proof");
+    }
+    
+    if (!kycDocuments.identityProof || kycDocuments.identityProof.length === 0) {
+      missingDocs.push("Owner Identity Proof");
+    }
+    
+    if (missingDocs.length > 0) {
+      toast({
+        title: "Required Documents Missing",
+        description: `Please upload the following mandatory documents: ${missingDocs.join(", ")}`,
+        variant: "destructive",
+      });
+      return;
+    }
+    
     submitKYC.mutate(data);
   };
 

@@ -135,6 +135,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
+      // Validate mandatory documents
+      const { propertyOwnershipDocs, identityProofDocs } = req.body;
+      const missingDocs: string[] = [];
+      
+      if (!propertyOwnershipDocs || !Array.isArray(propertyOwnershipDocs) || propertyOwnershipDocs.length === 0) {
+        missingDocs.push("Property Ownership Proof");
+      }
+      
+      if (!identityProofDocs || !Array.isArray(identityProofDocs) || identityProofDocs.length === 0) {
+        missingDocs.push("Owner Identity Proof");
+      }
+      
+      if (missingDocs.length > 0) {
+        return res.status(400).json({
+          message: `Missing required documents: ${missingDocs.join(", ")}`
+        });
+      }
+      
       const validatedData = insertKycApplicationSchema.parse(req.body);
       const application = await storage.createKycApplication(userId, validatedData);
       
