@@ -103,6 +103,28 @@ export default function Home() {
         </div>
       </div>
 
+      {/* List Your Property CTA Banner - Top */}
+      <div className="bg-primary text-white py-4 px-4 md:px-6">
+        <div className="container mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <HomeIcon className="h-6 w-6" />
+            <div>
+              <h3 className="font-semibold text-lg">Become a Property Owner</h3>
+              <p className="text-sm text-white/90">List your property and reach customers directly — zero commission for you too!</p>
+            </div>
+          </div>
+          <Button 
+            variant="secondary"
+            size="lg"
+            onClick={() => setLocation("/list-property")}
+            data-testid="button-list-property-cta-top"
+            className="whitespace-nowrap"
+          >
+            List Your Property
+          </Button>
+        </div>
+      </div>
+
       {/* ZERO Commission Benefits Section */}
       <div className="bg-gradient-to-b from-emerald-50 to-white dark:from-emerald-950/20 dark:to-background py-16 px-4 md:px-6">
         <div className="container mx-auto">
@@ -197,7 +219,7 @@ export default function Home() {
           <Button 
             variant="secondary"
             size="lg"
-            onClick={() => setLocation("/kyc")}
+            onClick={() => setLocation("/list-property")}
             data-testid="button-list-property-cta"
             className="whitespace-nowrap"
           >
