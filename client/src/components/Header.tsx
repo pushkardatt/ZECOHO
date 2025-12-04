@@ -172,12 +172,6 @@ export function Header() {
                         View My Properties
                       </DropdownMenuItem>
                     </Link>
-                    <Link href="/owner/properties/new">
-                      <DropdownMenuItem data-testid="link-add-property">
-                        <PlusCircle className="h-4 w-4 mr-2" />
-                        Add New Property
-                      </DropdownMenuItem>
-                    </Link>
                   </DropdownMenuContent>
                 </DropdownMenu>
               )}
