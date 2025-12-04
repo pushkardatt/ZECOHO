@@ -1131,7 +1131,7 @@ export default function ListPropertyWizard() {
 
                   <div>
                     <Label>Property Location *</Label>
-                    <p className="text-sm text-muted-foreground mb-2">Enter PIN code to auto-fill location details</p>
+                    <p className="text-sm text-muted-foreground mb-2">Enter PIN code to auto-fill city and state</p>
                     
                     <FormField
                       control={form.control}
@@ -1160,11 +1160,11 @@ export default function ListPropertyWizard() {
 
                     {/* Show auto-populated city/state from PIN code */}
                     {(form.watch("propertyCity") || form.watch("propertyState")) && (
-                      <div className="bg-muted/50 rounded-lg p-3 mb-4">
+                      <div className="bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 rounded-lg p-3 mb-4">
                         <div className="flex items-center gap-2 text-sm">
-                          <MapPin className="h-4 w-4 text-primary" />
-                          <span className="font-medium">
-                            {form.watch("propertyCity")}{form.watch("propertyCity") && form.watch("propertyState") ? ", " : ""}{form.watch("propertyState")}
+                          <CheckCircle className="h-4 w-4 text-emerald-600" />
+                          <span className="font-medium text-emerald-700 dark:text-emerald-400">
+                            Location: {form.watch("propertyCity")}{form.watch("propertyCity") && form.watch("propertyState") ? ", " : ""}{form.watch("propertyState")}
                           </span>
                         </div>
                       </div>
@@ -1180,7 +1180,7 @@ export default function ListPropertyWizard() {
                             <FormLabel>City/Destination *</FormLabel>
                             <FormControl>
                               <Input
-                                placeholder="Enter city name manually"
+                                placeholder="Enter city name"
                                 list="manual-cities"
                                 {...field}
                                 onChange={(e) => {
@@ -1193,14 +1193,14 @@ export default function ListPropertyWizard() {
                             <datalist id="manual-cities">
                               {INDIAN_CITIES.map((city) => <option key={city} value={city} />)}
                             </datalist>
-                            <p className="text-xs text-muted-foreground">PIN code lookup didn't find location - please enter manually</p>
+                            <p className="text-xs text-muted-foreground">PIN code lookup didn't find location - please enter city manually</p>
                             <FormMessage />
                           </FormItem>
                         )}
                       />
                     )}
 
-                    {/* Hidden fields for city/state values */}
+                    {/* Hidden fields for city/state/destination values */}
                     <FormField
                       control={form.control}
                       name="propertyCity"
@@ -1223,24 +1223,6 @@ export default function ListPropertyWizard() {
                         </FormItem>
                       )}
                     />
-
-                    <div className="mb-4">
-                      <Label>Full Address (Optional)</Label>
-                      <p className="text-xs text-muted-foreground mb-2">Add detailed address for better guest experience</p>
-                      <AddressInput
-                        value={propertyAddress}
-                        onChange={(address) => {
-                          setPropertyAddress(address);
-                          if (address.city) form.setValue("propertyCity", address.city);
-                          if (address.state) form.setValue("propertyState", address.state);
-                          form.setValue("destination", address.city || address.locality || form.getValues("propertyCity") || "");
-                          form.setValue("address", address.fullAddress);
-                        }}
-                        placeholder="Search for property address..."
-                        testIdPrefix="property-address"
-                      />
-                    </div>
-
                     <FormField
                       control={form.control}
                       name="destination"
@@ -1252,6 +1234,30 @@ export default function ListPropertyWizard() {
                         </FormItem>
                       )}
                     />
+
+                    <div className="mb-4">
+                      <Label>Landmark / Street Address (Optional)</Label>
+                      <p className="text-xs text-muted-foreground mb-2">Add landmark or street details for guests to find your property easily</p>
+                      <AddressInput
+                        value={propertyAddress}
+                        onChange={(address) => {
+                          setPropertyAddress(address);
+                          form.setValue("address", address.fullAddress);
+                          // Only update city/state if not already set from PIN code
+                          if (!form.getValues("propertyCity") && address.city) {
+                            form.setValue("propertyCity", address.city);
+                          }
+                          if (!form.getValues("propertyState") && address.state) {
+                            form.setValue("propertyState", address.state);
+                          }
+                          if (!form.getValues("destination")) {
+                            form.setValue("destination", address.city || address.locality || form.getValues("propertyCity") || "");
+                          }
+                        }}
+                        placeholder="e.g., Near Main Market, MG Road..."
+                        testIdPrefix="property-address"
+                      />
+                    </div>
                   </div>
 
                   <FormField
