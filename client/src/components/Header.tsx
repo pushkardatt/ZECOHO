@@ -33,12 +33,8 @@ export function Header() {
 
   const totalUnreadCount = conversations.reduce((sum, conv) => sum + conv.unreadCount, 0);
 
-  // Determine button behavior based on user role and KYC status
+  // All users go to the same List Property flow
   const getListPropertyLink = () => {
-    if (user?.userRole === "owner") {
-      return "/owner/properties/new";
-    }
-    // For guests, route to combined wizard (KYC + Property in one go)
     return "/list-property";
   };
 
