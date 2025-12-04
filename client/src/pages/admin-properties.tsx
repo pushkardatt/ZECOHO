@@ -187,6 +187,38 @@ export default function AdminProperties() {
                   </div>
                 )}
 
+                {property.status === "published" && (
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="flex-1 text-destructive hover:text-destructive"
+                      onClick={() => rejectMutation.mutate(property.id)}
+                      disabled={rejectMutation.isPending}
+                      data-testid={`button-disapprove-${property.id}`}
+                    >
+                      <XCircle className="h-4 w-4 mr-1" />
+                      Disapprove
+                    </Button>
+                  </div>
+                )}
+
+                {property.status === "draft" && (
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      variant="default"
+                      className="flex-1"
+                      onClick={() => approveMutation.mutate(property.id)}
+                      disabled={approveMutation.isPending}
+                      data-testid={`button-reapprove-${property.id}`}
+                    >
+                      <CheckCircle className="h-4 w-4 mr-1" />
+                      Re-approve
+                    </Button>
+                  </div>
+                )}
+
                 <div className="flex gap-2 mt-3">
                   <Button asChild variant="outline" size="sm" className="flex-1" data-testid={`button-view-${property.id}`}>
                     <a href={`/properties/${property.id}`} target="_blank" rel="noopener noreferrer">
