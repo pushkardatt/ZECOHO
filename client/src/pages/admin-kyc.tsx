@@ -499,6 +499,39 @@ export default function AdminKYC() {
                   </DialogFooter>
                 </div>
               )}
+
+              {selectedApp.status === "rejected" && (
+                <div className="space-y-4">
+                  <div>
+                    <Label htmlFor="reapprove-notes">Notes for Re-approval</Label>
+                    <Textarea
+                      id="reapprove-notes"
+                      placeholder="Add notes for why this application is being re-approved..."
+                      value={reviewNotes}
+                      onChange={(e) => setReviewNotes(e.target.value)}
+                      rows={3}
+                      data-testid="input-reapprove-notes"
+                    />
+                  </div>
+                  <DialogFooter className="gap-2">
+                    <Button
+                      variant="outline"
+                      onClick={() => setSelectedApp(null)}
+                      data-testid="button-cancel-reapprove"
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      onClick={() => updateStatusMutation.mutate({ id: selectedApp.id, status: "verified" })}
+                      disabled={updateStatusMutation.isPending}
+                      data-testid="button-reapprove"
+                    >
+                      <CheckCircle className="h-4 w-4 mr-2" />
+                      Re-approve & Verify
+                    </Button>
+                  </DialogFooter>
+                </div>
+              )}
             </DialogContent>
           </Dialog>
         )}

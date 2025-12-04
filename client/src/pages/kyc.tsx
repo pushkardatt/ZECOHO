@@ -8,13 +8,16 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { useMutation } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { Building2, FileText, User, MapPin, Phone, Mail, Loader2, Upload } from "lucide-react";
-import { useState } from "react";
+import { useAuth } from "@/hooks/useAuth";
+import { Building2, FileText, User, MapPin, Phone, Mail, Loader2, Upload, CheckCircle, Clock, XCircle, RefreshCw } from "lucide-react";
+import { useState, useEffect } from "react";
 import { INDIAN_STATES, INDIAN_CITIES } from "@/data/locations";
 import { KycDocumentUploader, defaultKycDocuments, type KycDocuments } from "@/components/KycDocumentUploader";
+import { useLocation } from "wouter";
+import type { KycApplication } from "@shared/schema";
 
 const kycSchema = z.object({
   // Personal Information
@@ -37,9 +40,28 @@ type KYCFormData = z.infer<typeof kycSchema>;
 
 export default function KYC() {
   const { toast } = useToast();
+  const { user, refetch: refetchUser } = useAuth();
+  const [, setLocation] = useLocation();
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [isPincodeLookup, setIsPincodeLookup] = useState(false);
   const [kycDocuments, setKycDocuments] = useState<KycDocuments>(defaultKycDocuments);
+
+  // Fetch existing KYC application status
+  const { data: kycApplication, refetch: refetchKyc } = useQuery<KycApplication>({
+    queryKey: ["/api/kyc/status"],
+    enabled: !!user,
+  });
+
+  // Handle refresh to check for updates
+  const handleRefreshStatus = async () => {
+    await refetchUser();
+    await refetchKyc();
+    queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+    toast({
+      title: "Status Refreshed",
+      description: "Checking for updates...",
+    });
+  };
 
   const form = useForm<KYCFormData>({
     resolver: zodResolver(kycSchema),
