@@ -14,7 +14,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Plus, Edit, Eye, MapPin, Trash2 } from "lucide-react";
+import { Edit, Eye, MapPin, Trash2 } from "lucide-react";
 import { Link } from "wouter";
 import { useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
@@ -99,19 +99,11 @@ export default function OwnerProperties() {
   return (
     <div className="min-h-screen pb-16">
       <div className="container px-4 md:px-6 py-8">
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h1 className="text-3xl font-semibold mb-2">My properties</h1>
-            <p className="text-muted-foreground">
-              Manage your property listings
-            </p>
-          </div>
-          <Button asChild data-testid="button-add-property">
-            <Link href="/owner/properties/new">
-              <Plus className="h-4 w-4 mr-2" />
-              Add property
-            </Link>
-          </Button>
+        <div className="mb-8">
+          <h1 className="text-3xl font-semibold mb-2">My properties</h1>
+          <p className="text-muted-foreground">
+            Manage your property listings
+          </p>
         </div>
 
         {isLoading ? (
@@ -210,18 +202,12 @@ export default function OwnerProperties() {
         ) : (
           <div className="text-center py-16">
             <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mx-auto mb-4">
-              <Plus className="h-8 w-8 text-muted-foreground" />
+              <MapPin className="h-8 w-8 text-muted-foreground" />
             </div>
             <h2 className="text-xl font-semibold mb-2">No properties yet</h2>
-            <p className="text-muted-foreground mb-6">
-              Start by adding your first property listing
+            <p className="text-muted-foreground">
+              Your property will appear here once your KYC is verified and property is approved.
             </p>
-            <Button asChild>
-              <Link href="/owner/properties/new">
-                <Plus className="h-4 w-4 mr-2" />
-                Add your first property
-              </Link>
-            </Button>
           </div>
         )}
       </div>
