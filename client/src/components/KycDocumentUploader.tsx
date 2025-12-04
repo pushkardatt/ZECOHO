@@ -123,6 +123,7 @@ export function KycDocumentUploader({ value, onChange }: KycDocumentUploaderProp
     return {
       method: "PUT" as const,
       url: data.uploadURL,
+      accessPath: data.accessPath,
     };
   };
 
@@ -136,11 +137,11 @@ export function KycDocumentUploader({ value, onChange }: KycDocumentUploaderProp
 
   const handleDocumentUpload = (categoryId: string, result: any) => {
     if (result.successful && result.successful.length > 0) {
-      const uploadedUrl = result.successful[0].uploadURL;
+      const accessPath = result.successful[0].accessPath;
       const documentType = selectedTypes[categoryId] || "other";
       
       const newDoc: KycDocument = {
-        url: uploadedUrl,
+        url: accessPath,
         documentType,
         fileName: result.successful[0].name || `Document ${(value[categoryId as keyof KycDocuments]?.length || 0) + 1}`,
         uploadedAt: new Date().toISOString(),

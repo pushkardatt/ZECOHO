@@ -153,14 +153,15 @@ export function PropertyImageUploader({
     return {
       method: "PUT" as const,
       url: data.uploadURL,
+      accessPath: data.accessPath,
     };
   };
 
   const handleImageUpload = (category: PropertyImageCategory, result: any) => {
     if (result.successful && result.successful.length > 0) {
-      const uploadedUrl = result.successful[0].uploadURL;
+      const accessPath = result.successful[0].accessPath;
       const newImage: CategorizedImage = {
-        url: uploadedUrl,
+        url: accessPath,
         category,
       };
       onChange({

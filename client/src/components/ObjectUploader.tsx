@@ -11,8 +11,9 @@ interface ObjectUploaderProps {
   onGetUploadParameters: () => Promise<{
     method: "PUT";
     url: string;
+    accessPath: string;
   }>;
-  onComplete?: (result: { successful: Array<{ uploadURL: string }> }) => void;
+  onComplete?: (result: { successful: Array<{ uploadURL: string; accessPath: string; name?: string }> }) => void;
   buttonClassName?: string;
   children: ReactNode;
   accept?: Record<string, string[]>;
@@ -58,7 +59,7 @@ export function ObjectUploader({
       setProgress(0);
 
       try {
-        const { url } = await onGetUploadParameters();
+        const { url, accessPath } = await onGetUploadParameters();
         
         const xhr = new XMLHttpRequest();
         xhr.upload.addEventListener("progress", (e) => {
@@ -82,7 +83,7 @@ export function ObjectUploader({
         });
 
         onComplete?.({
-          successful: [{ uploadURL: url }],
+          successful: [{ uploadURL: url, accessPath, name: file.name }],
         });
 
         toast({

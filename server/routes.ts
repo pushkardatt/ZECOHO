@@ -1480,8 +1480,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/objects/upload", isAuthenticated, async (req: any, res) => {
     try {
       const objectStorageService = new ObjectStorageService();
-      const uploadURL = await objectStorageService.getObjectEntityUploadURL();
-      res.json({ uploadURL });
+      const { uploadURL, accessPath } = await objectStorageService.getObjectEntityUploadURLWithAccessPath();
+      res.json({ uploadURL, accessPath });
     } catch (error) {
       console.error("Error getting upload URL:", error);
       res.status(500).json({ message: "Failed to get upload URL" });
