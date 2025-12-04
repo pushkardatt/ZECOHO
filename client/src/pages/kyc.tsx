@@ -12,12 +12,24 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
-import { Building2, FileText, User, MapPin, Phone, Mail, Loader2, Upload, CheckCircle, Clock, XCircle, RefreshCw } from "lucide-react";
-import { useState, useEffect } from "react";
+import { Building2, FileText, User, MapPin, Phone, Mail, Loader2, Upload, CheckCircle, Clock, XCircle, RefreshCw, AlertTriangle, Home, IdCard, Shield, Flame } from "lucide-react";
+import { useState, useEffect, useMemo } from "react";
 import { INDIAN_STATES, INDIAN_CITIES } from "@/data/locations";
 import { KycDocumentUploader, defaultKycDocuments, type KycDocuments } from "@/components/KycDocumentUploader";
 import { useLocation } from "wouter";
-import type { KycApplication } from "@shared/schema";
+import type { KycApplication, KycSectionId, KycRejectionDetails } from "@shared/schema";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { ChevronDown } from "lucide-react";
+
+const SECTION_LABELS: Record<KycSectionId, { label: string; icon: any }> = {
+  personal: { label: "Personal Information", icon: User },
+  business: { label: "Business Information", icon: MapPin },
+  propertyOwnership: { label: "Property Ownership Documents", icon: Home },
+  identityProof: { label: "Identity Proof Documents", icon: IdCard },
+  businessLicense: { label: "Business License Documents", icon: Building2 },
+  noc: { label: "NOC Documents", icon: Shield },
+  safetyCertificates: { label: "Safety Certificate Documents", icon: Flame },
+};
 
 const kycSchema = z.object({
   // Personal Information
@@ -298,6 +310,21 @@ export default function KYC() {
     );
   }
 
+  // Parse rejection details
+  const rejectionDetails = useMemo(() => {
+    if (kycApplication?.rejectionDetails) {
+      return kycApplication.rejectionDetails as KycRejectionDetails;
+    }
+    return null;
+  }, [kycApplication?.rejectionDetails]);
+
+  const flaggedSections = useMemo(() => {
+    if (!rejectionDetails?.sections) return new Set<KycSectionId>();
+    return new Set(rejectionDetails.sections.map(s => s.sectionId));
+  }, [rejectionDetails]);
+
+  const hasTargetedRejection = flaggedSections.size > 0;
+
   // Rejected application status
   if (kycApplication?.status === "rejected" && !isEditing) {
     return (
@@ -307,23 +334,56 @@ export default function KYC() {
             <div className="w-16 h-16 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center mx-auto mb-4">
               <XCircle className="h-8 w-8 text-red-600 dark:text-red-400" />
             </div>
-            <CardTitle className="text-2xl" data-testid="text-rejected-title">Application Rejected</CardTitle>
+            <CardTitle className="text-2xl" data-testid="text-rejected-title">Application Needs Updates</CardTitle>
             <CardDescription>
-              Your KYC application requires some changes before it can be approved
+              {hasTargetedRejection 
+                ? `${flaggedSections.size} section${flaggedSections.size > 1 ? 's' : ''} need${flaggedSections.size === 1 ? 's' : ''} your attention`
+                : "Your KYC application requires some changes before it can be approved"
+              }
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
+            {hasTargetedRejection && rejectionDetails?.sections && (
+              <div className="space-y-3">
+                <p className="font-semibold text-sm text-muted-foreground">Sections requiring updates:</p>
+                {rejectionDetails.sections.map((section) => {
+                  const sectionInfo = SECTION_LABELS[section.sectionId];
+                  const Icon = sectionInfo?.icon || AlertTriangle;
+                  return (
+                    <div 
+                      key={section.sectionId}
+                      className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3"
+                    >
+                      <div className="flex items-center gap-2 mb-1">
+                        <Icon className="h-4 w-4 text-red-600 dark:text-red-400" />
+                        <span className="font-medium text-red-800 dark:text-red-200">
+                          {sectionInfo?.label || section.sectionId}
+                        </span>
+                      </div>
+                      <p className="text-sm text-red-700 dark:text-red-300 ml-6">
+                        {section.message}
+                      </p>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+            
             {kycApplication.reviewNotes && (
-              <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
-                <p className="font-semibold text-red-800 dark:text-red-200 mb-2">Reason for Rejection:</p>
-                <p className="text-red-700 dark:text-red-300" data-testid="text-rejection-reason">
+              <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
+                <p className="font-semibold text-amber-800 dark:text-amber-200 mb-1 text-sm">Additional Notes:</p>
+                <p className="text-amber-700 dark:text-amber-300 text-sm" data-testid="text-rejection-reason">
                   {kycApplication.reviewNotes}
                 </p>
               </div>
             )}
-            <div className="text-center text-muted-foreground">
+            
+            <div className="text-center text-muted-foreground text-sm">
               <p>
-                Please review the feedback above and update your application with the required changes.
+                {hasTargetedRejection 
+                  ? "Click below to update only the required sections. Your other information has been saved."
+                  : "Please review the feedback above and update your application with the required changes."
+                }
               </p>
             </div>
             <div className="flex gap-2">
@@ -333,7 +393,7 @@ export default function KYC() {
                 data-testid="button-edit-application"
               >
                 <FileText className="h-4 w-4 mr-2" />
-                Edit & Resubmit
+                Fix & Resubmit
               </Button>
               <Button 
                 variant="outline"
@@ -447,13 +507,47 @@ export default function KYC() {
           </p>
         </div>
 
+        {isEditing && hasTargetedRejection && rejectionDetails?.sections && (
+          <Card className="mb-6 border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20">
+            <CardContent className="pt-6">
+              <div className="flex items-start gap-3">
+                <AlertTriangle className="h-5 w-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
+                <div className="flex-1">
+                  <p className="font-semibold text-red-800 dark:text-red-200 mb-3">
+                    Please update the following sections:
+                  </p>
+                  <div className="space-y-2">
+                    {rejectionDetails.sections.map((section) => {
+                      const sectionInfo = SECTION_LABELS[section.sectionId];
+                      const Icon = sectionInfo?.icon || AlertTriangle;
+                      return (
+                        <div key={section.sectionId} className="flex items-start gap-2">
+                          <Icon className="h-4 w-4 text-red-600 dark:text-red-400 mt-0.5" />
+                          <div>
+                            <span className="font-medium text-red-800 dark:text-red-200 text-sm">
+                              {sectionInfo?.label || section.sectionId}:
+                            </span>
+                            <span className="text-red-700 dark:text-red-300 text-sm ml-1">
+                              {section.message}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {isEditing && kycApplication?.reviewNotes && (
           <Card className="mb-6 border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20">
             <CardContent className="pt-6">
               <div className="flex items-start gap-3">
                 <XCircle className="h-5 w-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
                 <div>
-                  <p className="font-semibold text-amber-800 dark:text-amber-200 mb-1">Previous Rejection Reason:</p>
+                  <p className="font-semibold text-amber-800 dark:text-amber-200 mb-1">Additional Notes:</p>
                   <p className="text-amber-700 dark:text-amber-300 text-sm">{kycApplication.reviewNotes}</p>
                 </div>
               </div>
@@ -478,78 +572,91 @@ export default function KYC() {
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
                 {/* Personal Information */}
-                <div className="space-y-4">
-                  <div className="flex items-center gap-2 mb-4">
-                    <User className="h-5 w-5 text-primary" />
-                    <h3 className="text-lg font-semibold">Personal Information</h3>
-                  </div>
-                  
-                  <div className="grid md:grid-cols-2 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="firstName"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>First Name</FormLabel>
-                          <FormControl>
-                            <Input placeholder="John" {...field} data-testid="input-first-name" />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
+                {(!isEditing || !hasTargetedRejection || flaggedSections.has("personal")) && (
+                  <div className={`space-y-4 ${isEditing && hasTargetedRejection && flaggedSections.has("personal") ? "p-4 border-2 border-red-300 dark:border-red-700 rounded-lg bg-red-50/50 dark:bg-red-900/10" : ""}`}>
+                    <div className="flex items-center gap-2 mb-4">
+                      <User className="h-5 w-5 text-primary" />
+                      <h3 className="text-lg font-semibold">Personal Information</h3>
+                      {isEditing && hasTargetedRejection && flaggedSections.has("personal") && (
+                        <span className="text-xs bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-300 px-2 py-0.5 rounded-full">
+                          Needs update
+                        </span>
                       )}
-                    />
+                    </div>
                     
-                    <FormField
-                      control={form.control}
-                      name="lastName"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Last Name</FormLabel>
-                          <FormControl>
-                            <Input placeholder="Doe" {...field} data-testid="input-last-name" />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
+                    <div className="grid md:grid-cols-2 gap-4">
+                      <FormField
+                        control={form.control}
+                        name="firstName"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>First Name</FormLabel>
+                            <FormControl>
+                              <Input placeholder="John" {...field} data-testid="input-first-name" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      
+                      <FormField
+                        control={form.control}
+                        name="lastName"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Last Name</FormLabel>
+                            <FormControl>
+                              <Input placeholder="Doe" {...field} data-testid="input-last-name" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
 
-                  <div className="grid md:grid-cols-2 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="email"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Email</FormLabel>
-                          <FormControl>
-                            <Input type="email" placeholder="john@example.com" {...field} data-testid="input-email" />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    
-                    <FormField
-                      control={form.control}
-                      name="phone"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Phone Number</FormLabel>
-                          <FormControl>
-                            <Input placeholder="+91 9876543210" {...field} data-testid="input-phone" />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                    <div className="grid md:grid-cols-2 gap-4">
+                      <FormField
+                        control={form.control}
+                        name="email"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Email</FormLabel>
+                            <FormControl>
+                              <Input type="email" placeholder="john@example.com" {...field} data-testid="input-email" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      
+                      <FormField
+                        control={form.control}
+                        name="phone"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Phone Number</FormLabel>
+                            <FormControl>
+                              <Input placeholder="+91 9876543210" {...field} data-testid="input-phone" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
                   </div>
-                </div>
+                )}
 
                 {/* Business Address */}
-                <div className="space-y-4">
+                {(!isEditing || !hasTargetedRejection || flaggedSections.has("business")) && (
+                <div className={`space-y-4 ${isEditing && hasTargetedRejection && flaggedSections.has("business") ? "p-4 border-2 border-red-300 dark:border-red-700 rounded-lg bg-red-50/50 dark:bg-red-900/10" : ""}`}>
                   <div className="flex items-center gap-2 mb-4">
                     <MapPin className="h-5 w-5 text-primary" />
                     <h3 className="text-lg font-semibold">Business Address</h3>
+                    {isEditing && hasTargetedRejection && flaggedSections.has("business") && (
+                      <span className="text-xs bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-300 px-2 py-0.5 rounded-full">
+                        Needs update
+                      </span>
+                    )}
                   </div>
                   
                   <FormField
@@ -661,71 +768,88 @@ export default function KYC() {
                     />
                   </div>
 
-                </div>
-
-                {/* Business Information */}
-                <div className="space-y-4">
-                  <div className="flex items-center gap-2 mb-4">
-                    <FileText className="h-5 w-5 text-primary" />
-                    <h3 className="text-lg font-semibold">Business Information</h3>
-                  </div>
-                  
-                  <FormField
-                    control={form.control}
-                    name="businessName"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Business Name</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Grand Hotels Pvt Ltd" {...field} data-testid="input-business-name" />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <div className="grid md:grid-cols-2 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="panNumber"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>PAN Number</FormLabel>
-                          <FormControl>
-                            <Input placeholder="ABCDE1234F" {...field} data-testid="input-pan-number" />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                  {/* Business Information - inside same business section */}
+                  <div className="space-y-4 pt-4 border-t border-muted">
+                    <div className="flex items-center gap-2 mb-4">
+                      <FileText className="h-5 w-5 text-primary" />
+                      <h3 className="text-lg font-semibold">Business Information</h3>
+                    </div>
                     
                     <FormField
                       control={form.control}
-                      name="gstNumber"
+                      name="businessName"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>GST Number (Optional)</FormLabel>
+                          <FormLabel>Business Name</FormLabel>
                           <FormControl>
-                            <Input placeholder="22AAAAA0000A1Z5" {...field} data-testid="input-gst-number" />
+                            <Input placeholder="Grand Hotels Pvt Ltd" {...field} data-testid="input-business-name" />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
                       )}
                     />
-                  </div>
-                </div>
 
-                <div className="space-y-4">
-                  <div className="flex items-center gap-2 mb-4">
-                    <Upload className="h-5 w-5 text-primary" />
-                    <h3 className="text-lg font-semibold">Document Uploads</h3>
+                    <div className="grid md:grid-cols-2 gap-4">
+                      <FormField
+                        control={form.control}
+                        name="panNumber"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>PAN Number</FormLabel>
+                            <FormControl>
+                              <Input placeholder="ABCDE1234F" {...field} data-testid="input-pan-number" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      
+                      <FormField
+                        control={form.control}
+                        name="gstNumber"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>GST Number (Optional)</FormLabel>
+                            <FormControl>
+                              <Input placeholder="22AAAAA0000A1Z5" {...field} data-testid="input-gst-number" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
                   </div>
-                  
-                  <KycDocumentUploader 
-                    value={kycDocuments}
-                    onChange={setKycDocuments}
-                  />
                 </div>
+                )}
+
+                {/* Document Uploads - show if any document section is flagged or not in targeted rejection mode */}
+                {(() => {
+                  const documentSections: KycSectionId[] = ["propertyOwnership", "identityProof", "businessLicense", "noc", "safetyCertificates"];
+                  const hasAnyDocumentFlagged = documentSections.some(s => flaggedSections.has(s));
+                  const showDocuments = !isEditing || !hasTargetedRejection || hasAnyDocumentFlagged;
+                  
+                  if (!showDocuments) return null;
+                  
+                  return (
+                    <div className={`space-y-4 ${isEditing && hasTargetedRejection && hasAnyDocumentFlagged ? "p-4 border-2 border-red-300 dark:border-red-700 rounded-lg bg-red-50/50 dark:bg-red-900/10" : ""}`}>
+                      <div className="flex items-center gap-2 mb-4">
+                        <Upload className="h-5 w-5 text-primary" />
+                        <h3 className="text-lg font-semibold">Document Uploads</h3>
+                        {isEditing && hasTargetedRejection && hasAnyDocumentFlagged && (
+                          <span className="text-xs bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-300 px-2 py-0.5 rounded-full">
+                            Needs update
+                          </span>
+                        )}
+                      </div>
+                      
+                      <KycDocumentUploader 
+                        value={kycDocuments}
+                        onChange={setKycDocuments}
+                        flaggedCategories={isEditing && hasTargetedRejection ? documentSections.filter(s => flaggedSections.has(s)) : undefined}
+                      />
+                    </div>
+                  );
+                })()}
 
                 <div className="flex gap-4">
                   <Button 

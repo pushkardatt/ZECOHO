@@ -466,11 +466,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Only admins can reject KYC applications" });
       }
 
-      const { reviewNotes } = req.body;
+      const { reviewNotes, rejectionDetails } = req.body;
       const application = await storage.updateKycApplicationStatus(
         req.params.id,
         "rejected",
-        reviewNotes
+        reviewNotes,
+        rejectionDetails
       );
 
       res.json(application);

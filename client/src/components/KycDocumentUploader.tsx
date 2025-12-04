@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -110,12 +110,26 @@ interface KycDocuments {
 interface KycDocumentUploaderProps {
   value: KycDocuments;
   onChange: (docs: KycDocuments) => void;
+  flaggedCategories?: string[];
 }
 
-export function KycDocumentUploader({ value, onChange }: KycDocumentUploaderProps) {
+export function KycDocumentUploader({ value, onChange, flaggedCategories }: KycDocumentUploaderProps) {
   const { toast } = useToast();
-  const [expandedCategories, setExpandedCategories] = useState<string[]>(["propertyOwnership", "identityProof"]);
+  const [expandedCategories, setExpandedCategories] = useState<string[]>(
+    flaggedCategories && flaggedCategories.length > 0 
+      ? flaggedCategories 
+      : ["propertyOwnership", "identityProof"]
+  );
   const [selectedTypes, setSelectedTypes] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    if (flaggedCategories && flaggedCategories.length > 0) {
+      setExpandedCategories(prev => {
+        const newExpanded = new Set([...prev, ...flaggedCategories]);
+        return Array.from(newExpanded);
+      });
+    }
+  }, [flaggedCategories]);
 
   const handleGetUploadParameters = async () => {
     const response = await apiRequest("POST", "/api/objects/upload", {});
@@ -220,23 +234,48 @@ export function KycDocumentUploader({ value, onChange }: KycDocumentUploaderProp
           const docs = value[category.id as keyof KycDocuments] || [];
           const Icon = category.icon;
 
+          const isFlagged = flaggedCategories?.includes(category.id);
+          
           return (
             <Collapsible
               key={category.id}
               open={isExpanded}
               onOpenChange={() => toggleCategory(category.id)}
             >
-              <Card className={status === "complete" ? "border-green-200 dark:border-green-800" : ""}>
+              <Card className={`${
+                isFlagged 
+                  ? "border-2 border-red-300 dark:border-red-700 bg-red-50/50 dark:bg-red-900/10" 
+                  : status === "complete" 
+                    ? "border-green-200 dark:border-green-800" 
+                    : ""
+              }`}>
                 <CollapsibleTrigger asChild>
                   <CardHeader className="cursor-pointer hover-elevate rounded-t-lg">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
-                        <div className={`p-2 rounded-lg ${status === "complete" ? "bg-green-100 dark:bg-green-900" : "bg-muted"}`}>
-                          <Icon className={`h-5 w-5 ${status === "complete" ? "text-green-600 dark:text-green-400" : "text-muted-foreground"}`} />
+                        <div className={`p-2 rounded-lg ${
+                          isFlagged 
+                            ? "bg-red-100 dark:bg-red-900" 
+                            : status === "complete" 
+                              ? "bg-green-100 dark:bg-green-900" 
+                              : "bg-muted"
+                        }`}>
+                          <Icon className={`h-5 w-5 ${
+                            isFlagged 
+                              ? "text-red-600 dark:text-red-400" 
+                              : status === "complete" 
+                                ? "text-green-600 dark:text-green-400" 
+                                : "text-muted-foreground"
+                          }`} />
                         </div>
                         <div>
                           <CardTitle className="text-base flex items-center gap-2">
                             {category.label}
+                            {isFlagged && (
+                              <Badge className="bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-100 text-xs">
+                                <AlertCircle className="h-3 w-3 mr-1" />Needs update
+                              </Badge>
+                            )}
                             {docs.length > 0 && (
                               <Badge variant="outline" className="text-xs">
                                 {docs.length} file{docs.length > 1 ? "s" : ""}
@@ -247,7 +286,7 @@ export function KycDocumentUploader({ value, onChange }: KycDocumentUploaderProp
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        {getStatusBadge(status)}
+                        {!isFlagged && getStatusBadge(status)}
                         {isExpanded ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
                       </div>
                     </div>

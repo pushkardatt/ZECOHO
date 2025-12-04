@@ -21,12 +21,100 @@ import {
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { CheckCircle, XCircle, Eye, FileText, Building, Home, IdCard, Shield, Flame, ExternalLink } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { CheckCircle, XCircle, Eye, FileText, Building, Home, IdCard, Shield, Flame, ExternalLink, User, MapPin } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import type { KycApplication } from "@shared/schema";
+import type { KycApplication, KycSectionId, KycRejectionItem } from "@shared/schema";
+
+const KYC_SECTIONS: Array<{ id: KycSectionId; label: string; icon: React.ComponentType<{ className?: string }>; reasons: string[] }> = [
+  { 
+    id: "personal", 
+    label: "Personal Information", 
+    icon: User,
+    reasons: [
+      "Name does not match identity documents",
+      "Phone number appears invalid or unreachable",
+      "Email domain not associated with business",
+      "Incomplete personal details provided",
+    ]
+  },
+  { 
+    id: "business", 
+    label: "Business Information", 
+    icon: MapPin,
+    reasons: [
+      "Business address is incomplete or invalid",
+      "PAN number format is incorrect",
+      "GST number does not match business name",
+      "Business name does not match registration documents",
+      "PIN code does not match the city/state provided",
+    ]
+  },
+  { 
+    id: "propertyOwnership", 
+    label: "Property Ownership Documents", 
+    icon: Home,
+    reasons: [
+      "Property registration document is expired",
+      "Ownership proof not clearly visible",
+      "Property address does not match application",
+      "Document appears to be edited or tampered",
+      "Missing property ownership document",
+    ]
+  },
+  { 
+    id: "identityProof", 
+    label: "Identity Proof Documents", 
+    icon: IdCard,
+    reasons: [
+      "Government ID has expired",
+      "Photo on ID does not match profile",
+      "ID number is not clearly visible",
+      "Document quality is too low to verify",
+      "Name on ID does not match application",
+      "Missing identity proof document",
+    ]
+  },
+  { 
+    id: "businessLicense", 
+    label: "Business License Documents", 
+    icon: Building,
+    reasons: [
+      "Trade license has expired",
+      "Hotel/Lodge registration is required",
+      "GST registration certificate needed",
+      "Business license does not cover hospitality services",
+      "License is for different business entity",
+    ]
+  },
+  { 
+    id: "noc", 
+    label: "NOC Documents", 
+    icon: Shield,
+    reasons: [
+      "NOC from property owner required",
+      "Municipality NOC is expired",
+      "NOC does not mention hotel/guest house operations",
+      "NOC signature verification failed",
+    ]
+  },
+  { 
+    id: "safetyCertificates", 
+    label: "Safety Certificate Documents", 
+    icon: Flame,
+    reasons: [
+      "Fire safety certificate has expired",
+      "Fire NOC from fire department required",
+      "Electrical safety audit certificate needed",
+      "Building safety compliance certificate required",
+      "Safety certificates do not cover current property",
+    ]
+  },
+];
 
 interface KycDocument {
   url: string;
@@ -100,6 +188,30 @@ export default function AdminKYC() {
   const [selectedApp, setSelectedApp] = useState<KycApplication | null>(null);
   const [reviewNotes, setReviewNotes] = useState("");
   const [statusFilter, setStatusFilter] = useState<"pending" | "verified" | "rejected">("pending");
+  const [selectedRejectionSections, setSelectedRejectionSections] = useState<Record<KycSectionId, { selected: boolean; message: string; customMessage?: string }>>({
+    personal: { selected: false, message: "" },
+    business: { selected: false, message: "" },
+    propertyOwnership: { selected: false, message: "" },
+    identityProof: { selected: false, message: "" },
+    businessLicense: { selected: false, message: "" },
+    noc: { selected: false, message: "" },
+    safetyCertificates: { selected: false, message: "" },
+  });
+  const [showRejectionForm, setShowRejectionForm] = useState(false);
+
+  const resetRejectionForm = () => {
+    setSelectedRejectionSections({
+      personal: { selected: false, message: "" },
+      business: { selected: false, message: "" },
+      propertyOwnership: { selected: false, message: "" },
+      identityProof: { selected: false, message: "" },
+      businessLicense: { selected: false, message: "" },
+      noc: { selected: false, message: "" },
+      safetyCertificates: { selected: false, message: "" },
+    });
+    setShowRejectionForm(false);
+    setReviewNotes("");
+  };
 
   useEffect(() => {
     if (!authLoading && (!isAuthenticated || user?.userRole !== "admin")) {
@@ -128,9 +240,25 @@ export default function AdminKYC() {
 
   const updateStatusMutation = useMutation({
     mutationFn: async ({ id, status }: { id: string; status: "verified" | "rejected" }) => {
-      await apiRequest("PATCH", `/api/admin/kyc/${id}/${status}`, {
-        reviewNotes,
-      });
+      const payload: any = { reviewNotes };
+      
+      if (status === "rejected") {
+        const rejectionItems: KycRejectionItem[] = [];
+        for (const [sectionId, data] of Object.entries(selectedRejectionSections)) {
+          if (data.selected) {
+            const finalMessage = data.message === "custom" 
+              ? (data.customMessage || "Please review and correct this section")
+              : (data.message || "Please review and correct this section");
+            rejectionItems.push({
+              sectionId: sectionId as KycSectionId,
+              message: finalMessage,
+            });
+          }
+        }
+        payload.rejectionDetails = { sections: rejectionItems };
+      }
+      
+      await apiRequest("PATCH", `/api/admin/kyc/${id}/${status}`, payload);
     },
     onSuccess: () => {
       toast({
@@ -139,7 +267,7 @@ export default function AdminKYC() {
       });
       queryClient.invalidateQueries({ queryKey: ["/api/admin/kyc"] });
       setSelectedApp(null);
-      setReviewNotes("");
+      resetRejectionForm();
     },
     onError: (error: Error) => {
       toast({
@@ -415,7 +543,7 @@ export default function AdminKYC() {
                   <div className="mt-1">{getStatusBadge(selectedApp.status)}</div>
                 </div>
 
-                {selectedApp.status === "pending" && (
+                {selectedApp.status === "pending" && !showRejectionForm && (
                   <div>
                     <Label htmlFor="review-notes">Review Notes (Optional)</Label>
                     <Textarea
@@ -429,6 +557,100 @@ export default function AdminKYC() {
                   </div>
                 )}
 
+                {selectedApp.status === "pending" && showRejectionForm && (
+                  <div className="border-t pt-4 mt-4 space-y-4">
+                    <div>
+                      <h4 className="font-semibold text-lg flex items-center gap-2 mb-3">
+                        <XCircle className="h-5 w-5 text-destructive" />
+                        Select Sections Needing Correction
+                      </h4>
+                      <p className="text-sm text-muted-foreground mb-4">
+                        Choose the specific sections that need to be fixed and select a reason. The owner will only need to update the selected sections.
+                      </p>
+                    </div>
+                    
+                    <div className="space-y-3">
+                      {KYC_SECTIONS.map((section) => {
+                        const Icon = section.icon;
+                        return (
+                          <div key={section.id} className="border rounded-lg p-3 space-y-2">
+                            <div className="flex items-center gap-3">
+                              <Checkbox
+                                id={`section-${section.id}`}
+                                checked={selectedRejectionSections[section.id].selected}
+                                onCheckedChange={(checked) => {
+                                  setSelectedRejectionSections(prev => ({
+                                    ...prev,
+                                    [section.id]: { ...prev[section.id], selected: !!checked, message: "" }
+                                  }));
+                                }}
+                                data-testid={`checkbox-section-${section.id}`}
+                              />
+                              <Icon className="h-4 w-4 text-muted-foreground" />
+                              <label htmlFor={`section-${section.id}`} className="font-medium cursor-pointer flex-1">
+                                {section.label}
+                              </label>
+                            </div>
+                            
+                            {selectedRejectionSections[section.id].selected && (
+                              <div className="mt-2 space-y-2">
+                                <Select
+                                  value={selectedRejectionSections[section.id].message}
+                                  onValueChange={(value) => {
+                                    setSelectedRejectionSections(prev => ({
+                                      ...prev,
+                                      [section.id]: { ...prev[section.id], message: value }
+                                    }));
+                                  }}
+                                >
+                                  <SelectTrigger data-testid={`select-reason-${section.id}`}>
+                                    <SelectValue placeholder="Select a reason..." />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {section.reasons.map((reason) => (
+                                      <SelectItem key={reason} value={reason}>
+                                        {reason}
+                                      </SelectItem>
+                                    ))}
+                                    <SelectItem value="custom">Other (specify below)</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                                
+                                {selectedRejectionSections[section.id].message === "custom" && (
+                                  <Textarea
+                                    placeholder={`Describe what needs to be fixed in ${section.label}...`}
+                                    value={selectedRejectionSections[section.id].customMessage || ""}
+                                    onChange={(e) => {
+                                      setSelectedRejectionSections(prev => ({
+                                        ...prev,
+                                        [section.id]: { ...prev[section.id], customMessage: e.target.value }
+                                      }));
+                                    }}
+                                    rows={2}
+                                    data-testid={`input-custom-reason-${section.id}`}
+                                  />
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                    
+                    <div>
+                      <Label htmlFor="general-notes">Additional Notes (Optional)</Label>
+                      <Textarea
+                        id="general-notes"
+                        placeholder="Any additional feedback for the applicant..."
+                        value={reviewNotes}
+                        onChange={(e) => setReviewNotes(e.target.value)}
+                        rows={2}
+                        data-testid="input-rejection-notes"
+                      />
+                    </div>
+                  </div>
+                )}
+
                 {selectedApp.reviewNotes && (
                   <div>
                     <Label className="text-muted-foreground">Admin Notes</Label>
@@ -437,7 +659,7 @@ export default function AdminKYC() {
                 )}
               </div>
 
-              {selectedApp.status === "pending" && (
+              {selectedApp.status === "pending" && !showRejectionForm && (
                 <DialogFooter className="gap-2">
                   <Button
                     variant="outline"
@@ -448,9 +670,8 @@ export default function AdminKYC() {
                   </Button>
                   <Button
                     variant="destructive"
-                    onClick={() => updateStatusMutation.mutate({ id: selectedApp.id, status: "rejected" })}
-                    disabled={updateStatusMutation.isPending}
-                    data-testid="button-reject"
+                    onClick={() => setShowRejectionForm(true)}
+                    data-testid="button-start-reject"
                   >
                     <XCircle className="h-4 w-4 mr-2" />
                     Reject
@@ -462,6 +683,40 @@ export default function AdminKYC() {
                   >
                     <CheckCircle className="h-4 w-4 mr-2" />
                     Approve
+                  </Button>
+                </DialogFooter>
+              )}
+
+              {selectedApp.status === "pending" && showRejectionForm && (
+                <DialogFooter className="gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      resetRejectionForm();
+                    }}
+                    data-testid="button-cancel-rejection"
+                  >
+                    Back
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    onClick={() => {
+                      const hasSelectedSections = Object.values(selectedRejectionSections).some(s => s.selected);
+                      if (!hasSelectedSections) {
+                        toast({
+                          title: "Select at least one section",
+                          description: "Please select at least one section that needs correction.",
+                          variant: "destructive",
+                        });
+                        return;
+                      }
+                      updateStatusMutation.mutate({ id: selectedApp.id, status: "rejected" });
+                    }}
+                    disabled={updateStatusMutation.isPending}
+                    data-testid="button-confirm-reject"
+                  >
+                    <XCircle className="h-4 w-4 mr-2" />
+                    Confirm Rejection
                   </Button>
                 </DialogFooter>
               )}
