@@ -27,6 +27,8 @@ import {
   getImagesArrayFromCategorized,
   defaultCategorizedImages 
 } from "@/components/PropertyImageUploader";
+import { Loader2 } from "lucide-react";
+import { INDIAN_STATES, INDIAN_CITIES } from "@/data/locations";
 
 const formSchema = insertPropertySchema.extend({
   images: z.array(z.string()).default([]),
@@ -45,6 +47,56 @@ export default function AddProperty() {
   const [propertyAddress, setPropertyAddress] = useState<AddressDetails>({
     fullAddress: "",
   });
+  const [isPincodeLookup, setIsPincodeLookup] = useState(false);
+  const [propertyCity, setPropertyCity] = useState("");
+  const [propertyState, setPropertyState] = useState("");
+  const [propertyPincode, setPropertyPincode] = useState("");
+
+  // PIN code lookup function for property location
+  const handlePincodeChange = async (pincode: string) => {
+    setPropertyPincode(pincode);
+    
+    // Only lookup if we have a 6-digit PIN code
+    if (pincode.length === 6 && /^\d{6}$/.test(pincode)) {
+      setIsPincodeLookup(true);
+      try {
+        const response = await fetch(`https://api.postalpincode.in/pincode/${pincode}`);
+        const data = await response.json();
+        
+        if (data && data[0]?.Status === "Success" && data[0]?.PostOffice?.length > 0) {
+          const postOffice = data[0].PostOffice[0];
+          
+          // Auto-populate city and state
+          const city = postOffice.District || "";
+          const state = postOffice.State || "";
+          
+          setPropertyCity(city);
+          setPropertyState(state);
+          setValue("destination", city);
+          
+          toast({
+            title: "PIN Code Found!",
+            description: `${city}, ${state}`,
+          });
+        } else {
+          toast({
+            title: "Invalid PIN Code",
+            description: "Please enter a valid Indian PIN code or manually enter city and state.",
+            variant: "destructive",
+          });
+        }
+      } catch (error) {
+        console.error("PIN code lookup error:", error);
+        toast({
+          title: "Lookup Failed",
+          description: "Unable to fetch PIN code details. Please enter city and state manually.",
+          variant: "destructive",
+        });
+      } finally {
+        setIsPincodeLookup(false);
+      }
+    }
+  };
 
   const {
     register,
@@ -199,18 +251,91 @@ export default function AddProperty() {
                   <div>
                     <Label htmlFor="destination">Property Location *</Label>
                     <p className="text-sm text-muted-foreground mb-2">
-                      Search for your address or enter it manually
+                      Enter PIN code to auto-fill city and state, or search for address
                     </p>
-                    <AddressInput
-                      value={propertyAddress}
-                      onChange={(address) => {
-                        setPropertyAddress(address);
-                        setValue("destination", address.city || address.locality || address.district || "");
-                        setValue("address", address.fullAddress);
-                      }}
-                      placeholder="Search for your property address..."
-                      testIdPrefix="property-address"
-                    />
+                    
+                    {/* PIN Code with Auto-Search */}
+                    <div className="mb-4">
+                      <Label htmlFor="pincode">PIN Code</Label>
+                      <div className="relative">
+                        <Input
+                          id="pincode"
+                          placeholder="Enter 6-digit PIN code (e.g., 400001)"
+                          value={propertyPincode}
+                          onChange={(e) => handlePincodeChange(e.target.value)}
+                          maxLength={6}
+                          data-testid="input-property-pincode"
+                        />
+                        {isPincodeLookup && (
+                          <Loader2 className="absolute right-3 top-3 h-4 w-4 animate-spin text-muted-foreground" />
+                        )}
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Enter PIN code to auto-fill city and state
+                      </p>
+                    </div>
+
+                    {/* City and State (auto-populated or manual entry) */}
+                    <div className="grid grid-cols-2 gap-4 mb-4">
+                      <div>
+                        <Label htmlFor="city">City</Label>
+                        <Input
+                          id="city"
+                          placeholder="Type city name..."
+                          list="property-cities-list"
+                          value={propertyCity}
+                          onChange={(e) => {
+                            setPropertyCity(e.target.value);
+                            setValue("destination", e.target.value);
+                          }}
+                          data-testid="input-property-city"
+                        />
+                        <datalist id="property-cities-list">
+                          {INDIAN_CITIES.map((city) => (
+                            <option key={city} value={city} />
+                          ))}
+                        </datalist>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Auto-filled from PIN code or type to search
+                        </p>
+                      </div>
+                      <div>
+                        <Label htmlFor="state">State</Label>
+                        <Input
+                          id="state"
+                          placeholder="Type state name..."
+                          list="property-states-list"
+                          value={propertyState}
+                          onChange={(e) => setPropertyState(e.target.value)}
+                          data-testid="input-property-state"
+                        />
+                        <datalist id="property-states-list">
+                          {INDIAN_STATES.map((state) => (
+                            <option key={state} value={state} />
+                          ))}
+                        </datalist>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Auto-filled from PIN code or type to search
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Full Address Search */}
+                    <div>
+                      <Label htmlFor="full-address">Full Address (Optional)</Label>
+                      <AddressInput
+                        value={propertyAddress}
+                        onChange={(address) => {
+                          setPropertyAddress(address);
+                          if (address.city) setPropertyCity(address.city);
+                          if (address.state) setPropertyState(address.state);
+                          setValue("destination", address.city || address.locality || address.district || propertyCity || "");
+                          setValue("address", address.fullAddress);
+                        }}
+                        placeholder="Search for your property address..."
+                        testIdPrefix="property-address"
+                      />
+                    </div>
                     {errors.destination && (
                       <p className="text-sm text-destructive mt-1">{errors.destination.message}</p>
                     )}
