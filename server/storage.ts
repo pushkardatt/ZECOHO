@@ -40,6 +40,7 @@ import {
   type InsertSearchHistory,
   type KycApplication,
   type InsertKycApplication,
+  type KycApplicationFormData,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, gte, lte, lt, gt, inArray, sql, or, not, desc } from "drizzle-orm";
@@ -128,13 +129,13 @@ export interface IStorage {
   deleteSearchHistory(id: string): Promise<void>;
 
   // KYC Application operations
-  createKycApplication(userId: string, application: InsertKycApplication): Promise<KycApplication>;
+  createKycApplication(userId: string, application: KycApplicationFormData): Promise<KycApplication>;
   getAllKycApplications(): Promise<KycApplication[]>;
   getKycApplicationsByStatus(status: "pending" | "verified" | "rejected"): Promise<KycApplication[]>;
   getUserKycApplication(userId: string): Promise<KycApplication | undefined>;
   getKycApplication(id: string): Promise<KycApplication | undefined>;
   updateKycApplicationStatus(id: string, status: "verified" | "rejected", reviewNotes?: string, rejectionDetails?: any): Promise<KycApplication | undefined>;
-  updateKycApplication(id: string, updates: Partial<InsertKycApplication>): Promise<KycApplication | undefined>;
+  updateKycApplication(id: string, updates: KycApplicationFormData): Promise<KycApplication | undefined>;
   deleteKycApplication(id: string): Promise<void>;
 }
 
@@ -833,7 +834,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   // KYC Application operations
-  async createKycApplication(userId: string, applicationData: InsertKycApplication): Promise<KycApplication> {
+  async createKycApplication(userId: string, applicationData: KycApplicationFormData): Promise<KycApplication> {
     const [application] = await db
       .insert(kycApplications)
       .values({
@@ -898,7 +899,7 @@ export class DatabaseStorage implements IStorage {
     return updated;
   }
 
-  async updateKycApplication(id: string, updates: Partial<InsertKycApplication>): Promise<KycApplication | undefined> {
+  async updateKycApplication(id: string, updates: KycApplicationFormData): Promise<KycApplication | undefined> {
     const [updated] = await db
       .update(kycApplications)
       .set({

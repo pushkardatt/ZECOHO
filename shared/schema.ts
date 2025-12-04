@@ -520,6 +520,8 @@ export const insertKycApplicationSchema = createInsertSchema(kycApplications).om
   updatedAt: true,
 });
 
+export type KycApplicationFormData = z.infer<typeof insertKycApplicationSchema>;
+
 // KYC update schema - validates owner registration flow
 export const updateKYCSchema = z.object({
   firstName: z.string().min(1, "First name is required").optional(),

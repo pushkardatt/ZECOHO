@@ -129,6 +129,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Check if user already has a KYC application
       const existingKyc = await storage.getUserKycApplication(userId);
       if (existingKyc) {
+        // If existing application is rejected, update it instead of blocking
+        if (existingKyc.status === "rejected") {
+          // Validate mandatory documents
+          const { propertyOwnershipDocs, identityProofDocs } = req.body;
+          const missingDocs: string[] = [];
+          
+          if (!propertyOwnershipDocs || !Array.isArray(propertyOwnershipDocs) || propertyOwnershipDocs.length === 0) {
+            missingDocs.push("Property Ownership Proof");
+          }
+          
+          if (!identityProofDocs || !Array.isArray(identityProofDocs) || identityProofDocs.length === 0) {
+            missingDocs.push("Owner Identity Proof");
+          }
+          
+          if (missingDocs.length > 0) {
+            return res.status(400).json({
+              message: `Missing required documents: ${missingDocs.join(", ")}`
+            });
+          }
+          
+          const validatedData = insertKycApplicationSchema.parse(req.body);
+          const updatedApplication = await storage.updateKycApplication(existingKyc.id, validatedData);
+          
+          return res.json({ 
+            message: "KYC application resubmitted successfully", 
+            applicationId: updatedApplication?.id,
+            status: updatedApplication?.status
+          });
+        }
+        
         return res.status(400).json({ 
           message: "You have already submitted a KYC application",
           status: existingKyc.status 
@@ -182,7 +212,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Check if user already has a KYC application
       const existingKyc = await storage.getUserKycApplication(userId);
-      if (existingKyc) {
+      const isResubmission = existingKyc && existingKyc.status === "rejected";
+      
+      // Block if user has a pending or verified KYC application
+      if (existingKyc && existingKyc.status !== "rejected") {
         return res.status(400).json({ 
           message: "You have already submitted a KYC application",
           status: existingKyc.status 
@@ -212,14 +245,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "At least one property image is required" });
       }
       
-      // Create KYC application - parse without userId as it's added by storage function
+      // Parse KYC data
       const kycData = insertKycApplicationSchema.parse(kyc);
       let kycApplication;
       let createdProperty;
       
       try {
-        // Step 1: Create KYC application
-        kycApplication = await storage.createKycApplication(userId, kycData);
+        // Step 1: Create or update KYC application
+        if (isResubmission && existingKyc) {
+          // Update existing rejected KYC application
+          kycApplication = await storage.updateKycApplication(existingKyc.id, kycData);
+        } else {
+          // Create new KYC application
+          kycApplication = await storage.createKycApplication(userId, kycData);
+        }
         
         // Step 2: Update user's KYC status to pending
         const currentUser = await storage.getUser(userId);
@@ -281,7 +320,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       res.json({ 
         message: "Application submitted successfully! Both KYC and property are pending admin review.", 
-        kycApplicationId: kycApplication.id,
+        kycApplicationId: kycApplication?.id,
         propertyId: createdProperty.id,
         status: "pending"
       });
