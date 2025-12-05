@@ -73,6 +73,7 @@ export const users = pgTable("users", {
   lastName: varchar("last_name"),
   profileImageUrl: varchar("profile_image_url"),
   userRole: userRoleEnum("user_role").notNull().default("guest"),
+  additionalRoles: text("additional_roles").array().default(sql`ARRAY[]::text[]`),
   phone: varchar("phone", { length: 20 }),
   kycAddress: text("kyc_address"),
   governmentIdType: varchar("government_id_type", { length: 50 }),

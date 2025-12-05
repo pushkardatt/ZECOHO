@@ -9,6 +9,14 @@ import { insertPropertySchema, insertRoomSchema, insertWishlistSchema, insertUse
 import { ObjectStorageService, ObjectNotFoundError, generateUploadToken, verifyUploadToken } from "./objectStorage";
 import { ObjectPermission, setObjectAclPolicy } from "./objectAcl";
 
+// Helper function to check if a user has a specific role (checks both primary and additional roles)
+function userHasRole(user: any, role: string): boolean {
+  if (!user) return false;
+  if (user.userRole === role) return true;
+  if (user.additionalRoles && Array.isArray(user.additionalRoles) && user.additionalRoles.includes(role)) return true;
+  return false;
+}
+
 export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
   await setupAuth(app);
@@ -54,7 +62,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // In production, this should not exist
       const user = await storage.getUser('test-admin-user');
       
-      if (!user || user.userRole !== 'admin') {
+      if (!user || !userHasRole(user, 'admin')) {
         return res.status(403).json({ message: "Test admin user not found or not admin" });
       }
 
@@ -448,7 +456,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
       
-      if (!user || user.userRole !== "admin") {
+      if (!user || !userHasRole(user, "admin")) {
         return res.status(403).json({ message: "Only admins can view KYC applications" });
       }
 
@@ -465,7 +473,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
       
-      if (!user || user.userRole !== "admin") {
+      if (!user || !userHasRole(user, "admin")) {
         return res.status(403).json({ message: "Only admins can verify KYC applications" });
       }
 
@@ -501,7 +509,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
       
-      if (!user || user.userRole !== "admin") {
+      if (!user || !userHasRole(user, "admin")) {
         return res.status(403).json({ message: "Only admins can reject KYC applications" });
       }
 
@@ -526,7 +534,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
       
-      if (!user || user.userRole !== "admin") {
+      if (!user || !userHasRole(user, "admin")) {
         return res.status(403).json({ message: "Only admins can revoke KYC verification" });
       }
 
@@ -608,7 +616,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
       
-      if (!user || user.userRole !== "owner") {
+      if (!user || !userHasRole(user, "owner")) {
         return res.status(403).json({ message: "Only owners can create properties" });
       }
 
@@ -647,7 +655,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
       
-      if (!user || user.userRole !== "owner") {
+      if (!user || !userHasRole(user, "owner")) {
         return res.status(403).json({ message: "Only owners can update properties" });
       }
 
@@ -687,7 +695,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
       
-      if (!user || user.userRole !== "owner") {
+      if (!user || !userHasRole(user, "owner")) {
         return res.status(403).json({ message: "Only owners can delete properties" });
       }
 
@@ -715,7 +723,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
       
-      if (!user || user.userRole !== "owner") {
+      if (!user || !userHasRole(user, "owner")) {
         return res.status(403).json({ message: "Only owners can access this endpoint" });
       }
 
@@ -743,7 +751,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
       
-      if (!user || user.userRole !== "owner") {
+      if (!user || !userHasRole(user, "owner")) {
         return res.status(403).json({ message: "Only owners can add rooms" });
       }
 
@@ -1230,7 +1238,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
       
-      if (!user || user.userRole !== "owner") {
+      if (!user || !userHasRole(user, "owner")) {
         return res.status(403).json({ message: "Only owners can respond to reviews" });
       }
 
@@ -1356,7 +1364,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
       
-      if (!user || user.userRole !== "owner") {
+      if (!user || !userHasRole(user, "owner")) {
         return res.status(403).json({ message: "Only owners can create destinations" });
       }
 
@@ -1377,7 +1385,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
       
-      if (!user || user.userRole !== "owner") {
+      if (!user || !userHasRole(user, "owner")) {
         return res.status(403).json({ message: "Only owners can update destinations" });
       }
 
@@ -1397,7 +1405,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
       
-      if (!user || user.userRole !== "owner") {
+      if (!user || !userHasRole(user, "owner")) {
         return res.status(403).json({ message: "Only owners can delete destinations" });
       }
 
@@ -1414,7 +1422,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
       
-      if (!user || user.userRole !== "owner") {
+      if (!user || !userHasRole(user, "owner")) {
         return res.status(403).json({ message: "Only owners can feature destinations" });
       }
 
@@ -1436,7 +1444,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
       
-      if (!user || user.userRole !== "admin") {
+      if (!user || !userHasRole(user, "admin")) {
         return res.status(403).json({ message: "Only admins can access this endpoint" });
       }
 
@@ -1453,7 +1461,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
       
-      if (!user || user.userRole !== "admin") {
+      if (!user || !userHasRole(user, "admin")) {
         return res.status(403).json({ message: "Only admins can approve properties" });
       }
 
@@ -1476,7 +1484,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
       
-      if (!user || user.userRole !== "admin") {
+      if (!user || !userHasRole(user, "admin")) {
         return res.status(403).json({ message: "Only admins can reject properties" });
       }
 
@@ -1499,7 +1507,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
       
-      if (!user || user.userRole !== "admin") {
+      if (!user || !userHasRole(user, "admin")) {
         return res.status(403).json({ message: "Only admins can delete properties" });
       }
 
@@ -1631,7 +1639,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Check if user is admin - admins can access all documents for KYC verification
       const user = userId ? await storage.getUser(userId) : null;
-      const isAdmin = user?.userRole === "admin";
+      const isAdmin = userHasRole(user, "admin");
       
       if (!isAdmin) {
         const canAccess = await objectStorageService.canAccessObjectEntity({

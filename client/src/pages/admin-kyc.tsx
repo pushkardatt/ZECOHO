@@ -184,7 +184,7 @@ function DocumentCategory({ icon: Icon, title, docs }: DocumentCategoryProps) {
 
 export default function AdminKYC() {
   const { toast } = useToast();
-  const { user, isAuthenticated, isLoading: authLoading } = useAuth();
+  const { user, isAuthenticated, isLoading: authLoading, isAdmin } = useAuth();
   const [selectedApp, setSelectedApp] = useState<KycApplication | null>(null);
   const [reviewNotes, setReviewNotes] = useState("");
   const [statusFilter, setStatusFilter] = useState<"pending" | "verified" | "rejected">("pending");
@@ -214,7 +214,7 @@ export default function AdminKYC() {
   };
 
   useEffect(() => {
-    if (!authLoading && (!isAuthenticated || user?.userRole !== "admin")) {
+    if (!authLoading && (!isAuthenticated || !isAdmin)) {
       toast({
         title: "Access Denied",
         description: "Only admins can access this page",
@@ -224,19 +224,19 @@ export default function AdminKYC() {
         window.location.href = "/";
       }, 1000);
     }
-  }, [isAuthenticated, authLoading, user, toast]);
+  }, [isAuthenticated, authLoading, isAdmin, toast]);
 
   const { data: applications = [], isLoading, refetch } = useQuery<KycApplication[]>({
     queryKey: ["/api/admin/kyc"],
-    enabled: !authLoading && isAuthenticated && user?.userRole === "admin",
+    enabled: !authLoading && isAuthenticated && isAdmin,
   });
 
   // Refetch when auth state changes
   useEffect(() => {
-    if (!authLoading && isAuthenticated && user?.userRole === "admin") {
+    if (!authLoading && isAuthenticated && isAdmin) {
       refetch();
     }
-  }, [authLoading, isAuthenticated, user?.userRole, refetch]);
+  }, [authLoading, isAuthenticated, isAdmin, refetch]);
 
   const updateStatusMutation = useMutation({
     mutationFn: async ({ id, status }: { id: string; status: "verified" | "rejected" }) => {

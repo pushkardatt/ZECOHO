@@ -17,7 +17,7 @@ import type { Conversation, KycApplication } from "@shared/schema";
 type ConversationWithUnread = Conversation & { unreadCount: number };
 
 export function Header() {
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, isAdmin, isOwner } = useAuth();
   const [location] = useLocation();
 
   const { data: conversations = [] } = useQuery<ConversationWithUnread[]>({
@@ -90,13 +90,13 @@ export function Header() {
         <nav className="flex items-center gap-4">
           {isAuthenticated ? (
             <>
-              {user?.userRole === "owner" && (
+              {isOwner && (
                 <Badge variant="secondary" className="hidden md:flex">
                   Owner Dashboard
                 </Badge>
               )}
               
-              {user?.userRole === "admin" && (
+              {isAdmin && (
                 <Badge variant="default" className="hidden md:flex">
                   <Shield className="h-3 w-3 mr-1" />
                   Admin Panel
@@ -141,7 +141,7 @@ export function Header() {
                 </>
               )}
 
-              {user?.userRole === "owner" && (
+              {isOwner && (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button 
@@ -172,7 +172,7 @@ export function Header() {
                 </DropdownMenu>
               )}
 
-              {user?.userRole === "admin" && (
+              {isAdmin && (
                 <>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
