@@ -567,7 +567,7 @@ export default function ListPropertyWizard() {
           </div>
 
           {/* Overall rejection reason if provided */}
-          {existingKycApplication?.rejectionReason && (
+          {existingKycApplication?.reviewNotes && (
             <Card className="mb-6 border-orange-200 bg-orange-50 dark:bg-orange-950/20 dark:border-orange-900">
               <CardHeader className="pb-2">
                 <CardTitle className="text-lg flex items-center gap-2 text-orange-700 dark:text-orange-400">
@@ -576,7 +576,7 @@ export default function ListPropertyWizard() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-sm text-orange-800 dark:text-orange-300">{existingKycApplication.rejectionReason}</p>
+                <p className="text-sm text-orange-800 dark:text-orange-300">{existingKycApplication.reviewNotes}</p>
               </CardContent>
             </Card>
           )}
