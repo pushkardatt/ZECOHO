@@ -30,7 +30,7 @@ import {
   defaultCategorizedImages 
 } from "@/components/PropertyImageUploader";
 import { KycDocumentUploader, defaultKycDocuments, type KycDocuments } from "@/components/KycDocumentUploader";
-import { Loader2, Building2, User, MapPin, FileText, Home, CheckCircle, ArrowRight, ArrowLeft, XCircle, Clock, AlertTriangle, IdCard, Shield, Flame } from "lucide-react";
+import { Loader2, Building2, User, MapPin, FileText, Home, CheckCircle, ArrowRight, ArrowLeft, XCircle, Clock, AlertTriangle, IdCard, Shield, Flame, Camera } from "lucide-react";
 import { INDIAN_STATES, INDIAN_CITIES } from "@/data/locations";
 import type { KycSectionId, KycRejectionDetails } from "@shared/schema";
 import { useEffect, useMemo } from "react";
@@ -256,6 +256,33 @@ export default function ListPropertyWizard() {
 
   const getTotalImageCount = () => {
     return Object.values(categorizedImages).reduce((sum, arr) => sum + (arr?.length || 0), 0);
+  };
+
+  // Photo category completion tracking
+  const getPhotoCategoryStats = () => {
+    const categories = [
+      { id: "exterior", label: "Exterior", minRecommended: 3, required: true },
+      { id: "reception", label: "Reception & Lobby", minRecommended: 2, required: false },
+      { id: "room", label: "Room Photos", minRecommended: 5, required: true },
+      { id: "bathroom", label: "Bathroom", minRecommended: 2, required: true },
+      { id: "amenities", label: "Amenities", minRecommended: 3, required: false },
+      { id: "food", label: "Food & Dining", minRecommended: 2, required: false },
+    ];
+    
+    return categories.map(cat => ({
+      ...cat,
+      count: (categorizedImages as any)[cat.id]?.length || 0,
+      isComplete: ((categorizedImages as any)[cat.id]?.length || 0) >= cat.minRecommended,
+      hasAny: ((categorizedImages as any)[cat.id]?.length || 0) > 0,
+    }));
+  };
+
+  const getIncompleteRequiredCategories = () => {
+    return getPhotoCategoryStats().filter(cat => cat.required && !cat.hasAny);
+  };
+
+  const getCompletedCategoriesCount = () => {
+    return getPhotoCategoryStats().filter(cat => cat.hasAny).length;
   };
 
   // KYC-only resubmission mutation for rejected applications
@@ -1405,6 +1432,76 @@ export default function ListPropertyWizard() {
             {/* Step 5: Photos & Submit */}
             {step === 5 && (
               <div className="space-y-6">
+                {/* Photo Category Progress Summary */}
+                <Card className="border-primary/20 bg-primary/5">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <Camera className="h-5 w-5 text-primary" />
+                      Photo Upload Progress
+                    </CardTitle>
+                    <CardDescription>
+                      Complete all categories for better visibility. Properties with more photos get 3x more bookings!
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                      {getPhotoCategoryStats().map((cat) => (
+                        <div 
+                          key={cat.id}
+                          className={`flex items-center gap-2 p-2 rounded-lg border ${
+                            cat.hasAny 
+                              ? cat.isComplete 
+                                ? "bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-800" 
+                                : "bg-yellow-50 dark:bg-yellow-950 border-yellow-200 dark:border-yellow-800"
+                              : cat.required 
+                                ? "bg-red-50 dark:bg-red-950 border-red-200 dark:border-red-800" 
+                                : "bg-muted/50 border-muted"
+                          }`}
+                        >
+                          {cat.hasAny ? (
+                            cat.isComplete ? (
+                              <CheckCircle className="h-4 w-4 text-green-600 flex-shrink-0" />
+                            ) : (
+                              <Clock className="h-4 w-4 text-yellow-600 flex-shrink-0" />
+                            )
+                          ) : cat.required ? (
+                            <XCircle className="h-4 w-4 text-red-500 flex-shrink-0" />
+                          ) : (
+                            <div className="h-4 w-4 rounded-full border-2 border-muted-foreground/30 flex-shrink-0" />
+                          )}
+                          <div className="min-w-0 flex-1">
+                            <p className={`text-xs font-medium truncate ${
+                              cat.hasAny ? "" : cat.required ? "text-red-700 dark:text-red-400" : "text-muted-foreground"
+                            }`}>
+                              {cat.label}
+                              {cat.required && !cat.hasAny && " *"}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {cat.count}/{cat.minRecommended} photos
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    
+                    {getCompletedCategoriesCount() < 6 && (
+                      <div className="mt-4 p-3 bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-lg">
+                        <p className="text-sm text-amber-800 dark:text-amber-200 flex items-start gap-2">
+                          <AlertTriangle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                          <span>
+                            <strong>Tip:</strong> Upload photos in all categories to increase your property's appeal. 
+                            {getIncompleteRequiredCategories().length > 0 && (
+                              <span className="block mt-1">
+                                <strong className="text-red-600 dark:text-red-400">Required:</strong> {getIncompleteRequiredCategories().map(c => c.label).join(", ")}
+                              </span>
+                            )}
+                          </span>
+                        </p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
                 <PropertyImageUploader
                   value={categorizedImages}
                   onChange={setCategorizedImages}
@@ -1432,6 +1529,14 @@ export default function ListPropertyWizard() {
 
                     {getTotalImageCount() === 0 && (
                       <p className="text-sm text-destructive">Please upload at least one property image</p>
+                    )}
+
+                    {getIncompleteRequiredCategories().length > 0 && getTotalImageCount() > 0 && (
+                      <div className="bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
+                        <p className="text-sm text-amber-800 dark:text-amber-200">
+                          <strong>Missing required photos:</strong> Please add at least one photo in these categories: {getIncompleteRequiredCategories().map(c => c.label).join(", ")}
+                        </p>
+                      </div>
                     )}
 
                     {(!kycDocuments.propertyOwnership?.length || !kycDocuments.identityProof?.length) && (
@@ -1463,13 +1568,18 @@ export default function ListPropertyWizard() {
               ) : (
                 <Button
                   type="submit"
-                  disabled={submitMutation.isPending || getTotalImageCount() === 0}
+                  disabled={submitMutation.isPending || getTotalImageCount() === 0 || getIncompleteRequiredCategories().length > 0}
                   data-testid="button-submit-application"
                 >
                   {submitMutation.isPending ? (
                     <>
                       <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                       Submitting...
+                    </>
+                  ) : getIncompleteRequiredCategories().length > 0 ? (
+                    <>
+                      <XCircle className="h-4 w-4 mr-2" />
+                      Complete Required Photos
                     </>
                   ) : (
                     <>
