@@ -1400,8 +1400,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
       
-      if (!user || !userHasRole(user, "owner")) {
-        return res.status(403).json({ message: "Only owners can create destinations" });
+      if (!user || (!userHasRole(user, "admin") && !userHasRole(user, "owner"))) {
+        return res.status(403).json({ message: "Only admins or owners can create destinations" });
       }
 
       const validatedData = insertDestinationSchema.parse(req.body);
@@ -1421,8 +1421,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
       
-      if (!user || !userHasRole(user, "owner")) {
-        return res.status(403).json({ message: "Only owners can update destinations" });
+      if (!user || (!userHasRole(user, "admin") && !userHasRole(user, "owner"))) {
+        return res.status(403).json({ message: "Only admins or owners can update destinations" });
       }
 
       const destination = await storage.updateDestination(req.params.id, req.body);
@@ -1441,8 +1441,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
       
-      if (!user || !userHasRole(user, "owner")) {
-        return res.status(403).json({ message: "Only owners can delete destinations" });
+      if (!user || (!userHasRole(user, "admin") && !userHasRole(user, "owner"))) {
+        return res.status(403).json({ message: "Only admins or owners can delete destinations" });
       }
 
       await storage.deleteDestination(req.params.id);
@@ -1458,8 +1458,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
       
-      if (!user || !userHasRole(user, "owner")) {
-        return res.status(403).json({ message: "Only owners can feature destinations" });
+      if (!user || (!userHasRole(user, "admin") && !userHasRole(user, "owner"))) {
+        return res.status(403).json({ message: "Only admins or owners can feature destinations" });
       }
 
       const { isFeatured } = req.body;

@@ -47,7 +47,7 @@ const destinationFormSchema = z.object({
 type DestinationFormValues = z.infer<typeof destinationFormSchema>;
 
 export default function AdminDestinations() {
-  const { user } = useAuth();
+  const { user, isAdmin, isOwner } = useAuth();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -55,14 +55,14 @@ export default function AdminDestinations() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [destinationToDelete, setDestinationToDelete] = useState<string | null>(null);
 
-  // Check if user is owner/admin
-  if (user?.userRole !== "owner") {
+  // Check if user is owner or admin (either role can manage destinations)
+  if (!isAdmin && !isOwner) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
           <h2 className="text-2xl font-semibold mb-2">Access Denied</h2>
           <p className="text-muted-foreground mb-6">
-            You need owner privileges to access the admin panel.
+            You need admin or owner privileges to manage destinations.
           </p>
           <Button onClick={() => setLocation("/")} data-testid="button-back-home">
             Back to Home
