@@ -222,7 +222,7 @@ export default function Profile() {
                 </div>
 
                 {/* Multi-role enable button for platform admin - shows if they don't have BOTH roles */}
-                {user?.email === 'pushkardatt@gmail.com' && !(isAdmin && isOwner) && (
+                {user?.email?.toLowerCase() === 'pushkardatt@gmail.com' && !(isAdmin && isOwner) && (
                   <div className="pt-4 border-t">
                     <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
                       <h4 className="font-medium text-amber-800 dark:text-amber-200 mb-2">Platform Administrator</h4>
@@ -241,7 +241,7 @@ export default function Profile() {
                 )}
 
                 {/* Show confirmation if already has multi-role */}
-                {user?.email === 'pushkardatt@gmail.com' && isAdmin && isOwner && (
+                {user?.email?.toLowerCase() === 'pushkardatt@gmail.com' && isAdmin && isOwner && (
                   <div className="pt-4 border-t">
                     <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4">
                       <h4 className="font-medium text-green-800 dark:text-green-200 mb-2">Multi-Role Active</h4>

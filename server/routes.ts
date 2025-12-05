@@ -95,8 +95,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "User not found" });
       }
 
-      // Only allow this for pushkardatt@gmail.com (the founder/main admin)
-      if (currentUser.email !== 'pushkardatt@gmail.com') {
+      // Only allow this for pushkardatt@gmail.com (the founder/main admin) - case insensitive
+      if (currentUser.email?.toLowerCase() !== 'pushkardatt@gmail.com') {
         return res.status(403).json({ message: "This feature is only available for the platform administrator" });
       }
 
