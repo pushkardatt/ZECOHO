@@ -3,6 +3,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { db } from "./db";
+import { eq } from "drizzle-orm";
 import { users } from "@shared/schema";
 import { setupAuth, isAuthenticated } from "./replitAuth";
 import { insertPropertySchema, insertRoomSchema, insertWishlistSchema, insertUserPreferencesSchema, insertBookingSchema, insertMessageSchema, insertReviewSchema, insertDestinationSchema, insertSearchHistorySchema, updateKYCSchema, becomeOwnerSchema, insertKycApplicationSchema } from "@shared/schema";
@@ -81,6 +82,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error in test admin login:", error);
       res.status(500).json({ message: "Test admin login failed" });
+    }
+  });
+
+  // Enable multi-role for specific admin user (adds owner role to existing admin)
+  app.post('/api/admin/enable-multi-role', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const currentUser = await storage.getUser(userId);
+      
+      if (!currentUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Only allow this for pushkardatt@gmail.com (the founder/main admin)
+      if (currentUser.email !== 'pushkardatt@gmail.com') {
+        return res.status(403).json({ message: "This feature is only available for the platform administrator" });
+      }
+
+      // Update user to have both admin and owner roles
+      const [updatedUser] = await db
+        .update(users)
+        .set({ 
+          userRole: 'admin',
+          additionalRoles: ['owner']
+        })
+        .where(eq(users.id, userId))
+        .returning();
+
+      res.json({ 
+        message: "Multi-role enabled! You now have both admin and owner access.", 
+        user: updatedUser 
+      });
+    } catch (error) {
+      console.error("Error enabling multi-role:", error);
+      res.status(500).json({ message: "Failed to enable multi-role" });
     }
   });
 

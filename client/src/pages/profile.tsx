@@ -31,7 +31,8 @@ type PreferencesFormData = z.infer<typeof preferencesFormSchema>;
 
 export default function Profile() {
   const { toast } = useToast();
-  const { user, isAuthenticated, isLoading: authLoading } = useAuth();
+  const { user, isAuthenticated, isLoading: authLoading, isAdmin, isOwner } = useAuth();
+  const [isEnablingMultiRole, setIsEnablingMultiRole] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -123,6 +124,29 @@ export default function Profile() {
     return (first + last).toUpperCase() || user.email?.[0]?.toUpperCase() || "U";
   };
 
+  const enableMultiRole = async () => {
+    setIsEnablingMultiRole(true);
+    try {
+      const response = await apiRequest("POST", "/api/admin/enable-multi-role", {});
+      toast({
+        title: "Success",
+        description: "Multi-role access enabled! You now have both Admin and Owner access. Refreshing...",
+      });
+      // Refresh the page to reflect new roles
+      setTimeout(() => {
+        window.location.reload();
+      }, 1500);
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to enable multi-role",
+        variant: "destructive",
+      });
+    } finally {
+      setIsEnablingMultiRole(false);
+    }
+  };
+
   const propertyTypes = [
     { value: "hotel", label: "Hotels" },
     { value: "villa", label: "Villas" },
@@ -168,9 +192,11 @@ export default function Profile() {
                   <div>
                     <p className="font-semibold text-lg">{user?.firstName || user?.email}</p>
                     <p className="text-muted-foreground">{user?.email}</p>
-                    <Badge variant="secondary" className="mt-2">
-                      {user?.userRole === "guest" ? "Guest" : "Property Owner"}
-                    </Badge>
+                    <div className="flex flex-wrap gap-2 mt-2">
+                      {isAdmin && <Badge variant="default">Admin</Badge>}
+                      {isOwner && <Badge variant="secondary">Property Owner</Badge>}
+                      {!isAdmin && !isOwner && <Badge variant="outline">Guest</Badge>}
+                    </div>
                   </div>
                 </div>
 
@@ -194,6 +220,37 @@ export default function Profile() {
                     Account information is managed through your authentication provider
                   </p>
                 </div>
+
+                {/* Multi-role enable button for platform admin */}
+                {user?.email === 'pushkardatt@gmail.com' && isAdmin && !isOwner && (
+                  <div className="pt-4 border-t">
+                    <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
+                      <h4 className="font-medium text-amber-800 dark:text-amber-200 mb-2">Platform Administrator</h4>
+                      <p className="text-sm text-amber-700 dark:text-amber-300 mb-3">
+                        Enable multi-role access to manage your own properties while keeping admin access.
+                      </p>
+                      <Button 
+                        onClick={enableMultiRole}
+                        disabled={isEnablingMultiRole}
+                        data-testid="button-enable-multi-role"
+                      >
+                        {isEnablingMultiRole ? "Enabling..." : "Enable Admin + Owner Access"}
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Show confirmation if already has multi-role */}
+                {user?.email === 'pushkardatt@gmail.com' && isAdmin && isOwner && (
+                  <div className="pt-4 border-t">
+                    <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4">
+                      <h4 className="font-medium text-green-800 dark:text-green-200 mb-2">Multi-Role Active</h4>
+                      <p className="text-sm text-green-700 dark:text-green-300">
+                        You have both Admin and Property Owner access. You can manage KYC applications, platform settings, and your own properties.
+                      </p>
+                    </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
