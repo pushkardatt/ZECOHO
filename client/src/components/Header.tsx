@@ -98,7 +98,7 @@ export function Header() {
                 <Button 
                   variant={location === "/" ? "secondary" : "ghost"}
                   size="sm"
-                  className="hidden md:flex"
+                  className="hidden md:flex font-medium text-sm"
                   data-testid="link-nav-home"
                 >
                   <Home className="h-4 w-4 mr-2" />
@@ -112,6 +112,7 @@ export function Header() {
                     <Button 
                       variant={location === "/wishlist" ? "secondary" : "ghost"}
                       size="sm"
+                      className="font-medium text-sm"
                       data-testid="link-wishlist"
                     >
                       <Heart className="h-4 w-4 md:mr-2" />
@@ -123,6 +124,7 @@ export function Header() {
                     <Button 
                       variant={location === "/search-history" ? "secondary" : "ghost"}
                       size="sm"
+                      className="font-medium text-sm"
                       data-testid="link-search-history"
                     >
                       <History className="h-4 w-4 md:mr-2" />
@@ -138,6 +140,7 @@ export function Header() {
                     <Button 
                       variant={location.startsWith("/owner") ? "secondary" : "ghost"}
                       size="sm"
+                      className="font-medium text-sm"
                       data-testid="button-owner-menu"
                     >
                       <Building className="h-4 w-4 md:mr-2" />
@@ -170,6 +173,7 @@ export function Header() {
                       <Button 
                         variant={location.startsWith("/admin") ? "secondary" : "ghost"}
                         size="sm"
+                        className="font-medium text-sm"
                         data-testid="button-admin-menu"
                       >
                         <Shield className="h-4 w-4 md:mr-2" />
@@ -212,7 +216,7 @@ export function Header() {
                 <Button 
                   variant={location === "/messages" ? "secondary" : "ghost"}
                   size="sm"
-                  className="relative"
+                  className="relative font-medium text-sm"
                   data-testid="link-messages"
                 >
                   <MessageCircle className="h-4 w-4 md:mr-2" />
@@ -240,6 +244,7 @@ export function Header() {
                 <Button 
                   variant="default"
                   size="sm"
+                  className="font-medium text-sm"
                   data-testid="button-list-property"
                 >
                   <PlusCircle className="h-4 w-4 md:mr-2" />
