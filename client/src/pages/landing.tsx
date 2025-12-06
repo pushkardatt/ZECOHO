@@ -73,7 +73,7 @@ export default function Landing() {
           <h1 className="text-4xl md:text-5xl font-bold text-white mb-2" data-testid="text-hero-title">
             Book Direct. Pay Less. ZERO Commission.
           </h1>
-          <p className="text-xl md:text-2xl text-white/90 mb-5 max-w-2xl mx-auto">
+          <p className="text-base md:text-lg text-white/90 mb-5 whitespace-nowrap">
             Connect Directly With Property Owners — No middleman, no hidden fees.
           </p>
           
