@@ -8,7 +8,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
-import { Home, Heart, User, LogOut, Menu, Building, MessageCircle, History, PlusCircle, Shield, Settings, FileText, MapPin, CheckCircle, Clock, XCircle } from "lucide-react";
+import { Heart, User, LogOut, Menu, Building, MessageCircle, History, PlusCircle, Shield, Settings, FileText, MapPin, CheckCircle, Clock, XCircle } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery } from "@tanstack/react-query";
@@ -79,14 +79,12 @@ export function Header() {
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-16 items-center justify-between px-4 md:px-6">
         <Link href="/">
-          <div className="flex items-center gap-3 cursor-pointer" data-testid="link-home">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary via-primary to-rose-500 flex items-center justify-center shadow-md">
-              <span className="text-white font-bold text-lg tracking-tight">Z</span>
+          <div className="flex items-center gap-2.5 cursor-pointer hover:opacity-80 transition-opacity" data-testid="link-home">
+            <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
+              <span className="text-white font-medium text-base">Z</span>
             </div>
-            <span className="font-semibold text-xl tracking-tight">
-              <span className="text-primary">Ze</span>
-              <span className="text-foreground">Co</span>
-              <span className="text-rose-500">Ho</span>
+            <span className="font-normal text-xl tracking-normal text-foreground">
+              ZeCoHo
             </span>
           </div>
         </Link>
@@ -94,18 +92,6 @@ export function Header() {
         <nav className="flex items-center gap-1 md:gap-2">
           {isAuthenticated ? (
             <>
-              <Link href="/">
-                <Button 
-                  variant={location === "/" ? "secondary" : "ghost"}
-                  size="sm"
-                  className="hidden md:flex font-medium text-sm"
-                  data-testid="link-nav-home"
-                >
-                  <Home className="h-4 w-4 mr-2" />
-                  Home
-                </Button>
-              </Link>
-
               {user?.userRole === "guest" && (
                 <>
                   <Link href="/wishlist">
