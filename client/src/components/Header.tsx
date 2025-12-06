@@ -85,7 +85,7 @@ export function Header() {
             </div>
             <div className="flex items-baseline">
               <span className="font-bold text-xl text-foreground">
-                ZeCoHo
+                ZECOHO
               </span>
               <span className="font-semibold text-base text-primary">.com</span>
             </div>

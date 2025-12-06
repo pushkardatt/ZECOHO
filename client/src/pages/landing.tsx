@@ -40,7 +40,7 @@ export default function Landing() {
               </div>
               <div className="flex items-baseline">
                 <span className="font-bold text-2xl text-white drop-shadow-md">
-                  ZeCoHo
+                  ZECOHO
                 </span>
                 <span className="font-semibold text-lg text-primary drop-shadow-md">.com</span>
               </div>
