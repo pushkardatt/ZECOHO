@@ -79,13 +79,16 @@ export function Header() {
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-16 items-center justify-between px-4 md:px-6">
         <Link href="/">
-          <div className="flex items-center gap-2.5 cursor-pointer hover:opacity-80 transition-opacity" data-testid="link-home">
-            <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
-              <span className="text-white font-medium text-base">Z</span>
+          <div className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity" data-testid="link-home">
+            <div className="w-9 h-9 rounded-lg bg-red-500 flex items-center justify-center">
+              <span className="text-white font-bold text-lg">Z</span>
             </div>
-            <span className="font-normal text-xl tracking-normal text-foreground">
-              ZeCoHo
-            </span>
+            <div className="flex items-baseline">
+              <span className="font-bold text-xl text-foreground">
+                ZeCoHo
+              </span>
+              <span className="font-semibold text-base text-red-500">.com</span>
+            </div>
           </div>
         </Link>
 

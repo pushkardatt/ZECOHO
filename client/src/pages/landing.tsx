@@ -34,13 +34,16 @@ export default function Landing() {
       <header className="absolute top-0 left-0 right-0 z-50 px-4 md:px-6 py-4">
         <div className="container mx-auto flex items-center justify-between">
           <Link href="/">
-            <div className="flex items-center gap-2.5 cursor-pointer hover:opacity-80 transition-opacity" data-testid="link-home-logo">
-              <div className="w-10 h-10 rounded-lg bg-white flex items-center justify-center shadow-md">
-                <span className="text-primary font-bold text-xl">Z</span>
+            <div className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity" data-testid="link-home-logo">
+              <div className="w-10 h-10 rounded-lg bg-red-500 flex items-center justify-center shadow-md">
+                <span className="text-white font-bold text-xl">Z</span>
               </div>
-              <span className="font-semibold text-2xl text-white drop-shadow-md">
-                ZeCoHo
-              </span>
+              <div className="flex items-baseline">
+                <span className="font-bold text-2xl text-white drop-shadow-md">
+                  ZeCoHo
+                </span>
+                <span className="font-semibold text-lg text-red-400 drop-shadow-md">.com</span>
+              </div>
             </div>
           </Link>
           <Button 
