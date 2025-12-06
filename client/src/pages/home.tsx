@@ -5,7 +5,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { useLocation } from "wouter";
+import { useLocation, Link } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { Home as HomeIcon, MapPin, Calendar, Check, Shield, TrendingDown, Sparkles, Award, Handshake, Users, Hotel, Building, Waves, Mountain, TreePine, Wheat, Heart } from "lucide-react";
 import type { Property, Destination } from "@shared/schema";
@@ -59,7 +59,7 @@ export default function Home() {
         <div className="container mx-auto flex flex-col md:flex-row items-center justify-center gap-2 text-center">
           <Sparkles className="h-5 w-5 animate-pulse" />
           <p className="font-bold text-base md:text-lg">
-            🎉 Connect Directly with Hoteliers • 100% ZERO Commission • Save More on Every Booking!
+            Connect Directly with Hoteliers - 100% ZERO Commission - Save More on Every Booking!
           </p>
           <Sparkles className="h-5 w-5 animate-pulse" />
         </div>
@@ -74,7 +74,23 @@ export default function Home() {
           <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-black/40 to-black/60" />
         </div>
         
-        <div className="relative z-10 container px-4 md:px-6 text-center">
+        {/* Logo Header over Hero */}
+        <div className="absolute top-0 left-0 right-0 z-20 px-4 md:px-6 py-4">
+          <div className="container mx-auto">
+            <Link href="/">
+              <div className="flex items-center gap-2.5 cursor-pointer hover:opacity-80 transition-opacity w-fit" data-testid="link-home-logo">
+                <div className="w-10 h-10 rounded-lg bg-white flex items-center justify-center shadow-md">
+                  <span className="text-primary font-bold text-xl">Z</span>
+                </div>
+                <span className="font-semibold text-2xl text-white drop-shadow-md">
+                  ZeCoHo
+                </span>
+              </div>
+            </Link>
+          </div>
+        </div>
+        
+        <div className="relative z-10 container px-4 md:px-6 text-center pt-8">
           {/* Search Bar - Top Priority */}
           <div className="flex justify-center mb-3">
             <SearchBar onSearch={handleSearch} compact={true} showDates={false} showGuests={false} />

@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import { SearchBar } from "@/components/SearchBar";
 import { Card, CardContent } from "@/components/ui/card";
 import { Building, Home as HomeIcon, Hotel, Mountain, Waves, TreePine, Wheat, Heart } from "lucide-react";
-import { useLocation } from "wouter";
+import { useLocation, Link } from "wouter";
 import heroImage from "@assets/generated_images/luxury_villa_hero_image.png";
 
 export default function Landing() {
@@ -30,6 +30,32 @@ export default function Landing() {
 
   return (
     <div className="min-h-screen">
+      {/* Top Navigation Header with Logo */}
+      <header className="absolute top-0 left-0 right-0 z-50 px-4 md:px-6 py-4">
+        <div className="container mx-auto flex items-center justify-between">
+          <Link href="/">
+            <div className="flex items-center gap-2.5 cursor-pointer hover:opacity-80 transition-opacity" data-testid="link-home-logo">
+              <div className="w-10 h-10 rounded-lg bg-white flex items-center justify-center shadow-md">
+                <span className="text-primary font-bold text-xl">Z</span>
+              </div>
+              <span className="font-semibold text-2xl text-white drop-shadow-md">
+                ZeCoHo
+              </span>
+            </div>
+          </Link>
+          <Button 
+            size="sm"
+            variant="outline" 
+            className="bg-white/10 backdrop-blur-md border-white/20 text-white hover:bg-white/20"
+            asChild
+          >
+            <a href="/api/login" data-testid="button-login-top">
+              Login
+            </a>
+          </Button>
+        </div>
+      </header>
+
       {/* Hero Section with Search */}
       <div className="relative h-[600px] flex items-center justify-center">
         <div 
@@ -39,19 +65,7 @@ export default function Landing() {
           <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/30 to-black/50" />
         </div>
         
-        <div className="relative z-10 container px-4 md:px-6 text-center">
-          <div className="flex justify-center mb-4">
-            <Button 
-              size="sm"
-              variant="outline" 
-              className="bg-white/10 backdrop-blur-md border-white/20 text-white hover:bg-white/20"
-              asChild
-            >
-              <a href="/api/login" data-testid="button-login-top">
-                Login
-              </a>
-            </Button>
-          </div>
+        <div className="relative z-10 container px-4 md:px-6 text-center pt-12">
           
           <div className="mb-3" data-testid="brand-logo">
             <h1 className="text-6xl md:text-7xl font-extrabold text-white tracking-tight mb-1">
