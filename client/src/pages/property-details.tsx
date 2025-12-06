@@ -39,8 +39,33 @@ import {
   Bath,
   Check,
   MessageCircle,
-  ThumbsUp
+  ThumbsUp,
+  Wifi,
+  Car,
+  Wind,
+  Tv,
+  Utensils,
+  Coffee,
+  Waves,
+  Dumbbell,
+  Laptop,
+  Baby,
+  Flame,
+  Building,
+  Puzzle,
+  Book,
+  Shield,
+  ArrowUp,
+  Flower,
+  Gamepad,
+  Zap,
+  Clock,
+  UtensilsCrossed,
+  Snowflake,
+  CircleParking,
+  Refrigerator,
 } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import type { Property, Amenity } from "@shared/schema";
 import { insertReviewSchema } from "@shared/schema";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -52,6 +77,44 @@ const reviewFormSchema = insertReviewSchema
     rating: z.coerce.number().min(1, "Please select a rating").max(5),
     comment: z.string().min(10, "Review must be at least 10 characters"),
   });
+
+const iconMap: Record<string, LucideIcon> = {
+  Wifi,
+  Car,
+  Wind,
+  Tv,
+  Utensils,
+  Coffee,
+  Waves,
+  Dumbbell,
+  Laptop,
+  Baby,
+  Flame,
+  Building,
+  Puzzle,
+  Book,
+  Shield,
+  ArrowUp,
+  Flower,
+  Gamepad,
+  Zap,
+  Clock,
+  UtensilsCrossed,
+  Snowflake,
+  CircleParking,
+  Refrigerator,
+  Heart,
+  Users,
+  Bed,
+  Bath,
+  Check,
+  Star,
+};
+
+function getAmenityIcon(iconName: string | null | undefined): LucideIcon {
+  if (!iconName) return Check;
+  return iconMap[iconName] || Check;
+}
 
 const ownerResponseSchema = z.object({
   ownerResponse: z.string().min(10, "Response must be at least 10 characters"),
@@ -70,6 +133,7 @@ export default function PropertyDetails() {
   const [reviewDialogOpen, setReviewDialogOpen] = useState(false);
   const [ownerResponseDialogOpen, setOwnerResponseDialogOpen] = useState(false);
   const [selectedReviewId, setSelectedReviewId] = useState<string | null>(null);
+  const [amenitiesDialogOpen, setAmenitiesDialogOpen] = useState(false);
   const getHelpfulStorageKey = () => user?.id ? `markedHelpfulReviews_${user.id}` : 'markedHelpfulReviews';
   
   const [markedHelpfulReviews, setMarkedHelpfulReviews] = useState<Set<string>>(() => {
@@ -619,16 +683,53 @@ export default function PropertyDetails() {
 
             {/* Amenities */}
             <div>
-              <h2 className="text-xl font-semibold mb-4">What this place offers</h2>
+              <h2 className="text-xl font-semibold mb-6">What this place offers</h2>
               {propertyAmenities.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {propertyAmenities.map((amenity) => (
-                    <div key={amenity.id} className="flex items-center gap-3">
-                      <Check className="h-5 w-5 text-primary" />
-                      <span>{amenity.name}</span>
-                    </div>
-                  ))}
-                </div>
+                <>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-y-4 gap-x-8">
+                    {propertyAmenities.slice(0, 8).map((amenity) => {
+                      const IconComponent = getAmenityIcon(amenity.icon);
+                      return (
+                        <div key={amenity.id} className="flex items-center gap-4 py-2" data-testid={`amenity-item-${amenity.id}`}>
+                          <IconComponent className="h-6 w-6 text-foreground flex-shrink-0" />
+                          <span className="text-foreground">{amenity.name}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  {propertyAmenities.length > 8 && (
+                    <Dialog open={amenitiesDialogOpen} onOpenChange={setAmenitiesDialogOpen}>
+                      <DialogTrigger asChild>
+                        <Button 
+                          variant="outline" 
+                          className="mt-6"
+                          data-testid="button-show-all-amenities"
+                        >
+                          Show all {propertyAmenities.length} amenities
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+                        <DialogHeader>
+                          <DialogTitle>What this place offers</DialogTitle>
+                          <DialogDescription>
+                            All amenities available at this property
+                          </DialogDescription>
+                        </DialogHeader>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-y-4 gap-x-8 mt-4">
+                          {propertyAmenities.map((amenity) => {
+                            const IconComponent = getAmenityIcon(amenity.icon);
+                            return (
+                              <div key={amenity.id} className="flex items-center gap-4 py-2">
+                                <IconComponent className="h-6 w-6 text-foreground flex-shrink-0" />
+                                <span className="text-foreground">{amenity.name}</span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </DialogContent>
+                    </Dialog>
+                  )}
+                </>
               ) : (
                 <div className="text-muted-foreground">
                   No amenities listed for this property
