@@ -66,7 +66,7 @@ export default function Home() {
       </div>
 
       {/* Hero Section with ZERO Commission Focus */}
-      <div className="relative h-[600px] flex items-center justify-center mb-8">
+      <div className="relative h-[480px] flex items-center justify-center mb-4">
         <div 
           className="absolute inset-0 bg-cover bg-center"
           style={{ backgroundImage: `url(${heroImage})` }}
@@ -76,29 +76,29 @@ export default function Home() {
         
         <div className="relative z-10 container px-4 md:px-6 text-center">
           {/* Search Bar - Top Priority */}
-          <div className="flex justify-center mb-4">
+          <div className="flex justify-center mb-3">
             <SearchBar onSearch={handleSearch} compact={true} showDates={false} showGuests={false} />
           </div>
 
           {/* ZERO Commission Badge */}
-          <div className="mb-3 flex justify-center">
-            <Badge className="bg-emerald-500 hover:bg-emerald-600 text-white px-6 py-2 text-sm font-bold border-2 border-white/20">
+          <div className="mb-2 flex justify-center">
+            <Badge className="bg-emerald-500 hover:bg-emerald-600 text-white px-6 py-1.5 text-sm font-bold border-2 border-white/20">
               ZERO COMMISSION PLATFORM
             </Badge>
           </div>
 
-          <h1 className="text-5xl md:text-6xl font-bold text-white mb-2 leading-tight">
+          <h1 className="text-4xl md:text-5xl font-bold text-white mb-1 leading-tight">
             Connect Directly with Hoteliers
           </h1>
-          <p className="text-xl md:text-2xl text-white/95 mb-2 font-semibold">
+          <p className="text-lg md:text-xl text-white/95 mb-1 font-semibold">
             Book at True Prices • No Middleman • No Commission
           </p>
-          <p className="text-base md:text-lg text-white/80 mb-5 max-w-2xl mx-auto">
+          <p className="text-sm md:text-base text-white/80 mb-3 max-w-2xl mx-auto">
             Deal directly with property owners and save up to 20%. At ZECOHO, you pay exactly what the hotelier charges — nothing more!
           </p>
 
           {/* Trust Indicators */}
-          <div className="flex flex-wrap items-center justify-center gap-6 text-white/90 text-sm">
+          <div className="flex flex-wrap items-center justify-center gap-4 text-white/90 text-sm">
             <div className="flex items-center gap-2">
               <Handshake className="h-4 w-4 text-emerald-400" />
               <span>Direct Contact with Hoteliers</span>
