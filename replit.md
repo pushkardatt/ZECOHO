@@ -38,6 +38,7 @@ The application uses **PostgreSQL** via Neon's serverless driver. **Drizzle ORM*
 -   **Categorized Property Images**: Properties support categorized image uploads with 6 categories (Exterior, Reception, Rooms, Bathrooms, Amenities, Food & Dining). Each category includes helpful photography tips and supports captions. Images are stored as JSONB in the `categorizedImages` column. The `PropertyImageUploader` component provides a tabbed interface for organized uploads.
 -   **KYC Document Uploads**: KYC applications support 5 document categories: Property Ownership Proof, Owner Identity Proof, Business License, NOC, and Safety Certificates with proper validation. Documents are stored using permanent access paths (`/objects/uploads/{uuid}`) instead of temporary signed URLs. ACL policies are automatically set on uploaded documents with HMAC-signed tokens (1-hour expiry) that tie uploads to specific users, preventing unauthorized ownership claims. Document owners can access their files, and admins can access all documents for KYC verification purposes.
 -   **Destinations Feature**: Curated 65 Indian destinations across all states with autocomplete search, 56+ properties covering major cities, tourist spots, hill stations, heritage sites, and adventure destinations.
+-   **Google Places City Search**: Comprehensive Indian city search powered by Google Maps Places API. The CitySearchInput component uses Places Autocomplete with types: ["(cities)"] and India restriction, enabling search for any Indian city including small towns like Dharchulla and Munsiyari. Home page SearchBar combines database destinations with Google Places results for complete coverage. City selection auto-populates state (administrative_area_level_1) and district (administrative_area_level_2) fields.
 
 ## External Dependencies
 
@@ -45,6 +46,7 @@ The application uses **PostgreSQL** via Neon's serverless driver. **Drizzle ORM*
     -   Replit Auth (OpenID Connect provider)
     -   Neon Database (Serverless PostgreSQL)
     -   Google Fonts CDN
+    -   Google Maps Places API (city search and autocomplete)
 -   **NPM Packages**:
     -   `@radix-ui/*` (UI primitives)
     -   `@tanstack/react-query` (Server state management)
