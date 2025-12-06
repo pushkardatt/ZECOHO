@@ -38,7 +38,6 @@ export const propertyTypeEnum = pgEnum("property_type", [
   "lodge",
   "resort",
   "apartment",
-  "cabin",
   "cottage",
 ]);
 

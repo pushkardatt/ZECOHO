@@ -7,7 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
-import { Home as HomeIcon, MapPin, Calendar, Check, Shield, TrendingDown, Sparkles, Award, Handshake, Users } from "lucide-react";
+import { Home as HomeIcon, MapPin, Calendar, Check, Shield, TrendingDown, Sparkles, Award, Handshake, Users, Hotel, Building, Waves, Mountain, TreePine } from "lucide-react";
 import type { Property, Destination } from "@shared/schema";
 import heroImage from "@assets/generated_images/luxury_villa_hero_image.png";
 
@@ -38,6 +38,15 @@ export default function Home() {
     if (params.guests) searchParams.set("guests", params.guests.toString());
     setLocation(`/search?${searchParams.toString()}`);
   };
+
+  const categories = [
+    { icon: Hotel, label: "Hotels", type: "hotel" },
+    { icon: HomeIcon, label: "Villas", type: "villa" },
+    { icon: Building, label: "Apartments", type: "apartment" },
+    { icon: Waves, label: "Resorts", type: "resort" },
+    { icon: Mountain, label: "Hostels", type: "hostel" },
+    { icon: TreePine, label: "Lodges", type: "lodge" },
+  ];
 
   const featuredProperties = properties.filter(p => p.status === "published").slice(0, 8);
 
@@ -123,6 +132,28 @@ export default function Home() {
           >
             List Your Property
           </Button>
+        </div>
+      </div>
+
+      {/* Explore by Category Section */}
+      <div className="py-12 px-4 md:px-6 bg-background">
+        <div className="container mx-auto">
+          <h2 className="text-3xl font-semibold mb-8">Explore by category</h2>
+          <div className="grid grid-cols-3 md:grid-cols-6 gap-4">
+            {categories.map((category) => (
+              <Card 
+                key={category.type}
+                className="cursor-pointer hover-elevate transition-all"
+                onClick={() => setLocation(`/search?type=${category.type}`)}
+                data-testid={`category-${category.type}`}
+              >
+                <CardContent className="flex flex-col items-center justify-center p-6">
+                  <category.icon className="h-8 w-8 mb-3 text-primary" />
+                  <span className="text-sm font-medium text-center">{category.label}</span>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
         </div>
       </div>
 

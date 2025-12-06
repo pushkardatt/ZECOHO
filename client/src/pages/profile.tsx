@@ -151,9 +151,9 @@ export default function Profile() {
     { value: "hotel", label: "Hotels" },
     { value: "villa", label: "Villas" },
     { value: "apartment", label: "Apartments" },
-    { value: "cabin", label: "Cabins" },
     { value: "resort", label: "Resorts" },
     { value: "hostel", label: "Hostels" },
+    { value: "lodge", label: "Lodges" },
   ];
 
   const togglePropertyType = (type: string) => {

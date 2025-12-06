@@ -457,9 +457,9 @@ export default function ListProperty() {
                         <SelectItem value="hotel">Hotel</SelectItem>
                         <SelectItem value="villa">Villa</SelectItem>
                         <SelectItem value="apartment">Apartment</SelectItem>
-                        <SelectItem value="cabin">Cabin</SelectItem>
                         <SelectItem value="resort">Resort</SelectItem>
                         <SelectItem value="hostel">Hostel</SelectItem>
+                        <SelectItem value="lodge">Lodge</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>

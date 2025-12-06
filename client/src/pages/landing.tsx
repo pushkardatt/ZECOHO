@@ -20,9 +20,9 @@ export default function Landing() {
   const categories = [
     { icon: Hotel, label: "Hotels", type: "hotel" },
     { icon: HomeIcon, label: "Villas", type: "villa" },
-    { icon: Mountain, label: "Cabins", type: "cabin" },
     { icon: Building, label: "Apartments", type: "apartment" },
     { icon: Waves, label: "Resorts", type: "resort" },
+    { icon: Mountain, label: "Hostels", type: "hostel" },
     { icon: TreePine, label: "Lodges", type: "lodge" },
   ];
 

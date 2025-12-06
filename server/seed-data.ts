@@ -180,9 +180,9 @@ async function seedData() {
         amenityIds: [amenityMap["Wifi"], amenityMap["Kitchen"], amenityMap["Heating"], amenityMap["Washer"], amenityMap["TV"]],
       },
       {
-        title: "Beachfront Cabin in Malibu",
-        description: "Wake up to ocean views in this cozy beachfront cabin. Direct beach access, outdoor deck perfect for sunset watching, fully equipped kitchen. Ideal for couples or small families. Surfboards available. Close to Malibu Pier and celebrity restaurants.",
-        propertyType: "cabin",
+        title: "Beachfront Hostel in Malibu",
+        description: "Wake up to ocean views in this cozy beachfront hostel. Direct beach access, outdoor deck perfect for sunset watching, fully equipped kitchen. Ideal for couples or small families. Surfboards available. Close to Malibu Pier and celebrity restaurants.",
+        propertyType: "hostel",
         destination: "Malibu, California",
         pricePerNight: "28480",
         maxGuests: 4,
@@ -210,7 +210,7 @@ async function seedData() {
       {
         title: "Swiss Alpine Chalet",
         description: "Traditional wooden chalet with breathtaking mountain views in Zermatt. Ski-in/ski-out access, wood-burning fireplace, sauna. Sleeps up to 8 guests across 4 bedrooms. Perfect for winter ski trips or summer hiking adventures. Minutes from Matterhorn viewpoints.",
-        propertyType: "cabin",
+        propertyType: "lodge",
         destination: "Zermatt, Switzerland",
         pricePerNight: "40050",
         maxGuests: 8,
