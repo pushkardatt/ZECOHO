@@ -59,7 +59,7 @@ export default function Home() {
         <div className="container mx-auto flex flex-col md:flex-row items-center justify-center gap-2 text-center">
           <Sparkles className="h-5 w-5 animate-pulse" />
           <p className="font-bold text-base md:text-lg">
-            Connect Directly with Hoteliers - 100% ZERO Commission - Save More on Every Booking!
+            Connect Directly With Property Owners - 100% ZERO Commission - Save More on Every Booking!
           </p>
           <Sparkles className="h-5 w-5 animate-pulse" />
         </div>
@@ -81,20 +81,20 @@ export default function Home() {
           </div>
 
           <h1 className="text-4xl md:text-5xl font-bold text-white mb-1 leading-tight">
-            Connect Directly with Hoteliers
+            Connect Directly With Property Owners
           </h1>
           <p className="text-lg md:text-xl text-white/95 mb-1 font-semibold">
             Book at True Prices • No Middleman • No Commission
           </p>
           <p className="text-sm md:text-base text-white/80 mb-3 max-w-2xl mx-auto">
-            Deal directly with property owners and save up to 20%. At ZECOHO, you pay exactly what the hotelier charges — nothing more!
+            Deal directly with property owners and save up to 20%. At ZECOHO, you pay exactly what the property owner charges — nothing more!
           </p>
 
           {/* Trust Indicators */}
           <div className="flex flex-wrap items-center justify-center gap-4 text-white/90 text-sm">
             <div className="flex items-center gap-2">
               <Handshake className="h-4 w-4 text-emerald-400" />
-              <span>Direct Contact with Hoteliers</span>
+              <span>Direct Contact With Property Owners</span>
             </div>
             <div className="flex items-center gap-2">
               <Check className="h-4 w-4 text-emerald-400" />
@@ -158,7 +158,7 @@ export default function Home() {
           <div className="text-center mb-12">
             <h2 className="text-3xl md:text-4xl font-bold mb-3">Why Choose ZECOHO?</h2>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              Connect directly with hoteliers. Experience the difference of commission-free booking. Your journey, our passion.
+              Connect Directly With Property Owners. Experience the difference of commission-free booking. Your journey, our passion.
             </p>
           </div>
 
@@ -170,7 +170,7 @@ export default function Home() {
                   <Handshake className="h-8 w-8 text-emerald-600 dark:text-emerald-400" />
                 </div>
               </div>
-              <h3 className="text-xl font-semibold mb-3">Direct Connection to Hoteliers</h3>
+              <h3 className="text-xl font-semibold mb-3">Direct Connection to Property Owners</h3>
               <p className="text-muted-foreground">
                 No middleman, no markup. Connect directly with property owners and build genuine relationships. Book at the source!
               </p>

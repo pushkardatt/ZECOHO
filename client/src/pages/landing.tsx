@@ -64,7 +64,7 @@ export default function Landing() {
             Book Direct. Pay Less. ZERO Commission.
           </h1>
           <p className="text-xl md:text-2xl text-white/90 mb-5 max-w-2xl mx-auto">
-            Connect directly with hoteliers — No middleman, no markup, no hidden fees.
+            Connect Directly With Property Owners — No middleman, no markup, no hidden fees.
           </p>
           
           {/* Login button above search */}
@@ -128,7 +128,7 @@ export default function Landing() {
               </div>
               <h3 className="text-xl font-semibold mb-2">ZERO Commission</h3>
               <p className="text-muted-foreground">
-                No platform fees, no booking charges. Pay only what the hotelier charges — nothing more!
+                No platform fees, no booking charges. Pay only what the property owner charges — nothing more!
               </p>
             </div>
             
@@ -159,7 +159,7 @@ export default function Landing() {
       <div className="container px-4 md:px-6 py-16 text-center">
         <h3 className="text-3xl font-bold mb-4">Start Saving Today</h3>
         <p className="text-lg text-muted-foreground mb-8 max-w-2xl mx-auto">
-          Join thousands of smart travelers booking directly with hoteliers and saving on every stay
+          Join thousands of smart travelers booking directly with property owners and saving on every stay
         </p>
         <Button size="lg" asChild data-testid="button-cta-login">
           <a href="/api/login">Start Booking at ZERO Commission</a>
