@@ -224,7 +224,7 @@ export function SearchBar({
           <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground z-10" />
           <Input
             type="text"
-            placeholder="Where are you going?"
+            placeholder="Find your stay now"
             value={destination}
             onChange={(e) => {
               setDestination(e.target.value);
@@ -279,7 +279,7 @@ export function SearchBar({
             <MapPin className="absolute left-0 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <input
               type="text"
-              placeholder="Search any city in India..."
+              placeholder="Find your stay now"
               value={destination}
               onChange={(e) => {
                 setDestination(e.target.value);
