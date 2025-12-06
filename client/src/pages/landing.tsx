@@ -46,6 +46,16 @@ export default function Landing() {
               </div>
             </div>
           </Link>
+          <Button 
+            size="default"
+            variant="outline" 
+            className="bg-white/10 backdrop-blur-md border-white/20 text-white hover:bg-white/20"
+            asChild
+          >
+            <a href="/api/login" data-testid="button-login-hero">
+              Login / Sign Up
+            </a>
+          </Button>
         </div>
       </header>
 
@@ -66,20 +76,6 @@ export default function Landing() {
           <p className="text-xl md:text-2xl text-white/90 mb-5 max-w-2xl mx-auto">
             Connect Directly With Property Owners — No middleman, no hidden fees.
           </p>
-          
-          {/* Login button above search */}
-          <div className="flex justify-center mb-4">
-            <Button 
-              size="lg"
-              variant="outline" 
-              className="bg-white/10 backdrop-blur-md border-white/20 text-white hover:bg-white/20"
-              asChild
-            >
-              <a href="/api/login" data-testid="button-login-hero">
-                Login / Sign Up
-              </a>
-            </Button>
-          </div>
           
           <div className="flex justify-center">
             <SearchBar onSearch={handleSearch} compact={true} showDates={false} showGuests={false} />
