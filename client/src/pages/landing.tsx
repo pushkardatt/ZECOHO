@@ -3,7 +3,7 @@ import { SearchBar } from "@/components/SearchBar";
 import { Card, CardContent } from "@/components/ui/card";
 import { Building, Home as HomeIcon, Hotel, Mountain, Waves, TreePine, Wheat, Heart } from "lucide-react";
 import { useLocation, Link } from "wouter";
-import heroImage from "@assets/generated_images/split_guest_and_hotelier_image.png";
+import heroImage from "@assets/generated_images/mountain_resort_balcony_view.png";
 
 export default function Landing() {
   const [, setLocation] = useLocation();
