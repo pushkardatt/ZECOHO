@@ -9,7 +9,7 @@ import { useLocation, Link } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { Home as HomeIcon, MapPin, Calendar, Check, Shield, TrendingDown, Sparkles, Award, Handshake, Users, Hotel, Building, Waves, Mountain, TreePine, Wheat, Heart } from "lucide-react";
 import type { Property, Destination } from "@shared/schema";
-import heroImage from "@assets/generated_images/mountain_resort_balcony_view.png";
+import heroImage from "@assets/generated_images/luxury_villa_hero_image.png";
 
 export default function Home() {
   const [, setLocation] = useLocation();
