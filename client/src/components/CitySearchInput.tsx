@@ -157,7 +157,10 @@ export function CitySearchInput({
               if (types.includes("administrative_area_level_1")) {
                 state = component.long_name;
               }
-              if (types.includes("administrative_area_level_3")) {
+              if (types.includes("administrative_area_level_2") && !district) {
+                district = component.long_name;
+              }
+              if (types.includes("administrative_area_level_3") && !district) {
                 district = component.long_name;
               }
               if (types.includes("locality")) {
