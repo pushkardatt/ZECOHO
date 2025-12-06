@@ -46,16 +46,6 @@ export default function Landing() {
               </div>
             </div>
           </Link>
-          <Button 
-            size="sm"
-            variant="outline" 
-            className="bg-white/10 backdrop-blur-md border-white/20 text-white hover:bg-white/20"
-            asChild
-          >
-            <a href="/api/login" data-testid="button-login-top">
-              Login
-            </a>
-          </Button>
         </div>
       </header>
 
@@ -76,6 +66,20 @@ export default function Landing() {
           <p className="text-xl md:text-2xl text-white/90 mb-5 max-w-2xl mx-auto">
             Connect directly with hoteliers — No middleman, no markup, no hidden fees.
           </p>
+          
+          {/* Login button above search */}
+          <div className="flex justify-center mb-4">
+            <Button 
+              size="lg"
+              variant="outline" 
+              className="bg-white/10 backdrop-blur-md border-white/20 text-white hover:bg-white/20"
+              asChild
+            >
+              <a href="/api/login" data-testid="button-login-hero">
+                Login / Sign Up
+              </a>
+            </Button>
+          </div>
           
           <div className="flex justify-center mb-5">
             <SearchBar onSearch={handleSearch} compact={true} showDates={false} showGuests={false} />
