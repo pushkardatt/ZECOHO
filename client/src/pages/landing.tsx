@@ -68,20 +68,11 @@ export default function Landing() {
           <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/30 to-black/50" />
         </div>
         
-        <div className="relative z-10 container px-4 md:px-6 text-center pt-12">
+        <div className="relative z-10 container px-4 md:px-6 text-center pt-16">
           
-          <div className="mb-3" data-testid="brand-logo">
-            <h1 className="text-6xl md:text-7xl font-extrabold text-white tracking-tight mb-1">
-              ZECOHO
-            </h1>
-            <p className="text-lg md:text-xl text-white/80 font-light tracking-wide">
-              Your Journey, Our Passion
-            </p>
-          </div>
-          
-          <h2 className="text-4xl md:text-5xl font-bold text-white mb-2" data-testid="text-hero-title">
+          <h1 className="text-4xl md:text-5xl font-bold text-white mb-2" data-testid="text-hero-title">
             Book Direct. Pay Less. ZERO Commission.
-          </h2>
+          </h1>
           <p className="text-xl md:text-2xl text-white/90 mb-5 max-w-2xl mx-auto">
             Connect directly with hoteliers — No middleman, no markup, no hidden fees.
           </p>
