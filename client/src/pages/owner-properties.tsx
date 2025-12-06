@@ -3,6 +3,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -14,10 +16,18 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Edit, Eye, MapPin, Trash2, AlertCircle } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Edit, Eye, MapPin, Trash2, AlertCircle, IndianRupee } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Link } from "wouter";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -26,6 +36,9 @@ import type { Property } from "@shared/schema";
 export default function OwnerProperties() {
   const { toast } = useToast();
   const { user, isAuthenticated, isLoading: authLoading } = useAuth();
+  const [priceDialogOpen, setPriceDialogOpen] = useState(false);
+  const [editingProperty, setEditingProperty] = useState<Property | null>(null);
+  const [newPrice, setNewPrice] = useState("");
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -64,6 +77,49 @@ export default function OwnerProperties() {
       });
     },
   });
+
+  const updatePriceMutation = useMutation({
+    mutationFn: async ({ propertyId, price }: { propertyId: string; price: number }) => {
+      await apiRequest("PATCH", `/api/properties/${propertyId}/price`, { pricePerNight: price });
+    },
+    onSuccess: () => {
+      toast({
+        title: "Price Updated",
+        description: "Property price has been updated successfully.",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/owner/properties"] });
+      setPriceDialogOpen(false);
+      setEditingProperty(null);
+      setNewPrice("");
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update price",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const openPriceDialog = (property: Property) => {
+    setEditingProperty(property);
+    setNewPrice(String(property.pricePerNight));
+    setPriceDialogOpen(true);
+  };
+
+  const handlePriceUpdate = () => {
+    if (!editingProperty || !newPrice) return;
+    const price = Number(newPrice);
+    if (isNaN(price) || price <= 0) {
+      toast({
+        title: "Invalid Price",
+        description: "Please enter a valid price greater than 0",
+        variant: "destructive",
+      });
+      return;
+    }
+    updatePriceMutation.mutate({ propertyId: editingProperty.id, price });
+  };
 
   // Show loading state while auth is being verified
   if (authLoading) {
@@ -159,11 +215,22 @@ export default function OwnerProperties() {
                       </Alert>
                     )}
 
-                    <div className="flex items-baseline gap-1 mb-4">
-                      <span className="text-xl font-semibold">
-                        ₹{Number(property.pricePerNight).toLocaleString('en-IN')}
-                      </span>
-                      <span className="text-sm text-muted-foreground">/ night</span>
+                    <div className="flex items-center gap-2 mb-4">
+                      <div className="flex items-baseline gap-1">
+                        <span className="text-xl font-semibold">
+                          ₹{Number(property.pricePerNight).toLocaleString('en-IN')}
+                        </span>
+                        <span className="text-sm text-muted-foreground">/ night</span>
+                      </div>
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="h-7 w-7"
+                        onClick={() => openPriceDialog(property)}
+                        data-testid={`button-edit-price-${property.id}`}
+                      >
+                        <IndianRupee className="h-4 w-4" />
+                      </Button>
                     </div>
                     <div className="flex gap-2">
                       <Button asChild variant="outline" size="icon" data-testid={`button-view-${property.id}`}>
@@ -225,6 +292,50 @@ export default function OwnerProperties() {
           </div>
         )}
       </div>
+
+      {/* Price Edit Dialog */}
+      <Dialog open={priceDialogOpen} onOpenChange={setPriceDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Update Price</DialogTitle>
+            <DialogDescription>
+              Change the price per night for "{editingProperty?.title}"
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <Label htmlFor="price">Price per night (₹)</Label>
+            <div className="relative mt-2">
+              <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                id="price"
+                type="number"
+                value={newPrice}
+                onChange={(e) => setNewPrice(e.target.value)}
+                className="pl-10"
+                placeholder="Enter new price"
+                min="1"
+                data-testid="input-new-price"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => setPriceDialogOpen(false)}
+              data-testid="button-cancel-price"
+            >
+              Cancel
+            </Button>
+            <Button 
+              onClick={handlePriceUpdate}
+              disabled={updatePriceMutation.isPending}
+              data-testid="button-save-price"
+            >
+              {updatePriceMutation.isPending ? "Saving..." : "Save Price"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

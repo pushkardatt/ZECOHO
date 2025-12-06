@@ -753,6 +753,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Update property price (owner only)
+  app.patch("/api/properties/:id/price", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || !userHasRole(user, "owner")) {
+        return res.status(403).json({ message: "Only owners can update property price" });
+      }
+
+      const property = await storage.getProperty(req.params.id);
+      
+      if (!property) {
+        return res.status(404).json({ message: "Property not found" });
+      }
+      
+      if (property.ownerId !== userId) {
+        return res.status(403).json({ message: "Not authorized to update this property" });
+      }
+
+      const { pricePerNight } = req.body;
+      
+      if (!pricePerNight || isNaN(Number(pricePerNight)) || Number(pricePerNight) <= 0) {
+        return res.status(400).json({ message: "Valid price is required" });
+      }
+
+      const updatedProperty = await storage.updateProperty(req.params.id, {
+        pricePerNight: String(pricePerNight),
+      });
+      
+      res.json(updatedProperty);
+    } catch (error) {
+      console.error("Error updating property price:", error);
+      res.status(500).json({ message: "Failed to update property price" });
+    }
+  });
+
   // Owner properties route
   app.get("/api/owner/properties", isAuthenticated, async (req: any, res) => {
     try {
