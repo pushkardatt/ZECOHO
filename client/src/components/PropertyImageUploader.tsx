@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -19,7 +19,8 @@ import {
   Utensils,
   Info,
   Camera,
-  Lightbulb
+  Lightbulb,
+  Plus
 } from "lucide-react";
 import type { PropertyImageCategory, CategorizedImage, CategorizedPropertyImages } from "@shared/schema";
 
@@ -146,6 +147,17 @@ export function PropertyImageUploader({
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState<PropertyImageCategory>("exterior");
   const [editingCaption, setEditingCaption] = useState<string | null>(null);
+  const [uploadingCategory, setUploadingCategory] = useState<PropertyImageCategory | null>(null);
+  
+  // Refs for quick upload file inputs
+  const fileInputRefs = useRef<Record<PropertyImageCategory, HTMLInputElement | null>>({
+    exterior: null,
+    reception: null,
+    room: null,
+    bathroom: null,
+    amenities: null,
+    food: null,
+  });
 
   const handleGetUploadParameters = async () => {
     const response = await apiRequest("POST", "/api/objects/upload", {});
@@ -221,8 +233,124 @@ export function PropertyImageUploader({
     return value[category]?.length || 0;
   };
 
+  const handleQuickUploadClick = (category: PropertyImageCategory) => {
+    fileInputRefs.current[category]?.click();
+  };
+
+  const handleQuickFileChange = async (category: PropertyImageCategory, event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (!files || files.length === 0) return;
+
+    const maxFileSize = 5242880; // 5MB
+    const fileArray = Array.from(files).slice(0, 10);
+    const validFiles = fileArray.filter(file => {
+      if (file.size > maxFileSize) {
+        toast({
+          title: "File too large",
+          description: `${file.name} exceeds 5MB limit`,
+          variant: "destructive",
+        });
+        return false;
+      }
+      return true;
+    });
+
+    if (validFiles.length === 0) return;
+
+    setUploadingCategory(category);
+    const successfulUploads: Array<{ accessPath: string }> = [];
+
+    for (const file of validFiles) {
+      try {
+        const { url, accessPath, aclToken } = await handleGetUploadParameters();
+        
+        await new Promise((resolve, reject) => {
+          const xhr = new XMLHttpRequest();
+          xhr.onload = () => {
+            if (xhr.status === 200) resolve(null);
+            else reject(new Error(`Upload failed with status ${xhr.status}`));
+          };
+          xhr.onerror = () => reject(new Error("Upload failed"));
+          xhr.open("PUT", url);
+          xhr.send(file);
+        });
+
+        await apiRequest("POST", "/api/objects/set-acl", { accessPath, aclToken });
+        successfulUploads.push({ accessPath });
+      } catch (error) {
+        toast({
+          title: "Error",
+          description: `Failed to upload ${file.name}`,
+          variant: "destructive",
+        });
+      }
+    }
+
+    if (successfulUploads.length > 0) {
+      handleImageUpload(category, { successful: successfulUploads });
+    }
+
+    setUploadingCategory(null);
+    if (event.target) {
+      event.target.value = "";
+    }
+  };
+
   return (
     <div className="space-y-6">
+      {/* Quick Upload Grid */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-lg flex items-center gap-2">
+            <Upload className="h-5 w-5" />
+            Quick Upload - Click a category to upload photos
+          </CardTitle>
+          <CardDescription>
+            Select a category below to directly upload images
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+            {IMAGE_CATEGORIES.map((category) => {
+              const Icon = category.icon;
+              const count = getCategoryCount(category.id);
+              const isUploading = uploadingCategory === category.id;
+              return (
+                <div key={category.id} className="relative">
+                  <input
+                    ref={(el) => { fileInputRefs.current[category.id] = el; }}
+                    type="file"
+                    multiple
+                    accept=".jpeg,.jpg,.png,.webp,image/*"
+                    onChange={(e) => handleQuickFileChange(category.id, e)}
+                    className="hidden"
+                    data-testid={`input-quick-upload-${category.id}`}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => handleQuickUploadClick(category.id)}
+                    disabled={isUploading}
+                    className="w-full p-4 rounded-lg border-2 border-dashed border-muted-foreground/25 hover:border-primary hover:bg-primary/5 transition-all flex flex-col items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                    data-testid={`button-quick-upload-${category.id}`}
+                  >
+                    <div className="relative">
+                      <Icon className="h-8 w-8 text-muted-foreground" />
+                      <div className="absolute -bottom-1 -right-1 bg-primary text-primary-foreground rounded-full p-0.5">
+                        <Plus className="h-3 w-3" />
+                      </div>
+                    </div>
+                    <span className="text-sm font-medium">{category.label}</span>
+                    <Badge variant={count > 0 ? "default" : "outline"} className="text-xs">
+                      {isUploading ? "Uploading..." : `${count} photo${count !== 1 ? 's' : ''}`}
+                    </Badge>
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        </CardContent>
+      </Card>
+
       <Card className="bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-800">
         <CardHeader className="pb-3">
           <div className="flex items-center gap-2">
