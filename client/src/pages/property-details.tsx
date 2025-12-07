@@ -39,6 +39,7 @@ import {
   Bath,
   Check,
   MessageCircle,
+  Phone,
   ThumbsUp,
   Wifi,
   Car,
@@ -1160,18 +1161,34 @@ export default function PropertyDetails() {
                   {bookingMutation.isPending ? "Processing..." : "Reserve"}
                 </Button>
                 
-                {user?.userRole === "guest" && (
-                  <Button
-                    className="w-full mt-3"
-                    variant="outline"
-                    size="lg"
-                    onClick={() => contactOwnerMutation.mutate()}
-                    disabled={contactOwnerMutation.isPending}
-                    data-testid="button-contact-owner"
-                  >
-                    <MessageCircle className="h-4 w-4 mr-2" />
-                    {contactOwnerMutation.isPending ? "Loading..." : "Contact Owner"}
-                  </Button>
+                {property.status === "published" && (
+                  <div className="flex flex-col gap-2 mt-3">
+                    {(property as any).ownerContact?.phone && (
+                      <Button
+                        className="w-full"
+                        variant="outline"
+                        size="lg"
+                        onClick={() => window.location.href = `tel:${(property as any).ownerContact.phone}`}
+                        data-testid="button-call-owner"
+                      >
+                        <Phone className="h-4 w-4 mr-2" />
+                        Call Owner
+                      </Button>
+                    )}
+                    {user?.userRole === "guest" && (
+                      <Button
+                        className="w-full"
+                        variant="outline"
+                        size="lg"
+                        onClick={() => contactOwnerMutation.mutate()}
+                        disabled={contactOwnerMutation.isPending}
+                        data-testid="button-contact-owner"
+                      >
+                        <MessageCircle className="h-4 w-4 mr-2" />
+                        {contactOwnerMutation.isPending ? "Loading..." : "Contact Owner"}
+                      </Button>
+                    )}
+                  </div>
                 )}
                 
                 <p className="text-sm text-center text-muted-foreground mt-4">
