@@ -44,7 +44,9 @@ async function getResendClient() {
 
 export async function sendOtpEmail(email: string, otp: string): Promise<boolean> {
   try {
+    console.log('Attempting to send OTP email to:', email);
     const { client, fromEmail } = await getResendClient();
+    console.log('Resend client obtained, using from email:', fromEmail);
     
     const { data, error } = await client.emails.send({
       from: fromEmail || 'ZECOHO <noreply@zecoho.com>',
@@ -92,14 +94,15 @@ export async function sendOtpEmail(email: string, otp: string): Promise<boolean>
     });
 
     if (error) {
-      console.error('Error sending OTP email:', error);
+      console.error('Resend API error sending OTP email:', JSON.stringify(error, null, 2));
       return false;
     }
 
     console.log('OTP email sent successfully:', data?.id);
     return true;
-  } catch (error) {
-    console.error('Failed to send OTP email:', error);
+  } catch (error: any) {
+    console.error('Failed to send OTP email - Exception:', error?.message || error);
+    console.error('Full error details:', JSON.stringify(error, null, 2));
     return false;
   }
 }
