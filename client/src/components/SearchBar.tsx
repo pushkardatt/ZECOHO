@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Search, MapPin, Calendar, Users, Loader2 } from "lucide-react";
+import { Search, MapPin, Calendar, Users, Loader2, Building2 } from "lucide-react";
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
@@ -12,6 +12,7 @@ interface GooglePlacePrediction {
     main_text: string;
     secondary_text: string;
   };
+  types?: string[];
 }
 
 interface SearchBarProps {
@@ -62,7 +63,8 @@ export function SearchBar({
   const [checkOut, setCheckOut] = useState(initialCheckOut);
   const [guests, setGuests] = useState(initialGuests);
   const [showSuggestions, setShowSuggestions] = useState(false);
-  const [googlePredictions, setGooglePredictions] = useState<GooglePlacePrediction[]>([]);
+  const [googleCityPredictions, setGoogleCityPredictions] = useState<GooglePlacePrediction[]>([]);
+  const [googleHotelPredictions, setGoogleHotelPredictions] = useState<GooglePlacePrediction[]>([]);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [googleMapsLoaded, setGoogleMapsLoaded] = useState(false);
   const suggestionsRef = useRef<HTMLDivElement>(null);
@@ -115,22 +117,33 @@ export function SearchBar({
 
   const fetchGooglePredictions = useCallback(async (query: string) => {
     if (!query || query.length < 2 || !autocompleteServiceRef.current) {
-      setGooglePredictions([]);
+      setGoogleCityPredictions([]);
+      setGoogleHotelPredictions([]);
       setIsGoogleLoading(false);
       return;
     }
 
     setIsGoogleLoading(true);
     try {
-      const results = await autocompleteServiceRef.current.getPlacePredictions({
-        input: query,
-        componentRestrictions: { country: "in" },
-        types: ["(cities)"],
-      });
-      setGooglePredictions(results.predictions || []);
+      // Fetch both city and hotel/lodging predictions in parallel
+      const [cityResults, hotelResults] = await Promise.all([
+        autocompleteServiceRef.current.getPlacePredictions({
+          input: query,
+          componentRestrictions: { country: "in" },
+          types: ["(cities)"],
+        }),
+        autocompleteServiceRef.current.getPlacePredictions({
+          input: query,
+          componentRestrictions: { country: "in" },
+          types: ["lodging"],
+        }),
+      ]);
+      setGoogleCityPredictions(cityResults.predictions || []);
+      setGoogleHotelPredictions(hotelResults.predictions || []);
     } catch (error) {
       console.error("Error fetching Google predictions:", error);
-      setGooglePredictions([]);
+      setGoogleCityPredictions([]);
+      setGoogleHotelPredictions([]);
     } finally {
       setIsGoogleLoading(false);
     }
@@ -140,7 +153,8 @@ export function SearchBar({
     if (debouncedDestination.length >= 2 && googleMapsLoaded) {
       fetchGooglePredictions(debouncedDestination);
     } else {
-      setGooglePredictions([]);
+      setGoogleCityPredictions([]);
+      setGoogleHotelPredictions([]);
     }
   }, [debouncedDestination, googleMapsLoaded, fetchGooglePredictions]);
 
@@ -174,17 +188,31 @@ export function SearchBar({
   const combinedDestinations = useMemo(() => {
     const dbNames = new Set(filteredDestinations.map((d: any) => d.name.toLowerCase()));
     
-    const googleCities = googlePredictions
+    // Add cities from Google Places (that aren't already in our database)
+    const googleCities = googleCityPredictions
       .filter(p => !dbNames.has(p.structured_formatting?.main_text?.toLowerCase() || p.description.split(",")[0].toLowerCase()))
       .map(p => ({
-        id: `google-${p.place_id}`,
+        id: `google-city-${p.place_id}`,
         name: p.structured_formatting?.main_text || p.description.split(",")[0],
         state: p.structured_formatting?.secondary_text?.split(",")[0] || "",
         isGoogle: true,
+        isHotel: false,
       }));
 
-    return [...filteredDestinations, ...googleCities];
-  }, [filteredDestinations, googlePredictions]);
+    // Add hotels/lodging from Google Places
+    const googleHotels = googleHotelPredictions
+      .slice(0, 5) // Limit to top 5 hotels
+      .map(p => ({
+        id: `google-hotel-${p.place_id}`,
+        name: p.structured_formatting?.main_text || p.description.split(",")[0],
+        state: p.structured_formatting?.secondary_text || "",
+        isGoogle: true,
+        isHotel: true,
+      }));
+
+    // Combine: database destinations first, then Google cities, then hotels
+    return [...filteredDestinations.map((d: any) => ({ ...d, isHotel: false })), ...googleCities, ...googleHotels];
+  }, [filteredDestinations, googleCityPredictions, googleHotelPredictions]);
 
   // Close suggestions when clicking outside
   useEffect(() => {
@@ -245,7 +273,7 @@ export function SearchBar({
             {(isLoading || isGoogleLoading) && (
               <div className="px-4 py-2 text-sm text-muted-foreground flex items-center gap-2">
                 <Loader2 className="h-4 w-4 animate-spin" />
-                Searching cities...
+                Searching destinations & hotels...
               </div>
             )}
             {combinedDestinations.map((dest: any) => (
@@ -255,12 +283,19 @@ export function SearchBar({
                 className="w-full text-left px-4 py-3 hover:bg-gray-100 dark:hover:bg-gray-700 text-sm transition-colors border-b border-gray-100 dark:border-gray-700 last:border-b-0 text-gray-900 dark:text-white"
                 data-testid={`suggestion-destination-compact-${dest.id}`}
               >
-                <MapPin className="inline h-4 w-4 mr-2 text-gray-500 dark:text-gray-400" />
+                {dest.isHotel ? (
+                  <Building2 className="inline h-4 w-4 mr-2 text-primary" />
+                ) : (
+                  <MapPin className="inline h-4 w-4 mr-2 text-gray-500 dark:text-gray-400" />
+                )}
                 <span className="font-medium">{dest.name}</span>
                 {dest.state && (
                   <span className="text-gray-500 dark:text-gray-400 ml-2 text-xs">
-                    {dest.state}{dest.isGoogle ? '' : `, ${dest.country || 'India'}`}
+                    {dest.state}{dest.isGoogle && !dest.isHotel ? '' : dest.isHotel ? '' : `, ${dest.country || 'India'}`}
                   </span>
+                )}
+                {dest.isHotel && (
+                  <span className="ml-2 text-xs text-primary font-medium">Hotel</span>
                 )}
               </button>
             ))}
@@ -358,7 +393,7 @@ export function SearchBar({
           {(isLoading || isGoogleLoading) && (
             <div className="px-4 py-2 text-sm text-muted-foreground flex items-center gap-2">
               <Loader2 className="h-4 w-4 animate-spin" />
-              Searching cities...
+              Searching destinations & hotels...
             </div>
           )}
           {combinedDestinations.map((dest: any) => (
@@ -368,12 +403,19 @@ export function SearchBar({
               className="w-full text-left px-4 py-3 hover:bg-gray-100 dark:hover:bg-gray-700 text-sm transition-colors border-b border-gray-100 dark:border-gray-700 last:border-b-0 text-gray-900 dark:text-white"
               data-testid={`suggestion-destination-${dest.id}`}
             >
-              <MapPin className="inline h-4 w-4 mr-2 text-gray-500 dark:text-gray-400" />
+              {dest.isHotel ? (
+                <Building2 className="inline h-4 w-4 mr-2 text-primary" />
+              ) : (
+                <MapPin className="inline h-4 w-4 mr-2 text-gray-500 dark:text-gray-400" />
+              )}
               <span className="font-medium">{dest.name}</span>
               {dest.state && (
                 <span className="text-gray-500 dark:text-gray-400 ml-2 text-xs">
-                  {dest.state}{dest.isGoogle ? '' : `, ${dest.country || 'India'}`}
+                  {dest.state}{dest.isGoogle && !dest.isHotel ? '' : dest.isHotel ? '' : `, ${dest.country || 'India'}`}
                 </span>
+              )}
+              {dest.isHotel && (
+                <span className="ml-2 text-xs text-primary font-medium">Hotel</span>
               )}
             </button>
           ))}
