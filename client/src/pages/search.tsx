@@ -136,7 +136,7 @@ export default function Search() {
       <div className="container px-4 md:px-6 py-6">
         <div className="flex gap-6">
           {/* Filters Sidebar */}
-          <aside className={`w-80 flex-shrink-0 space-y-4 ${showFilters ? "" : "hidden lg:block"}`}>
+          <aside className={`w-80 flex-shrink-0 space-y-4 sticky top-36 self-start max-h-[calc(100vh-10rem)] overflow-y-auto ${showFilters ? "" : "hidden lg:block"}`}>
             <Card>
               <CardHeader>
                 <CardTitle className="text-lg">Price range</CardTitle>
