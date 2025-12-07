@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { PropertyCard } from "@/components/PropertyCard";
 import { SearchBar } from "@/components/SearchBar";
+import { LocationPermissionDialog } from "@/components/LocationPermissionDialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -13,7 +14,7 @@ import heroImage from "@assets/generated_images/luxury_villa_hero_image.png";
 
 export default function Home() {
   const [, setLocation] = useLocation();
-  const { user } = useAuth();
+  const { user, isAuthenticated } = useAuth();
 
   const { data: properties = [], isLoading } = useQuery<Property[]>({
     queryKey: ["/api/properties"],
@@ -54,6 +55,9 @@ export default function Home() {
 
   return (
     <div className="min-h-screen">
+      {/* Location Permission Dialog - appears after login */}
+      <LocationPermissionDialog isAuthenticated={isAuthenticated} />
+      
       {/* ZERO Commission Banner - Top Priority */}
       <div className="bg-gradient-to-r from-emerald-600 via-emerald-500 to-teal-500 text-white py-3 px-4 md:px-6">
         <div className="container mx-auto flex flex-col md:flex-row items-center justify-center gap-2 text-center">
