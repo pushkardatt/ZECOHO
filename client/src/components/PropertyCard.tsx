@@ -1,21 +1,32 @@
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Heart, MapPin, Star, Users, Share2 } from "lucide-react";
+import { Heart, MapPin, Star, Users, Share2, Phone, MessageCircle } from "lucide-react";
 import type { Property } from "@shared/schema";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
+import { useMutation } from "@tanstack/react-query";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useAuth } from "@/hooks/useAuth";
+
+interface OwnerContact {
+  phone: string | null;
+  name: string | null;
+}
 
 interface PropertyCardProps {
   property: Property & {
     images?: string[];
     isWishlisted?: boolean;
+    ownerContact?: OwnerContact | null;
   };
   onWishlistToggle?: (propertyId: string) => void;
 }
 
 export function PropertyCard({ property, onWishlistToggle }: PropertyCardProps) {
   const { toast } = useToast();
+  const { isAuthenticated } = useAuth();
+  const [, setLocation] = useLocation();
   const mainImage = property.images?.[0] || "/placeholder-property.jpg";
 
   const handleShare = async (e: React.MouseEvent) => {
@@ -55,6 +66,60 @@ export function PropertyCard({ property, onWishlistToggle }: PropertyCardProps) 
       await copyToClipboard();
     }
   };
+
+  const chatMutation = useMutation({
+    mutationFn: async () => {
+      return await apiRequest("POST", "/api/conversations", { propertyId: property.id });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/conversations"] });
+      setLocation("/messages");
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to start conversation",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleChat = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (!isAuthenticated) {
+      toast({
+        title: "Login Required",
+        description: "Please log in to chat with the property owner",
+        variant: "destructive",
+      });
+      setTimeout(() => {
+        window.location.href = "/api/login";
+      }, 500);
+      return;
+    }
+    
+    chatMutation.mutate();
+  };
+
+  const handleCall = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (property.ownerContact?.phone) {
+      window.location.href = `tel:${property.ownerContact.phone}`;
+    } else {
+      toast({
+        title: "Phone not available",
+        description: "The property owner's phone number is not available",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const isPublished = property.status === "published";
+  const hasOwnerPhone = Boolean(property.ownerContact?.phone);
 
   return (
     <Link href={`/properties/${property.id}`}>
@@ -132,6 +197,35 @@ export function PropertyCard({ property, onWishlistToggle }: PropertyCardProps) 
               <span className="text-sm text-muted-foreground">/ night</span>
             </div>
           </div>
+          
+          {/* Call and Chat buttons for published properties */}
+          {isPublished && (
+            <div className="flex items-center gap-2 pt-2">
+              {hasOwnerPhone && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleCall}
+                  className="flex-1"
+                  data-testid={`button-call-${property.id}`}
+                >
+                  <Phone className="h-4 w-4 mr-1.5" />
+                  Call
+                </Button>
+              )}
+              <Button
+                variant="default"
+                size="sm"
+                onClick={handleChat}
+                disabled={chatMutation.isPending}
+                className="flex-1"
+                data-testid={`button-chat-${property.id}`}
+              >
+                <MessageCircle className="h-4 w-4 mr-1.5" />
+                {chatMutation.isPending ? "..." : "Chat"}
+              </Button>
+            </div>
+          )}
           
           {/* Share and Save buttons */}
           <div className="flex items-center justify-end gap-2 pt-2">

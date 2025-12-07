@@ -798,7 +798,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (minGuests) filters.minGuests = Number(minGuests);
       
       const properties = await storage.getProperties(filters);
-      res.json(properties);
+      
+      // For published properties, include owner contact info
+      const propertiesWithOwnerContact = await Promise.all(
+        properties.map(async (property) => {
+          if (property.status === "published") {
+            const owner = await storage.getUser(property.ownerId);
+            return {
+              ...property,
+              ownerContact: owner ? {
+                phone: owner.phone || null,
+                name: owner.firstName && owner.lastName 
+                  ? `${owner.firstName} ${owner.lastName}` 
+                  : owner.firstName || null,
+              } : null,
+            };
+          }
+          return property;
+        })
+      );
+      
+      res.json(propertiesWithOwnerContact);
     } catch (error) {
       console.error("Error fetching properties:", error);
       res.status(500).json({ message: "Failed to fetch properties" });
@@ -811,6 +831,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!property) {
         return res.status(404).json({ message: "Property not found" });
       }
+      
+      // For published properties, include owner contact info
+      if (property.status === "published") {
+        const owner = await storage.getUser(property.ownerId);
+        return res.json({
+          ...property,
+          ownerContact: owner ? {
+            phone: owner.phone || null,
+            name: owner.firstName && owner.lastName 
+              ? `${owner.firstName} ${owner.lastName}` 
+              : owner.firstName || null,
+          } : null,
+        });
+      }
+      
       res.json(property);
     } catch (error) {
       console.error("Error fetching property:", error);
