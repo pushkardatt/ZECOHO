@@ -98,8 +98,6 @@ export default function ListPropertyWizard() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const { user } = useAuth();
-  const [step, setStep] = useState(1);
-  const totalSteps = 5;
   
   // Check for existing KYC application
   const { data: existingKycApplication, isLoading: isLoadingKyc } = useQuery<KycApplication>({
@@ -110,6 +108,20 @@ export default function ListPropertyWizard() {
 
   // Determine if this is a KYC resubmission (rejected application)
   const isKycResubmission = existingKycApplication?.status === "rejected";
+  
+  // Determine if user has verified or pending KYC (skip KYC steps for both)
+  const isKycVerified = existingKycApplication?.status === "verified";
+  const isKycPending = existingKycApplication?.status === "pending";
+  const canSkipKycSteps = isKycVerified || isKycPending;
+  
+  // For verified/pending users, we skip steps 1 and 2 (KYC steps)
+  // Steps for verified/pending users: 3 (property info) -> 4 (photos) -> 5 (review)
+  // Steps for new/rejected users: 1 (personal) -> 2 (business/docs) -> 3 (property) -> 4 (photos) -> 5 (review)
+  const kycStepsCount = canSkipKycSteps ? 0 : 2;
+  const totalSteps = canSkipKycSteps ? 3 : 5;
+  const firstStep = canSkipKycSteps ? 3 : 1;
+  
+  const [step, setStep] = useState(firstStep);
   
   // Parse rejection details
   const rejectionDetails = useMemo(() => {
@@ -188,6 +200,17 @@ export default function ListPropertyWizard() {
   const { data: amenities = [] } = useQuery<Amenity[]>({
     queryKey: ["/api/amenities"],
   });
+
+  // Initialize step based on KYC status when data loads
+  const hasInitializedStep = useRef(false);
+  useEffect(() => {
+    if (!isLoadingKyc && !hasInitializedStep.current) {
+      hasInitializedStep.current = true;
+      if (canSkipKycSteps) {
+        setStep(3); // Start at property details for verified/pending users
+      }
+    }
+  }, [isLoadingKyc, canSkipKycSteps]);
 
   // Scroll to top when step changes
   useEffect(() => {

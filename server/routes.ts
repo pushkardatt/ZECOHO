@@ -257,16 +257,66 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Check if user already has a KYC application
       const existingKyc = await storage.getUserKycApplication(userId);
       const isResubmission = existingKyc && existingKyc.status === "rejected";
+      const isVerified = existingKyc && existingKyc.status === "verified";
+      const isPending = existingKyc && existingKyc.status === "pending";
       
-      // Block if user has a pending or verified KYC application
-      if (existingKyc && existingKyc.status !== "rejected") {
-        return res.status(400).json({ 
-          message: "You have already submitted a KYC application",
-          status: existingKyc.status 
-        });
+      // Validate property images
+      if (!property.images || !Array.isArray(property.images) || property.images.length === 0) {
+        return res.status(400).json({ message: "At least one property image is required" });
       }
       
-      // Validate mandatory KYC documents
+      let kycApplication = existingKyc;
+      let createdProperty;
+      
+      // If user has verified or pending KYC, skip KYC creation and just create the property
+      if (isVerified || isPending) {
+        try {
+          // Create property directly for verified users
+          const { amenityIds, ...propertyData } = property;
+          
+          createdProperty = await storage.createProperty({
+            title: propertyData.title,
+            description: propertyData.description,
+            propertyType: propertyData.propertyType,
+            destination: propertyData.destination,
+            address: propertyData.address || null,
+            latitude: propertyData.latitude ? String(propertyData.latitude) : null,
+            longitude: propertyData.longitude ? String(propertyData.longitude) : null,
+            images: propertyData.images || [],
+            categorizedImages: propertyData.categorizedImages || null,
+            videos: propertyData.videos || [],
+            pricePerNight: String(propertyData.pricePerNight),
+            maxGuests: propertyData.maxGuests || 2,
+            bedrooms: propertyData.bedrooms || 1,
+            beds: propertyData.beds || 1,
+            bathrooms: propertyData.bathrooms || 1,
+            policies: propertyData.policies || null,
+            ownerId: userId,
+            status: "pending", // New properties still need admin approval
+          });
+          
+          // Set amenities if provided
+          if (amenityIds && amenityIds.length > 0) {
+            await storage.setPropertyAmenities(createdProperty.id, amenityIds);
+          }
+          
+          const statusMessage = isVerified 
+            ? "Property submitted successfully! Your property is pending admin review."
+            : "Property submitted successfully! Both your KYC and new property are pending admin review.";
+          
+          return res.json({ 
+            message: statusMessage, 
+            kycApplicationId: existingKyc.id,
+            propertyId: createdProperty.id,
+            status: "pending",
+            kycSkipped: true
+          });
+        } catch (innerError) {
+          throw innerError;
+        }
+      }
+      
+      // For new users or rejected KYC resubmission - validate KYC documents
       const { propertyOwnershipDocs, identityProofDocs } = kyc;
       const missingDocs: string[] = [];
       
@@ -284,15 +334,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      // Validate property images
-      if (!property.images || !Array.isArray(property.images) || property.images.length === 0) {
-        return res.status(400).json({ message: "At least one property image is required" });
-      }
-      
       // Parse KYC data
       const kycData = insertKycApplicationSchema.parse(kyc);
-      let kycApplication;
-      let createdProperty;
       
       try {
         // Step 1: Create or update KYC application
@@ -344,7 +387,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       } catch (innerError) {
         // Rollback: If property creation fails after KYC was created, delete the KYC application
-        if (kycApplication && !createdProperty) {
+        if (kycApplication && !createdProperty && !isResubmission) {
           try {
             await storage.deleteKycApplication(kycApplication.id);
             // Also revert user's KYC status
@@ -662,11 +705,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const validatedData = insertPropertySchema.parse(req.body);
-      const { amenityIds, status, ...propertyData } = validatedData;
+      const { amenityIds, status, pricePerNight, latitude, longitude, ...propertyData } = validatedData;
       
       // Always force status to "pending" for new properties - prevent bypass
       const property = await storage.createProperty({
         ...propertyData,
+        pricePerNight: String(pricePerNight),
+        latitude: latitude ? String(latitude) : null,
+        longitude: longitude ? String(longitude) : null,
         ownerId: userId,
         status: "pending",
       });
@@ -707,9 +753,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Validate with partial schema
       const validatedData = insertPropertySchema.partial().parse(req.body);
-      const { amenityIds, ...propertyData } = validatedData;
+      const { amenityIds, pricePerNight, latitude, longitude, ...propertyData } = validatedData;
       
-      const updated = await storage.updateProperty(req.params.id, propertyData);
+      // Convert numeric fields to strings if provided
+      const updateData = {
+        ...propertyData,
+        ...(pricePerNight !== undefined && { pricePerNight: String(pricePerNight) }),
+        ...(latitude !== undefined && { latitude: latitude ? String(latitude) : null }),
+        ...(longitude !== undefined && { longitude: longitude ? String(longitude) : null }),
+      };
+      
+      const updated = await storage.updateProperty(req.params.id, updateData);
 
       // Update amenities if provided
       if (amenityIds !== undefined) {
@@ -779,7 +833,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Valid price is required" });
       }
 
-      const updateData: Partial<InsertProperty> = {
+      const updateData: Record<string, any> = {
         pricePerNight: String(pricePerNight),
       };
 
