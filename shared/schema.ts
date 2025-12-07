@@ -260,6 +260,8 @@ export const destinations = pgTable("destinations", {
   shortDescription: text("short_description").notNull(),
   detailedInsight: text("detailed_insight").notNull(),
   highlights: text("highlights").array().notNull().default(sql`ARRAY[]::text[]`),
+  famousFor: text("famous_for").array().notNull().default(sql`ARRAY[]::text[]`),
+  thingsToDo: text("things_to_do").array().notNull().default(sql`ARRAY[]::text[]`),
   imageUrl: text("image_url").notNull(),
   bestSeason: varchar("best_season", { length: 100 }),
   isFeatured: boolean("is_featured").notNull().default(false),
