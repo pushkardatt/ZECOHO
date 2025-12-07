@@ -35,10 +35,10 @@ async function getCredentials() {
 }
 
 async function getResendClient() {
-  const { apiKey } = await getCredentials();
+  const { apiKey, fromEmail } = await getCredentials();
   return {
     client: new Resend(apiKey),
-    fromEmail: connectionSettings.settings.from_email
+    fromEmail: fromEmail
   };
 }
 
