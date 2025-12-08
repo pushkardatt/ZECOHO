@@ -79,10 +79,7 @@ export default function Home() {
           <p className="text-lg md:text-xl text-white/95 mb-1 font-semibold">
             Book at True Prices • No Middleman • No Commission
           </p>
-          <p className="text-sm md:text-base text-white/80 mb-3 max-w-2xl mx-auto">
-            Deal directly with property owners and save up to 20%. At ZECOHO, you pay exactly what the property owner charges — nothing more!
-          </p>
-
+          
           {/* Trust Indicators */}
           <div className="flex flex-wrap items-center justify-center gap-4 text-white/90 text-sm">
             <div className="flex items-center gap-2">
