@@ -5,7 +5,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/select";
 import { insertUserPreferencesSchema } from "@shared/schema";
 import { z } from "zod";
+import { KeyRound, Eye, EyeOff, Check } from "lucide-react";
 
 const preferencesFormSchema = insertUserPreferencesSchema.extend({
   userId: z.string(),
@@ -29,10 +30,23 @@ const preferencesFormSchema = insertUserPreferencesSchema.extend({
 
 type PreferencesFormData = z.infer<typeof preferencesFormSchema>;
 
+const setPasswordSchema = z.object({
+  password: z.string().min(8, "Password must be at least 8 characters"),
+  confirmPassword: z.string().min(8, "Please confirm your password"),
+}).refine((data) => data.password === data.confirmPassword, {
+  message: "Passwords don't match",
+  path: ["confirmPassword"],
+});
+
+type SetPasswordFormData = z.infer<typeof setPasswordSchema>;
+
 export default function Profile() {
   const { toast } = useToast();
   const { user, isAuthenticated, isLoading: authLoading, isAdmin, isOwner } = useAuth();
   const [isEnablingMultiRole, setIsEnablingMultiRole] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [passwordSet, setPasswordSet] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -51,6 +65,56 @@ export default function Profile() {
     queryKey: ["/api/user/preferences"],
     enabled: user?.userRole === "guest",
   });
+
+  const { data: passwordStatus, isLoading: passwordStatusLoading } = useQuery<{ hasPassword: boolean; email: string }>({
+    queryKey: ["/api/auth/has-password"],
+    enabled: isAuthenticated && !!user,
+  });
+
+  const setPasswordForm = useForm<SetPasswordFormData>({
+    resolver: zodResolver(setPasswordSchema),
+    defaultValues: {
+      password: "",
+      confirmPassword: "",
+    },
+  });
+
+  const setPasswordMutation = useMutation({
+    mutationFn: async (data: SetPasswordFormData) => {
+      return await apiRequest("POST", "/api/auth/set-password", data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/has-password"] });
+      setPasswordSet(true);
+      setPasswordForm.reset();
+      toast({
+        title: "Password set successfully",
+        description: "You can now log in using your email and password.",
+      });
+    },
+    onError: (error: Error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: error.message || "Failed to set password",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const onSetPassword = (data: SetPasswordFormData) => {
+    setPasswordMutation.mutate(data);
+  };
 
   const {
     register,
@@ -252,6 +316,119 @@ export default function Profile() {
                 )}
               </CardContent>
             </Card>
+
+            {/* Set Password Section - Only show for OTP-only accounts */}
+            {!passwordStatusLoading && passwordStatus && !passwordStatus.hasPassword && !passwordSet && (
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center gap-2">
+                    <KeyRound className="h-5 w-5 text-muted-foreground" />
+                    <CardTitle>Set Password</CardTitle>
+                  </div>
+                  <CardDescription>
+                    You logged in with OTP. Set a password to also be able to log in with your email and password.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <form onSubmit={setPasswordForm.handleSubmit(onSetPassword)} className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="password">New Password</Label>
+                      <div className="relative">
+                        <Input
+                          id="password"
+                          type={showPassword ? "text" : "password"}
+                          placeholder="Enter your password"
+                          {...setPasswordForm.register("password")}
+                          data-testid="input-set-password"
+                        />
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
+                          onClick={() => setShowPassword(!showPassword)}
+                          data-testid="button-toggle-password-visibility"
+                        >
+                          {showPassword ? (
+                            <EyeOff className="h-4 w-4 text-muted-foreground" />
+                          ) : (
+                            <Eye className="h-4 w-4 text-muted-foreground" />
+                          )}
+                        </Button>
+                      </div>
+                      {setPasswordForm.formState.errors.password && (
+                        <p className="text-sm text-destructive">
+                          {setPasswordForm.formState.errors.password.message}
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="confirmPassword">Confirm Password</Label>
+                      <div className="relative">
+                        <Input
+                          id="confirmPassword"
+                          type={showConfirmPassword ? "text" : "password"}
+                          placeholder="Confirm your password"
+                          {...setPasswordForm.register("confirmPassword")}
+                          data-testid="input-confirm-password"
+                        />
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
+                          onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                          data-testid="button-toggle-confirm-password-visibility"
+                        >
+                          {showConfirmPassword ? (
+                            <EyeOff className="h-4 w-4 text-muted-foreground" />
+                          ) : (
+                            <Eye className="h-4 w-4 text-muted-foreground" />
+                          )}
+                        </Button>
+                      </div>
+                      {setPasswordForm.formState.errors.confirmPassword && (
+                        <p className="text-sm text-destructive">
+                          {setPasswordForm.formState.errors.confirmPassword.message}
+                        </p>
+                      )}
+                    </div>
+
+                    <p className="text-xs text-muted-foreground">
+                      Password must be at least 8 characters long.
+                    </p>
+
+                    <Button
+                      type="submit"
+                      disabled={setPasswordMutation.isPending}
+                      data-testid="button-set-password-submit"
+                    >
+                      {setPasswordMutation.isPending ? "Setting Password..." : "Set Password"}
+                    </Button>
+                  </form>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Password Set Success Message */}
+            {(passwordSet || (passwordStatus && passwordStatus.hasPassword)) && (
+              <Card className="border-green-200 dark:border-green-800">
+                <CardContent className="pt-6">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-green-100 dark:bg-green-900/30">
+                      <Check className="h-5 w-5 text-green-600 dark:text-green-400" />
+                    </div>
+                    <div>
+                      <p className="font-medium text-green-800 dark:text-green-200">Password is set</p>
+                      <p className="text-sm text-green-700 dark:text-green-300">
+                        You can log in with your email ({user?.email}) and password.
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
 
             <Card>
               <CardHeader>

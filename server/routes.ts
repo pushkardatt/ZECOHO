@@ -166,8 +166,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Password-based Registration - Step 1: Register with name, email, password
   app.post('/api/auth/register', async (req: any, res) => {
     try {
-      console.log("=== REGISTRATION REQUEST ===");
-      console.log("Body:", JSON.stringify(req.body, null, 2));
       const { firstName, lastName, email, password } = req.body;
       
       if (!firstName || !lastName || !email || !password) {
@@ -186,9 +184,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Check if email already exists
-      console.log("Checking if email exists:", email.toLowerCase());
       const existingUser = await storage.getUserByEmail(email);
-      console.log("Existing user found:", existingUser ? "YES - " + existingUser.email : "NO");
       if (existingUser) {
         return res.status(400).json({ message: "An account with this email already exists" });
       }
