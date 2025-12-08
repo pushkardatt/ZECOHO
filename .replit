@@ -106,4 +106,4 @@ integrations = ["javascript_log_in_with_replit:1.0.0", "javascript_database:1.0.
 [userenv.shared]
 UPLOAD_TOKEN_SECRET = "LQn5jA+a8wfIrkCVFQROF4jhRDj6sHCyGm0+5vpUO+E="
 RESEND_API_KEY = "re_CgrKkhxm_PP3Bg8Xn4RU5ffoY4EiRREZY"
-RESEND_FROM_EMAIL = "ZECOHO <onboarding@resend.dev>"
+RESEND_FROM_EMAIL = "ZECOHO <noreply@zecoho.com>"
