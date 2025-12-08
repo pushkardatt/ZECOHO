@@ -7,6 +7,7 @@ import { MapPin, Edit3, MapPinned, Building2, Home, Navigation } from "lucide-re
 
 export interface AddressDetails {
   fullAddress: string;
+  plotNo?: string;
   flatNo?: string;
   houseNo?: string;
   streetAddress?: string;
@@ -183,6 +184,7 @@ export function AddressInput({
 
   const buildFullAddress = (address: AddressDetails): string => {
     const addressParts = [
+      address.plotNo,
       address.flatNo,
       address.houseNo,
       address.streetAddress,
@@ -282,7 +284,20 @@ export function AddressInput({
               <span>Complete or edit your address details</span>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor={`${testIdPrefix}-plotNo`} className="text-sm">
+                  Plot No.
+                </Label>
+                <Input
+                  id={`${testIdPrefix}-plotNo`}
+                  placeholder="e.g., 123"
+                  value={value.plotNo || ""}
+                  onChange={(e) => handleManualFieldChange("plotNo", e.target.value)}
+                  data-testid={`${testIdPrefix}-plotNo`}
+                />
+              </div>
+
               <div className="space-y-2">
                 <Label htmlFor={`${testIdPrefix}-flatNo`} className="text-sm">
                   Flat / Apartment No.
@@ -291,7 +306,7 @@ export function AddressInput({
                   <Home className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
                     id={`${testIdPrefix}-flatNo`}
-                    placeholder="e.g., Flat 201, Tower A"
+                    placeholder="e.g., A-101"
                     value={value.flatNo || ""}
                     onChange={(e) => handleManualFieldChange("flatNo", e.target.value)}
                     className="pl-10"
@@ -306,7 +321,7 @@ export function AddressInput({
                 </Label>
                 <Input
                   id={`${testIdPrefix}-houseNo`}
-                  placeholder="e.g., 42, Building Name"
+                  placeholder="e.g., 123"
                   value={value.houseNo || ""}
                   onChange={(e) => handleManualFieldChange("houseNo", e.target.value)}
                   data-testid={`${testIdPrefix}-houseNo`}
