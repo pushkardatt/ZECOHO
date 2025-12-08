@@ -8,7 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useLocation, Link } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
-import { Home as HomeIcon, MapPin, Calendar, Check, Shield, TrendingDown, Sparkles, Award, Handshake, Users, Hotel, Building, Waves, Mountain, TreePine, Wheat, Heart } from "lucide-react";
+import { Home as HomeIcon, MapPin, Calendar, Check, Shield, TrendingDown, Sparkles, Award, Handshake, Users, Hotel, Building, Waves, Mountain, TreePine, Wheat, Heart, BadgeCheck, Percent, HandCoins, FileCheck2, ThumbsUp } from "lucide-react";
 import type { Property, Destination } from "@shared/schema";
 import heroImage from "@assets/generated_images/luxury_villa_hero_image.png";
 
@@ -142,83 +142,55 @@ export default function Home() {
         </div>
       </div>
 
-      {/* ZERO Commission Benefits Section */}
-      <div className="bg-gradient-to-b from-emerald-50 to-white dark:from-emerald-950/20 dark:to-background py-16 px-4 md:px-6">
-        <div className="container mx-auto">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl md:text-4xl font-bold mb-3">Why Choose ZECOHO?</h2>
-            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              Connect Directly With Property Owners. Experience the difference of commission-free booking. Your journey, our passion.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto">
-            {/* Benefit 1 */}
-            <Card className="text-center p-6 border-2 border-emerald-100 dark:border-emerald-900">
-              <div className="flex justify-center mb-4">
-                <div className="rounded-full bg-emerald-100 dark:bg-emerald-900 p-4">
-                  <Handshake className="h-8 w-8 text-emerald-600 dark:text-emerald-400" />
-                </div>
+      {/* Your Seamless Stay Section */}
+      <div className="relative py-16 px-4 md:px-6 overflow-hidden">
+        <div 
+          className="absolute inset-0 bg-cover bg-center"
+          style={{ backgroundImage: "url('https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=1920&q=80')" }}
+        >
+          <div className="absolute inset-0 bg-white/85 dark:bg-background/90" />
+        </div>
+        
+        <div className="container mx-auto relative z-10">
+          <h2 className="text-3xl md:text-4xl font-bold mb-10 text-center md:text-left">
+            Your Seamless Stay Starts Here
+          </h2>
+          
+          <div className="space-y-6 max-w-xl">
+            <div className="flex items-center gap-4">
+              <div className="flex-shrink-0">
+                <BadgeCheck className="h-8 w-8 text-blue-500" />
               </div>
-              <h3 className="text-xl font-semibold mb-3">Direct Connection to Property Owners</h3>
-              <p className="text-muted-foreground">
-                No middleman. Connect directly with property owners and build genuine relationships. Book at the source!
-              </p>
-            </Card>
-
-            {/* Benefit 2 */}
-            <Card className="text-center p-6 border-2 border-emerald-100 dark:border-emerald-900">
-              <div className="flex justify-center mb-4">
-                <div className="rounded-full bg-emerald-100 dark:bg-emerald-900 p-4">
-                  <TrendingDown className="h-8 w-8 text-emerald-600 dark:text-emerald-400" />
-                </div>
+              <span className="text-lg font-medium">100% Verified Properties</span>
+            </div>
+            
+            <div className="flex items-center gap-4">
+              <div className="flex-shrink-0">
+                <Percent className="h-8 w-8 text-blue-500" />
               </div>
-              <h3 className="text-xl font-semibold mb-3">Save 15-20% Per Booking</h3>
-              <p className="text-muted-foreground">
-                Other platforms charge hotels 15-25% commission. We charge ZERO. Those savings go directly to you!
-              </p>
-            </Card>
-
-            {/* Benefit 3 */}
-            <Card className="text-center p-6 border-2 border-emerald-100 dark:border-emerald-900">
-              <div className="flex justify-center mb-4">
-                <div className="rounded-full bg-emerald-100 dark:bg-emerald-900 p-4">
-                  <Shield className="h-8 w-8 text-emerald-600 dark:text-emerald-400" />
-                </div>
+              <span className="text-lg font-medium">Zero Commission</span>
+            </div>
+            
+            <div className="flex items-center gap-4">
+              <div className="flex-shrink-0">
+                <HandCoins className="h-8 w-8 text-blue-500" />
               </div>
-              <h3 className="text-xl font-semibold mb-3">100% Transparent Pricing</h3>
-              <p className="text-muted-foreground">
-                What you see is what you pay. No service fees, booking fees, or surprise charges at checkout.
-              </p>
-            </Card>
-          </div>
-
-          {/* Savings Example */}
-          <div className="mt-12 max-w-3xl mx-auto">
-            <Card className="bg-gradient-to-r from-emerald-500 to-teal-500 text-white p-8">
-              <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-                <div className="flex-1">
-                  <h3 className="text-2xl font-bold mb-2">See The Difference</h3>
-                  <p className="text-white/90 mb-4">Booking a ₹10,000/night property for 3 nights:</p>
-                  <div className="space-y-2 text-sm">
-                    <div className="flex justify-between items-center">
-                      <span>Other Platforms:</span>
-                      <span className="font-semibold line-through">₹36,000 + ₹5,400 fees = ₹41,400</span>
-                    </div>
-                    <div className="flex justify-between items-center text-lg">
-                      <span className="font-bold">ZECOHO:</span>
-                      <span className="font-bold">₹30,000 (₹0 fees)</span>
-                    </div>
-                  </div>
-                </div>
-                <div className="text-center">
-                  <div className="bg-white text-emerald-600 rounded-lg px-6 py-4">
-                    <p className="text-sm font-semibold mb-1">You Save</p>
-                    <p className="text-4xl font-bold">₹11,400</p>
-                  </div>
-                </div>
+              <span className="text-lg font-medium">Lowest & Honest price - Self negotiation</span>
+            </div>
+            
+            <div className="flex items-center gap-4">
+              <div className="flex-shrink-0">
+                <FileCheck2 className="h-8 w-8 text-blue-500" />
               </div>
-            </Card>
+              <span className="text-lg font-medium">0% Check-in Denial</span>
+            </div>
+            
+            <div className="flex items-center gap-4">
+              <div className="flex-shrink-0">
+                <ThumbsUp className="h-8 w-8 text-blue-500" />
+              </div>
+              <span className="text-lg font-medium">Honest Ratings and Reviews</span>
+            </div>
           </div>
         </div>
       </div>
