@@ -489,6 +489,83 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Check if current user has a password set (for showing "Set Password" option)
+  app.get('/api/auth/has-password', async (req: any, res) => {
+    try {
+      if (!req.isAuthenticated() || !req.user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const userId = req.user.claims?.sub || req.user?.id;
+      if (!userId) {
+        return res.status(401).json({ message: "User not found" });
+      }
+
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      res.json({ 
+        hasPassword: !!user.passwordHash,
+        email: user.email
+      });
+    } catch (error) {
+      console.error("Error checking password status:", error);
+      res.status(500).json({ message: "Failed to check password status" });
+    }
+  });
+
+  // Set password for authenticated users who don't have one (OTP-only accounts)
+  app.post('/api/auth/set-password', async (req: any, res) => {
+    try {
+      if (!req.isAuthenticated() || !req.user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const userId = req.user.claims?.sub || req.user?.id;
+      if (!userId) {
+        return res.status(401).json({ message: "User not found" });
+      }
+
+      const { password, confirmPassword } = req.body;
+
+      if (!password || !confirmPassword) {
+        return res.status(400).json({ message: "Password and confirmation are required" });
+      }
+
+      if (password !== confirmPassword) {
+        return res.status(400).json({ message: "Passwords don't match" });
+      }
+
+      if (password.length < 8) {
+        return res.status(400).json({ message: "Password must be at least 8 characters long" });
+      }
+
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Check if user already has a password
+      if (user.passwordHash) {
+        return res.status(400).json({ message: "You already have a password set. Use 'Change Password' instead." });
+      }
+
+      // Hash and set the password
+      const saltRounds = 10;
+      const passwordHash = await bcrypt.hash(password, saltRounds);
+      await storage.updateUserPassword(user.id, passwordHash);
+
+      res.json({ 
+        message: "Password set successfully! You can now log in with your email and password."
+      });
+    } catch (error) {
+      console.error("Error setting password:", error);
+      res.status(500).json({ message: "Failed to set password" });
+    }
+  });
+
   // Admin promotion endpoint - requires email in body
   app.post('/api/admin/promote', async (req: any, res) => {
     try {
