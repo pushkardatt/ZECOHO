@@ -58,17 +58,6 @@ export default function Home() {
       {/* Location Permission Dialog - appears after login */}
       <LocationPermissionDialog isAuthenticated={isAuthenticated} />
       
-      {/* ZERO Commission Banner - Top Priority */}
-      <div className="bg-gradient-to-r from-emerald-600 via-emerald-500 to-teal-500 text-white py-3 px-4 md:px-6">
-        <div className="container mx-auto flex flex-col md:flex-row items-center justify-center gap-2 text-center">
-          <Sparkles className="h-5 w-5 animate-pulse" />
-          <p className="font-bold text-base md:text-lg">
-            Connect Directly With Property Owners - 100% ZERO Commission - Save More on Every Booking!
-          </p>
-          <Sparkles className="h-5 w-5 animate-pulse" />
-        </div>
-      </div>
-
       {/* Hero Section with ZERO Commission Focus */}
       <div className="relative h-[480px] flex items-center justify-center mb-4">
         <div 
