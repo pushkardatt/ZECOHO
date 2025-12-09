@@ -69,6 +69,9 @@ export function SearchBar({
   const [googleMapsLoaded, setGoogleMapsLoaded] = useState(false);
   const suggestionsRef = useRef<HTMLDivElement>(null);
   const autocompleteServiceRef = useRef<any>(null);
+  const checkInInputRef = useRef<HTMLInputElement>(null);
+  const checkOutInputRef = useRef<HTMLInputElement>(null);
+  const guestsInputRef = useRef<HTMLInputElement>(null);
   
   const debouncedDestination = useDebounce(destination.trim(), 300);
 
@@ -344,9 +347,22 @@ export function SearchBar({
               <div className="relative">
                 <Calendar className="absolute left-0 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
                 <input
+                  ref={checkInInputRef}
                   type="date"
                   value={checkIn}
-                  onChange={(e) => setCheckIn(e.target.value)}
+                  onChange={(e) => {
+                    setCheckIn(e.target.value);
+                    // Auto-navigate to check-out date picker after selecting check-in
+                    if (e.target.value && checkOutInputRef.current) {
+                      setTimeout(() => {
+                        if (checkOutInputRef.current && typeof checkOutInputRef.current.showPicker === 'function') {
+                          checkOutInputRef.current.showPicker();
+                        } else if (checkOutInputRef.current) {
+                          checkOutInputRef.current.focus();
+                        }
+                      }, 100);
+                    }
+                  }}
                   className="w-full pl-6 bg-transparent focus:outline-none text-sm text-gray-900 cursor-pointer"
                   data-testid="input-checkin"
                 />
@@ -368,9 +384,19 @@ export function SearchBar({
               <div className="relative">
                 <Calendar className="absolute left-0 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
                 <input
+                  ref={checkOutInputRef}
                   type="date"
                   value={checkOut}
-                  onChange={(e) => setCheckOut(e.target.value)}
+                  onChange={(e) => {
+                    setCheckOut(e.target.value);
+                    // Auto-navigate to guests input after selecting check-out
+                    if (e.target.value && showGuests && guestsInputRef.current) {
+                      setTimeout(() => {
+                        guestsInputRef.current?.focus();
+                        guestsInputRef.current?.select();
+                      }, 100);
+                    }
+                  }}
                   className="w-full pl-6 bg-transparent focus:outline-none text-sm text-gray-900 cursor-pointer"
                   data-testid="input-checkout"
                 />
@@ -385,6 +411,7 @@ export function SearchBar({
             <div className="relative">
               <Users className="absolute left-0 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <input
+                ref={guestsInputRef}
                 type="number"
                 min="1"
                 value={guests}
