@@ -123,22 +123,23 @@ export function PropertyCard({ property, onWishlistToggle }: PropertyCardProps) 
 
   return (
     <Link href={`/properties/${property.id}`}>
-      <Card className="group overflow-hidden hover-elevate active-elevate-2 cursor-pointer h-full">
-        <div className="relative aspect-[4/3] overflow-hidden">
+      <Card className="group overflow-visible border-0 shadow-md hover:shadow-xl cursor-pointer h-full transition-all duration-300 rounded-2xl">
+        <div className="relative aspect-[4/3] overflow-hidden rounded-t-2xl">
           <img 
             src={mainImage} 
             alt={property.title}
-            className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
             data-testid={`img-property-${property.id}`}
           />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
           {onWishlistToggle && (
             <Button
               size="icon"
               variant="ghost"
-              className={`absolute top-3 right-3 h-9 w-9 rounded-full backdrop-blur-md ${
+              className={`absolute top-3 right-3 h-10 w-10 rounded-full backdrop-blur-md shadow-lg transition-all duration-200 ${
                 property.isWishlisted 
-                  ? "bg-white/90 text-primary hover:bg-white" 
-                  : "bg-white/70 text-foreground/70 hover:bg-white/90 hover:text-foreground"
+                  ? "bg-white text-rose-500 hover:bg-white hover:scale-110" 
+                  : "bg-white/80 text-foreground/70 hover:bg-white hover:text-rose-500 hover:scale-110"
               }`}
               onClick={(e) => {
                 e.preventDefault();
@@ -147,10 +148,10 @@ export function PropertyCard({ property, onWishlistToggle }: PropertyCardProps) 
               }}
               data-testid={`button-wishlist-${property.id}`}
             >
-              <Heart className={`h-4 w-4 ${property.isWishlisted ? "fill-current" : ""}`} />
+              <Heart className={`h-5 w-5 ${property.isWishlisted ? "fill-current" : ""}`} />
             </Button>
           )}
-          <Badge className="absolute bottom-3 left-3 bg-white/90 text-foreground border-0">
+          <Badge className="absolute bottom-3 left-3 bg-white/95 backdrop-blur-sm text-foreground border-0 shadow-sm font-medium">
             {property.propertyType}
           </Badge>
         </div>
