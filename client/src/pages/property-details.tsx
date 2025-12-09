@@ -66,6 +66,8 @@ import {
   CircleParking,
   Refrigerator,
   CalendarIcon,
+  BadgeCheck,
+  Handshake,
 } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -603,7 +605,21 @@ export default function PropertyDetails() {
               </Button>
             )}
           </div>
-          <Badge>{property.propertyType}</Badge>
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge>{property.propertyType}</Badge>
+            <Badge className="bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 border-0">
+              <BadgeCheck className="h-3 w-3 mr-1" />
+              100% Verified
+            </Badge>
+            <Badge className="bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border-0">
+              <Clock className="h-3 w-3 mr-1" />
+              24hr Check-in
+            </Badge>
+            <Badge className="bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border-0">
+              <Handshake className="h-3 w-3 mr-1" />
+              Direct Negotiation
+            </Badge>
+          </div>
         </div>
 
         {/* Image Gallery */}

@@ -1,7 +1,7 @@
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Heart, MapPin, Star, Users, Share2, Phone, MessageCircle } from "lucide-react";
+import { Heart, MapPin, Star, Users, Share2, Phone, MessageCircle, BadgeCheck, Clock } from "lucide-react";
 import type { Property } from "@shared/schema";
 import { Link, useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
@@ -151,9 +151,19 @@ export function PropertyCard({ property, onWishlistToggle }: PropertyCardProps) 
               <Heart className={`h-5 w-5 ${property.isWishlisted ? "fill-current" : ""}`} />
             </Button>
           )}
-          <Badge className="absolute bottom-3 left-3 bg-white/95 backdrop-blur-sm text-foreground border-0 shadow-sm font-medium">
-            {property.propertyType}
-          </Badge>
+          <div className="absolute bottom-3 left-3 right-3 flex flex-wrap items-center gap-2">
+            <Badge className="bg-white/95 backdrop-blur-sm text-foreground border-0 shadow-sm font-medium">
+              {property.propertyType}
+            </Badge>
+            <Badge className="bg-emerald-500/90 backdrop-blur-sm text-white border-0 shadow-sm text-xs">
+              <BadgeCheck className="h-3 w-3 mr-1" />
+              Verified
+            </Badge>
+            <Badge className="bg-blue-500/90 backdrop-blur-sm text-white border-0 shadow-sm text-xs">
+              <Clock className="h-3 w-3 mr-1" />
+              24hr Check-in
+            </Badge>
+          </div>
         </div>
         
         <div className="p-4 space-y-2">

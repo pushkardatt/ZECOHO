@@ -8,7 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useLocation, Link } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
-import { Home as HomeIcon, MapPin, Calendar, Check, Shield, TrendingDown, Sparkles, Award, Handshake, Users, Hotel, Building, Waves, Mountain, TreePine, Wheat, Heart, BadgeCheck, Percent, HandCoins, FileCheck2, ThumbsUp, Star, Play, ArrowRight, ChevronRight } from "lucide-react";
+import { Home as HomeIcon, MapPin, Calendar, Check, Shield, TrendingDown, Sparkles, Award, Handshake, Users, Hotel, Building, Waves, Mountain, TreePine, Wheat, Heart, BadgeCheck, Percent, HandCoins, FileCheck2, ThumbsUp, Star, Play, ArrowRight, ChevronRight, IndianRupee, Clock, MessageSquare } from "lucide-react";
 import type { Property, Destination } from "@shared/schema";
 import heroImage from "@assets/generated_images/luxury_villa_hero_image.png";
 import { useEffect, useState } from "react";
@@ -138,18 +138,26 @@ export default function Home() {
           </div>
 
           {/* Trust Indicators with Premium Styling */}
-          <div className="flex flex-wrap items-center justify-center gap-4 md:gap-6">
+          <div className="flex flex-wrap items-center justify-center gap-3 md:gap-4">
             <div className="flex items-center gap-2 bg-white/10 backdrop-blur-sm rounded-full px-4 py-2">
-              <Shield className="h-4 w-4 text-emerald-400" />
-              <span className="text-white/90 text-sm">Verified Properties</span>
+              <IndianRupee className="h-4 w-4 text-emerald-400" />
+              <span className="text-white/90 text-sm">Lowest & Honest Price</span>
             </div>
             <div className="flex items-center gap-2 bg-white/10 backdrop-blur-sm rounded-full px-4 py-2">
               <Handshake className="h-4 w-4 text-emerald-400" />
-              <span className="text-white/90 text-sm">Direct Owner Contact</span>
+              <span className="text-white/90 text-sm">Self Negotiate with Hotelier</span>
             </div>
             <div className="flex items-center gap-2 bg-white/10 backdrop-blur-sm rounded-full px-4 py-2">
-              <Check className="h-4 w-4 text-emerald-400" />
-              <span className="text-white/90 text-sm">Instant Confirmation</span>
+              <Star className="h-4 w-4 text-emerald-400" />
+              <span className="text-white/90 text-sm">Honest Ratings & Reviews</span>
+            </div>
+            <div className="flex items-center gap-2 bg-white/10 backdrop-blur-sm rounded-full px-4 py-2">
+              <BadgeCheck className="h-4 w-4 text-emerald-400" />
+              <span className="text-white/90 text-sm">100% Verified Properties</span>
+            </div>
+            <div className="flex items-center gap-2 bg-white/10 backdrop-blur-sm rounded-full px-4 py-2">
+              <Clock className="h-4 w-4 text-emerald-400" />
+              <span className="text-white/90 text-sm">24 Hours Check-in</span>
             </div>
           </div>
         </div>
@@ -248,63 +256,76 @@ export default function Home() {
           </div>
           
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {/* Large Feature Card */}
-            <div className="lg:col-span-2 bg-gradient-to-br from-rose-500 to-rose-600 rounded-3xl p-8 text-white relative overflow-hidden group">
+            {/* Large Feature Card - Lowest & Honest Price */}
+            <div className="lg:col-span-2 bg-gradient-to-br from-primary to-amber-600 rounded-3xl p-8 text-white relative overflow-hidden group">
               <div className="absolute top-0 right-0 w-48 h-48 bg-white/10 rounded-full blur-3xl translate-x-1/2 -translate-y-1/2" />
               <div className="relative z-10">
                 <div className="p-4 bg-white/20 backdrop-blur rounded-2xl inline-flex mb-6">
-                  <Percent className="h-10 w-10" />
+                  <IndianRupee className="h-10 w-10" />
                 </div>
-                <h3 className="text-3xl md:text-4xl font-bold mb-3">Zero Commission</h3>
+                <h3 className="text-3xl md:text-4xl font-bold mb-3">Lowest & Honest Price</h3>
                 <p className="text-white/90 text-lg mb-4 max-w-lg">
-                  Other platforms charge 15-25% commission. We charge nothing. 
-                  You save on every booking — that's money back in your pocket.
+                  Skip the middleman and save big! We don't add any hidden charges or commissions. 
+                  What you see is what you pay — true pricing, always.
                 </p>
-                <div className="flex items-center gap-2 text-sm">
-                  <Check className="h-5 w-5" />
-                  <span>Save ₹500-₹2000+ per night</span>
+                <div className="flex flex-wrap items-center gap-4 text-sm">
+                  <div className="flex items-center gap-2">
+                    <Check className="h-5 w-5" />
+                    <span>Zero Commission</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Check className="h-5 w-5" />
+                    <span>No Hidden Fees</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Check className="h-5 w-5" />
+                    <span>Save 15-25% per booking</span>
+                  </div>
                 </div>
               </div>
             </div>
             
-            {/* Feature Cards */}
-            <Card className="rounded-3xl border-0 shadow-lg overflow-hidden group hover-elevate">
-              <CardContent className="p-6">
-                <div className="p-3 bg-emerald-100 dark:bg-emerald-900/30 rounded-xl inline-flex mb-4">
-                  <BadgeCheck className="h-7 w-7 text-emerald-600 dark:text-emerald-400" />
-                </div>
-                <h3 className="text-xl font-bold mb-2">100% Verified</h3>
-                <p className="text-muted-foreground">Every property is personally verified for quality and authenticity</p>
-              </CardContent>
-            </Card>
-            
+            {/* Self Negotiation with Hotelier */}
             <Card className="rounded-3xl border-0 shadow-lg overflow-hidden group hover-elevate">
               <CardContent className="p-6">
                 <div className="p-3 bg-amber-100 dark:bg-amber-900/30 rounded-xl inline-flex mb-4">
                   <Handshake className="h-7 w-7 text-amber-600 dark:text-amber-400" />
                 </div>
-                <h3 className="text-xl font-bold mb-2">Direct Communication</h3>
-                <p className="text-muted-foreground">Chat or call property owners directly — no middlemen</p>
+                <h3 className="text-xl font-bold mb-2">Self Negotiate with Hotelier</h3>
+                <p className="text-muted-foreground">Chat or call property owners directly to negotiate your best deal — you're in control!</p>
               </CardContent>
             </Card>
             
+            {/* Honest Ratings & Reviews */}
+            <Card className="rounded-3xl border-0 shadow-lg overflow-hidden group hover-elevate">
+              <CardContent className="p-6">
+                <div className="p-3 bg-yellow-100 dark:bg-yellow-900/30 rounded-xl inline-flex mb-4">
+                  <Star className="h-7 w-7 text-yellow-600 dark:text-yellow-400" />
+                </div>
+                <h3 className="text-xl font-bold mb-2">Honest Ratings & Reviews</h3>
+                <p className="text-muted-foreground">Real reviews from real guests — no fake ratings, no paid reviews, just the truth</p>
+              </CardContent>
+            </Card>
+            
+            {/* 100% Verified Properties */}
+            <Card className="rounded-3xl border-0 shadow-lg overflow-hidden group hover-elevate">
+              <CardContent className="p-6">
+                <div className="p-3 bg-emerald-100 dark:bg-emerald-900/30 rounded-xl inline-flex mb-4">
+                  <BadgeCheck className="h-7 w-7 text-emerald-600 dark:text-emerald-400" />
+                </div>
+                <h3 className="text-xl font-bold mb-2">100% Verified Properties</h3>
+                <p className="text-muted-foreground">Every property is personally verified for quality, safety, and authenticity — book with confidence</p>
+              </CardContent>
+            </Card>
+            
+            {/* 24 Hours Check-in */}
             <Card className="rounded-3xl border-0 shadow-lg overflow-hidden group hover-elevate">
               <CardContent className="p-6">
                 <div className="p-3 bg-blue-100 dark:bg-blue-900/30 rounded-xl inline-flex mb-4">
-                  <HandCoins className="h-7 w-7 text-blue-600 dark:text-blue-400" />
+                  <Clock className="h-7 w-7 text-blue-600 dark:text-blue-400" />
                 </div>
-                <h3 className="text-xl font-bold mb-2">Best Price Guarantee</h3>
-                <p className="text-muted-foreground">Negotiate directly for the best rates — true pricing, always</p>
-              </CardContent>
-            </Card>
-            
-            <Card className="rounded-3xl border-0 shadow-lg overflow-hidden group hover-elevate">
-              <CardContent className="p-6">
-                <div className="p-3 bg-purple-100 dark:bg-purple-900/30 rounded-xl inline-flex mb-4">
-                  <FileCheck2 className="h-7 w-7 text-purple-600 dark:text-purple-400" />
-                </div>
-                <h3 className="text-xl font-bold mb-2">0% Check-in Denial</h3>
-                <p className="text-muted-foreground">Direct bookings mean guaranteed check-ins, every time</p>
+                <h3 className="text-xl font-bold mb-2">24 Hours Check-in</h3>
+                <p className="text-muted-foreground">Arrive anytime! Properties offer flexible 24-hour check-in for your convenience</p>
               </CardContent>
             </Card>
           </div>
