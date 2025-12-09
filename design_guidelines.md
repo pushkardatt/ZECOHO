@@ -1,28 +1,48 @@
 # Hotel Booking Platform - Design Guidelines
 
 ## Design Approach
-**Reference-Based: Airbnb-Inspired Marketplace**
+**Reference-Based: Swiggy-Inspired Modern Design**
 
-Drawing from Airbnb's proven design language for hospitality platforms, emphasizing trust, visual appeal, and seamless discovery. The design balances aspirational imagery with functional efficiency across guest and owner experiences.
+Drawing from Swiggy's clean, modern design language with bold orange branding, emphasizing trust, visual clarity, and seamless discovery. The design uses a single strong brand color with warm, friendly typography.
 
 ## Core Design Principles
-1. **Image-First**: Properties sell through visuals - large, high-quality imagery dominates
-2. **Spatial Generosity**: Breathing room builds trust and reduces cognitive load
-3. **Clarity & Confidence**: Clear CTAs, obvious next steps, no ambiguity
-4. **Role Distinction**: Subtle visual differences between guest and owner interfaces
+1. **Clean & Minimal**: Uncluttered interfaces with generous whitespace
+2. **Bold Branding**: Single strong primary color (orange) used consistently
+3. **Warm Typography**: Poppins font family for friendly, approachable feel
+4. **Image-First**: Properties sell through visuals - large, high-quality imagery dominates
+5. **Clear CTAs**: Obvious next steps with contrasting primary buttons
+
+## Color System
+
+**Primary Brand Color**: Swiggy Orange (#FC8019)
+- HSL: 27° 97% 54%
+- Used for: Primary buttons, CTAs, brand accents, logo elements
+
+**Supporting Colors**:
+- Background: Clean white (#FFFFFF)
+- Foreground: Warm dark gray (40° 5% 15%)
+- Secondary: Warm neutral gray (30° 10% 92%)
+- Muted: Light warm gray (30° 10% 95%)
+- Destructive: Red for errors (0° 84% 60%)
+
+**Dark Mode**:
+- Background: Dark warm gray (30° 5% 8%)
+- Card: Elevated dark (30° 5% 11%)
+- Primary remains orange for consistency
 
 ## Typography
 
 **Font Stack**: 
-- Primary: 'Inter' or 'Circular' (Airbnb's font family via Google Fonts CDN)
+- Primary: 'Poppins' (Google Fonts)
+- Weights: 400 (Regular), 500 (Medium), 600 (Semibold), 700 (Bold), 800 (Extra Bold)
 - Fallback: -apple-system, system-ui, sans-serif
 
 **Hierarchy**:
-- Hero Headlines: text-5xl to text-6xl, font-semibold
+- Hero Headlines: text-5xl to text-6xl, font-bold
 - Section Titles: text-3xl to text-4xl, font-semibold
 - Card Titles: text-lg, font-semibold
 - Body Text: text-base, font-normal
-- Captions/Meta: text-sm, text-gray-600
+- Captions/Meta: text-sm, text-muted-foreground
 
 ## Layout System
 
@@ -39,19 +59,21 @@ Drawing from Airbnb's proven design language for hospitality platforms, emphasiz
 
 ## Component Library
 
-### Navigation
+### Navigation (Header)
 - Fixed top navigation with subtle shadow on scroll
-- Logo left, search center (on guest views), user menu right
-- Role indicator badge for owners ("Owner Dashboard")
-- Mobile: Hamburger menu with slide-out panel
+- Logo: Solid bg-primary icon with bold "ZECOHO" text
+- Logo ".com" suffix in text-primary color
+- Clean, minimal navigation buttons
+- Primary CTA: "List Your Property FREE" using bg-primary with token-derived shadow
+- User menu: Clean avatar dropdown
 
 ### Property Cards
 - Aspect ratio 4:3 image with rounded-xl corners
-- Wishlist heart icon (top-right, absolute positioned with backdrop blur)
+- Wishlist heart icon (top-right, absolute positioned)
 - Property title + location in single line
 - Price emphasized (font-semibold, larger size)
 - Rating stars + review count in small text
-- Hover: subtle scale transform (scale-105) with shadow increase
+- Hover: subtle scale transform with shadow increase
 
 ### Search & Filters
 - Prominent search bar with rounded-full styling
@@ -59,109 +81,55 @@ Drawing from Airbnb's proven design language for hospitality platforms, emphasiz
 - Filter pills (rounded-full badges) showing active filters
 - Expandable filter panel with categorized sections
 - Range sliders for price with clear min/max labels
-- Checkbox groups for amenities with icon + label
 
-### Property Details Page
-- Full-width image gallery grid (primary large, 4 smaller thumbnails)
-- Two-column layout: Left (details) | Right (sticky booking card)
-- Amenities grid with icons (6 per row on desktop)
-- Reviews with profile photos, ratings, and expandable text
-- Embedded map section with "Get Directions" CTA
-
-### Owner Dashboard
-- KPI cards (3-column grid): Views, Bookings, Rating
-- Mini charts using simple bar/line visualizations
-- Property management table with status badges
-- Quick action buttons (rounded-lg, icon + text)
+### Buttons
+- Primary CTA: bg-primary (orange), text-white, rounded-lg, font-semibold
+- Secondary: Border only, same sizing
+- Ghost: Transparent with hover state
+- When over images: backdrop-blur-md with semi-transparent background
 
 ### Forms
 - Generous padding (p-4) in input fields
 - Rounded-lg borders
 - Label above input, helper text below
-- Focus states with ring offset
-- Multi-step wizards with progress indicators (dots or numbered circles)
+- Focus states with orange ring
+- Multi-step wizards with progress indicators
 
-### Buttons
-Primary CTA: Solid background, rounded-lg, px-6 py-3, font-semibold
-Secondary: Border only, same sizing
-When over images: backdrop-blur-md with semi-transparent background
+## Brand Elements
 
-### Modals & Overlays
-- Centered modal with rounded-2xl
-- Backdrop overlay with blur
-- Close button (top-right, subtle)
-- Max-width constraints for readability
+### Logo
+- Icon: Rounded square with solid bg-primary background
+- "Z" letter in white, bold
+- Shadow: Token-derived using hsl(var(--primary) / 0.2) for subtle glow
+- Text: "ZECOHO" in bold foreground, ".com" in text-primary
+
+### Call-to-Action Styling
+- Primary buttons use solid bg-primary (Swiggy orange)
+- Shadow: Token-derived using hsl(var(--primary) / 0.25) for depth
+- Font: font-semibold for emphasis
 
 ## Images
 
 **Hero Sections**:
-- Home page: Large aspirational hero (h-[600px]) showing beautiful property/destination
+- Home page: Large aspirational hero showing beautiful property/destination
+- Dark wash gradient over images for text readability
 - Property details: Image gallery grid showcasing room/property photos
-- Owner onboarding: Supportive imagery showing successful hosts
 
 **Throughout Application**:
 - Property thumbnails: Consistent 4:3 aspect ratio
-- Host profile photos: Circular, border for distinction
-- Amenity icons: Use Heroicons (outline style) via CDN
-- Category illustrations: Clean, minimal spot illustrations
-
-**Image Placement**:
-- Home: Full-width hero with search overlay (centered)
-- Property cards: Top of card, rounded corners
-- Details page: Gallery grid (1 large + 4 small layout)
-- Owner wizard: Supportive imagery in sidebar during steps
-
-## Page-Specific Guidelines
-
-### Guest Home Dashboard
-- Hero with centered search (h-[500px] to h-[600px])
-- "Featured Stays" section (4-column card grid)
-- "Explore by Category" (horizontal scroll on mobile, grid on desktop)
-- "Nearby Destinations" with location-based cards
-- Social proof section ("Join 100k+ guests")
-
-### Search Results
-- Filter sidebar (sticky, left, w-80)
-- Results grid (flexible, responsive columns)
-- Map toggle view (split screen option)
-- Result count + sort dropdown at top
-- Pagination or infinite scroll
-
-### Property Detail Page
-- Image gallery (5-image grid layout)
-- Breadcrumb navigation
-- Two-column: Details (70%) | Booking card (30%, sticky)
-- Tabbed sections: Overview, Amenities, Reviews, Location
-- "Contact Host" floating button
-- Similar properties carousel at bottom
-
-### Owner Property Management
-- Table/grid toggle view
-- Status color coding (green: published, yellow: pending, gray: draft)
-- Inline edit capability
-- Availability calendar with color-coded bookings
-- Photo upload with drag-and-drop zone
-
-### Onboarding Wizards
-- Progress stepper at top
-- Single focus per step
-- Large, clear CTAs ("Next", "Publish Listing")
-- Skip option (subtle, top-right)
-- Preview capability before final submission
-
-## Accessibility
-- Consistent focus indicators (ring-2 ring-offset-2)
-- ARIA labels on all interactive elements
-- Keyboard navigation support
-- Alt text for all images (descriptive property details)
-- Color contrast ratio minimum 4.5:1
-- Form field labels always visible
+- Host profile photos: Circular, with subtle border
+- Amenity icons: Use Lucide React icons (outline style)
 
 ## Responsive Behavior
 - Mobile-first approach
 - Stack multi-column layouts on mobile
 - Collapsible filters into modal on mobile
-- Bottom sheet for mobile actions
 - Touch-friendly tap targets (min 44px)
 
-This design creates a trustworthy, visually appealing marketplace that prioritizes property discovery for guests and efficient management for owners, all within Airbnb's proven design paradigm.
+## Accessibility
+- Consistent focus indicators (ring-2 ring-offset-2 ring-primary)
+- ARIA labels on all interactive elements
+- Keyboard navigation support
+- Color contrast ratio minimum 4.5:1
+
+This design creates a trustworthy, visually appealing marketplace with Swiggy's warm, friendly aesthetic - emphasizing the zero-commission value proposition through clean, modern design.

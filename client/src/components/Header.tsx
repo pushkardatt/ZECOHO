@@ -119,14 +119,14 @@ export function Header() {
       <div className="container flex h-16 items-center justify-between px-4 md:px-6">
         <Link href="/">
           <div className="flex items-center gap-2.5 cursor-pointer group" data-testid="link-home">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-rose-500 to-rose-600 flex items-center justify-center shadow-lg shadow-rose-500/20 transition-opacity duration-200 group-hover:opacity-90">
+            <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center shadow-lg transition-opacity duration-200 group-hover:opacity-90" style={{ boxShadow: '0 10px 15px -3px hsl(var(--primary) / 0.2)' }}>
               <span className="text-white font-bold text-xl">Z</span>
             </div>
             <div className="flex items-baseline">
               <span className="font-bold text-xl text-foreground tracking-tight">
                 ZECOHO
               </span>
-              <span className="font-bold text-base bg-gradient-to-r from-rose-500 to-amber-500 bg-clip-text text-transparent">.com</span>
+              <span className="font-bold text-base text-primary">.com</span>
             </div>
           </div>
         </Link>
@@ -271,7 +271,8 @@ export function Header() {
               <Link href={getListPropertyLink()}>
                 <Button 
                   size="sm"
-                  className="font-semibold text-sm bg-gradient-to-r from-rose-500 to-rose-600 text-white shadow-md shadow-rose-500/25 border-0"
+                  className="font-semibold text-sm bg-primary text-primary-foreground border-0"
+                  style={{ boxShadow: '0 4px 6px -1px hsl(var(--primary) / 0.25)' }}
                   data-testid="button-list-property"
                 >
                   <PlusCircle className="h-4 w-4 md:mr-2" />
