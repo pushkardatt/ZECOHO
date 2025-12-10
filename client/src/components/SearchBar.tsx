@@ -355,12 +355,20 @@ export function SearchBar({
                     // Auto-navigate to check-out date picker after selecting check-in
                     if (e.target.value && checkOutInputRef.current) {
                       setTimeout(() => {
-                        if (checkOutInputRef.current && typeof checkOutInputRef.current.showPicker === 'function') {
-                          checkOutInputRef.current.showPicker();
-                        } else if (checkOutInputRef.current) {
-                          checkOutInputRef.current.focus();
+                        const checkOutInput = checkOutInputRef.current;
+                        if (checkOutInput) {
+                          checkOutInput.focus();
+                          // Try showPicker for modern browsers
+                          try {
+                            if (typeof checkOutInput.showPicker === 'function') {
+                              checkOutInput.showPicker();
+                            }
+                          } catch (err) {
+                            // showPicker may throw on some browsers, fallback to click
+                            checkOutInput.click();
+                          }
                         }
-                      }, 100);
+                      }, 200);
                     }
                   }}
                   className="w-full pl-6 bg-transparent focus:outline-none text-sm text-gray-900 cursor-pointer"
@@ -392,9 +400,14 @@ export function SearchBar({
                     // Auto-navigate to guests input after selecting check-out
                     if (e.target.value && showGuests && guestsInputRef.current) {
                       setTimeout(() => {
-                        guestsInputRef.current?.focus();
-                        guestsInputRef.current?.select();
-                      }, 100);
+                        const guestsInput = guestsInputRef.current;
+                        if (guestsInput) {
+                          guestsInput.focus();
+                          guestsInput.select();
+                          // Scroll into view on mobile
+                          guestsInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        }
+                      }, 200);
                     }
                   }}
                   className="w-full pl-6 bg-transparent focus:outline-none text-sm text-gray-900 cursor-pointer"
