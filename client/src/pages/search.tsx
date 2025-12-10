@@ -23,7 +23,7 @@ export default function Search() {
   const [location] = useLocation();
   
   // Filter states
-  const [selectedType, setSelectedType] = useState<string>("hotel"); // Default to Hotels
+  const [selectedType, setSelectedType] = useState<string>(""); // No default - show all property types
   const [selectedBudget, setSelectedBudget] = useState<string>("");
   const [selectedRating, setSelectedRating] = useState<string>("");
   const [selectedAmenity, setSelectedAmenity] = useState<string>("");
@@ -193,7 +193,7 @@ export default function Search() {
   });
 
   const clearAllFilters = () => {
-    setSelectedType("hotel");
+    setSelectedType("");
     setSelectedBudget("");
     setSelectedRating("");
     setSelectedAmenity("");
@@ -206,7 +206,7 @@ export default function Search() {
     setSearchDestination("");
   };
 
-  const hasActiveFilters = selectedType !== "hotel" || selectedBudget || selectedRating || 
+  const hasActiveFilters = selectedType || selectedBudget || selectedRating || 
     selectedAmenity || coupleFriendly || hourlyAvailability || localIdAllowed || 
     selectedBrand || selectedStarRating || selectedLocality || searchDestination;
 
@@ -250,7 +250,7 @@ export default function Search() {
                 <Label className="text-sm font-medium mb-2 block">Property Type</Label>
                 <Select value={selectedType} onValueChange={setSelectedType}>
                   <SelectTrigger data-testid="select-property-type" className="w-full">
-                    <SelectValue placeholder="Hotels" />
+                    <SelectValue placeholder="All types" />
                   </SelectTrigger>
                   <SelectContent>
                     {propertyTypes.map((type) => (
