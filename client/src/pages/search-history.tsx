@@ -103,7 +103,12 @@ export default function SearchHistoryPage() {
         ) : (
           <div className="grid gap-4">
             {searchHistory.map((search) => (
-              <Card key={search.id} className="hover-elevate">
+              <Card 
+                key={search.id} 
+                className="hover-elevate cursor-pointer transition-all"
+                onClick={() => handleSearchAgain(search)}
+                data-testid={`card-search-history-${search.id}`}
+              >
                 <CardHeader className="pb-3">
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex-1">
@@ -132,7 +137,7 @@ export default function SearchHistoryPage() {
                         )}
                       </div>
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
                       <Button
                         size="sm"
                         onClick={() => handleSearchAgain(search)}
