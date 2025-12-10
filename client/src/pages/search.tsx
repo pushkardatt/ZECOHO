@@ -150,10 +150,15 @@ export default function Search() {
     // Destination and property name filter
     if (searchDestination && searchDestination.trim().length > 0) {
       const searchLower = searchDestination.toLowerCase().trim();
-      const destinationLower = property.destination.toLowerCase();
-      const titleLower = property.title.toLowerCase();
-      // Match either destination OR property name
-      if (!destinationLower.includes(searchLower) && !titleLower.includes(searchLower)) {
+      const destinationLower = (property.destination || "").toLowerCase();
+      const titleLower = (property.title || "").toLowerCase();
+      const cityLower = (property.propCity || "").toLowerCase();
+      const stateLower = (property.propState || "").toLowerCase();
+      // Match destination, property title, city, or state
+      if (!destinationLower.includes(searchLower) && 
+          !titleLower.includes(searchLower) &&
+          !cityLower.includes(searchLower) &&
+          !stateLower.includes(searchLower)) {
         return false;
       }
     }

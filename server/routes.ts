@@ -1245,10 +1245,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Properties routes
   app.get("/api/properties", async (req, res) => {
     try {
-      const { destination, propertyType, minPrice, maxPrice, minGuests } = req.query;
+      const { destination, propertyType, minPrice, maxPrice, minGuests, search } = req.query;
       
       const filters: any = {};
-      if (destination) filters.destination = destination as string;
+      // Use 'search' for property name + destination search, fallback to 'destination' for legacy
+      if (search) filters.search = search as string;
+      else if (destination) filters.destination = destination as string;
       if (propertyType) filters.propertyType = propertyType as string;
       if (minPrice) filters.minPrice = Number(minPrice);
       if (maxPrice) filters.maxPrice = Number(maxPrice);

@@ -197,6 +197,7 @@ export class DatabaseStorage implements IStorage {
     ownerId?: string;
     status?: string;
     includeAllStatuses?: boolean;
+    search?: string;
   }): Promise<Property[]> {
     let query = db.select().from(properties);
 
@@ -213,8 +214,24 @@ export class DatabaseStorage implements IStorage {
       }
     }
     
-    if (filters?.destination) {
-      conditions.push(sql`${properties.destination} ILIKE ${`%${filters.destination}%`}`);
+    // Search by property title OR destination
+    if (filters?.search) {
+      conditions.push(
+        or(
+          sql`${properties.title} ILIKE ${`%${filters.search}%`}`,
+          sql`${properties.destination} ILIKE ${`%${filters.search}%`}`,
+          sql`${properties.propCity} ILIKE ${`%${filters.search}%`}`,
+          sql`${properties.propState} ILIKE ${`%${filters.search}%`}`
+        )
+      );
+    } else if (filters?.destination) {
+      // Legacy: search destination only
+      conditions.push(
+        or(
+          sql`${properties.destination} ILIKE ${`%${filters.destination}%`}`,
+          sql`${properties.title} ILIKE ${`%${filters.destination}%`}`
+        )
+      );
     }
     if (filters?.propertyType) {
       conditions.push(eq(properties.propertyType, filters.propertyType as any));
