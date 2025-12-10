@@ -218,8 +218,9 @@ export default function Search() {
           <div className="flex items-center gap-4">
             <div className="flex-1">
               <SearchBar 
-                compact 
                 onSearch={handleSearch}
+                showDates={true}
+                showGuests={true}
                 initialDestination={initialSearchValues.destination}
                 initialCheckIn={initialSearchValues.checkIn}
                 initialCheckOut={initialSearchValues.checkOut}
