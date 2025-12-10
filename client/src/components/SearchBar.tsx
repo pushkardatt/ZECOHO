@@ -247,7 +247,7 @@ export function SearchBar({
     // If it's a property from our database, navigate directly to it
     if (dest.isProperty && dest.propertyId) {
       setShowSuggestions(false);
-      navigate(`/property/${dest.propertyId}`);
+      navigate(`/properties/${dest.propertyId}`);
       return;
     }
     
