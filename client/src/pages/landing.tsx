@@ -98,9 +98,9 @@ export default function Landing() {
           className="absolute inset-0 bg-cover bg-center scale-105"
           style={{ backgroundImage: `url(${heroImage})` }}
         />
-        {/* Dramatic Gradient Overlay */}
-        <div className="absolute inset-0 bg-gradient-to-br from-black/70 via-black/50 to-rose-900/40" />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
+        {/* Dramatic Gradient Overlay - Darkened for better text contrast */}
+        <div className="absolute inset-0 bg-gradient-to-br from-black/80 via-black/60 to-rose-900/50" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-black/20" />
         
         <div className="relative z-10 container px-4 md:px-6 text-center py-12 pt-24">
           {/* Premium Badge */}
@@ -110,13 +110,20 @@ export default function Landing() {
           </div>
 
           {/* Main Headline with Gradient */}
-          <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold text-white mb-4 leading-tight tracking-tight" data-testid="text-hero-title">
+          <h1 
+            className="text-4xl md:text-6xl lg:text-7xl font-bold text-white mb-4 leading-tight tracking-tight" 
+            data-testid="text-hero-title"
+            style={{ textShadow: '0 2px 20px rgba(0,0,0,0.5), 0 4px 40px rgba(0,0,0,0.3)' }}
+          >
             Book Hotels at Guaranteed Lowest Prices{" "}
-            <span className="bg-gradient-to-r from-amber-400 via-rose-400 to-rose-500 bg-clip-text text-transparent">
+            <span className="bg-gradient-to-r from-amber-400 via-rose-400 to-rose-500 bg-clip-text text-transparent drop-shadow-lg">
               — Cheaper Than OTA Platforms
             </span>
           </h1>
-          <p className="text-xl md:text-2xl text-white/90 mb-8 max-w-3xl mx-auto font-light">
+          <p 
+            className="text-xl md:text-2xl text-white/90 mb-8 max-w-3xl mx-auto font-light"
+            style={{ textShadow: '0 2px 10px rgba(0,0,0,0.4)' }}
+          >
             Direct booking. Zero commission. Zero convenience fees.{" "}
             <span className="font-semibold text-white">Save 15–25% instantly.</span>
           </p>
