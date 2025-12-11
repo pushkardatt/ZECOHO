@@ -1,10 +1,13 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Search, MapPin, Calendar, Users, Loader2, Building2 } from "lucide-react";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Search, MapPin, Calendar as CalendarIcon, Users, Loader2, Building2 } from "lucide-react";
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { useLocation } from "wouter";
+import { format, addDays } from "date-fns";
 
 interface GooglePlacePrediction {
   place_id: string;
@@ -61,8 +64,12 @@ export function SearchBar({
   const { isAuthenticated } = useAuth();
   const [, navigate] = useLocation();
   const [destination, setDestination] = useState(initialDestination);
-  const [checkIn, setCheckIn] = useState(initialCheckIn);
-  const [checkOut, setCheckOut] = useState(initialCheckOut);
+  const [checkInDate, setCheckInDate] = useState<Date | undefined>(
+    initialCheckIn ? new Date(initialCheckIn) : undefined
+  );
+  const [checkOutDate, setCheckOutDate] = useState<Date | undefined>(
+    initialCheckOut ? new Date(initialCheckOut) : undefined
+  );
   const [guests, setGuests] = useState(initialGuests);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [googleCityPredictions, setGoogleCityPredictions] = useState<GooglePlacePrediction[]>([]);
@@ -71,16 +78,18 @@ export function SearchBar({
   const [googleMapsLoaded, setGoogleMapsLoaded] = useState(false);
   const suggestionsRef = useRef<HTMLDivElement>(null);
   const autocompleteServiceRef = useRef<any>(null);
-  const checkInInputRef = useRef<HTMLInputElement>(null);
-  const checkOutInputRef = useRef<HTMLInputElement>(null);
   const guestsInputRef = useRef<HTMLInputElement>(null);
+  
+  // Popover open states for custom calendar
+  const [checkInOpen, setCheckInOpen] = useState(false);
+  const [checkOutOpen, setCheckOutOpen] = useState(false);
   
   const debouncedDestination = useDebounce(destination.trim(), 300);
 
   useEffect(() => {
     setDestination(initialDestination);
-    setCheckIn(initialCheckIn);
-    setCheckOut(initialCheckOut);
+    setCheckInDate(initialCheckIn ? new Date(initialCheckIn) : undefined);
+    setCheckOutDate(initialCheckOut ? new Date(initialCheckOut) : undefined);
     setGuests(initialGuests);
   }, [initialDestination, initialCheckIn, initialCheckOut, initialGuests]);
 
@@ -243,6 +252,7 @@ export function SearchBar({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+
   const handleSelectDestination = (dest: any) => {
     // If it's a property from our database, navigate directly to it
     if (dest.isProperty && dest.propertyId) {
@@ -257,6 +267,9 @@ export function SearchBar({
   };
 
   const handleSearch = () => {
+    const checkIn = checkInDate ? format(checkInDate, 'yyyy-MM-dd') : '';
+    const checkOut = checkOutDate ? format(checkOutDate, 'yyyy-MM-dd') : '';
+    
     onSearch?.({ destination, checkIn, checkOut, guests });
     
     // Save search history if user is authenticated
@@ -267,6 +280,32 @@ export function SearchBar({
         checkOut: checkOut || null,
         guests: guests || null,
       });
+    }
+  };
+
+  // Handler for check-in date selection - auto opens check-out
+  const handleCheckInSelect = (date: Date | undefined) => {
+    setCheckInDate(date);
+    if (date) {
+      // Close check-in popover and open check-out
+      setCheckInOpen(false);
+      // Small delay to ensure smooth transition
+      setTimeout(() => {
+        setCheckOutOpen(true);
+      }, 50);
+    }
+  };
+
+  // Handler for check-out date selection
+  const handleCheckOutSelect = (date: Date | undefined) => {
+    setCheckOutDate(date);
+    if (date) {
+      setCheckOutOpen(false);
+      // Focus guests input
+      setTimeout(() => {
+        guestsInputRef.current?.focus();
+        guestsInputRef.current?.select();
+      }, 50);
     }
   };
 
@@ -354,89 +393,62 @@ export function SearchBar({
       
         {showDates && (
           <>
-            <div 
-              className="flex-1 px-4 py-2 border-r cursor-pointer"
-              onClick={(e) => {
-                const input = e.currentTarget.querySelector('input[type="date"]') as HTMLInputElement;
-                if (input && typeof input.showPicker === 'function') {
-                  input.showPicker();
-                } else if (input) {
-                  input.focus();
-                }
-              }}
-            >
-              <label className="text-xs font-semibold block mb-1 text-gray-700 cursor-pointer">Check in</label>
-              <div className="relative">
-                <Calendar className="absolute left-0 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-                <input
-                  ref={checkInInputRef}
-                  type="date"
-                  value={checkIn}
-                  onChange={(e) => {
-                    setCheckIn(e.target.value);
-                    // Auto-navigate to check-out date picker after selecting check-in
-                    if (e.target.value && checkOutInputRef.current) {
-                      setTimeout(() => {
-                        const checkOutInput = checkOutInputRef.current;
-                        if (checkOutInput) {
-                          checkOutInput.focus();
-                          // Try showPicker for modern browsers
-                          try {
-                            if (typeof checkOutInput.showPicker === 'function') {
-                              checkOutInput.showPicker();
-                            }
-                          } catch (err) {
-                            // showPicker may throw on some browsers, fallback to click
-                            checkOutInput.click();
-                          }
-                        }
-                      }, 200);
-                    }
-                  }}
-                  className="w-full pl-6 bg-transparent focus:outline-none text-sm text-gray-900 cursor-pointer"
+            {/* Check-in Date Picker */}
+            <Popover open={checkInOpen} onOpenChange={setCheckInOpen}>
+              <PopoverTrigger asChild>
+                <div 
+                  className="flex-1 px-4 py-2 border-r cursor-pointer hover:bg-gray-50 transition-colors"
                   data-testid="input-checkin"
+                >
+                  <label className="text-xs font-semibold block mb-1 text-gray-700 cursor-pointer">Check in</label>
+                  <div className="relative flex items-center">
+                    <CalendarIcon className="h-4 w-4 text-muted-foreground mr-2" />
+                    <span className={`text-sm ${checkInDate ? 'text-gray-900' : 'text-gray-500'}`}>
+                      {checkInDate ? format(checkInDate, 'MMM d, yyyy') : 'Add date'}
+                    </span>
+                  </div>
+                </div>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={checkInDate}
+                  onSelect={handleCheckInSelect}
+                  disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
+                  initialFocus
                 />
-              </div>
-            </div>
+              </PopoverContent>
+            </Popover>
             
-            <div 
-              className={`flex-1 px-4 py-2 ${showGuests ? 'border-r' : ''} cursor-pointer`}
-              onClick={(e) => {
-                const input = e.currentTarget.querySelector('input[type="date"]') as HTMLInputElement;
-                if (input && typeof input.showPicker === 'function') {
-                  input.showPicker();
-                } else if (input) {
-                  input.focus();
-                }
-              }}
-            >
-              <label className="text-xs font-semibold block mb-1 text-gray-700 cursor-pointer">Check out</label>
-              <div className="relative">
-                <Calendar className="absolute left-0 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-                <input
-                  ref={checkOutInputRef}
-                  type="date"
-                  value={checkOut}
-                  onChange={(e) => {
-                    setCheckOut(e.target.value);
-                    // Auto-navigate to guests input after selecting check-out
-                    if (e.target.value && showGuests && guestsInputRef.current) {
-                      setTimeout(() => {
-                        const guestsInput = guestsInputRef.current;
-                        if (guestsInput) {
-                          guestsInput.focus();
-                          guestsInput.select();
-                          // Scroll into view on mobile
-                          guestsInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                        }
-                      }, 200);
-                    }
-                  }}
-                  className="w-full pl-6 bg-transparent focus:outline-none text-sm text-gray-900 cursor-pointer"
+            {/* Check-out Date Picker */}
+            <Popover open={checkOutOpen} onOpenChange={setCheckOutOpen}>
+              <PopoverTrigger asChild>
+                <div 
+                  className={`flex-1 px-4 py-2 ${showGuests ? 'border-r' : ''} cursor-pointer hover:bg-gray-50 transition-colors`}
                   data-testid="input-checkout"
+                >
+                  <label className="text-xs font-semibold block mb-1 text-gray-700 cursor-pointer">Check out</label>
+                  <div className="relative flex items-center">
+                    <CalendarIcon className="h-4 w-4 text-muted-foreground mr-2" />
+                    <span className={`text-sm ${checkOutDate ? 'text-gray-900' : 'text-gray-500'}`}>
+                      {checkOutDate ? format(checkOutDate, 'MMM d, yyyy') : 'Add date'}
+                    </span>
+                  </div>
+                </div>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={checkOutDate}
+                  onSelect={handleCheckOutSelect}
+                  disabled={(date) => {
+                    const minDate = checkInDate ? addDays(checkInDate, 1) : new Date(new Date().setHours(0, 0, 0, 0));
+                    return date < minDate;
+                  }}
+                  initialFocus
                 />
-              </div>
-            </div>
+              </PopoverContent>
+            </Popover>
           </>
         )}
         
