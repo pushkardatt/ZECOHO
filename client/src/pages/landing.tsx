@@ -189,15 +189,15 @@ export default function Landing() {
           {/* Trust Badges - Simple + Powerful */}
           <div className="flex flex-wrap items-center justify-center gap-4 md:gap-6">
             <div className="flex items-center gap-2 bg-white/10 backdrop-blur-sm rounded-full px-4 py-2">
-              <Check className="h-4 w-4 text-emerald-400" />
+              <Hotel className="h-4 w-4 text-amber-400" />
               <span className="text-white/90 text-sm">Direct from Hotel — No Middleman</span>
             </div>
             <div className="flex items-center gap-2 bg-white/10 backdrop-blur-sm rounded-full px-4 py-2">
-              <Check className="h-4 w-4 text-emerald-400" />
+              <ShieldCheck className="h-4 w-4 text-emerald-400" />
               <span className="text-white/90 text-sm">No Hidden Fees — No Convenience Charges</span>
             </div>
             <div className="flex items-center gap-2 bg-white/10 backdrop-blur-sm rounded-full px-4 py-2">
-              <Check className="h-4 w-4 text-emerald-400" />
+              <MessageCircle className="h-4 w-4 text-green-400" />
               <span className="text-white/90 text-sm">Instant WhatsApp Confirmation</span>
             </div>
           </div>
