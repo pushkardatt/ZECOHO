@@ -122,9 +122,19 @@ export default function Landing() {
           </p>
 
           {/* Glass Morphism Search Bar */}
-          <div className="max-w-4xl mx-auto mb-10">
+          <div className="max-w-4xl mx-auto mb-6">
             <div className="bg-white/95 dark:bg-background/95 backdrop-blur-xl rounded-2xl shadow-2xl shadow-black/20 p-3 md:p-4">
               <SearchBar onSearch={handleSearch} compact={false} showDates={true} showGuests={true} />
+            </div>
+          </div>
+
+          {/* OTA Price Comparison Bar */}
+          <div className="max-w-2xl mx-auto mb-10">
+            <div className="bg-emerald-500/20 backdrop-blur-sm border border-emerald-400/30 rounded-full px-6 py-3 flex items-center justify-center gap-3">
+              <span className="text-white font-semibold">Zecoho Price vs OTA</span>
+              <span className="text-white/70">|</span>
+              <span className="text-emerald-300 font-medium">Save up to ₹800 per night</span>
+              <span className="text-white/60 text-sm">(real-time comparison)</span>
             </div>
           </div>
 
