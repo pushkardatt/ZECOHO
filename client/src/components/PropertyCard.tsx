@@ -1,7 +1,7 @@
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Heart, MapPin, Star, Users, Share2, Phone, MessageCircle, BadgeCheck, Clock } from "lucide-react";
+import { Heart, MapPin, Star, Users, Share2, Phone, MessageCircle, BadgeCheck, Clock, ArrowRight } from "lucide-react";
 import type { Property } from "@shared/schema";
 import { Link, useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
@@ -195,6 +195,31 @@ export function PropertyCard({ property, onWishlistToggle }: PropertyCardProps) 
             <span>{property.bathrooms} bath{property.bathrooms !== 1 ? "s" : ""}</span>
           </div>
           
+          {/* OTA Price Comparison Ribbon */}
+          {(() => {
+            const zecohoPrice = Number(property.pricePerNight);
+            const otaPrice = Math.round(zecohoPrice * 1.15);
+            const savings = otaPrice - zecohoPrice;
+            return (
+              <div className="bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 rounded-lg px-3 py-2">
+                <div className="flex flex-wrap items-center justify-between gap-1 text-xs">
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold text-emerald-700 dark:text-emerald-400">
+                      Zecoho ₹{zecohoPrice.toLocaleString('en-IN')}
+                    </span>
+                    <span className="text-muted-foreground">|</span>
+                    <span className="text-muted-foreground line-through">
+                      OTA ₹{otaPrice.toLocaleString('en-IN')}
+                    </span>
+                  </div>
+                  <span className="font-semibold text-emerald-600 dark:text-emerald-400">
+                    Save ₹{savings.toLocaleString('en-IN')}
+                  </span>
+                </div>
+              </div>
+            );
+          })()}
+          
           <div className="pt-2 border-t">
             <div className="flex items-baseline gap-2 flex-wrap">
               {property.originalPrice && Number(property.originalPrice) > Number(property.pricePerNight) && (
@@ -209,63 +234,77 @@ export function PropertyCard({ property, onWishlistToggle }: PropertyCardProps) 
             </div>
           </div>
           
-          {/* Call and Chat buttons for published properties */}
-          {isPublished && (
-            <div className="flex items-center gap-2 pt-2">
-              {hasOwnerPhone && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleCall}
-                  className="flex-1"
-                  data-testid={`button-call-${property.id}`}
-                >
-                  <Phone className="h-4 w-4 mr-1.5" />
-                  Call
-                </Button>
-              )}
-              <Button
-                variant="default"
-                size="sm"
-                onClick={handleChat}
-                disabled={chatMutation.isPending}
-                className="flex-1"
-                data-testid={`button-chat-${property.id}`}
-              >
-                <MessageCircle className="h-4 w-4 mr-1.5" />
-                {chatMutation.isPending ? "..." : "Chat"}
-              </Button>
-            </div>
-          )}
+          {/* Book Direct CTA Button */}
+          <Button
+            variant="default"
+            size="sm"
+            className="w-full group"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setLocation(`/properties/${property.id}`);
+            }}
+            data-testid={`button-book-direct-${property.id}`}
+          >
+            Book Direct
+            <ArrowRight className="h-4 w-4 ml-1.5 transition-transform group-hover:translate-x-1" />
+          </Button>
           
-          {/* Share and Save buttons */}
-          <div className="flex items-center justify-end gap-2 pt-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleShare}
-              className="text-muted-foreground"
-              data-testid={`button-share-${property.id}`}
-            >
-              <Share2 className="h-4 w-4 mr-1.5" />
-              Share
-            </Button>
-            {onWishlistToggle && (
+          {/* Card Footer - Chat, Call, Share, Save buttons */}
+          <div className="flex items-center justify-between gap-2 pt-2 border-t">
+            {isPublished && (
+              <div className="flex items-center gap-1">
+                {hasOwnerPhone && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleCall}
+                    className="text-muted-foreground"
+                    data-testid={`button-call-${property.id}`}
+                  >
+                    <Phone className="h-4 w-4 mr-1" />
+                    Call
+                  </Button>
+                )}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleChat}
+                  disabled={chatMutation.isPending}
+                  className="text-muted-foreground"
+                  data-testid={`button-chat-${property.id}`}
+                >
+                  <MessageCircle className="h-4 w-4 mr-1" />
+                  {chatMutation.isPending ? "..." : "Chat"}
+                </Button>
+              </div>
+            )}
+            <div className="flex items-center gap-1 ml-auto">
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  onWishlistToggle(property.id);
-                }}
-                className={property.isWishlisted ? "text-primary" : "text-muted-foreground"}
-                data-testid={`button-save-${property.id}`}
+                onClick={handleShare}
+                className="text-muted-foreground"
+                data-testid={`button-share-${property.id}`}
               >
-                <Heart className={`h-4 w-4 mr-1.5 ${property.isWishlisted ? "fill-current" : ""}`} />
-                Save
+                <Share2 className="h-4 w-4" />
               </Button>
-            )}
+              {onWishlistToggle && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    onWishlistToggle(property.id);
+                  }}
+                  className={property.isWishlisted ? "text-primary" : "text-muted-foreground"}
+                  data-testid={`button-save-${property.id}`}
+                >
+                  <Heart className={`h-4 w-4 ${property.isWishlisted ? "fill-current" : ""}`} />
+                </Button>
+              )}
+            </div>
           </div>
         </div>
       </Card>
