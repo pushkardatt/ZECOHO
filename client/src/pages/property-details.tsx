@@ -139,6 +139,10 @@ export default function PropertyDetails() {
   const [checkOut, setCheckOut] = useState("");
   const [guests, setGuests] = useState(2);
   const [reviewDialogOpen, setReviewDialogOpen] = useState(false);
+  
+  // Controlled popover states for date pickers with auto-navigation
+  const [checkInPopoverOpen, setCheckInPopoverOpen] = useState(false);
+  const [checkOutPopoverOpen, setCheckOutPopoverOpen] = useState(false);
   const [ownerResponseDialogOpen, setOwnerResponseDialogOpen] = useState(false);
   const [selectedReviewId, setSelectedReviewId] = useState<string | null>(null);
   const [amenitiesDialogOpen, setAmenitiesDialogOpen] = useState(false);
@@ -1114,7 +1118,7 @@ export default function PropertyDetails() {
                 <div className="space-y-4 mb-6">
                   <div>
                     <label className="text-sm font-semibold block mb-2">Check-in</label>
-                    <Popover>
+                    <Popover open={checkInPopoverOpen} onOpenChange={setCheckInPopoverOpen}>
                       <PopoverTrigger asChild>
                         <Button
                           variant="outline"
@@ -1134,6 +1138,15 @@ export default function PropertyDetails() {
                             setCheckIn(dateStr);
                             if (checkOut && date && new Date(checkOut) <= date) {
                               setCheckOut("");
+                            }
+                            // Close check-in and auto-open check-out using requestAnimationFrame to prevent race condition
+                            if (date) {
+                              setCheckInPopoverOpen(false);
+                              requestAnimationFrame(() => {
+                                requestAnimationFrame(() => {
+                                  setCheckOutPopoverOpen(true);
+                                });
+                              });
                             }
                           }}
                           disabled={(date) => {
@@ -1156,7 +1169,7 @@ export default function PropertyDetails() {
                   </div>
                   <div>
                     <label className="text-sm font-semibold block mb-2">Check-out</label>
-                    <Popover>
+                    <Popover open={checkOutPopoverOpen} onOpenChange={setCheckOutPopoverOpen}>
                       <PopoverTrigger asChild>
                         <Button
                           variant="outline"
@@ -1171,7 +1184,12 @@ export default function PropertyDetails() {
                         <Calendar
                           mode="single"
                           selected={checkOut ? new Date(checkOut) : undefined}
-                          onSelect={(date) => setCheckOut(date ? date.toISOString().split('T')[0] : "")}
+                          onSelect={(date) => {
+                            setCheckOut(date ? date.toISOString().split('T')[0] : "");
+                            if (date) {
+                              setCheckOutPopoverOpen(false);
+                            }
+                          }}
                           disabled={(date) => {
                             const today = new Date(new Date().setHours(0, 0, 0, 0));
                             if (date <= today) return true;

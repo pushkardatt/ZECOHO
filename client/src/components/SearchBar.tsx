@@ -287,12 +287,15 @@ export function SearchBar({
   const handleCheckInSelect = (date: Date | undefined) => {
     setCheckInDate(date);
     if (date) {
-      // Close check-in popover and open check-out
+      // Close check-in popover first
       setCheckInOpen(false);
-      // Small delay to ensure smooth transition
-      setTimeout(() => {
-        setCheckOutOpen(true);
-      }, 50);
+      // Use requestAnimationFrame to ensure the close completes before opening check-out
+      // This prevents Radix Popover's onOpenChange race condition
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          setCheckOutOpen(true);
+        });
+      });
     }
   };
 
