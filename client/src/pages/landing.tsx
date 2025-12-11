@@ -30,6 +30,17 @@ function AnimatedCounter({ end, duration = 2000, suffix = "" }: { end: number; d
 
 export default function Landing() {
   const [, setLocation] = useLocation();
+  const [showStickySearch, setShowStickySearch] = useState(false);
+
+  // Track scroll position for sticky search bar
+  useEffect(() => {
+    const handleScroll = () => {
+      // Show sticky bar after scrolling past 400px (past the hero search bar)
+      setShowStickySearch(window.scrollY > 400);
+    };
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
   const { data: properties = [], isLoading: propertiesLoading } = useQuery<Property[]>({
     queryKey: ["/api/properties"],
@@ -63,6 +74,36 @@ export default function Landing() {
 
   return (
     <div className="min-h-screen">
+      {/* Sticky Search Bar - Appears on Scroll */}
+      <div 
+        className={`fixed top-0 left-0 right-0 z-[100] transition-all duration-300 ${
+          showStickySearch 
+            ? "translate-y-0 opacity-100" 
+            : "-translate-y-full opacity-0 pointer-events-none"
+        }`}
+        data-testid="sticky-search-bar"
+      >
+        <div className="bg-white dark:bg-background border-b shadow-lg">
+          <div className="container mx-auto px-4 py-3">
+            <div className="flex items-center gap-4">
+              {/* Logo */}
+              <Link href="/">
+                <div className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity flex-shrink-0" data-testid="link-sticky-logo">
+                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-rose-500 to-rose-600 flex items-center justify-center shadow-md">
+                    <span className="text-white font-bold text-lg">Z</span>
+                  </div>
+                  <span className="font-bold text-lg text-foreground hidden sm:block">ZECOHO</span>
+                </div>
+              </Link>
+              {/* Compact Search Bar */}
+              <div className="flex-1">
+                <SearchBar onSearch={handleSearch} compact={true} showDates={true} showGuests={true} />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Top Navigation Header with Logo */}
       <header className="absolute top-0 left-0 right-0 z-50 px-4 md:px-6 py-4">
         <div className="container mx-auto flex items-center justify-between">
