@@ -1,7 +1,7 @@
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Heart, MapPin, Star, Users, Share2, Phone, MessageCircle, BadgeCheck, Clock, ArrowRight } from "lucide-react";
+import { Heart, MapPin, Star, Users, Share2, Phone, MessageCircle, BadgeCheck, Clock, ArrowRight, Check } from "lucide-react";
 import type { Property } from "@shared/schema";
 import { Link, useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
@@ -177,6 +177,18 @@ export function PropertyCard({ property, onWishlistToggle }: PropertyCardProps) 
                 <span className="font-semibold">{Number(property.rating).toFixed(1)}</span>
               </div>
             )}
+          </div>
+          
+          {/* Trust Micro-Text */}
+          <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+            <span className="flex items-center gap-1">
+              <Check className="h-3 w-3 text-emerald-500" />
+              Verified by Zecoho
+            </span>
+            <span className="flex items-center gap-1">
+              <Check className="h-3 w-3 text-emerald-500" />
+              Real Guest Ratings
+            </span>
           </div>
           
           <div className="flex items-center gap-1 text-sm text-muted-foreground">
