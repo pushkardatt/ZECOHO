@@ -376,25 +376,28 @@ export function SearchBar({
 
   return (
     <div className="w-full max-w-4xl relative" ref={suggestionsRef}>
-      <div className="bg-white rounded-lg shadow-lg p-2 flex items-center gap-2 w-full">
-        <div className={`flex-1 px-4 py-2 ${(showDates || showGuests) ? 'border-r' : ''}`}>
-          <label className="text-xs font-semibold block mb-1 text-gray-700">Destination</label>
+      <div className="bg-white rounded-full shadow-lg border border-gray-200 p-1.5 flex items-center w-full">
+        {/* Destination */}
+        <div className="flex-1 px-4 py-2 rounded-full hover:bg-gray-50 transition-colors">
+          <label className="text-xs font-semibold block mb-0.5 text-gray-700">Where</label>
           <div className="relative">
-            <MapPin className="absolute left-0 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <input
               type="text"
-              placeholder="Find your stay now"
+              placeholder="Search destinations"
               value={destination}
               onChange={(e) => {
                 setDestination(e.target.value);
                 setShowSuggestions(e.target.value.length > 0);
               }}
               onFocus={() => destination.length > 0 && setShowSuggestions(true)}
-              className="w-full pl-6 bg-transparent focus:outline-none text-sm text-gray-900"
+              className="w-full bg-transparent focus:outline-none text-sm text-gray-900 placeholder:text-gray-400"
               data-testid="input-destination-full"
             />
           </div>
         </div>
+        
+        {/* Subtle divider */}
+        {showDates && <div className="h-8 w-px bg-gray-200" />}
       
         {showDates && (
           <>
@@ -402,16 +405,13 @@ export function SearchBar({
             <Popover open={checkInOpen} onOpenChange={setCheckInOpen}>
               <PopoverTrigger asChild>
                 <div 
-                  className="flex-1 px-4 py-2 border-r cursor-pointer hover:bg-gray-50 transition-colors"
+                  className="flex-1 px-4 py-2 rounded-full cursor-pointer hover:bg-gray-50 transition-colors"
                   data-testid="input-checkin"
                 >
-                  <label className="text-xs font-semibold block mb-1 text-gray-700 cursor-pointer">Check in</label>
-                  <div className="relative flex items-center">
-                    <CalendarIcon className="h-4 w-4 text-muted-foreground mr-2" />
-                    <span className={`text-sm ${checkInDate ? 'text-gray-900' : 'text-gray-500'}`}>
-                      {checkInDate ? format(checkInDate, 'MMM d, yyyy') : 'Add date'}
-                    </span>
-                  </div>
+                  <label className="text-xs font-semibold block mb-0.5 text-gray-700 cursor-pointer">Check in</label>
+                  <span className={`text-sm ${checkInDate ? 'text-gray-900' : 'text-gray-400'}`}>
+                    {checkInDate ? format(checkInDate, 'MMM d') : 'Add dates'}
+                  </span>
                 </div>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0" align="start">
@@ -425,20 +425,20 @@ export function SearchBar({
               </PopoverContent>
             </Popover>
             
+            {/* Subtle divider */}
+            <div className="h-8 w-px bg-gray-200" />
+            
             {/* Check-out Date Picker */}
             <Popover open={checkOutOpen} onOpenChange={setCheckOutOpen}>
               <PopoverTrigger asChild>
                 <div 
-                  className={`flex-1 px-4 py-2 ${showGuests ? 'border-r' : ''} cursor-pointer hover:bg-gray-50 transition-colors`}
+                  className="flex-1 px-4 py-2 rounded-full cursor-pointer hover:bg-gray-50 transition-colors"
                   data-testid="input-checkout"
                 >
-                  <label className="text-xs font-semibold block mb-1 text-gray-700 cursor-pointer">Check out</label>
-                  <div className="relative flex items-center">
-                    <CalendarIcon className="h-4 w-4 text-muted-foreground mr-2" />
-                    <span className={`text-sm ${checkOutDate ? 'text-gray-900' : 'text-gray-500'}`}>
-                      {checkOutDate ? format(checkOutDate, 'MMM d, yyyy') : 'Add date'}
-                    </span>
-                  </div>
+                  <label className="text-xs font-semibold block mb-0.5 text-gray-700 cursor-pointer">Check out</label>
+                  <span className={`text-sm ${checkOutDate ? 'text-gray-900' : 'text-gray-400'}`}>
+                    {checkOutDate ? format(checkOutDate, 'MMM d') : 'Add dates'}
+                  </span>
                 </div>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0" align="start">
@@ -458,26 +458,29 @@ export function SearchBar({
         )}
         
         {showGuests && (
-          <div className="flex-1 px-4 py-2">
-            <label className="text-xs font-semibold block mb-1 text-gray-700">Guests</label>
-            <div className="relative">
-              <Users className="absolute left-0 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <>
+            {/* Subtle divider */}
+            <div className="h-8 w-px bg-gray-200" />
+            
+            <div className="flex-1 px-4 py-2 rounded-full hover:bg-gray-50 transition-colors">
+              <label className="text-xs font-semibold block mb-0.5 text-gray-700">Who</label>
               <input
                 ref={guestsInputRef}
                 type="number"
                 min="1"
                 value={guests}
                 onChange={(e) => setGuests(Number(e.target.value))}
-                className="w-full pl-6 bg-transparent focus:outline-none text-sm text-gray-900"
+                className="w-full bg-transparent focus:outline-none text-sm text-gray-900"
+                placeholder="Add guests"
                 data-testid="input-guests"
               />
             </div>
-          </div>
+          </>
         )}
         
         <Button 
           size="lg" 
-          className="rounded-full px-8" 
+          className="rounded-full px-6 ml-1" 
           onClick={handleSearch}
           data-testid="button-search-full"
         >

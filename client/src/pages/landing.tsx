@@ -181,15 +181,13 @@ export default function Landing() {
 
           {/* Airbnb-Style Search Bar */}
           <div className="max-w-4xl mx-auto mb-6">
-            <div className="bg-white dark:bg-background backdrop-blur-xl rounded-full shadow-2xl shadow-black/20 p-2 md:p-2.5">
-              <SearchBar 
-                onSearch={handleSearch} 
-                compact={false} 
-                showDates={true} 
-                showGuests={true} 
-                ctaText="Find Lowest Direct Prices →"
-              />
-            </div>
+            <SearchBar 
+              onSearch={handleSearch} 
+              compact={false} 
+              showDates={true} 
+              showGuests={true} 
+              ctaText="Find Lowest Direct Prices →"
+            />
           </div>
 
           {/* Trust Badges Under Search Bar */}
