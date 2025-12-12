@@ -166,7 +166,7 @@ export default function PropertyDetails() {
     setGuests(adults + children);
   }, [adults, children]);
   
-  // Read URL query params to initialize booking form
+  // Read URL query params or localStorage to initialize booking form
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const searchParams = new URLSearchParams(window.location.search);
@@ -176,13 +176,26 @@ export default function PropertyDetails() {
       const urlChildren = searchParams.get("children");
       const urlRooms = searchParams.get("rooms");
       
+      // Load saved guest preferences from localStorage
+      const savedPrefs = localStorage.getItem("guestPreferences");
+      const savedGuestPrefs = savedPrefs ? JSON.parse(savedPrefs) : null;
+      
+      // URL params take priority, then localStorage, then defaults
       if (urlCheckIn) setCheckIn(urlCheckIn);
       if (urlCheckOut) setCheckOut(urlCheckOut);
-      if (urlAdults) setAdults(parseInt(urlAdults) || 2);
-      if (urlChildren) setChildren(parseInt(urlChildren) || 0);
-      if (urlRooms) setRooms(parseInt(urlRooms) || 1);
+      
+      setAdults(urlAdults ? parseInt(urlAdults) : (savedGuestPrefs?.adults ?? 2));
+      setChildren(urlChildren ? parseInt(urlChildren) : (savedGuestPrefs?.children ?? 0));
+      setRooms(urlRooms ? parseInt(urlRooms) : (savedGuestPrefs?.rooms ?? 1));
     }
   }, []);
+  
+  // Save guest preferences to localStorage when they change
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem("guestPreferences", JSON.stringify({ adults, children, rooms }));
+    }
+  }, [adults, children, rooms]);
   
   const [markedHelpfulReviews, setMarkedHelpfulReviews] = useState<Set<string>>(() => {
     if (typeof window !== 'undefined' && user?.id) {

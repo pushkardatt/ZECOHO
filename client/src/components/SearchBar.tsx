@@ -104,6 +104,26 @@ export function SearchBar({
     setGuests(adults + children);
   }, [adults, children]);
   
+  // Load saved guest preferences from localStorage on mount (only if no initial values provided)
+  useEffect(() => {
+    if (typeof window !== 'undefined' && initialAdults === 2 && initialChildren === 0 && initialRooms === 1) {
+      const savedPrefs = localStorage.getItem("guestPreferences");
+      if (savedPrefs) {
+        const prefs = JSON.parse(savedPrefs);
+        if (prefs.adults) setAdults(prefs.adults);
+        if (prefs.children !== undefined) setChildren(prefs.children);
+        if (prefs.rooms) setRooms(prefs.rooms);
+      }
+    }
+  }, []);
+  
+  // Save guest preferences to localStorage when they change
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem("guestPreferences", JSON.stringify({ adults, children, rooms }));
+    }
+  }, [adults, children, rooms]);
+  
   const debouncedDestination = useDebounce(destination.trim(), 300);
 
   useEffect(() => {
