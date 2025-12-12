@@ -1,0 +1,151 @@
+1. HERO SECTION (SAFE BACKGROUND)
+
+Use a soft blurred abstract travel background (non-identifiable image).
+
+Headline:
+Book Hotels at True Prices — Cheaper Than OTAs
+
+Subtext:
+India’s first 0% commission hotel booking platform. No hidden fees.
+
+Search Bar:
+Destination | Check-in | Check-out | Guests | Search Button
+
+USPs Below Bar:
+
+Save ₹500–₹1500/night
+
+Direct hotel contact
+
+Zero convenience fees
+
+✅ 2. DISCOVER INCREDIBLE INDIA
+
+Show destination themes using generic scenic backgrounds:
+
+Beaches
+
+Mountains
+
+Heritage cities
+
+Backwaters
+
+CTA: Explore →
+
+✅ 3. POPULAR DESTINATIONS
+
+Show non-specific thematic images for:
+
+Goa (generic beach)
+
+Manali (generic mountain valley)
+
+Jaipur (warm sandstone pattern)
+
+Kerala (palm lakeside)
+
+CTA: View Stays →
+
+✅ 4. EXPLORE BY CATEGORY
+
+Use generic icons or generic property-type visuals:
+
+Hotels
+
+Resorts
+
+Villas
+
+Homestays
+
+Apartments, Lodges, Farmhouses, etc.
+
+✅ 5. FEATURED PROPERTIES
+
+Use generic room interiors (not real hotels).
+Include pricing box:
+
+Premium Stay ★4.5
+Starting ₹1,000
+
+Zecoho Price: ₹1,000  
+OTA Price: ₹1,299  
+You Save: ₹299
+
+[ Book Direct ]
+
+🟦 6. WHY ZECOHO BEATS OTAs (KEEP EXACTLY LIKE YOUR SCREENSHOT)
+
+IMPORTANT: Do NOT change icons or wording. Keep the section EXACTLY as below:
+
+HEADING
+
+Why Zecoho Beats OTAs
+Subheading: Transparent pricing. Direct access. Zero hidden fees.
+
+6 Benefit Items (KEEP EXACTLY SAME):
+✅ Zero Commission
+
+Hotels don't pay us commission, so they charge you less.
+
+🟧 No Hidden Fees
+
+No convenience fees. No service charges. What you see is what you pay.
+
+🟦 Direct Communication
+
+Chat directly with the hotel. No middleman delays.
+
+🔻 15–25% Lower Prices
+
+Same hotel, same room — just without the OTA markup.
+
+🟪 Verified Properties
+
+Every listing is manually verified for quality and authenticity.
+
+🛡 Negotiate Directly
+
+Request special rates, upgrades, or flexible check-in times.
+
+🟧 7. ZECOHO VS OTAs — QUICK COMPARISON TABLE (ADD UNDER THE ABOVE SECTION)
+Heading:
+
+Zecoho vs OTAs — Who Actually Saves You Money?
+
+Comparison Table:
+---------------------------------------------------------------------
+Feature                     Zecoho               OTAs (MMT, GoIbibo, etc.)
+---------------------------------------------------------------------
+Commission                  0%                   15–25%
+Convenience Fee             ₹0                   ₹200–₹400
+Pricing Markup              None                 Yes (Dynamic Pricing)
+Direct Contact              Yes                  No
+Cancellation Clarity        High                 Low
+Hidden Charges              None                 Many Cases
+Token-Based Booking         Yes                  No
+---------------------------------------------------------------------
+
+CTA Button:
+
+Book Direct & Save More →
+
+✅ 8. PROPERTY OWNER CTA
+
+Heading:
+Own a Property?
+
+Subtext:
+List your property on Zecoho — pay 0% commission.
+
+Button:
+List Property FREE →
+
+✅ 9. FINAL CTA SECTION (GRADIENT BACKGROUND)
+
+Heading:
+Ready to Save on Your Next Booking?
+
+Button:
+Find Lowest Rates →
