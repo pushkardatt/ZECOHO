@@ -236,38 +236,39 @@ export default function Landing() {
             </Button>
           </div>
 
-          {/* Single Grid - Bigger, Brighter Tiles */}
+          {/* Single Grid - Bright, Scenic Tiles (No Dark Overlay) */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {[
-              { name: "Goa", price: "₹899", image: "/attached_assets/stock_images/goa_beach_india_suns_fcb832ea.jpg", desc: "Sun, sand & vibrant nightlife" },
-              { name: "Manali", price: "₹1,199", image: "/attached_assets/stock_images/manali_mountains_him_01ba7d34.jpg", desc: "Snow-capped peaks & adventure" },
-              { name: "Jaipur", price: "₹799", image: "/attached_assets/stock_images/jaipur_hawa_mahal_pi_f05b7750.jpg", desc: "Royal palaces & rich heritage" },
-              { name: "Rishikesh", price: "₹699", image: "/attached_assets/stock_images/rishikesh_ganges_riv_88870393.jpg", desc: "Yoga capital & river rafting" },
-              { name: "Ooty", price: "₹999", image: "/attached_assets/stock_images/ooty_tea_gardens_hil_06b99c0a.jpg", desc: "Misty hills & tea gardens" },
-              { name: "Udaipur", price: "₹1,099", image: "/attached_assets/stock_images/udaipur_lake_palace__7af7058e.jpg", desc: "Lake city of romance" },
+              { name: "Goa", price: "₹899", image: "/attached_assets/stock_images/goa_beach_sunset_pal_1c0ebb32.jpg", desc: "Sun, sand & vibrant nightlife" },
+              { name: "Himalayas", price: "₹1,199", image: "/attached_assets/stock_images/himalayas_snow_mount_acec5fcd.jpg", desc: "Snow-capped peaks & adventure" },
+              { name: "Rajasthan", price: "₹799", image: "/attached_assets/stock_images/rajasthan_fort_palac_133a86f2.jpg", desc: "Royal palaces & rich heritage" },
+              { name: "Rishikesh", price: "₹699", image: "/attached_assets/stock_images/rishikesh_ganges_riv_d4cfd7b4.jpg", desc: "Yoga capital & river rafting" },
+              { name: "Kerala", price: "₹999", image: "/attached_assets/stock_images/kerala_backwaters_ho_d51783fa.jpg", desc: "Backwaters & houseboats" },
+              { name: "Udaipur", price: "₹1,099", image: "/attached_assets/stock_images/udaipur_lake_palace__716cd333.jpg", desc: "Lake city of romance" },
             ].map((destination) => (
               <div
                 key={destination.name}
-                className="group cursor-pointer overflow-hidden rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 hover:-translate-y-1"
+                className="group cursor-pointer overflow-hidden rounded-2xl bg-white dark:bg-card shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-1"
                 onClick={() => setLocation(`/search?destination=${destination.name}`)}
                 data-testid={`destination-card-${destination.name.toLowerCase()}`}
               >
-                {/* Bigger thumbnail - h-80 instead of h-64 */}
-                <div className="relative h-80 overflow-hidden">
+                {/* Bright image - no dark overlay */}
+                <div className="relative h-56 overflow-hidden">
                   <img
                     src={destination.image}
                     alt={destination.name}
-                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110 brightness-105"
+                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                   />
-                  {/* Strong gradient for maximum text readability */}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-transparent" />
-                  <div className="absolute bottom-0 left-0 right-0 p-6">
-                    <h3 className="text-3xl font-bold text-white mb-1" style={{ textShadow: '0 2px 8px rgba(0,0,0,0.8)' }}>{destination.name}</h3>
-                    <p className="text-white/90 text-sm mb-2" style={{ textShadow: '0 1px 4px rgba(0,0,0,0.6)' }}>{destination.desc}</p>
-                    <p className="text-emerald-400 font-bold text-base mb-3">From {destination.price}/night</p>
-                    <div className="flex items-center gap-2 text-white font-bold text-sm group-hover:text-emerald-300 transition-colors">
-                      <span>View Stays</span>
-                      <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+                </div>
+                {/* Content below image - clean card style */}
+                <div className="p-5">
+                  <h3 className="text-xl font-bold text-foreground mb-1">{destination.name}</h3>
+                  <p className="text-muted-foreground text-sm mb-3">{destination.desc}</p>
+                  <div className="flex items-center justify-between">
+                    <p className="text-primary font-bold text-base">From {destination.price}/night</p>
+                    <div className="flex items-center gap-1 text-primary font-semibold text-sm group-hover:gap-2 transition-all">
+                      <span>Explore</span>
+                      <ArrowRight className="h-4 w-4" />
                     </div>
                   </div>
                 </div>
