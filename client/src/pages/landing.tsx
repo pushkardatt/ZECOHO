@@ -8,7 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Building, Home as HomeIcon, Hotel, Mountain, Waves, TreePine, Wheat, Heart, MapPin, Calendar, Handshake, TrendingDown, Shield, Sparkles, Check, Percent, BadgeCheck, HandCoins, FileCheck2, Star, ArrowRight, ChevronRight, MessageCircle, ShieldCheck } from "lucide-react";
 import { useLocation, Link } from "wouter";
 import type { Property, Destination } from "@shared/schema";
-import heroImage from "@assets/generated_images/mountain_resort_balcony_view.png";
+import heroImage from "@assets/stock_images/luxury_resort_infini_49df439c.jpg";
 import { useEffect, useState } from "react";
 
 function AnimatedCounter({ end, duration = 2000, suffix = "" }: { end: number; duration?: number; suffix?: string }) {
@@ -134,14 +134,16 @@ export default function Landing() {
 
       {/* Hero Section - Premium High-Impact Design */}
       <div className="relative min-h-[490px] md:min-h-[520px] flex items-center justify-center overflow-hidden">
-        {/* Background with Parallax Effect */}
+        {/* Background - Soft Blurred Luxury Resort Pool */}
         <div 
           className="absolute inset-0 bg-cover bg-center scale-105"
-          style={{ backgroundImage: `url(${heroImage})` }}
+          style={{ 
+            backgroundImage: `url(${heroImage})`,
+            filter: 'blur(3px) brightness(1.06)',
+          }}
         />
-        {/* Dramatic Gradient Overlay */}
-        <div className="absolute inset-0 bg-gradient-to-br from-black/80 via-black/60 to-rose-900/50" />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-black/20" />
+        {/* 45% Black Overlay for text readability */}
+        <div className="absolute inset-0 bg-black/45" />
         
         <div className="relative z-10 container px-4 md:px-6 text-center py-12 pt-24">
           {/* Premium Badge - Subtle */}
