@@ -236,7 +236,7 @@ export default function Landing() {
             </Button>
           </div>
 
-          {/* Single Grid - Bright, Scenic Tiles (No Dark Overlay) */}
+          {/* Popular Destinations Grid - Light Overlay, White Text, Hover Zoom */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {[
               { name: "Goa", price: "₹899", image: "/attached_assets/stock_images/goa_beach_sunset_pal_1c0ebb32.jpg", desc: "Sun, sand & vibrant nightlife" },
@@ -248,27 +248,29 @@ export default function Landing() {
             ].map((destination) => (
               <div
                 key={destination.name}
-                className="group cursor-pointer overflow-hidden rounded-2xl bg-white dark:bg-card shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-1"
+                className="group cursor-pointer overflow-hidden rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300"
                 onClick={() => setLocation(`/search?destination=${destination.name}`)}
                 data-testid={`destination-card-${destination.name.toLowerCase()}`}
               >
-                {/* Bright image - no dark overlay */}
-                <div className="relative h-56 overflow-hidden">
+                {/* Full-bleed image with hover zoom */}
+                <div className="relative h-72 overflow-hidden">
                   <img
                     src={destination.image}
                     alt={destination.name}
-                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                   />
-                </div>
-                {/* Content below image - clean card style */}
-                <div className="p-5">
-                  <h3 className="text-xl font-bold text-foreground mb-1">{destination.name}</h3>
-                  <p className="text-muted-foreground text-sm mb-3">{destination.desc}</p>
-                  <div className="flex items-center justify-between">
-                    <p className="text-primary font-bold text-base">From {destination.price}/night</p>
-                    <div className="flex items-center gap-1 text-primary font-semibold text-sm group-hover:gap-2 transition-all">
-                      <span>Explore</span>
-                      <ArrowRight className="h-4 w-4" />
+                  {/* Light overlay (20-25%) for text readability */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-black/20 to-black/10" />
+                  {/* White text overlay */}
+                  <div className="absolute bottom-0 left-0 right-0 p-6">
+                    <h3 className="text-2xl font-bold text-white mb-1" style={{ textShadow: '0 2px 8px rgba(0,0,0,0.4)' }}>{destination.name}</h3>
+                    <p className="text-white/90 text-sm mb-2" style={{ textShadow: '0 1px 4px rgba(0,0,0,0.3)' }}>{destination.desc}</p>
+                    <div className="flex items-center justify-between">
+                      <p className="text-white font-bold text-base">From {destination.price}/night</p>
+                      <div className="flex items-center gap-1 text-white font-semibold text-sm opacity-0 group-hover:opacity-100 transition-opacity">
+                        <span>Explore</span>
+                        <ArrowRight className="h-4 w-4" />
+                      </div>
                     </div>
                   </div>
                 </div>
