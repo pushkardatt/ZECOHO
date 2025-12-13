@@ -9,7 +9,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
-import { Heart, User, LogOut, Menu, Building, MessageCircle, History, PlusCircle, Shield, Settings, FileText, MapPin, CheckCircle, Clock, XCircle, Globe, Check } from "lucide-react";
+import { Heart, User, LogOut, Menu, Building, MessageCircle, History, PlusCircle, Shield, Settings, FileText, MapPin, CheckCircle, Clock, XCircle, Globe, Check, LayoutDashboard, CalendarCheck, IndianRupee, Star } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery } from "@tanstack/react-query";
@@ -172,22 +172,58 @@ export function Header() {
                       data-testid="button-owner-menu"
                     >
                       <Building className="h-4 w-4 md:mr-2" />
-                      <span className="hidden md:inline">My Properties</span>
+                      <span className="hidden md:inline">Owner Portal</span>
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-56">
                     <div className="px-2 py-1.5">
                       <p className="text-sm font-semibold flex items-center gap-2">
                         <Building className="h-4 w-4" />
-                        Property Management
+                        Owner Portal
                       </p>
-                      <p className="text-xs text-muted-foreground">Manage your listings</p>
+                      <p className="text-xs text-muted-foreground">Manage your property business</p>
                     </div>
                     <DropdownMenuSeparator />
-                    <Link href="/owner/properties">
-                      <DropdownMenuItem data-testid="link-owner-properties">
+                    <Link href="/owner/dashboard">
+                      <DropdownMenuItem data-testid="link-owner-dashboard">
+                        <LayoutDashboard className="h-4 w-4 mr-2" />
+                        Dashboard
+                      </DropdownMenuItem>
+                    </Link>
+                    <Link href="/owner/bookings">
+                      <DropdownMenuItem data-testid="link-owner-bookings">
+                        <CalendarCheck className="h-4 w-4 mr-2" />
+                        Bookings
+                      </DropdownMenuItem>
+                    </Link>
+                    <Link href="/owner/messages">
+                      <DropdownMenuItem data-testid="link-owner-messages">
+                        <MessageCircle className="h-4 w-4 mr-2" />
+                        Messages
+                      </DropdownMenuItem>
+                    </Link>
+                    <Link href="/owner/property">
+                      <DropdownMenuItem data-testid="link-owner-property">
                         <Building className="h-4 w-4 mr-2" />
-                        View My Properties
+                        My Properties
+                      </DropdownMenuItem>
+                    </Link>
+                    <Link href="/owner/earnings">
+                      <DropdownMenuItem data-testid="link-owner-earnings">
+                        <IndianRupee className="h-4 w-4 mr-2" />
+                        Earnings
+                      </DropdownMenuItem>
+                    </Link>
+                    <Link href="/owner/reviews">
+                      <DropdownMenuItem data-testid="link-owner-reviews">
+                        <Star className="h-4 w-4 mr-2" />
+                        Reviews
+                      </DropdownMenuItem>
+                    </Link>
+                    <Link href="/owner/settings">
+                      <DropdownMenuItem data-testid="link-owner-settings">
+                        <Settings className="h-4 w-4 mr-2" />
+                        Settings
                       </DropdownMenuItem>
                     </Link>
                   </DropdownMenuContent>
