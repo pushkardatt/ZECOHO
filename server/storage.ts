@@ -154,6 +154,11 @@ export interface IStorage {
   createLocalUser(data: { firstName: string; lastName: string; email: string; passwordHash: string }): Promise<User>;
   updateUserEmailVerified(userId: string): Promise<User | undefined>;
   updateUserPassword(userId: string, passwordHash: string): Promise<User | undefined>;
+
+  // Owner dashboard operations
+  getOwnerProperties(userId: string): Promise<Property[]>;
+  getBookingsForProperties(propertyIds: string[]): Promise<Booking[]>;
+  getReviewsForProperties(propertyIds: string[]): Promise<(Review & { guest: User })[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1062,6 +1067,41 @@ export class DatabaseStorage implements IStorage {
       .where(eq(users.id, userId))
       .returning();
     return user;
+  }
+
+  // Owner dashboard operations
+  async getOwnerProperties(userId: string): Promise<Property[]> {
+    return await db
+      .select()
+      .from(properties)
+      .where(eq(properties.ownerId, userId));
+  }
+
+  async getBookingsForProperties(propertyIds: string[]): Promise<Booking[]> {
+    if (propertyIds.length === 0) return [];
+    return await db
+      .select()
+      .from(bookings)
+      .where(inArray(bookings.propertyId, propertyIds))
+      .orderBy(desc(bookings.createdAt));
+  }
+
+  async getReviewsForProperties(propertyIds: string[]): Promise<(Review & { guest: User })[]> {
+    if (propertyIds.length === 0) return [];
+    const results = await db
+      .select({
+        review: reviews,
+        guest: users,
+      })
+      .from(reviews)
+      .leftJoin(users, eq(reviews.guestId, users.id))
+      .where(inArray(reviews.propertyId, propertyIds))
+      .orderBy(desc(reviews.createdAt));
+
+    return results.map(r => ({
+      ...r.review,
+      guest: r.guest as User,
+    }));
   }
 }
 

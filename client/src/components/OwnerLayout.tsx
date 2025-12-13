@@ -47,6 +47,11 @@ export function OwnerLayout({ children }: OwnerLayoutProps) {
   const { user, isLoading, isOwner } = useAuth();
   const [location] = useLocation();
 
+  const sidebarStyle = {
+    "--sidebar-width": "16rem",
+    "--sidebar-width-icon": "3rem",
+  } as React.CSSProperties;
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen" data-testid="owner-layout-loading">
@@ -66,8 +71,8 @@ export function OwnerLayout({ children }: OwnerLayoutProps) {
   };
 
   return (
-    <SidebarProvider>
-      <div className="flex min-h-screen w-full">
+    <SidebarProvider style={sidebarStyle}>
+      <div className="flex h-screen w-full">
         <Sidebar>
           <SidebarHeader className="p-4">
             <div className="flex items-center gap-3">

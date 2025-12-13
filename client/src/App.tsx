@@ -41,6 +41,13 @@ import Login from "@/pages/login";
 import Register from "@/pages/register";
 import ForgotPassword from "@/pages/forgot-password";
 import NotFound from "@/pages/not-found";
+import OwnerDashboard from "@/pages/owner-dashboard";
+import OwnerBookings from "@/pages/owner-bookings";
+import OwnerMessagesPage from "@/pages/owner-messages";
+import OwnerProperty from "@/pages/owner-property";
+import OwnerEarnings from "@/pages/owner-earnings";
+import OwnerReviews from "@/pages/owner-reviews";
+import OwnerSettings from "@/pages/owner-settings";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -63,6 +70,13 @@ function Router() {
           <Route path="/admin/properties" component={AdminProperties} />
           <Route path="/admin/kyc" component={AdminKYC} />
           <Route path="/profile" component={Profile} />
+          <Route path="/owner/dashboard" component={OwnerDashboard} />
+          <Route path="/owner/bookings" component={OwnerBookings} />
+          <Route path="/owner/messages" component={OwnerMessagesPage} />
+          <Route path="/owner/property" component={OwnerProperty} />
+          <Route path="/owner/earnings" component={OwnerEarnings} />
+          <Route path="/owner/reviews" component={OwnerReviews} />
+          <Route path="/owner/settings" component={OwnerSettings} />
         </>
       )}
       <Route path="/login" component={Login} />
