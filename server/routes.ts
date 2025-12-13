@@ -2540,6 +2540,260 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ==================== OWNER DASHBOARD ROUTES ====================
+
+  // Get owner dashboard stats (KPIs)
+  app.get("/api/owner/stats", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || !userHasRole(user, "owner")) {
+        return res.status(403).json({ message: "Only owners can access dashboard" });
+      }
+
+      // Get owner's properties
+      const properties = await storage.getOwnerProperties(userId);
+      
+      if (properties.length === 0) {
+        return res.json({
+          bookingsToday: 0,
+          bookingsThisMonth: 0,
+          revenueToday: 0,
+          revenueThisMonth: 0,
+          propertyStatus: "none",
+          avgRating: 0,
+          reviewCount: 0,
+          properties: [],
+        });
+      }
+
+      const propertyIds = properties.map(p => p.id);
+      
+      // Get all bookings for owner's properties
+      const allBookings = await storage.getBookingsForProperties(propertyIds);
+      
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+      
+      // Calculate KPIs
+      let bookingsToday = 0;
+      let bookingsThisMonth = 0;
+      let revenueToday = 0;
+      let revenueThisMonth = 0;
+      
+      for (const booking of allBookings) {
+        const bookingDate = new Date(booking.createdAt || booking.checkIn);
+        bookingDate.setHours(0, 0, 0, 0);
+        
+        if (booking.status === "confirmed" || booking.status === "completed") {
+          const price = parseFloat(booking.totalPrice as string) || 0;
+          
+          if (bookingDate.getTime() === today.getTime()) {
+            bookingsToday++;
+            revenueToday += price;
+          }
+          
+          if (bookingDate >= startOfMonth) {
+            bookingsThisMonth++;
+            revenueThisMonth += price;
+          }
+        }
+      }
+
+      // Property status (use first property for now)
+      const propertyStatus = properties[0]?.status || "draft";
+      
+      // Calculate average rating across all properties
+      let totalRating = 0;
+      let totalReviews = 0;
+      for (const prop of properties) {
+        totalRating += (parseFloat(prop.rating as string) || 0) * (prop.reviewCount || 0);
+        totalReviews += prop.reviewCount || 0;
+      }
+      const avgRating = totalReviews > 0 ? totalRating / totalReviews : 0;
+
+      res.json({
+        bookingsToday,
+        bookingsThisMonth,
+        revenueToday,
+        revenueThisMonth,
+        propertyStatus,
+        avgRating: Math.round(avgRating * 10) / 10,
+        reviewCount: totalReviews,
+        properties: properties.map(p => ({
+          id: p.id,
+          title: p.title,
+          status: p.status,
+          pricePerNight: p.pricePerNight,
+        })),
+      });
+    } catch (error) {
+      console.error("Error fetching owner stats:", error);
+      res.status(500).json({ message: "Failed to fetch dashboard stats" });
+    }
+  });
+
+  // Get owner's bookings with filters
+  app.get("/api/owner/bookings", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || !userHasRole(user, "owner")) {
+        return res.status(403).json({ message: "Only owners can access bookings" });
+      }
+
+      const { filter } = req.query; // upcoming, ongoing, past, all
+      
+      // Get owner's properties
+      const properties = await storage.getOwnerProperties(userId);
+      const propertyIds = properties.map(p => p.id);
+      
+      if (propertyIds.length === 0) {
+        return res.json([]);
+      }
+      
+      // Get bookings for owner's properties
+      const bookings = await storage.getBookingsForProperties(propertyIds);
+      
+      const now = new Date();
+      let filteredBookings = bookings;
+      
+      if (filter === "upcoming") {
+        filteredBookings = bookings.filter(b => 
+          new Date(b.checkIn) > now && (b.status === "confirmed" || b.status === "pending")
+        );
+      } else if (filter === "ongoing") {
+        filteredBookings = bookings.filter(b => 
+          new Date(b.checkIn) <= now && new Date(b.checkOut) >= now && b.status === "confirmed"
+        );
+      } else if (filter === "past") {
+        filteredBookings = bookings.filter(b => 
+          new Date(b.checkOut) < now || b.status === "completed" || b.status === "cancelled"
+        );
+      }
+      
+      // Enrich with property and guest info
+      const enrichedBookings = await Promise.all(
+        filteredBookings.map(async (booking) => {
+          const property = properties.find(p => p.id === booking.propertyId);
+          const guest = await storage.getUser(booking.guestId);
+          return {
+            ...booking,
+            property: property ? { id: property.id, title: property.title, images: property.images } : null,
+            guest: guest ? { 
+              id: guest.id, 
+              name: `${guest.firstName || ""} ${guest.lastName || ""}`.trim() || "Guest",
+              email: guest.email,
+              phone: guest.phone,
+            } : null,
+          };
+        })
+      );
+      
+      res.json(enrichedBookings);
+    } catch (error) {
+      console.error("Error fetching owner bookings:", error);
+      res.status(500).json({ message: "Failed to fetch bookings" });
+    }
+  });
+
+  // Update booking status (owner)
+  app.patch("/api/owner/bookings/:id/status", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || !userHasRole(user, "owner")) {
+        return res.status(403).json({ message: "Only owners can update bookings" });
+      }
+
+      const { status } = req.body;
+      if (!["confirmed", "cancelled", "completed"].includes(status)) {
+        return res.status(400).json({ message: "Invalid status" });
+      }
+
+      const booking = await storage.getBooking(req.params.id);
+      if (!booking) {
+        return res.status(404).json({ message: "Booking not found" });
+      }
+
+      // Verify owner owns the property
+      const property = await storage.getProperty(booking.propertyId);
+      if (!property || property.ownerId !== userId) {
+        return res.status(403).json({ message: "Not authorized to update this booking" });
+      }
+
+      const updated = await storage.updateBookingStatus(req.params.id, status);
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating booking status:", error);
+      res.status(500).json({ message: "Failed to update booking" });
+    }
+  });
+
+  // Get owner's reviews
+  app.get("/api/owner/reviews", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || !userHasRole(user, "owner")) {
+        return res.status(403).json({ message: "Only owners can access reviews" });
+      }
+
+      const properties = await storage.getOwnerProperties(userId);
+      const propertyIds = properties.map(p => p.id);
+      
+      if (propertyIds.length === 0) {
+        return res.json([]);
+      }
+
+      const reviews = await storage.getReviewsForProperties(propertyIds);
+      
+      // Enrich with guest info
+      const enrichedReviews = await Promise.all(
+        reviews.map(async (review) => {
+          const guest = await storage.getUser(review.guestId);
+          const property = properties.find(p => p.id === review.propertyId);
+          return {
+            ...review,
+            guest: guest ? {
+              name: `${guest.firstName || ""} ${guest.lastName || ""}`.trim() || "Guest",
+              profileImageUrl: guest.profileImageUrl,
+            } : null,
+            property: property ? { id: property.id, title: property.title } : null,
+          };
+        })
+      );
+      
+      res.json(enrichedReviews);
+    } catch (error) {
+      console.error("Error fetching owner reviews:", error);
+      res.status(500).json({ message: "Failed to fetch reviews" });
+    }
+  });
+
+  // Get owner's conversations/messages
+  app.get("/api/owner/conversations", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || !userHasRole(user, "owner")) {
+        return res.status(403).json({ message: "Only owners can access messages" });
+      }
+
+      const conversations = await storage.getOwnerConversations(userId);
+      res.json(conversations);
+    } catch (error) {
+      console.error("Error fetching owner conversations:", error);
+      res.status(500).json({ message: "Failed to fetch conversations" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
