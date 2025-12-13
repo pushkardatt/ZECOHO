@@ -1,23 +1,30 @@
 import { useQuery } from "@tanstack/react-query";
 import { OwnerLayout } from "@/components/OwnerLayout";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   IndianRupee,
   TrendingUp,
-  Calendar,
-  CalendarDays,
+  CalendarCheck,
+  Percent,
+  ArrowUpRight,
+  ArrowDownRight,
 } from "lucide-react";
 
-interface OwnerStats {
+interface EarningsStats {
   revenueToday: number;
   revenueThisMonth: number;
+  revenueLastMonth: number;
   bookingsToday: number;
   bookingsThisMonth: number;
+  bookingsLastMonth: number;
+  totalRevenue: number;
+  totalBookings: number;
 }
 
 export default function OwnerEarnings() {
-  const { data: stats, isLoading } = useQuery<OwnerStats>({
+  const { data: stats, isLoading } = useQuery<EarningsStats>({
     queryKey: ["/api/owner/stats"],
   });
 
@@ -26,19 +33,50 @@ export default function OwnerEarnings() {
       style: "currency",
       currency: "INR",
       minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
     }).format(amount);
   };
+
+  const calculateGrowth = (current: number, previous: number) => {
+    if (previous === 0) return current > 0 ? 100 : 0;
+    return ((current - previous) / previous) * 100;
+  };
+
+  const revenueGrowth = stats
+    ? calculateGrowth(stats.revenueThisMonth, stats.revenueLastMonth)
+    : 0;
+  const bookingsGrowth = stats
+    ? calculateGrowth(stats.bookingsThisMonth, stats.bookingsLastMonth)
+    : 0;
 
   return (
     <OwnerLayout>
       <div className="space-y-6" data-testid="owner-earnings">
-        <div>
-          <h2 className="text-2xl font-bold">Earnings Overview</h2>
-          <p className="text-muted-foreground">Track your revenue and booking income</p>
-        </div>
+        <Card className="border-primary/20 bg-primary/5">
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <Percent className="h-5 w-5 text-primary" />
+              <CardTitle className="text-lg">ZERO Commission</CardTitle>
+            </div>
+            <CardDescription>
+              Unlike other platforms that charge 15-25% commission, ZECOHO charges ZERO.
+              You keep 100% of your earnings!
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center gap-4">
+              <Badge variant="default" className="text-sm py-1 px-3">
+                0% Platform Fee
+              </Badge>
+              <span className="text-sm text-muted-foreground">
+                No hidden charges, no booking fees
+              </span>
+            </div>
+          </CardContent>
+        </Card>
 
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <Card data-testid="card-today-revenue">
+          <Card data-testid="card-revenue-today">
             <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Today's Revenue</CardTitle>
               <IndianRupee className="h-4 w-4 text-muted-foreground" />
@@ -54,7 +92,7 @@ export default function OwnerEarnings() {
             </CardContent>
           </Card>
 
-          <Card data-testid="card-month-revenue">
+          <Card data-testid="card-revenue-month">
             <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">This Month</CardTitle>
               <TrendingUp className="h-4 w-4 text-muted-foreground" />
@@ -63,21 +101,34 @@ export default function OwnerEarnings() {
               {isLoading ? (
                 <Skeleton className="h-8 w-24" />
               ) : (
-                <div className="text-2xl font-bold" data-testid="revenue-month-value">
-                  {formatCurrency(stats?.revenueThisMonth || 0)}
-                </div>
+                <>
+                  <div className="text-2xl font-bold" data-testid="revenue-month-value">
+                    {formatCurrency(stats?.revenueThisMonth || 0)}
+                  </div>
+                  <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
+                    {revenueGrowth >= 0 ? (
+                      <ArrowUpRight className="h-3 w-3 text-green-500" />
+                    ) : (
+                      <ArrowDownRight className="h-3 w-3 text-red-500" />
+                    )}
+                    <span className={revenueGrowth >= 0 ? "text-green-500" : "text-red-500"}>
+                      {Math.abs(revenueGrowth).toFixed(1)}%
+                    </span>
+                    vs last month
+                  </p>
+                </>
               )}
             </CardContent>
           </Card>
 
-          <Card data-testid="card-today-bookings">
+          <Card data-testid="card-bookings-today">
             <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Today's Bookings</CardTitle>
-              <Calendar className="h-4 w-4 text-muted-foreground" />
+              <CalendarCheck className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
               {isLoading ? (
-                <Skeleton className="h-8 w-12" />
+                <Skeleton className="h-8 w-16" />
               ) : (
                 <div className="text-2xl font-bold" data-testid="bookings-today-value">
                   {stats?.bookingsToday || 0}
@@ -86,52 +137,69 @@ export default function OwnerEarnings() {
             </CardContent>
           </Card>
 
-          <Card data-testid="card-month-bookings">
+          <Card data-testid="card-bookings-month">
             <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Monthly Bookings</CardTitle>
-              <CalendarDays className="h-4 w-4 text-muted-foreground" />
+              <CalendarCheck className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
               {isLoading ? (
-                <Skeleton className="h-8 w-12" />
+                <Skeleton className="h-8 w-16" />
               ) : (
-                <div className="text-2xl font-bold" data-testid="bookings-month-value">
-                  {stats?.bookingsThisMonth || 0}
-                </div>
+                <>
+                  <div className="text-2xl font-bold" data-testid="bookings-month-value">
+                    {stats?.bookingsThisMonth || 0}
+                  </div>
+                  <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
+                    {bookingsGrowth >= 0 ? (
+                      <ArrowUpRight className="h-3 w-3 text-green-500" />
+                    ) : (
+                      <ArrowDownRight className="h-3 w-3 text-red-500" />
+                    )}
+                    <span className={bookingsGrowth >= 0 ? "text-green-500" : "text-red-500"}>
+                      {Math.abs(bookingsGrowth).toFixed(1)}%
+                    </span>
+                    vs last month
+                  </p>
+                </>
               )}
             </CardContent>
           </Card>
         </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Earnings Summary</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="flex items-center justify-between py-3 border-b">
-                <span className="text-muted-foreground">Commission Rate</span>
-                <span className="font-bold text-green-600" data-testid="commission-rate">0% (ZERO)</span>
-              </div>
-              <div className="flex items-center justify-between py-3 border-b">
-                <span className="text-muted-foreground">Your Share</span>
-                <span className="font-bold text-green-600" data-testid="owner-share">100%</span>
-              </div>
-              <div className="flex items-center justify-between py-3">
-                <span className="text-muted-foreground">Monthly Earnings</span>
-                <span className="font-bold text-xl" data-testid="monthly-earnings">
-                  {isLoading ? <Skeleton className="h-6 w-24" /> : formatCurrency(stats?.revenueThisMonth || 0)}
-                </span>
-              </div>
-            </div>
-            <div className="mt-6 p-4 bg-green-50 dark:bg-green-950 rounded-lg">
-              <p className="text-sm text-green-700 dark:text-green-300" data-testid="zero-commission-note">
-                <strong>ZECOHO Zero Commission:</strong> You keep 100% of your earnings. 
-                No platform fees, no hidden charges.
-              </p>
-            </div>
-          </CardContent>
-        </Card>
+        <div className="grid gap-4 md:grid-cols-2">
+          <Card data-testid="card-total-revenue">
+            <CardHeader>
+              <CardTitle>Total Revenue</CardTitle>
+              <CardDescription>All time earnings from your properties</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {isLoading ? (
+                <Skeleton className="h-12 w-32" />
+              ) : (
+                <div className="text-3xl font-bold" data-testid="total-revenue-value">
+                  {formatCurrency(stats?.totalRevenue || 0)}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card data-testid="card-total-bookings">
+            <CardHeader>
+              <CardTitle>Total Bookings</CardTitle>
+              <CardDescription>All time bookings across your properties</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {isLoading ? (
+                <Skeleton className="h-12 w-20" />
+              ) : (
+                <div className="text-3xl font-bold" data-testid="total-bookings-value">
+                  {stats?.totalBookings || 0}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </OwnerLayout>
   );
