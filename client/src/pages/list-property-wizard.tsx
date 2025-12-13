@@ -1216,21 +1216,21 @@ export default function ListPropertyWizard() {
       <div className="min-h-screen flex items-center justify-center bg-muted/30">
         <Card className="w-full max-w-md mx-4">
           <CardHeader className="text-center">
-            <CardTitle className="text-2xl">Sign In Required</CardTitle>
+            <CardTitle className="text-2xl">List Your Property on Zecoho (Free)</CardTitle>
             <p className="text-muted-foreground mt-2">
-              Please log in to list your property on ZECOHO
+              Login or create an account to continue
             </p>
           </CardHeader>
           <CardContent className="space-y-4">
             <p className="text-sm text-center text-muted-foreground">
-              Join our ZERO commission platform and connect directly with guests.
+              Join our ZERO commission platform and start getting direct bookings today.
             </p>
             <Button 
               className="w-full" 
               onClick={() => setLocation("/login")}
               data-testid="button-login-to-list"
             >
-              Log In to Continue
+              Continue to Get Bookings
               <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
             <Button 
