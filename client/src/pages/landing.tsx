@@ -123,15 +123,25 @@ export default function Landing() {
               </div>
             </div>
           </Link>
-          <Button 
-            size="default"
-            variant="outline" 
-            className="bg-white/10 backdrop-blur-md border-white/20 text-white hover:bg-white/20"
-            onClick={() => setLocation("/login")}
-            data-testid="button-login-hero"
-          >
-            Login / Sign Up
-          </Button>
+          <div className="flex items-center gap-3 md:gap-4">
+            <Link href="/login?returnTo=/list-property">
+              <span 
+                className="text-sm font-medium text-white/80 hover:text-white cursor-pointer hidden md:inline transition-colors"
+                data-testid="link-own-property"
+              >
+                Own a Property
+              </span>
+            </Link>
+            <Button 
+              size="default"
+              variant="outline" 
+              className="bg-white/10 backdrop-blur-md border-white/20 text-white hover:bg-white/20"
+              onClick={() => setLocation("/login")}
+              data-testid="button-login-hero"
+            >
+              Login / Sign Up
+            </Button>
+          </div>
         </div>
       </header>
 
