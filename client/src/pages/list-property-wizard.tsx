@@ -2225,8 +2225,22 @@ export default function ListPropertyWizard() {
                       <FormItem>
                         <FormLabel>Description *</FormLabel>
                         <FormControl>
-                          <Textarea placeholder="Describe your property..." rows={5} {...field} data-testid="textarea-description" />
+                          <Textarea 
+                            placeholder="Describe your property..." 
+                            rows={5} 
+                            maxLength={500}
+                            {...field} 
+                            data-testid="textarea-description" 
+                          />
                         </FormControl>
+                        <div className="flex items-center justify-between mt-1.5">
+                          <p className="text-xs text-muted-foreground" data-testid="text-description-helper">
+                            Tip: Mention unique features, nearby attractions, and what makes your stay special
+                          </p>
+                          <span className={`text-xs ${(field.value?.length || 0) > 450 ? 'text-orange-500' : 'text-muted-foreground'}`} data-testid="text-description-counter">
+                            {field.value?.length || 0}/500
+                          </span>
+                        </div>
                         <FormMessage />
                       </FormItem>
                     )}
