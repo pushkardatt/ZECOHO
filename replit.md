@@ -41,6 +41,14 @@ The application uses **PostgreSQL** via Neon's serverless driver. **Drizzle ORM*
 -   **Destinations Feature**: Curated 65 Indian destinations across all states with autocomplete search, 56+ properties covering major cities, tourist spots, hill stations, heritage sites, and adventure destinations.
 -   **Google Places City Search**: Comprehensive Indian city search powered by Google Maps Places API. The CitySearchInput component uses Places Autocomplete with types: ["(cities)"] and India restriction, enabling search for any Indian city including small towns like Dharchulla and Munsiyari. Home page SearchBar combines database destinations with Google Places results for complete coverage. City selection auto-populates state (administrative_area_level_1) and district (administrative_area_level_2) fields.
 -   **Choose Listing Mode Feature**: New users who want to list properties can choose between Quick Listing (fast onboarding with minimal info) or Full Application (complete KYC verification). Quick Listing creates draft properties with limited visibility and inquiry-only mode. Users can upgrade to full listing anytime. Routes: `/owner/choose-mode` for mode selection, `/list-property?mode=quick` for quick listing wizard. The `listingMode` field on users tracks their choice (not_selected, quick, full). Quick listing owners see an upgrade CTA banner in their dashboard.
+-   **Owner UX Improvements**: 
+    - First-time owner welcome modal: Shows once when owner first accesses owner dashboard, tracked via `hasSeenOwnerModal` field on users.
+    - Role switcher: Dropdown in header for switching between Customer Mode and Owner Mode.
+    - Owner context indicator: Orange "Owner Mode" badge in header when on owner pages.
+    - KYC email notifications: Automated emails via Resend for KYC submitted, approved, and rejected events.
+    - In-app notification banners: Owner dashboard shows contextual banners for property live (green), paused (amber), and draft (blue with resume CTA) states.
+    - Property controls: Owners can pause, resume, or deactivate listings via dropdown menu on each property card. Property status enum includes "paused" and "deactivated" values.
+    - API endpoints: PATCH /api/properties/:id/pause, /resume, /deactivate for managing property visibility.
 
 ## External Dependencies
 
