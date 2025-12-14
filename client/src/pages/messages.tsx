@@ -36,11 +36,16 @@ export default function Messages() {
   const [messageInput, setMessageInput] = useState("");
   const wsRef = useRef<WebSocket | null>(null);
   const selectedConversationIdRef = useRef(selectedConversationId);
+  const userIdRef = useRef(user?.id);
 
-  // Keep ref in sync with state
+  // Keep refs in sync with state
   useEffect(() => {
     selectedConversationIdRef.current = selectedConversationId;
   }, [selectedConversationId]);
+
+  useEffect(() => {
+    userIdRef.current = user?.id;
+  }, [user?.id]);
 
   // WebSocket connection for real-time messaging
   useEffect(() => {
@@ -74,15 +79,18 @@ export default function Messages() {
               );
             }
             
-            // Show toast notification for new message
-            const senderName = data.message?.sender?.firstName 
-              ? `${data.message.sender.firstName} ${data.message.sender.lastName || ''}`.trim()
-              : 'Someone';
-            const messagePreview = data.message?.content?.substring(0, 50) || 'New message';
-            toast({
-              title: `New message from ${senderName}`,
-              description: messagePreview + (data.message?.content?.length > 50 ? '...' : ''),
-            });
+            // Show toast notification for new message only if it's from someone else
+            const senderId = data.message?.senderId || data.message?.sender?.id;
+            if (senderId && senderId !== userIdRef.current) {
+              const senderName = data.message?.sender?.firstName 
+                ? `${data.message.sender.firstName} ${data.message.sender.lastName || ''}`.trim()
+                : 'Someone';
+              const messagePreview = data.message?.content?.substring(0, 50) || 'New message';
+              toast({
+                title: `New message from ${senderName}`,
+                description: messagePreview + (data.message?.content?.length > 50 ? '...' : ''),
+              });
+            }
             
             // Refresh conversations list to update unread counts
             queryClient.invalidateQueries({ queryKey: ["/api/conversations"] });

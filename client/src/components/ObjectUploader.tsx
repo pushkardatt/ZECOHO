@@ -19,6 +19,7 @@ interface ObjectUploaderProps {
   buttonClassName?: string;
   children: ReactNode;
   accept?: Record<string, string[]>;
+  visibility?: "public" | "private";
 }
 
 export function ObjectUploader({
@@ -29,6 +30,7 @@ export function ObjectUploader({
   buttonClassName,
   children,
   accept,
+  visibility = "private",
 }: ObjectUploaderProps) {
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -94,7 +96,7 @@ export function ObjectUploader({
         });
 
         // Set ACL policy so the owner can access the file later
-        await apiRequest("POST", "/api/objects/set-acl", { accessPath, aclToken });
+        await apiRequest("POST", "/api/objects/set-acl", { accessPath, aclToken, visibility });
 
         successfulUploads.push({ uploadURL: url, accessPath, name: file.name });
         completedFiles++;

@@ -2881,9 +2881,12 @@ Hi! I've just made a booking request for your property. Looking forward to heari
       const objectStorageService = new ObjectStorageService();
       const objectFile = await objectStorageService.getObjectEntityFile(accessPath);
       
+      // Allow specifying visibility - default to private for security, but property images should be public
+      const visibility = req.body.visibility === "public" ? "public" : "private";
+      
       await setObjectAclPolicy(objectFile, {
         owner: userId,
-        visibility: "private",
+        visibility: visibility,
       });
       
       res.json({ success: true });
@@ -2896,25 +2899,35 @@ Hi! I've just made a booking request for your property. Looking forward to heari
     }
   });
 
-  app.get("/objects/:objectPath(*)", isAuthenticated, async (req: any, res) => {
-    const userId = req.user?.claims?.sub;
+  // Public objects route - no authentication required for public visibility objects
+  app.get("/objects/:objectPath(*)", async (req: any, res) => {
     const objectStorageService = new ObjectStorageService();
     try {
       const objectFile = await objectStorageService.getObjectEntityFile(req.path);
       
-      // Check if user is admin - admins can access all documents for KYC verification
-      const user = userId ? await storage.getUser(userId) : null;
-      const isAdmin = userHasRole(user, "admin");
+      // Get the authenticated user if available (optional auth)
+      let userId: string | undefined;
+      if (req.isAuthenticated && req.isAuthenticated() && req.user?.claims?.sub) {
+        userId = req.user.claims.sub;
+      }
       
-      if (!isAdmin) {
-        const canAccess = await objectStorageService.canAccessObjectEntity({
-          objectFile,
-          userId: userId,
-          requestedPermission: ObjectPermission.READ,
-        });
-        if (!canAccess) {
-          return res.sendStatus(401);
+      // Check access - this will allow public visibility objects without auth
+      const canAccess = await objectStorageService.canAccessObjectEntity({
+        objectFile,
+        userId: userId,
+        requestedPermission: ObjectPermission.READ,
+      });
+      
+      if (!canAccess) {
+        // If not public and user is admin, allow access
+        if (userId) {
+          const user = await storage.getUser(userId);
+          if (userHasRole(user, "admin")) {
+            objectStorageService.downloadObject(objectFile, res);
+            return;
+          }
         }
+        return res.sendStatus(401);
       }
       
       objectStorageService.downloadObject(objectFile, res);

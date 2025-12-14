@@ -275,7 +275,7 @@ export function PropertyImageUploader({
           xhr.send(file);
         });
 
-        await apiRequest("POST", "/api/objects/set-acl", { accessPath, aclToken });
+        await apiRequest("POST", "/api/objects/set-acl", { accessPath, aclToken, visibility: "public" });
         successfulUploads.push({ accessPath });
       } catch (error) {
         toast({
@@ -444,6 +444,7 @@ export function PropertyImageUploader({
                     onGetUploadParameters={handleGetUploadParameters}
                     onComplete={(result) => handleImageUpload(category.id, result)}
                     accept={{ 'image/*': ['.jpeg', '.jpg', '.png', '.webp'] }}
+                    visibility="public"
                   >
                     <Upload className="h-4 w-4 mr-2" />
                     Upload {category.label} Photos
@@ -532,6 +533,7 @@ export function PropertyImageUploader({
               onGetUploadParameters={handleGetUploadParameters}
               onComplete={handleVideoUpload}
               accept={{ 'video/*': ['.mp4', '.webm', '.mov'] }}
+              visibility="public"
             >
               <Upload className="h-4 w-4 mr-2" />
               Upload Videos
