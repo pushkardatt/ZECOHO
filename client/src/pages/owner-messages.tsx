@@ -13,6 +13,7 @@ import { MessageSquare, Send, Search, XCircle, AlertTriangle } from "lucide-reac
 import { useAuth } from "@/hooks/useAuth";
 import { Link } from "wouter";
 import { queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 
 interface Conversation {
   id: number;
@@ -37,6 +38,7 @@ interface Message {
 
 export default function OwnerMessagesPage() {
   const { user, isLoading: authLoading } = useAuth();
+  const { toast } = useToast();
   const [selectedConversation, setSelectedConversation] = useState<number | null>(null);
   const [messageText, setMessageText] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
@@ -81,6 +83,16 @@ export default function OwnerMessagesPage() {
                 }
               );
             }
+            
+            // Show toast notification for new message
+            const senderName = data.message?.sender?.firstName 
+              ? `${data.message.sender.firstName} ${data.message.sender.lastName || ''}`.trim()
+              : 'Guest';
+            const messagePreview = data.message?.content?.substring(0, 50) || 'New message';
+            toast({
+              title: `New message from ${senderName}`,
+              description: messagePreview + (data.message?.content?.length > 50 ? '...' : ''),
+            });
             
             // Refresh conversations list to update unread counts
             queryClient.invalidateQueries({ queryKey: ["/api/owner/conversations"] });

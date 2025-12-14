@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Send, MessageCircle } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 import type { Conversation, Message, User, Property } from "@shared/schema";
 
 type ConversationWithDetails = Conversation & {
@@ -24,6 +25,7 @@ type MessageWithSender = Message & {
 
 export default function Messages() {
   const { user } = useAuth();
+  const { toast } = useToast();
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(() => {
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
@@ -71,6 +73,16 @@ export default function Messages() {
                 }
               );
             }
+            
+            // Show toast notification for new message
+            const senderName = data.message?.sender?.firstName 
+              ? `${data.message.sender.firstName} ${data.message.sender.lastName || ''}`.trim()
+              : 'Someone';
+            const messagePreview = data.message?.content?.substring(0, 50) || 'New message';
+            toast({
+              title: `New message from ${senderName}`,
+              description: messagePreview + (data.message?.content?.length > 50 ? '...' : ''),
+            });
             
             // Refresh conversations list to update unread counts
             queryClient.invalidateQueries({ queryKey: ["/api/conversations"] });
