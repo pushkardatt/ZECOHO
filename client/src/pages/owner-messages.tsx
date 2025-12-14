@@ -36,6 +36,7 @@ export default function OwnerMessagesPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const wsRef = useRef<WebSocket | null>(null);
   const selectedConversationRef = useRef(selectedConversation);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const isRejected = user?.kycStatus === "rejected";
   const isVerified = user?.kycStatus === "verified";
@@ -164,6 +165,16 @@ export default function OwnerMessagesPage() {
         propertyTitle.includes(searchQuery.toLowerCase());
     }
   );
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  useEffect(() => {
+    if (messages && messages.length > 0) {
+      scrollToBottom();
+    }
+  }, [messages]);
 
   const selectedConv = conversations?.find((c) => c.id === selectedConversation);
 
@@ -376,6 +387,7 @@ export default function OwnerMessagesPage() {
                             </div>
                           );
                         })}
+                        <div ref={messagesEndRef} />
                       </div>
                     ) : (
                       <div className="flex flex-col items-center justify-center h-full">
