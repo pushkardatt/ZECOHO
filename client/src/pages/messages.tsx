@@ -148,11 +148,6 @@ export default function Messages() {
     enabled: !!selectedConversationId,
   });
 
-  useEffect(() => {
-    if (messagesSuccess && selectedConversationId) {
-      queryClient.invalidateQueries({ queryKey: ["/api/conversations"] });
-    }
-  }, [messagesSuccess, selectedConversationId]);
 
   // Auto-scroll to bottom when messages change
   const scrollToBottom = () => {

@@ -2361,7 +2361,10 @@ Hi! I've just made a booking request for your property. Looking forward to heari
         senderId: userId,
       });
 
-      const message = await storage.createMessage(validatedData);
+      const message = await storage.createMessage({
+        ...validatedData,
+        attachments: validatedData.attachments as any,
+      });
 
       // Get sender info for real-time display
       const sender = await storage.getUser(userId);
@@ -2450,12 +2453,11 @@ Hi! I've just made a booking request for your property. Looking forward to heari
       const objectStorageService = new ObjectStorageService();
       const objectFile = await objectStorageService.getObjectEntityFile(accessPath);
       
-      // Set ACL so both participants can view
+      // Set ACL so both participants can view - use public visibility for conversation attachments
       const { setObjectAclPolicy: setAcl } = await import("./objectAcl");
       await setAcl(objectFile, {
-        visibility: "private",
+        visibility: "public",
         owner: userId,
-        allowedUsers: [conversation.guestId, conversation.ownerId],
       });
       
       res.json({ success: true, accessPath });
