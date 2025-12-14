@@ -1,9 +1,10 @@
-import { useRef, useState, useEffect } from "react";
+import { useRef, useState, useEffect, useCallback } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { MapPin, Edit3, MapPinned, Building2, Home, Navigation } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { MapPin, Edit3, MapPinned, Building2, Home, Navigation, Crosshair, X } from "lucide-react";
 
 export interface AddressDetails {
   fullAddress: string;
@@ -40,9 +41,15 @@ export function AddressInput({
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [showManualEntry, setShowManualEntry] = useState(false);
   const [googleMapsLoaded, setGoogleMapsLoaded] = useState(false);
+  const [showMapPicker, setShowMapPicker] = useState(false);
+  const [tempMarkerPosition, setTempMarkerPosition] = useState<{ lat: number; lng: number } | null>(null);
+  const [isReverseGeocoding, setIsReverseGeocoding] = useState(false);
   const autocompleteServiceRef = useRef<any>(null);
   const placesServiceRef = useRef<any>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const mapRef = useRef<any>(null);
+  const markerRef = useRef<any>(null);
+  const mapContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setSearchValue(value.fullAddress || "");
@@ -210,6 +217,130 @@ export function AddressInput({
     setShowManualEntry(!showManualEntry);
   };
 
+  const handleOpenMapPicker = useCallback(() => {
+    setShowMapPicker(true);
+    if (value.latitude && value.longitude) {
+      setTempMarkerPosition({ lat: value.latitude, lng: value.longitude });
+    } else {
+      setTempMarkerPosition(null);
+    }
+  }, [value.latitude, value.longitude]);
+
+  const initializeMap = useCallback(() => {
+    if (!mapContainerRef.current || !(window as any).google?.maps) return;
+
+    const defaultCenter = { lat: 20.5937, lng: 78.9629 };
+    const initialCenter = value.latitude && value.longitude 
+      ? { lat: value.latitude, lng: value.longitude } 
+      : defaultCenter;
+    const initialZoom = value.latitude && value.longitude ? 15 : 5;
+
+    mapRef.current = new (window as any).google.maps.Map(mapContainerRef.current, {
+      center: initialCenter,
+      zoom: initialZoom,
+      mapTypeControl: true,
+      streetViewControl: false,
+      fullscreenControl: false,
+    });
+
+    if (value.latitude && value.longitude) {
+      markerRef.current = new (window as any).google.maps.Marker({
+        position: initialCenter,
+        map: mapRef.current,
+        draggable: true,
+      });
+      setTempMarkerPosition(initialCenter);
+
+      markerRef.current.addListener('dragend', () => {
+        const pos = markerRef.current.getPosition();
+        setTempMarkerPosition({ lat: pos.lat(), lng: pos.lng() });
+      });
+    }
+
+    mapRef.current.addListener('click', (e: any) => {
+      const clickedPos = { lat: e.latLng.lat(), lng: e.latLng.lng() };
+      setTempMarkerPosition(clickedPos);
+
+      if (markerRef.current) {
+        markerRef.current.setPosition(clickedPos);
+      } else {
+        markerRef.current = new (window as any).google.maps.Marker({
+          position: clickedPos,
+          map: mapRef.current,
+          draggable: true,
+        });
+
+        markerRef.current.addListener('dragend', () => {
+          const pos = markerRef.current.getPosition();
+          setTempMarkerPosition({ lat: pos.lat(), lng: pos.lng() });
+        });
+      }
+    });
+  }, [value.latitude, value.longitude]);
+
+  useEffect(() => {
+    if (showMapPicker && googleMapsLoaded) {
+      setTimeout(initializeMap, 100);
+    }
+    return () => {
+      if (markerRef.current) {
+        markerRef.current.setMap(null);
+        markerRef.current = null;
+      }
+      mapRef.current = null;
+    };
+  }, [showMapPicker, googleMapsLoaded, initializeMap]);
+
+  const reverseGeocode = useCallback(async (lat: number, lng: number): Promise<Partial<AddressDetails>> => {
+    return new Promise((resolve) => {
+      if (!(window as any).google?.maps?.Geocoder) {
+        resolve({});
+        return;
+      }
+
+      const geocoder = new (window as any).google.maps.Geocoder();
+      geocoder.geocode({ location: { lat, lng } }, (results: any[], status: string) => {
+        if (status === "OK" && results[0]) {
+          const parsedAddress = parseAddressComponents(results[0].address_components || []);
+          resolve({
+            ...parsedAddress,
+            fullAddress: results[0].formatted_address,
+          });
+        } else {
+          resolve({});
+        }
+      });
+    });
+  }, []);
+
+  const handleConfirmLocation = async () => {
+    if (!tempMarkerPosition) return;
+
+    setIsReverseGeocoding(true);
+    try {
+      const geocodedAddress = await reverseGeocode(tempMarkerPosition.lat, tempMarkerPosition.lng);
+      
+      const newAddress: AddressDetails = {
+        ...value,
+        ...geocodedAddress,
+        latitude: tempMarkerPosition.lat,
+        longitude: tempMarkerPosition.lng,
+      };
+      
+      onChange(newAddress);
+      setSearchValue(newAddress.fullAddress || "");
+      setShowManualEntry(true);
+      setShowMapPicker(false);
+    } finally {
+      setIsReverseGeocoding(false);
+    }
+  };
+
+  const handleCloseMapPicker = () => {
+    setShowMapPicker(false);
+    setTempMarkerPosition(null);
+  };
+
   return (
     <div className="space-y-4">
       <div className="relative">
@@ -227,6 +358,18 @@ export function AddressInput({
               className="pl-10"
             />
           </div>
+          {googleMapsLoaded && (
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              onClick={handleOpenMapPicker}
+              title="Pick location on map"
+              data-testid={`${testIdPrefix}-pick-on-map`}
+            >
+              <Crosshair className="h-4 w-4" />
+            </Button>
+          )}
           <Button
             type="button"
             variant="outline"
@@ -449,6 +592,70 @@ export function AddressInput({
           Google Maps not available. Click the edit button to enter your address manually.
         </p>
       )}
+
+      <Dialog open={showMapPicker} onOpenChange={(open) => !open && handleCloseMapPicker()}>
+        <DialogContent className="max-w-3xl h-[80vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Crosshair className="h-5 w-5" />
+              Pick Your Property Location
+            </DialogTitle>
+          </DialogHeader>
+          
+          <div className="flex-1 flex flex-col gap-4">
+            <p className="text-sm text-muted-foreground">
+              Click on the map to set your property location. You can also drag the marker to adjust.
+            </p>
+            
+            <div 
+              ref={mapContainerRef} 
+              className="flex-1 rounded-lg border bg-muted min-h-[300px]"
+              data-testid={`${testIdPrefix}-map-container`}
+            />
+            
+            {tempMarkerPosition && (
+              <div className="p-3 bg-muted rounded-lg flex items-center gap-3">
+                <MapPin className="h-5 w-5 text-primary flex-shrink-0" />
+                <div className="flex-1">
+                  <p className="text-sm font-medium">Selected Location</p>
+                  <p className="text-xs text-muted-foreground">
+                    {tempMarkerPosition.lat.toFixed(6)}, {tempMarkerPosition.lng.toFixed(6)}
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleCloseMapPicker}
+              data-testid={`${testIdPrefix}-map-cancel`}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              onClick={handleConfirmLocation}
+              disabled={!tempMarkerPosition || isReverseGeocoding}
+              data-testid={`${testIdPrefix}-map-confirm`}
+            >
+              {isReverseGeocoding ? (
+                <>
+                  <span className="animate-spin mr-2">&#9696;</span>
+                  Getting Address...
+                </>
+              ) : (
+                <>
+                  <MapPin className="h-4 w-4 mr-2" />
+                  Confirm Location
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
