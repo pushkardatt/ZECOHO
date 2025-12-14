@@ -248,11 +248,22 @@ export const conversations = pgTable("conversations", {
 }));
 
 // Messages table
+// Message attachment type for storing file metadata
+export type MessageAttachment = {
+  id: string;
+  fileName: string;
+  fileType: string;
+  fileSize: number;
+  url: string;
+  thumbnailUrl?: string;
+};
+
 export const messages = pgTable("messages", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   conversationId: varchar("conversation_id").notNull().references(() => conversations.id, { onDelete: "cascade" }),
   senderId: varchar("sender_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   content: text("content").notNull(),
+  attachments: jsonb("attachments").$type<MessageAttachment[]>(),
   read: boolean("read").notNull().default(false),
   createdAt: timestamp("created_at").defaultNow(),
 }, (table) => [

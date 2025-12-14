@@ -2400,6 +2400,71 @@ Hi! I've just made a booking request for your property. Looking forward to heari
     }
   });
 
+  // Message attachment upload endpoint
+  app.post("/api/messages/upload", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const objectStorageService = new ObjectStorageService();
+      const { uploadURL, accessPath } = await objectStorageService.getObjectEntityUploadURLWithAccessPath();
+      
+      // Generate upload token tied to this user and access path
+      const uploadToken = generateUploadToken(userId, accessPath);
+      
+      res.json({
+        uploadURL,
+        accessPath,
+        uploadToken,
+      });
+    } catch (error) {
+      console.error("Error generating upload URL:", error);
+      res.status(500).json({ message: "Failed to generate upload URL" });
+    }
+  });
+
+  // Finalize message attachment (set ACL after upload complete)
+  app.post("/api/messages/upload/finalize", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { accessPath, uploadToken, conversationId } = req.body;
+      
+      if (!accessPath || !uploadToken || !conversationId) {
+        return res.status(400).json({ message: "Missing required fields" });
+      }
+      
+      // Verify the upload token
+      const tokenData = verifyUploadToken(uploadToken);
+      if (!tokenData || tokenData.userId !== userId || tokenData.accessPath !== accessPath) {
+        return res.status(403).json({ message: "Invalid or expired upload token" });
+      }
+      
+      // Verify user has access to the conversation
+      const conversation = await storage.getConversation(conversationId);
+      if (!conversation) {
+        return res.status(404).json({ message: "Conversation not found" });
+      }
+      if (conversation.guestId !== userId && conversation.ownerId !== userId) {
+        return res.status(403).json({ message: "Not authorized for this conversation" });
+      }
+      
+      // Set ACL policy to allow both conversation participants to access
+      const objectStorageService = new ObjectStorageService();
+      const objectFile = await objectStorageService.getObjectEntityFile(accessPath);
+      
+      // Set ACL so both participants can view
+      const { setObjectAclPolicy: setAcl } = await import("./objectAcl");
+      await setAcl(objectFile, {
+        visibility: "private",
+        ownerId: userId,
+        allowedUsers: [conversation.guestId, conversation.ownerId],
+      });
+      
+      res.json({ success: true, accessPath });
+    } catch (error) {
+      console.error("Error finalizing upload:", error);
+      res.status(500).json({ message: "Failed to finalize upload" });
+    }
+  });
+
   // Review routes
   app.get("/api/properties/:id/reviews", async (req, res) => {
     try {
