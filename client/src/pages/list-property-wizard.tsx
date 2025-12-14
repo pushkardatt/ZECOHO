@@ -109,7 +109,7 @@ const combinedSchema = z.object({
   kycState: z.string().min(2, "State is required"),
   kycPincode: z.string().min(6, "Valid 6-digit PIN code is required"),
   gstNumber: z.string().optional(),
-  panNumber: z.string().min(10, "Valid PAN number is required"),
+  panNumber: z.string().min(10, "PAN number must be 10 characters").max(10, "PAN number must be 10 characters"),
   
   // Property Information
   propertyTitle: z.string().min(5, "Property title must be at least 5 characters"),
@@ -1601,7 +1601,7 @@ export default function ListPropertyWizard() {
                           <FormItem>
                             <FormLabel>PAN Number *</FormLabel>
                             <FormControl>
-                              <Input placeholder="ABCDE1234F" {...field} data-testid="input-pan-number" />
+                              <Input placeholder="ABCDE1234F" maxLength={10} {...field} data-testid="input-pan-number" />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -2129,7 +2129,7 @@ export default function ListPropertyWizard() {
                           <FormItem>
                             <FormLabel>PAN Number *</FormLabel>
                             <FormControl>
-                              <Input placeholder="ABCDE1234F" {...field} data-testid="input-pan" />
+                              <Input placeholder="ABCDE1234F" maxLength={10} {...field} data-testid="input-pan" />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
