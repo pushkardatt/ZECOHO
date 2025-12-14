@@ -2847,8 +2847,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      // Property status (use first property for now)
-      const propertyStatus = properties[0]?.status || "draft";
+      // Property status - prioritize the "best" status across all properties
+      // Priority: published > paused > pending > draft > rejected > deactivated
+      const statusPriority: Record<string, number> = {
+        published: 6,
+        paused: 5,
+        pending: 4,
+        draft: 3,
+        rejected: 2,
+        deactivated: 1,
+      };
+      
+      let propertyStatus = "draft";
+      let highestPriority = 0;
+      for (const prop of properties) {
+        const priority = statusPriority[prop.status || "draft"] || 0;
+        if (priority > highestPriority) {
+          highestPriority = priority;
+          propertyStatus = prop.status || "draft";
+        }
+      }
       
       // Calculate average rating across all properties
       let totalRating = 0;
