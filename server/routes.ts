@@ -1894,8 +1894,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
       
-      if (!user || user.userRole !== "guest") {
-        return res.status(403).json({ message: "Only guests can access wishlists" });
+      if (!user) {
+        return res.status(403).json({ message: "Login required to access wishlists" });
       }
 
       const wishlists = await storage.getWishlists(userId);
@@ -1911,8 +1911,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
       
-      if (!user || user.userRole !== "guest") {
-        return res.status(403).json({ message: "Only guests can add to wishlists" });
+      if (!user) {
+        return res.status(403).json({ message: "Login required to add to wishlists" });
       }
 
       const validatedData = insertWishlistSchema.parse({
@@ -1936,8 +1936,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
       
-      if (!user || user.userRole !== "guest") {
-        return res.status(403).json({ message: "Only guests can remove wishlist items" });
+      if (!user) {
+        return res.status(403).json({ message: "Login required to manage wishlists" });
       }
 
       // Verify ownership before deletion
@@ -2017,8 +2017,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
       
-      if (!user || user.userRole !== "guest") {
-        return res.status(403).json({ message: "Only guests can create bookings" });
+      if (!user) {
+        return res.status(403).json({ message: "Login required to create bookings" });
       }
 
       const validatedData = insertBookingSchema.parse({
@@ -2245,8 +2245,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
       
-      if (!user || user.userRole !== "guest") {
-        return res.status(403).json({ message: "Only guests can start conversations" });
+      if (!user) {
+        return res.status(403).json({ message: "Login required to start conversations" });
       }
 
       const { propertyId } = req.body;

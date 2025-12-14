@@ -576,10 +576,11 @@ export default function PropertyDetails() {
       return;
     }
     
-    if (user.userRole !== "guest") {
+    // Owners can book other properties, just not their own
+    if (property && property.ownerId === user.id) {
       toast({
-        title: "Guest Account Required",
-        description: "Only guests can book properties",
+        title: "Cannot Book Own Property",
+        description: "You cannot book your own property",
         variant: "destructive",
       });
       return;
@@ -1466,10 +1467,11 @@ export default function PropertyDetails() {
                           }, 500);
                           return;
                         }
-                        if (user.userRole !== "guest") {
+                        // Owners can chat with other owners, just not themselves
+                        if (property && property.ownerId === user.id) {
                           toast({
-                            title: "Guest Account Required",
-                            description: "Only guests can chat with property owners",
+                            title: "Cannot Chat With Yourself",
+                            description: "You cannot start a conversation with yourself",
                             variant: "destructive",
                           });
                           return;
