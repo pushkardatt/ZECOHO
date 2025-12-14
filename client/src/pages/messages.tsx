@@ -135,11 +135,20 @@ export default function Messages() {
 
   const sendMessageMutation = useMutation({
     mutationFn: async (content: string) => {
-      if (!selectedConversationId) return;
-      return await apiRequest("POST", `/api/conversations/${selectedConversationId}/messages`, { content });
+      if (!selectedConversationId) return null;
+      const response = await apiRequest("POST", `/api/conversations/${selectedConversationId}/messages`, { content });
+      return await response.json() as MessageWithSender;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/conversations", selectedConversationId, "messages"] });
+    onSuccess: (newMessage) => {
+      if (newMessage && selectedConversationId) {
+        queryClient.setQueryData(
+          ["/api/conversations", selectedConversationId, "messages"],
+          (old: MessageWithSender[] = []) => {
+            if (old.some(m => m.id === newMessage.id)) return old;
+            return [...old, newMessage];
+          }
+        );
+      }
       queryClient.invalidateQueries({ queryKey: ["/api/conversations"] });
       setMessageInput("");
     },

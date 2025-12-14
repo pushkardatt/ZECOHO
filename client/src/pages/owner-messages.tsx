@@ -131,11 +131,20 @@ export default function OwnerMessagesPage() {
 
   const sendMessageMutation = useMutation({
     mutationFn: async (content: string) => {
-      if (!selectedConversation) return;
-      return await apiRequest("POST", `/api/conversations/${selectedConversation}/messages`, { content });
+      if (!selectedConversation) return null;
+      const response = await apiRequest("POST", `/api/conversations/${selectedConversation}/messages`, { content });
+      return await response.json() as MessageWithSender;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/conversations", selectedConversation, "messages"] });
+    onSuccess: (newMessage) => {
+      if (newMessage && selectedConversation) {
+        queryClient.setQueryData(
+          ["/api/conversations", selectedConversation, "messages"],
+          (old: MessageWithSender[] = []) => {
+            if (old.some(m => m.id === newMessage.id)) return old;
+            return [...old, newMessage];
+          }
+        );
+      }
       queryClient.invalidateQueries({ queryKey: ["/api/owner/conversations"] });
       setMessageText("");
     },
