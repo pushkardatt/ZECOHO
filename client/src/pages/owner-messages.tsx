@@ -9,7 +9,9 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { format } from "date-fns";
-import { MessageSquare, Send, Search } from "lucide-react";
+import { MessageSquare, Send, Search, XCircle, AlertTriangle } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
+import { Link } from "wouter";
 
 interface Conversation {
   id: number;
@@ -33,9 +35,13 @@ interface Message {
 }
 
 export default function OwnerMessagesPage() {
+  const { user, isLoading: authLoading } = useAuth();
   const [selectedConversation, setSelectedConversation] = useState<number | null>(null);
   const [messageText, setMessageText] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
+
+  const isRejected = user?.kycStatus === "rejected";
+  const isVerified = user?.kycStatus === "verified";
 
   const { data: conversations, isLoading: loadingConversations } = useQuery<Conversation[]>({
     queryKey: ["/api/owner/conversations"],
@@ -58,6 +64,89 @@ export default function OwnerMessagesPage() {
     if (!messageText.trim() || !selectedConversation) return;
     setMessageText("");
   };
+
+  if (authLoading) {
+    return (
+      <OwnerLayout>
+        <div className="h-[calc(100vh-8rem)]" data-testid="owner-messages-loading">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 h-full">
+            <Card className="md:col-span-1 flex flex-col">
+              <CardHeader className="pb-2">
+                <Skeleton className="h-6 w-32" />
+              </CardHeader>
+              <CardContent className="flex-1 p-4">
+                <Skeleton className="h-10 w-full mb-4" />
+                <Skeleton className="h-16 w-full mb-2" />
+                <Skeleton className="h-16 w-full mb-2" />
+                <Skeleton className="h-16 w-full" />
+              </CardContent>
+            </Card>
+            <Card className="md:col-span-2 flex flex-col">
+              <CardContent className="flex-1 flex items-center justify-center">
+                <Skeleton className="h-16 w-16 rounded-full" />
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </OwnerLayout>
+    );
+  }
+
+  if (isRejected) {
+    return (
+      <OwnerLayout>
+        <div className="h-[calc(100vh-8rem)] flex items-center justify-center" data-testid="owner-messages-blocked">
+          <Card className="max-w-md w-full">
+            <CardContent className="pt-6">
+              <div className="flex flex-col items-center text-center space-y-4">
+                <div className="p-3 rounded-full bg-red-100 dark:bg-red-950/30">
+                  <XCircle className="h-8 w-8 text-red-600 dark:text-red-400" />
+                </div>
+                <div className="space-y-2">
+                  <h3 className="font-semibold text-lg">Messaging Unavailable</h3>
+                  <p className="text-muted-foreground text-sm">
+                    Your KYC verification was rejected. You cannot access messages until your KYC is approved.
+                  </p>
+                </div>
+                <div className="flex flex-col sm:flex-row gap-2 w-full">
+                  <Link href="/owner/kyc" className="flex-1">
+                    <Button className="w-full" data-testid="btn-review-kyc">
+                      <AlertTriangle className="h-4 w-4 mr-2" />
+                      Review KYC Status
+                    </Button>
+                  </Link>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </OwnerLayout>
+    );
+  }
+
+  if (!isVerified) {
+    return (
+      <OwnerLayout>
+        <div className="h-[calc(100vh-8rem)] flex items-center justify-center" data-testid="owner-messages-pending">
+          <Card className="max-w-md w-full">
+            <CardContent className="pt-6">
+              <div className="flex flex-col items-center text-center space-y-4">
+                <div className="p-3 rounded-full bg-amber-100 dark:bg-amber-950/30">
+                  <MessageSquare className="h-8 w-8 text-amber-600 dark:text-amber-400" />
+                </div>
+                <div className="space-y-2">
+                  <h3 className="font-semibold text-lg">Messaging Coming Soon</h3>
+                  <p className="text-muted-foreground text-sm">
+                    Complete your KYC verification to access guest messages and start communicating with potential guests.
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </OwnerLayout>
+    );
+  }
 
   return (
     <OwnerLayout>
