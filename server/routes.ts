@@ -2357,11 +2357,24 @@ Hi! I've just made a booking request for your property. Looking forward to heari
 
       const message = await storage.createMessage(validatedData);
 
-      // Broadcast new message to both conversation participants via WebSocket
+      // Get sender info for real-time display
+      const sender = await storage.getUser(userId);
+      const messageWithSender = {
+        ...message,
+        sender: sender ? {
+          id: sender.id,
+          firstName: sender.firstName,
+          lastName: sender.lastName,
+          email: sender.email,
+          profileImageUrl: sender.profileImageUrl,
+        } : null,
+      };
+
+      // Broadcast new message to the other participant via WebSocket
       const broadcastData = {
         type: "new_message",
         conversationId: req.params.id,
-        message: message,
+        message: messageWithSender,
       };
       
       // Notify the other participant (not the sender, they already know)

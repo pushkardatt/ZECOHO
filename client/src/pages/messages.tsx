@@ -60,15 +60,20 @@ export default function Messages() {
           const data = JSON.parse(event.data);
           
           if (data.type === "new_message") {
-            // Always refresh conversations list to update unread counts
-            queryClient.invalidateQueries({ queryKey: ["/api/conversations"] });
-            
-            // If we're viewing this conversation, refresh messages
-            if (data.conversationId === selectedConversationIdRef.current) {
-              queryClient.invalidateQueries({ 
-                queryKey: ["/api/conversations", selectedConversationIdRef.current, "messages"] 
-              });
+            // If we're viewing this conversation, instantly add the message to display
+            if (data.conversationId === selectedConversationIdRef.current && data.message) {
+              queryClient.setQueryData(
+                ["/api/conversations", selectedConversationIdRef.current, "messages"],
+                (old: MessageWithSender[] = []) => {
+                  // Avoid duplicates
+                  if (old.some(m => m.id === data.message.id)) return old;
+                  return [...old, data.message];
+                }
+              );
             }
+            
+            // Refresh conversations list to update unread counts
+            queryClient.invalidateQueries({ queryKey: ["/api/conversations"] });
           }
         } catch (e) {
           console.error("WebSocket message parse error:", e);
