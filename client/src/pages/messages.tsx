@@ -37,6 +37,7 @@ export default function Messages() {
   const wsRef = useRef<WebSocket | null>(null);
   const selectedConversationIdRef = useRef(selectedConversationId);
   const userIdRef = useRef(user?.id);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Keep refs in sync with state
   useEffect(() => {
@@ -140,6 +141,17 @@ export default function Messages() {
       queryClient.invalidateQueries({ queryKey: ["/api/conversations"] });
     }
   }, [messagesSuccess, selectedConversationId]);
+
+  // Auto-scroll to bottom when messages change
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  useEffect(() => {
+    if (messages.length > 0) {
+      scrollToBottom();
+    }
+  }, [messages]);
 
   const sendMessageMutation = useMutation({
     mutationFn: async (content: string) => {
@@ -322,6 +334,7 @@ export default function Messages() {
                       </div>
                     );
                   })}
+                  <div ref={messagesEndRef} />
                 </div>
               )}
             </ScrollArea>
