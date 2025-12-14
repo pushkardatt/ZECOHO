@@ -222,6 +222,8 @@ export default function ListPropertyWizard() {
   // Auto-redirect to complete mode if user has a draft property but no mode selected
   useEffect(() => {
     if (listingMode === null && !isLoadingDraft && draftProperty && draftProperty.id) {
+      // Update state directly since wouter's setLocation doesn't remount the component
+      setListingMode("complete");
       setLocation(`/list-property?mode=complete&propertyId=${draftProperty.id}`);
     }
   }, [listingMode, isLoadingDraft, draftProperty, setLocation]);
