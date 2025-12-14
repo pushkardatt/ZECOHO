@@ -20,13 +20,19 @@ const userConnections = new Map<string, Set<WebSocket>>();
 // Function to broadcast message to a specific user
 export function broadcastToUser(userId: string, data: any) {
   const connections = userConnections.get(userId);
+  console.log(`Broadcasting to user ${userId}: ${connections ? connections.size : 0} connections found`);
   if (connections) {
     const message = JSON.stringify(data);
     connections.forEach((ws) => {
       if (ws.readyState === WebSocket.OPEN) {
+        console.log(`Sending message to user ${userId}`);
         ws.send(message);
+      } else {
+        console.log(`WebSocket for user ${userId} not open (state: ${ws.readyState})`);
       }
     });
+  } else {
+    console.log(`No WebSocket connections found for user ${userId}`);
   }
 }
 

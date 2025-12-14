@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { OwnerLayout } from "@/components/OwnerLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -12,6 +12,7 @@ import { format } from "date-fns";
 import { MessageSquare, Send, Search, XCircle, AlertTriangle } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { Link } from "wouter";
+import { queryClient } from "@/lib/queryClient";
 
 interface Conversation {
   id: number;
@@ -39,9 +40,79 @@ export default function OwnerMessagesPage() {
   const [selectedConversation, setSelectedConversation] = useState<number | null>(null);
   const [messageText, setMessageText] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
+  const wsRef = useRef<WebSocket | null>(null);
+  const selectedConversationRef = useRef(selectedConversation);
 
   const isRejected = user?.kycStatus === "rejected";
   const isVerified = user?.kycStatus === "verified";
+
+  // Keep ref in sync with state
+  useEffect(() => {
+    selectedConversationRef.current = selectedConversation;
+  }, [selectedConversation]);
+
+  // WebSocket connection for real-time messaging
+  useEffect(() => {
+    if (!user?.id || !isVerified) return;
+
+    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+    const wsUrl = `${protocol}//${window.location.host}/ws?userId=${user.id}`;
+    
+    const connectWebSocket = () => {
+      const ws = new WebSocket(wsUrl);
+      wsRef.current = ws;
+
+      ws.onopen = () => {
+        console.log("Owner WebSocket connected");
+      };
+
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          
+          if (data.type === "new_message") {
+            // If viewing this conversation, add message to display instantly
+            if (data.conversationId && String(data.conversationId) === String(selectedConversationRef.current) && data.message) {
+              queryClient.setQueryData(
+                ["/api/owner/conversations", selectedConversationRef.current, "messages"],
+                (old: Message[] = []) => {
+                  if (old.some(m => String(m.id) === String(data.message.id))) return old;
+                  return [...old, data.message];
+                }
+              );
+            }
+            
+            // Refresh conversations list to update unread counts
+            queryClient.invalidateQueries({ queryKey: ["/api/owner/conversations"] });
+          }
+        } catch (e) {
+          console.error("WebSocket message parse error:", e);
+        }
+      };
+
+      ws.onclose = () => {
+        console.log("Owner WebSocket disconnected, reconnecting in 3s...");
+        setTimeout(() => {
+          if (wsRef.current === ws) {
+            connectWebSocket();
+          }
+        }, 3000);
+      };
+
+      ws.onerror = (error) => {
+        console.error("Owner WebSocket error:", error);
+      };
+    };
+
+    connectWebSocket();
+
+    return () => {
+      if (wsRef.current) {
+        wsRef.current.close();
+        wsRef.current = null;
+      }
+    };
+  }, [user?.id, isVerified]);
 
   const { data: conversations, isLoading: loadingConversations } = useQuery<Conversation[]>({
     queryKey: ["/api/owner/conversations"],
