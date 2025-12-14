@@ -660,3 +660,101 @@ export async function sendPropertyLiveEmail(email: string, firstName: string, pr
     return false;
   }
 }
+
+export async function sendBookingRequestToOwnerEmail(
+  ownerEmail: string,
+  ownerFirstName: string,
+  propertyName: string,
+  guestName: string,
+  guestEmail: string,
+  checkIn: string,
+  checkOut: string,
+  guests: number,
+  totalPrice: string
+): Promise<boolean> {
+  try {
+    console.log('Sending booking request notification to owner:', ownerEmail);
+    const { client, fromEmail } = await getResendClient();
+    
+    const { data, error } = await client.emails.send({
+      from: fromEmail || 'ZECOHO <noreply@zecoho.com>',
+      to: [ownerEmail],
+      subject: `New Booking Request - ${propertyName}`,
+      html: `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        </head>
+        <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 0; background-color: #f5f5f5;">
+          <div style="max-width: 480px; margin: 40px auto; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+            <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); padding: 32px; text-align: center;">
+              <h1 style="color: white; margin: 0; font-size: 28px; font-weight: 700;">ZECOHO</h1>
+              <p style="color: rgba(255,255,255,0.9); margin: 8px 0 0 0; font-size: 14px;">Your Journey, Our Passion</p>
+            </div>
+            
+            <div style="padding: 32px;">
+              <div style="text-align: center; margin-bottom: 24px;">
+                <div style="width: 64px; height: 64px; background: #dcfce7; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center;">
+                  <span style="font-size: 32px;">&#128197;</span>
+                </div>
+              </div>
+              
+              <h2 style="color: #1f2937; margin: 0 0 16px 0; font-size: 20px; text-align: center;">New Booking Request!</h2>
+              <p style="color: #6b7280; margin: 0 0 16px 0; line-height: 1.5;">
+                Hi ${ownerFirstName || 'Property Owner'},
+              </p>
+              <p style="color: #6b7280; margin: 0 0 24px 0; line-height: 1.5;">
+                You have received a new booking request for <strong>"${propertyName}"</strong>. Please review the details below.
+              </p>
+              
+              <div style="background: #f3f4f6; border-radius: 8px; padding: 16px; margin-bottom: 16px;">
+                <p style="color: #1f2937; margin: 0 0 12px 0; font-weight: 600;">Guest Information:</p>
+                <p style="color: #6b7280; margin: 0 0 8px 0;"><strong>Name:</strong> ${guestName}</p>
+                <p style="color: #6b7280; margin: 0;"><strong>Email:</strong> ${guestEmail}</p>
+              </div>
+              
+              <div style="background: #ecfdf5; border-radius: 8px; padding: 16px; margin-bottom: 24px; border-left: 4px solid #10b981;">
+                <p style="color: #065f46; margin: 0 0 12px 0; font-weight: 600;">Booking Details:</p>
+                <p style="color: #047857; margin: 0 0 8px 0;"><strong>Check-in:</strong> ${checkIn}</p>
+                <p style="color: #047857; margin: 0 0 8px 0;"><strong>Check-out:</strong> ${checkOut}</p>
+                <p style="color: #047857; margin: 0 0 8px 0;"><strong>Number of Guests:</strong> ${guests}</p>
+                <p style="color: #065f46; margin: 0; font-weight: 600; font-size: 18px;">Total Amount: Rs. ${totalPrice}</p>
+              </div>
+              
+              <p style="color: #6b7280; margin: 0 0 24px 0; line-height: 1.5; font-size: 14px;">
+                A message has also been sent to your chat inbox. Please respond to the guest promptly.
+              </p>
+              
+              <div style="text-align: center;">
+                <a href="https://zecoho.replit.app/messages" style="display: inline-block; background: #10b981; color: white; text-decoration: none; padding: 12px 32px; border-radius: 8px; font-weight: 600;">
+                  View Messages
+                </a>
+              </div>
+            </div>
+            
+            <div style="background: #f9fafb; padding: 20px; text-align: center; border-top: 1px solid #e5e7eb;">
+              <p style="color: #9ca3af; font-size: 12px; margin: 0;">
+                ZECOHO - Zero Commission Hotel Booking<br>
+                Enjoy ZERO commission on all bookings!
+              </p>
+            </div>
+          </div>
+        </body>
+        </html>
+      `,
+    });
+
+    if (error) {
+      console.error('Failed to send booking request email to owner:', error);
+      return false;
+    }
+
+    console.log('Booking request email sent to owner successfully:', data?.id);
+    return true;
+  } catch (error: any) {
+    console.error('Failed to send booking request email to owner:', error?.message || error);
+    return false;
+  }
+}

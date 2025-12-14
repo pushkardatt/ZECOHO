@@ -9,7 +9,7 @@ import { setupAuth, isAuthenticated } from "./replitAuth";
 import { insertPropertySchema, insertRoomSchema, insertWishlistSchema, insertUserPreferencesSchema, insertBookingSchema, insertMessageSchema, insertReviewSchema, insertDestinationSchema, insertSearchHistorySchema, updateKYCSchema, becomeOwnerSchema, insertKycApplicationSchema } from "@shared/schema";
 import { ObjectStorageService, ObjectNotFoundError, generateUploadToken, verifyUploadToken } from "./objectStorage";
 import { ObjectPermission, setObjectAclPolicy } from "./objectAcl";
-import { sendOtpEmail, sendKycSubmittedEmail, sendKycApprovedEmail, sendKycRejectedEmail, sendPropertyLiveEmail, sendPasswordChangedEmail, sendPropertyStatusEmail, sendBookingConfirmationEmail } from "./emailService";
+import { sendOtpEmail, sendKycSubmittedEmail, sendKycApprovedEmail, sendKycRejectedEmail, sendPropertyLiveEmail, sendPasswordChangedEmail, sendPropertyStatusEmail, sendBookingConfirmationEmail, sendBookingRequestToOwnerEmail } from "./emailService";
 import crypto from "crypto";
 import bcrypt from "bcrypt";
 
@@ -2084,17 +2084,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ).catch(console.error);
       }
       
-      // Email to owner
+      // Email to owner with full details
+      const guestName = guest?.firstName && guest?.lastName 
+        ? `${guest.firstName} ${guest.lastName}` 
+        : guest?.email || 'Guest';
+      
       if (owner?.email) {
-        sendBookingConfirmationEmail(
-          owner.email, 
-          owner.firstName || '', 
-          property.title, 
-          checkInFormatted, 
-          checkOutFormatted, 
-          totalPrice.toString(), 
-          true
+        sendBookingRequestToOwnerEmail(
+          owner.email,
+          owner.firstName || '',
+          property.title,
+          guestName,
+          guest?.email || '',
+          checkInFormatted,
+          checkOutFormatted,
+          validatedData.guests || 1,
+          totalPrice.toString()
         ).catch(console.error);
+      }
+      
+      // Create/get conversation and send automated message with booking details
+      try {
+        const conversation = await storage.getOrCreateConversation(validatedData.propertyId, userId);
+        
+        const bookingMessage = `New Booking Request
+
+Property: ${property.title}
+Check-in: ${checkInFormatted}
+Check-out: ${checkOutFormatted}
+Number of Guests: ${validatedData.guests || 1}
+Total Amount: Rs. ${totalPrice}
+
+Hi! I've just made a booking request for your property. Looking forward to hearing from you!`;
+        
+        await storage.createMessage({
+          conversationId: conversation.id,
+          senderId: userId,
+          content: bookingMessage,
+        });
+      } catch (msgError) {
+        console.error('Failed to send booking message to owner:', msgError);
+        // Don't fail the booking if message fails
       }
       
       res.json(booking);
