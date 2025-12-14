@@ -29,6 +29,8 @@ import {
   LogOut,
   FileText,
   HelpCircle,
+  XCircle,
+  AlertTriangle,
 } from "lucide-react";
 
 interface OwnerLayoutProps {
@@ -51,6 +53,14 @@ const limitedMenuItems = [
   { title: "Documents", icon: FileText, path: "/list-property" },
   { title: "Support", icon: HelpCircle, path: "/owner/settings" },
 ];
+
+const rejectedMenuItems = [
+  { title: "KYC Review", icon: AlertTriangle, path: "/owner/kyc" },
+  { title: "My Property", icon: Building2, path: "/owner/property" },
+  { title: "Support", icon: HelpCircle, path: "/owner/settings" },
+];
+
+const allowedPathsWhenRejected = ["/owner/kyc", "/owner/property", "/owner/settings", "/list-property"];
 
 export function OwnerLayout({ children }: OwnerLayoutProps) {
   const { user, isLoading, isOwner } = useAuth();
@@ -75,11 +85,33 @@ export function OwnerLayout({ children }: OwnerLayoutProps) {
 
   const userInitials = `${user.firstName?.[0] || ""}${user.lastName?.[0] || ""}`.toUpperCase() || "O";
 
-  const isPreApproval = user.kycStatus !== "verified";
-  const menuItems = isPreApproval ? limitedMenuItems : fullMenuItems;
+  const isRejected = user.kycStatus === "rejected";
+  const isVerified = user.kycStatus === "verified";
+  const isPreApproval = !isVerified;
+
+  const menuItems = isRejected 
+    ? rejectedMenuItems 
+    : isPreApproval 
+    ? limitedMenuItems 
+    : fullMenuItems;
+
+  if (isRejected && !allowedPathsWhenRejected.includes(location)) {
+    return <Redirect to="/owner/kyc" />;
+  }
 
   const handleLogout = () => {
     window.location.href = "/api/logout";
+  };
+
+  const getBadgeContent = () => {
+    if (isVerified) return "Verified Owner";
+    if (isRejected) return "KYC Rejected";
+    return "Pending Approval";
+  };
+
+  const getBadgeVariant = (): "default" | "secondary" | "destructive" | "outline" => {
+    if (isRejected) return "destructive";
+    return "secondary";
   };
 
   return (
@@ -96,8 +128,8 @@ export function OwnerLayout({ children }: OwnerLayoutProps) {
                 <span className="font-semibold text-sm truncate" data-testid="owner-name">
                   {user.firstName} {user.lastName}
                 </span>
-                <Badge variant="secondary" className="w-fit text-xs" data-testid="owner-badge">
-                  {user.kycStatus === "verified" ? "Verified Owner" : "Pending Approval"}
+                <Badge variant={getBadgeVariant()} className="w-fit text-xs" data-testid="owner-badge">
+                  {getBadgeContent()}
                 </Badge>
               </div>
             </div>

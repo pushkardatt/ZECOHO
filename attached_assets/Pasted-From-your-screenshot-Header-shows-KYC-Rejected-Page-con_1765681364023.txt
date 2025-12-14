@@ -1,0 +1,158 @@
+From your screenshot:
+
+Header shows “KYC Rejected” ❌
+
+Page content = Messages screen
+
+❌ No explanation
+
+❌ No CTA
+
+❌ No recovery path
+
+This makes the owner feel:
+
+“I’m rejected… now what? Am I banned?”
+
+That’s unacceptable for a supply-side user.
+
+✅ CORRECT FLOW WHEN KYC IS REJECTED (MVP-SAFE)
+1️⃣ GLOBAL STATUS BANNER (TOP PRIORITY)
+
+When owner.kyc_status === rejected, show a persistent red/yellow banner on ALL owner pages.
+
+Banner copy (use this EXACTLY):
+❌ KYC Rejected — Action Required
+Your listing is not live. Please review the reason and resubmit documents.
+[ View Details ]
+
+
+👉 This banner must be clickable.
+
+2️⃣ FORCE REDIRECTION RULE (VERY IMPORTANT)
+
+When KYC is rejected:
+
+❌ Block these pages:
+
+Messages
+
+Bookings
+
+Earnings
+
+Dashboard (normal)
+
+✅ Allow ONLY:
+
+KYC / Documents page
+
+Support page
+
+Logout
+
+Logic (pseudo):
+if (owner.kyc_status === 'rejected') {
+  redirectTo('/owner/kyc');
+}
+
+
+⚠️ Owners should never land on Messages in rejected state like now.
+
+3️⃣ KYC REJECTION SCREEN (THIS IS THE CORE FIX)
+URL
+/owner/kyc
+
+Page title
+
+KYC Review Result
+
+🔴 Rejection Reason Card (MANDATORY)
+
+Show admin-provided reason (this must be stored).
+
+Example:
+
+Reason for rejection:
+• Property ownership document is unclear
+• PAN name does not match owner name
+
+
+⚠️ If admin didn’t add a reason → show:
+
+Please contact support for clarification.
+
+🔁 RESUBMISSION SECTION
+
+Below the reason:
+
+Checklist-style
+✔ Personal details — OK
+❌ Property ownership proof — Re-upload required
+✔ Identity proof — OK
+
+
+Each ❌ has:
+
+Upload button
+
+File requirements reminder
+
+CTA (PRIMARY)
+
+Re-upload Documents & Resubmit
+
+Secondary:
+Contact Support
+
+4️⃣ POST-RESUBMISSION STATE (IMPORTANT)
+
+Once user resubmits:
+
+Banner changes to:
+⏳ KYC Re-submitted
+Our team is reviewing your updated documents (24–48 hrs)
+
+
+Dashboard becomes Pre-Approval Dashboard again (the one we designed earlier).
+
+5️⃣ WHAT MESSAGES PAGE SHOULD SHOW (IF ACCESSED)
+
+If for any reason user still reaches /messages:
+
+Replace empty state with BLOCKING MESSAGE:
+Messaging disabled
+Your KYC was rejected. Please complete verification to enable messaging.
+[ Go to KYC ]
+
+
+❌ Show NO conversations
+❌ Disable input box
+
+6️⃣ ADMIN SIDE (SMALL BUT CRITICAL)
+
+Force admin to:
+
+Select at least one rejection reason
+
+Optional custom note
+
+This reduces:
+
+Angry owners
+
+Legal risk
+
+Support load
+
+7️⃣ STATUS FLOW SUMMARY (VERY IMPORTANT)
+KYC Submitted
+   ↓
+Approved → Full Owner Dashboard
+   ↓
+Rejected → KYC Action Page (ONLY)
+   ↓
+Resubmitted → Pre-Approval Dashboard
+
+
+No dead ends. Ever.
