@@ -1,0 +1,196 @@
+Quick Listing = capture intent fast
+
+Full Application = unlock monetization + trust
+
+👉 They must feel like one journey, not two different products.
+
+✅ THE CORRECT MODEL FOR ZECOHO (RECOMMENDED)
+🟢 Entry Point: ONE CTA ONLY
+
+Wherever owner starts (header, hero, footer):
+
+“Own a Property”
+→ Login / Signup
+→ Choose listing path
+
+🧩 STEP 1: OWNER CHOOSES LISTING MODE
+
+After login, show a choice screen (very important).
+
+Page title
+
+List Your Property on Zecoho
+
+Two cards side by side 👇
+🟡 OPTION A: QUICK LISTING (FAST)
+Card copy
+
+Quick Listing
+Get visibility in minutes
+
+✔ Property name
+✔ City
+✔ Price range
+✔ Phone number
+✔ 1–2 photos
+
+⏱ Takes 3–5 minutes
+
+🔒 Limits:
+
+No instant bookings
+
+Inquiry-only
+
+Lower ranking
+
+“Verification pending” badge
+
+CTA
+
+Start Quick Listing
+
+🔵 OPTION B: FULL APPLICATION (RECOMMENDED)
+Card copy
+
+Full Application
+Go live & start receiving bookings
+
+✔ Full property details
+✔ KYC verification
+✔ Bank details
+✔ Full photo set
+
+⏱ Takes 10–15 minutes
+
+✅ Benefits:
+
+Live bookings
+
+Payments enabled
+
+Higher ranking
+
+“Verified” badge
+
+CTA
+
+Start Full Application
+
+💡 Add a subtle tag:
+
+Recommended for faster bookings
+
+🔥 IMPORTANT UX RULE
+
+Do NOT say:
+
+“Skip KYC”
+
+“Later”
+
+“Optional verification”
+
+Say instead:
+
+“Quick listing (limited)”
+
+“Full application (recommended)”
+
+Language matters.
+
+🧭 QUICK LISTING FLOW (MVP-CORRECT)
+Required fields ONLY:
+
+Property Name
+
+City
+
+Property Type
+
+Approx price
+
+Contact number
+
+1 exterior / room photo
+
+After submission:
+
+Redirect to:
+
+/owner/dashboard (quick_listing)
+
+What owner sees:
+
+🟡 Status banner:
+
+Quick Listing Active — Complete verification to accept bookings
+
+Dashboard capabilities:
+
+✅ View inquiries
+✅ Edit listing
+❌ Accept bookings
+❌ Payments
+❌ Messaging (optional)
+
+Prominent CTA:
+
+Complete Full Application →
+
+🧭 FULL APPLICATION FLOW (WHAT YOU ALREADY BUILT)
+
+This is your existing 5-step flow:
+
+Personal info
+
+Business & KYC
+
+Property details
+
+Pricing & amenities
+
+Photos & submit
+
+After submission:
+➡️ /owner/dashboard (under_review)
+
+You already know this part — we refined it earlier.
+
+🔁 UPGRADE PATH (CRITICAL)
+
+A Quick Listing owner must be able to upgrade anytime.
+
+Everywhere in dashboard show:
+
+🔵 “Complete Full Application to Go Live”
+
+Clicking it:
+
+Pre-fills all data already entered
+
+Starts from missing steps only
+
+Does NOT reset progress
+
+This avoids rage quits.
+
+🔐 PERMISSION MATRIX (VERY IMPORTANT)
+Capability	Quick Listing	Full App (Under Review)	Approved
+Visible on site	✅ Limited	❌	✅ Full
+Rank	Low	—	High
+Booking	❌	❌	✅
+Messaging	Optional	❌	✅
+Payments	❌	❌	✅
+Dashboard	Limited	Pre-approval	Full
+❌ WHAT YOU MUST NOT DO
+
+❌ Don’t auto-push quick listing users into full KYC without consent
+
+❌ Don’t hide limitations of quick listing
+
+❌ Don’t create two separate dashboards
+
+❌ Don’t let quick listings accept money
+
+These cause legal + trust issues.

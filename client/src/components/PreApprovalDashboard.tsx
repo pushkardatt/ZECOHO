@@ -18,6 +18,9 @@ import {
   ImagePlus,
   Edit,
   Lock,
+  Zap,
+  ArrowRight,
+  Shield,
 } from "lucide-react";
 import {
   Tooltip,
@@ -44,6 +47,7 @@ interface PreApprovalDashboardProps {
     firstName?: string | null;
     lastName?: string | null;
     kycStatus: string;
+    listingMode?: string;
   };
 }
 
@@ -57,6 +61,7 @@ export function PreApprovalDashboard({ user }: PreApprovalDashboardProps) {
   });
 
   const currentKycStatus = kycStatusData?.status ?? user.kycStatus;
+  const isQuickListing = user.listingMode === "quick";
 
   const isActionRequired = currentKycStatus === "not_started" || currentKycStatus === "rejected";
   const isUnderReview = currentKycStatus === "pending";
@@ -118,6 +123,60 @@ export function PreApprovalDashboard({ user }: PreApprovalDashboardProps) {
             </p>
           </div>
         </div>
+      )}
+
+      {isQuickListing && (
+        <Card className="border-primary/50 bg-gradient-to-r from-primary/5 to-primary/10" data-testid="upgrade-cta-card">
+          <CardContent className="p-6">
+            <div className="flex flex-col md:flex-row md:items-center gap-4">
+              <div className="flex-shrink-0">
+                <div className="h-12 w-12 rounded-lg bg-primary/20 flex items-center justify-center">
+                  <Zap className="h-6 w-6 text-primary" />
+                </div>
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-1">
+                  <h3 className="font-semibold text-lg">Quick Listing Mode</h3>
+                  <Badge variant="secondary">Limited</Badge>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  You're currently in Quick Listing mode. Complete KYC verification to unlock online bookings, 
+                  secure payments, and full visibility in search results.
+                </p>
+              </div>
+              <div className="flex-shrink-0">
+                <Link href="/list-property">
+                  <Button data-testid="btn-upgrade-to-full">
+                    <Shield className="h-4 w-4 mr-2" />
+                    Complete KYC
+                    <ArrowRight className="h-4 w-4 ml-2" />
+                  </Button>
+                </Link>
+              </div>
+            </div>
+            <div className="mt-4 pt-4 border-t border-primary/20">
+              <p className="text-xs text-muted-foreground mb-2">Unlock with full verification:</p>
+              <div className="flex flex-wrap gap-4 text-sm">
+                <div className="flex items-center gap-1.5 text-muted-foreground">
+                  <CheckCircle2 className="h-4 w-4 text-green-500" />
+                  Online bookings
+                </div>
+                <div className="flex items-center gap-1.5 text-muted-foreground">
+                  <CheckCircle2 className="h-4 w-4 text-green-500" />
+                  Secure payments
+                </div>
+                <div className="flex items-center gap-1.5 text-muted-foreground">
+                  <CheckCircle2 className="h-4 w-4 text-green-500" />
+                  Full search visibility
+                </div>
+                <div className="flex items-center gap-1.5 text-muted-foreground">
+                  <CheckCircle2 className="h-4 w-4 text-green-500" />
+                  Guest messaging
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       )}
 
       <Card data-testid="progress-checklist">

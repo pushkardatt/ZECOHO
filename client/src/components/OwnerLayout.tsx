@@ -83,10 +83,17 @@ export function OwnerLayout({ children }: OwnerLayoutProps) {
     return <Redirect to="/" />;
   }
 
+  // Redirect owners who haven't selected a listing mode yet
+  const listingMode = (user as any).listingMode;
+  if (listingMode === "not_selected" && location !== "/owner/choose-mode") {
+    return <Redirect to="/owner/choose-mode" />;
+  }
+
   const userInitials = `${user.firstName?.[0] || ""}${user.lastName?.[0] || ""}`.toUpperCase() || "O";
 
   const isRejected = user.kycStatus === "rejected";
   const isVerified = user.kycStatus === "verified";
+  const isQuickListing = listingMode === "quick";
   const isPreApproval = !isVerified;
 
   const menuItems = isRejected 

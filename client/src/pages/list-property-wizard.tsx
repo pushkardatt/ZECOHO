@@ -186,7 +186,18 @@ export default function ListPropertyWizard() {
   
   // Listing mode: "quick" for Phase 1 (soft onboarding), "full" for full KYC flow
   // null means mode selection screen should be shown
-  const [listingMode, setListingMode] = useState<ListingMode | null>(null);
+  // Check URL params for mode (from choose-listing-mode redirect)
+  const getInitialMode = (): ListingMode | null => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const modeParam = params.get("mode");
+      if (modeParam === "quick" || modeParam === "full") {
+        return modeParam;
+      }
+    }
+    return null;
+  };
+  const [listingMode, setListingMode] = useState<ListingMode | null>(getInitialMode);
   
   // Quick mode has only 2 steps: 1. Basic Info, 2. Property + Photos
   const isQuickMode = listingMode === "quick";

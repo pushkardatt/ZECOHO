@@ -96,6 +96,9 @@ export const kycStatusEnum = pgEnum("kyc_status", [
   "rejected",
 ]);
 
+// Listing mode enum - for owner onboarding flow
+export const listingModeEnum = pgEnum("listing_mode", ["not_selected", "quick", "full"]);
+
 // User storage table - supports both Replit Auth and local registration
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -117,6 +120,7 @@ export const users = pgTable("users", {
   governmentIdNumber: varchar("government_id_number", { length: 100 }),
   kycStatus: kycStatusEnum("kyc_status").notNull().default("not_started"),
   kycVerifiedAt: timestamp("kyc_verified_at"),
+  listingMode: listingModeEnum("listing_mode").notNull().default("not_selected"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -153,6 +157,7 @@ export const properties = pgTable("properties", {
   rating: decimal("rating", { precision: 3, scale: 2 }).default("0"),
   reviewCount: integer("review_count").default(0),
   status: propertyStatusEnum("status").notNull().default("draft"),
+  inquiryOnly: boolean("inquiry_only").notNull().default(false),
   verificationNotes: text("verification_notes"),
   verifiedAt: timestamp("verified_at"),
   verifiedBy: varchar("verified_by").references(() => users.id),

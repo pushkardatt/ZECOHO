@@ -49,6 +49,7 @@ import OwnerEarnings from "@/pages/owner-earnings";
 import OwnerReviews from "@/pages/owner-reviews";
 import OwnerSettings from "@/pages/owner-settings";
 import OwnerKyc from "@/pages/owner-kyc";
+import ChooseListingMode from "@/pages/choose-listing-mode";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -81,6 +82,7 @@ function Router() {
       <Route path="/owner/reviews" component={OwnerReviews} />
       <Route path="/owner/settings" component={OwnerSettings} />
       <Route path="/owner/kyc" component={OwnerKyc} />
+      <Route path="/owner/choose-mode" component={ChooseListingMode} />
       <Route path="/login" component={Login} />
       <Route path="/register" component={Register} />
       <Route path="/forgot-password" component={ForgotPassword} />

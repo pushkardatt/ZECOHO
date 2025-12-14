@@ -1032,13 +1032,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "At least one property image is required" });
       }
       
-      // Update user info if provided
+      // Update user info if provided, and promote to owner role
       const currentUser = await storage.getUser(userId);
       if (currentUser) {
         const updateData: any = { ...currentUser };
         if (firstName) updateData.firstName = firstName;
         if (lastName) updateData.lastName = lastName;
         if (phone) updateData.phone = phone;
+        // Promote to owner role if they're still a guest
+        if (currentUser.userRole === "guest") {
+          updateData.userRole = "owner";
+        }
+        // Set listing mode to quick if not already set
+        if (!currentUser.listingMode || currentUser.listingMode === "not_selected") {
+          updateData.listingMode = "quick";
+        }
         // Don't update email - it's tied to auth
         await storage.upsertUser(updateData);
       }
@@ -1181,6 +1189,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Invalid KYC data", error: error.message });
       }
       res.status(500).json({ message: "Failed to update user" });
+    }
+  });
+
+  // Listing mode endpoint - for owner onboarding
+  app.patch('/api/user/listing-mode', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const currentUser = await storage.getUser(userId);
+      
+      if (!currentUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const { listingMode } = req.body;
+      
+      if (!listingMode || !["quick", "full"].includes(listingMode)) {
+        return res.status(400).json({ message: "Invalid listing mode. Must be 'quick' or 'full'" });
+      }
+
+      const updatedUser = await storage.upsertUser({
+        ...currentUser,
+        listingMode,
+        userRole: currentUser.userRole === "guest" ? "owner" : currentUser.userRole,
+      });
+
+      res.json(updatedUser);
+    } catch (error) {
+      console.error("Error updating listing mode:", error);
+      res.status(500).json({ message: "Failed to update listing mode" });
     }
   });
 
