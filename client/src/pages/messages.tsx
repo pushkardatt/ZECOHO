@@ -46,6 +46,7 @@ export default function Messages() {
   const [pendingAttachments, setPendingAttachments] = useState<PendingAttachment[]>([]);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const messageInputRef = useRef<HTMLInputElement>(null);
   const wsRef = useRef<WebSocket | null>(null);
   const selectedConversationIdRef = useRef(selectedConversationId);
   const userIdRef = useRef(user?.id);
@@ -279,6 +280,7 @@ export default function Messages() {
       queryClient.invalidateQueries({ queryKey: ["/api/conversations"] });
       setMessageInput("");
       setPendingAttachments([]);
+      setTimeout(() => messageInputRef.current?.focus(), 0);
     },
     onError: (error) => {
       console.error("Failed to send message:", error);
@@ -578,6 +580,7 @@ export default function Messages() {
                   <Paperclip className="h-4 w-4" />
                 </Button>
                 <Input
+                  ref={messageInputRef}
                   value={messageInput}
                   onChange={(e) => setMessageInput(e.target.value)}
                   placeholder="Type a message..."

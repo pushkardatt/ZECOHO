@@ -47,6 +47,7 @@ export default function OwnerMessagesPage() {
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [isSending, setIsSending] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const messageInputRef = useRef<HTMLInputElement>(null);
   const wsRef = useRef<WebSocket | null>(null);
   const selectedConversationRef = useRef(selectedConversation);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -173,6 +174,7 @@ export default function OwnerMessagesPage() {
       queryClient.invalidateQueries({ queryKey: ["/api/owner/conversations"] });
       setMessageText("");
       setPendingAttachments([]);
+      setTimeout(() => messageInputRef.current?.focus(), 0);
     },
     onError: (error) => {
       console.error("Failed to send message:", error);
@@ -613,6 +615,7 @@ export default function OwnerMessagesPage() {
                       <Paperclip className="h-4 w-4" />
                     </Button>
                     <Input
+                      ref={messageInputRef}
                       placeholder="Type a message..."
                       value={messageText}
                       onChange={(e) => setMessageText(e.target.value)}
