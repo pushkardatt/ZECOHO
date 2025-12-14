@@ -212,12 +212,19 @@ export default function ListPropertyWizard() {
   const isCompleteMode = listingMode === "complete";
   const quickModeTotalSteps = 2;
   
-  // Fetch draft property when in "complete" mode (continuing from quick listing)
+  // Fetch draft property when in "complete" mode OR when mode is null (to detect existing drafts)
   const { data: draftProperty, isLoading: isLoadingDraft } = useQuery<any>({
     queryKey: ["/api/owner/draft-property"],
-    enabled: isCompleteMode && !!user,
+    enabled: (isCompleteMode || listingMode === null) && !!user,
     retry: false,
   });
+
+  // Auto-redirect to complete mode if user has a draft property but no mode selected
+  useEffect(() => {
+    if (listingMode === null && !isLoadingDraft && draftProperty && draftProperty.id) {
+      setLocation(`/list-property?mode=complete&propertyId=${draftProperty.id}`);
+    }
+  }, [listingMode, isLoadingDraft, draftProperty, setLocation]);
 
   // Parse rejection details
   const rejectionDetails = useMemo(() => {
@@ -1166,6 +1173,30 @@ export default function ListPropertyWizard() {
   // Mode selection screen - show for new users who haven't selected a mode yet
   // Skip mode selection for: verified/pending KYC users, KYC resubmission
   if (listingMode === null && !canSkipKycSteps && !isKycResubmission) {
+    // Show loading while checking for existing draft property
+    if (isLoadingDraft) {
+      return (
+        <div className="min-h-screen bg-background flex items-center justify-center" data-testid="loading-draft-check">
+          <div className="text-center">
+            <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-primary" />
+            <p className="text-muted-foreground">Loading...</p>
+          </div>
+        </div>
+      );
+    }
+    
+    // If user has a draft property, show loading while redirecting (handled by useEffect)
+    if (draftProperty && draftProperty.id) {
+      return (
+        <div className="min-h-screen bg-background flex items-center justify-center" data-testid="redirecting-to-complete">
+          <div className="text-center">
+            <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-primary" />
+            <p className="text-muted-foreground">Continuing your listing...</p>
+          </div>
+        </div>
+      );
+    }
+    
     return (
       <div className="min-h-screen bg-muted/30 pb-16">
         <div className="container px-4 md:px-6 py-8 max-w-4xl mx-auto">
