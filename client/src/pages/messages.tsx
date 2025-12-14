@@ -143,17 +143,11 @@ export default function Messages() {
 
   const sendMessageMutation = useMutation({
     mutationFn: async (content: string) => {
-      console.log("sendMessageMutation mutationFn called with:", content);
       if (!selectedConversationId) throw new Error("No conversation selected");
-      console.log("Making API request to:", `/api/conversations/${selectedConversationId}/messages`);
       const response = await apiRequest("POST", `/api/conversations/${selectedConversationId}/messages`, { content });
-      console.log("API response status:", response.status);
-      const result = await response.json() as MessageWithSender;
-      console.log("API response data:", result);
-      return result;
+      return await response.json() as MessageWithSender;
     },
     onSuccess: (newMessage) => {
-      console.log("sendMessageMutation onSuccess:", newMessage);
       if (newMessage && selectedConversationId) {
         queryClient.setQueryData(
           ["/api/conversations", selectedConversationId, "messages"],
@@ -179,15 +173,8 @@ export default function Messages() {
 
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("handleSendMessage called", { messageInput, selectedConversationId });
     if (messageInput.trim() && selectedConversationId) {
-      console.log("Sending message:", messageInput.trim());
       sendMessageMutation.mutate(messageInput.trim());
-    } else {
-      console.log("Message not sent - missing input or conversation", { 
-        hasInput: !!messageInput.trim(), 
-        hasConversation: !!selectedConversationId 
-      });
     }
   };
 
