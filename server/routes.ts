@@ -2383,11 +2383,14 @@ Hi! I've just made a booking request for your property. Looking forward to heari
         message: messageWithSender,
       };
       
-      // Notify the other participant (not the sender, they already know)
+      // Notify the other participant
       const recipientId = userId === conversation.guestId ? conversation.ownerId : conversation.guestId;
       broadcastToUser(recipientId, broadcastData);
       
-      res.json(message);
+      // Also broadcast to sender so they see instant updates across tabs/devices
+      broadcastToUser(userId, broadcastData);
+      
+      res.json(messageWithSender);
     } catch (error: any) {
       console.error("Error creating message:", error);
       if (error.name === "ZodError") {
