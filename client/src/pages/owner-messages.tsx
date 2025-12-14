@@ -31,7 +31,7 @@ type MessageWithSender = BaseMessage & {
 export default function OwnerMessagesPage() {
   const { user, isLoading: authLoading } = useAuth();
   const { toast } = useToast();
-  const [selectedConversation, setSelectedConversation] = useState<number | null>(null);
+  const [selectedConversation, setSelectedConversation] = useState<string | null>(null);
   const [messageText, setMessageText] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const wsRef = useRef<WebSocket | null>(null);
@@ -69,7 +69,7 @@ export default function OwnerMessagesPage() {
             if (data.conversationId && String(data.conversationId) === String(selectedConversationRef.current) && data.message) {
               queryClient.setQueryData(
                 ["/api/conversations", selectedConversationRef.current, "messages"],
-                (old: Message[] = []) => {
+                (old: MessageWithSender[] = []) => {
                   if (old.some(m => String(m.id) === String(data.message.id))) return old;
                   return [...old, data.message];
                 }
