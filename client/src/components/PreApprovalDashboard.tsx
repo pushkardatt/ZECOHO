@@ -21,18 +21,21 @@ import {
   Zap,
   ArrowRight,
   Shield,
+  XCircle,
 } from "lucide-react";
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import type { KycRejectionDetails, KycSectionId } from "@shared/schema";
 
 interface KycStatusResponse {
   status: "not_started" | "pending" | "verified" | "rejected";
   hasActiveApplication: boolean;
   applicationId?: string;
   userId?: string;
+  rejectionDetails?: KycRejectionDetails;
 }
 
 interface PropertySummary {
@@ -62,8 +65,11 @@ export function PreApprovalDashboard({ user }: PreApprovalDashboardProps) {
 
   const currentKycStatus = kycStatusData?.status ?? user.kycStatus;
   const isQuickListing = user.listingMode === "quick";
+  const rejectionDetails = kycStatusData?.rejectionDetails;
+  const rejectedSections = rejectionDetails?.sections || [];
 
-  const isActionRequired = currentKycStatus === "not_started" || currentKycStatus === "rejected";
+  const isRejected = currentKycStatus === "rejected";
+  const isActionRequired = currentKycStatus === "not_started";
   const isUnderReview = currentKycStatus === "pending";
 
   const getKycStepStatus = () => {
@@ -89,8 +95,71 @@ export function PreApprovalDashboard({ user }: PreApprovalDashboardProps) {
   ].filter(Boolean).length;
   const stepsRemaining = 3 - completedSteps;
 
+  const sectionLabels: Record<KycSectionId, string> = {
+    personal: "Personal Information",
+    business: "Business Information",
+    propertyOwnership: "Property Ownership Documents",
+    identityProof: "Identity Proof",
+    businessLicense: "Business License",
+    noc: "NOC Documents",
+    safetyCertificates: "Safety Certificates",
+  };
+
   return (
     <div className="space-y-6" data-testid="pre-approval-dashboard">
+      {isRejected && (
+        <Card className="border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/30" data-testid="kyc-rejection-card">
+          <CardHeader className="pb-2">
+            <div className="flex items-center gap-3">
+              <XCircle className="h-6 w-6 text-red-600 dark:text-red-400 flex-shrink-0" />
+              <div className="flex-1">
+                <CardTitle className="text-red-800 dark:text-red-200">
+                  KYC Rejected — Action Required
+                </CardTitle>
+                <p className="text-sm text-red-700 dark:text-red-300 mt-1">
+                  Your listing cannot go live until you fix the issues below and resubmit.
+                </p>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {rejectedSections.length > 0 ? (
+              <div className="space-y-3">
+                <p className="text-sm font-medium text-red-800 dark:text-red-200">Reasons for rejection:</p>
+                <ul className="space-y-2">
+                  {rejectedSections.map((section, index) => (
+                    <li key={index} className="flex items-start gap-2 text-sm text-red-700 dark:text-red-300">
+                      <span className="text-red-500 mt-0.5">•</span>
+                      <span>
+                        <strong>{sectionLabels[section.sectionId] || section.sectionId}:</strong>{" "}
+                        {section.message}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : (
+              <p className="text-sm text-red-700 dark:text-red-300">
+                Please contact support for details on why your KYC was rejected.
+              </p>
+            )}
+            <div className="flex flex-col sm:flex-row gap-3 mt-4">
+              <Link href="/owner/kyc">
+                <Button variant="destructive" data-testid="btn-view-rejection-details">
+                  <XCircle className="h-4 w-4 mr-2" />
+                  View Full Details
+                </Button>
+              </Link>
+              <Link href="/list-property">
+                <Button variant="outline" className="border-red-300 dark:border-red-700 text-red-700 dark:text-red-300" data-testid="btn-fix-kyc">
+                  Fix Issues & Resubmit
+                </Button>
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {isActionRequired && (
         <div 
           className="flex items-center gap-3 p-4 rounded-md bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800"
