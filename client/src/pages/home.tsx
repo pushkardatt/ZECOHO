@@ -94,8 +94,8 @@ export default function Home() {
             <span className="text-white/90 text-sm font-medium">India's First Zero Commission Platform</span>
           </div>
 
-          {/* Main Headline - Punchy */}
-          <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-4 leading-tight tracking-tight">
+          {/* Main Headline - Responsive Typography */}
+          <h1 className="text-hero-title font-bold text-white mb-4 tracking-tight">
             Book Hotels at Guaranteed Lowest Prices{" "}
             <span className="bg-gradient-to-r from-amber-400 via-rose-400 to-rose-500 bg-clip-text text-transparent">
               — Cheaper Than OTAs

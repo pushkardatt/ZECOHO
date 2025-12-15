@@ -165,16 +165,16 @@ export default function Landing() {
             <span className="text-white/90 text-xs font-medium">India's First Zero Commission Platform</span>
           </div>
 
-          {/* Main Headline - Pixel Perfect Typography */}
+          {/* Main Headline - Responsive Typography */}
           <h1 
-            className="text-[28px] md:text-[54px] font-extrabold text-white leading-[1.2] md:leading-[1.1] tracking-tight mb-1" 
+            className="text-hero-title font-extrabold text-white tracking-tight mb-1" 
             data-testid="text-hero-title"
             style={{ textShadow: '0 2px 20px rgba(0,0,0,0.5)' }}
           >
             Book Hotels at True Prices —
           </h1>
           <h1 
-            className="text-[32px] md:text-[58px] font-extrabold leading-[1.2] md:leading-[1.1] tracking-tight mb-2.5 md:mb-3"
+            className="text-hero-subtitle font-extrabold tracking-tight mb-2.5 md:mb-3"
             style={{ 
               background: 'linear-gradient(90deg, #FF7A00, #FF2768)',
               WebkitBackgroundClip: 'text',

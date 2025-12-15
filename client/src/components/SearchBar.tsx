@@ -417,9 +417,9 @@ export function SearchBar({
 
   return (
     <div className="w-full max-w-4xl relative" ref={suggestionsRef}>
-      <div className="bg-white rounded-full shadow-lg border border-gray-200 p-1.5 flex items-center w-full">
+      <div className="bg-white rounded-2xl md:rounded-full shadow-lg border border-gray-200 p-2 md:p-1.5 flex flex-col md:flex-row md:items-center w-full gap-2 md:gap-0">
         {/* Destination */}
-        <div className="flex-1 px-4 py-2 rounded-full hover:bg-gray-50 transition-colors">
+        <div className="flex-1 px-4 py-2 rounded-xl md:rounded-full hover:bg-gray-50 transition-colors">
           <label className="text-xs font-semibold block mb-0.5 text-gray-700">Where</label>
           <div className="relative">
             <input
@@ -437,77 +437,80 @@ export function SearchBar({
           </div>
         </div>
         
-        {/* Subtle divider */}
-        {showDates && <div className="h-8 w-px bg-gray-200" />}
+        {/* Subtle divider - hidden on mobile */}
+        {showDates && <div className="hidden md:block h-8 w-px bg-gray-200" />}
       
         {showDates && (
           <>
-            {/* Check-in Date Picker */}
-            <Popover open={checkInOpen} onOpenChange={setCheckInOpen}>
-              <PopoverTrigger asChild>
-                <div 
-                  className="flex-1 px-4 py-2 rounded-full cursor-pointer hover:bg-gray-50 transition-colors"
-                  data-testid="input-checkin"
-                >
-                  <label className="text-xs font-semibold block mb-0.5 text-gray-700 cursor-pointer">Check in</label>
-                  <span className={`text-sm ${checkInDate ? 'text-gray-900' : 'text-gray-400'}`}>
-                    {checkInDate ? format(checkInDate, 'MMM d') : 'Add dates'}
-                  </span>
-                </div>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
-                <Calendar
-                  mode="single"
-                  selected={checkInDate}
-                  onSelect={handleCheckInSelect}
-                  disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
-                  initialFocus
-                />
-              </PopoverContent>
-            </Popover>
-            
-            {/* Subtle divider */}
-            <div className="h-8 w-px bg-gray-200" />
-            
-            {/* Check-out Date Picker */}
-            <Popover open={checkOutOpen} onOpenChange={setCheckOutOpen}>
-              <PopoverTrigger asChild>
-                <div 
-                  className="flex-1 px-4 py-2 rounded-full cursor-pointer hover:bg-gray-50 transition-colors"
-                  data-testid="input-checkout"
-                >
-                  <label className="text-xs font-semibold block mb-0.5 text-gray-700 cursor-pointer">Check out</label>
-                  <span className={`text-sm ${checkOutDate ? 'text-gray-900' : 'text-gray-400'}`}>
-                    {checkOutDate ? format(checkOutDate, 'MMM d') : 'Add dates'}
-                  </span>
-                </div>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
-                <Calendar
-                  mode="single"
-                  selected={checkOutDate}
-                  onSelect={handleCheckOutSelect}
-                  disabled={(date) => {
-                    const minDate = checkInDate ? addDays(checkInDate, 1) : new Date(new Date().setHours(0, 0, 0, 0));
-                    return date < minDate;
-                  }}
-                  initialFocus
-                />
-              </PopoverContent>
-            </Popover>
+            {/* Date pickers row - side by side on mobile */}
+            <div className="flex flex-row gap-2 md:gap-0 md:contents">
+              {/* Check-in Date Picker */}
+              <Popover open={checkInOpen} onOpenChange={setCheckInOpen}>
+                <PopoverTrigger asChild>
+                  <div 
+                    className="flex-1 px-4 py-2 rounded-xl md:rounded-full cursor-pointer hover:bg-gray-50 transition-colors"
+                    data-testid="input-checkin"
+                  >
+                    <label className="text-xs font-semibold block mb-0.5 text-gray-700 cursor-pointer">Check in</label>
+                    <span className={`text-sm ${checkInDate ? 'text-gray-900' : 'text-gray-400'}`}>
+                      {checkInDate ? format(checkInDate, 'MMM d') : 'Add dates'}
+                    </span>
+                  </div>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={checkInDate}
+                    onSelect={handleCheckInSelect}
+                    disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+              
+              {/* Subtle divider - hidden on mobile */}
+              <div className="hidden md:block h-8 w-px bg-gray-200" />
+              
+              {/* Check-out Date Picker */}
+              <Popover open={checkOutOpen} onOpenChange={setCheckOutOpen}>
+                <PopoverTrigger asChild>
+                  <div 
+                    className="flex-1 px-4 py-2 rounded-xl md:rounded-full cursor-pointer hover:bg-gray-50 transition-colors"
+                    data-testid="input-checkout"
+                  >
+                    <label className="text-xs font-semibold block mb-0.5 text-gray-700 cursor-pointer">Check out</label>
+                    <span className={`text-sm ${checkOutDate ? 'text-gray-900' : 'text-gray-400'}`}>
+                      {checkOutDate ? format(checkOutDate, 'MMM d') : 'Add dates'}
+                    </span>
+                  </div>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={checkOutDate}
+                    onSelect={handleCheckOutSelect}
+                    disabled={(date) => {
+                      const minDate = checkInDate ? addDays(checkInDate, 1) : new Date(new Date().setHours(0, 0, 0, 0));
+                      return date < minDate;
+                    }}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
           </>
         )}
         
         {showGuests && (
           <>
-            {/* Subtle divider */}
-            <div className="h-8 w-px bg-gray-200" />
+            {/* Subtle divider - hidden on mobile */}
+            <div className="hidden md:block h-8 w-px bg-gray-200" />
             
             {/* Airbnb-style Guests Popover */}
             <Popover open={guestsOpen} onOpenChange={setGuestsOpen}>
               <PopoverTrigger asChild>
                 <div 
-                  className="flex-1 px-4 py-2 rounded-full cursor-pointer hover:bg-gray-50 transition-colors"
+                  className="flex-1 px-4 py-2 rounded-xl md:rounded-full cursor-pointer hover:bg-gray-50 transition-colors"
                   data-testid="input-guests"
                 >
                   <label className="text-xs font-semibold block mb-0.5 text-gray-700 cursor-pointer">Who</label>
@@ -615,7 +618,7 @@ export function SearchBar({
         
         <Button 
           size="lg" 
-          className="rounded-full px-6 ml-1" 
+          className="w-full md:w-auto rounded-xl md:rounded-full px-6 md:ml-1 mt-1 md:mt-0" 
           onClick={handleSearch}
           data-testid="button-search-full"
         >
