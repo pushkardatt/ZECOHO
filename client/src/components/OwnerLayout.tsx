@@ -67,7 +67,6 @@ const rejectedMenuItems = [
 
 const allowedPathsWhenRejected = ["/owner/kyc", "/owner/property", "/owner/settings", "/list-property"];
 
-// Helper to check if a path is allowed for rejected users (handles query strings)
 function isPathAllowedForRejected(currentPath: string): boolean {
   return allowedPathsWhenRejected.some(path => 
     currentPath === path || currentPath.startsWith(path + "?") || currentPath.startsWith(path + "/")
@@ -80,20 +79,26 @@ export function OwnerLayout({ children }: OwnerLayoutProps) {
   const [showWelcomeModal, setShowWelcomeModal] = useState(false);
   const { showModal: showKycPrompt, setShowModal: setShowKycPrompt } = useKycPromptModal(isOwner, user?.kycStatus);
 
-  // Fetch owner's properties to get the property ID for navigation
   const { data: ownerProperties = [] } = useQuery<Property[]>({
     queryKey: ["/api/owner/properties"],
     enabled: !!user && isOwner,
   });
   
-  // Get the first property ID (owners typically have one property)
   const ownerPropertyId = ownerProperties.length > 0 ? ownerProperties[0].id : null;
 
+  const isRejected = user?.kycStatus === "rejected";
+
   useEffect(() => {
-    if (user && isOwner && !(user as any).hasSeenOwnerModal) {
+    if (user && isOwner && !(user as any).hasSeenOwnerModal && !isRejected) {
       setShowWelcomeModal(true);
     }
-  }, [user, isOwner]);
+  }, [user, isOwner, isRejected]);
+
+  useEffect(() => {
+    if (isRejected && location !== "/owner/kyc" && !location.startsWith("/owner/kyc?") && !location.startsWith("/owner/kyc/")) {
+      setLocation("/owner/kyc");
+    }
+  }, [isRejected, location, setLocation]);
 
   const sidebarStyle = {
     "--sidebar-width": "16rem",
@@ -112,7 +117,6 @@ export function OwnerLayout({ children }: OwnerLayoutProps) {
     return <Redirect to="/" />;
   }
 
-  // Redirect owners who haven't selected a listing mode yet
   const listingMode = (user as any).listingMode;
   if (listingMode === "not_selected" && location !== "/owner/choose-mode") {
     return <Redirect to="/owner/choose-mode" />;
@@ -120,7 +124,6 @@ export function OwnerLayout({ children }: OwnerLayoutProps) {
 
   const userInitials = `${user.firstName?.[0] || ""}${user.lastName?.[0] || ""}`.toUpperCase() || "O";
 
-  const isRejected = user.kycStatus === "rejected";
   const isVerified = user.kycStatus === "verified";
   const isQuickListing = listingMode === "quick";
   const isPreApproval = !isVerified;
@@ -150,20 +153,41 @@ export function OwnerLayout({ children }: OwnerLayoutProps) {
     return "secondary";
   };
 
+  const handleHeaderClick = (e: React.MouseEvent) => {
+    if (isRejected) {
+      e.preventDefault();
+      e.stopPropagation();
+      setLocation("/owner/kyc");
+    }
+  };
+
+  const handleBannerClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setLocation("/owner/kyc");
+  };
+
   return (
     <>
-      <OwnerWelcomeModal 
-        open={showWelcomeModal} 
-        onClose={() => setShowWelcomeModal(false)} 
-      />
-      <KycPromptModal
-        open={showKycPrompt && !showWelcomeModal}
-        onClose={() => setShowKycPrompt(false)}
-      />
+      {!isRejected && (
+        <>
+          <OwnerWelcomeModal 
+            open={showWelcomeModal} 
+            onClose={() => setShowWelcomeModal(false)} 
+          />
+          <KycPromptModal
+            open={showKycPrompt && !showWelcomeModal}
+            onClose={() => setShowKycPrompt(false)}
+          />
+        </>
+      )}
       <SidebarProvider style={sidebarStyle}>
         <div className="flex h-screen w-full">
           <Sidebar>
-          <SidebarHeader className="p-4">
+          <SidebarHeader 
+            className={`p-4 ${isRejected ? 'cursor-pointer' : ''}`}
+            onClick={handleHeaderClick}
+          >
             <div className="flex items-center gap-3">
               <Avatar className="h-10 w-10">
                 <AvatarImage src={user.profileImageUrl || undefined} alt={user.firstName || "Owner"} />
@@ -173,26 +197,14 @@ export function OwnerLayout({ children }: OwnerLayoutProps) {
                 <span className="font-semibold text-sm truncate" data-testid="owner-name">
                   {user.firstName} {user.lastName}
                 </span>
-                {isRejected ? (
-                  <button
-                    type="button"
-                    data-testid="owner-badge-rejected"
-                    className="inline-flex items-center rounded-md border border-transparent bg-destructive px-2.5 py-0.5 text-xs font-semibold text-destructive-foreground shadow-xs cursor-pointer hover:bg-red-700 dark:hover:bg-red-800 transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 relative z-[9999] pointer-events-auto"
-                    style={{ pointerEvents: 'auto' }}
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      setLocation("/owner/kyc");
-                    }}
-                  >
-                    <XCircle className="h-3 w-3 mr-1" />
-                    KYC Rejected - Fix Now
-                  </button>
-                ) : (
-                  <Badge variant={getBadgeVariant()} className="w-fit text-xs" data-testid="owner-badge">
-                    {getBadgeContent()}
-                  </Badge>
-                )}
+                <Badge 
+                  variant={getBadgeVariant()} 
+                  className="w-fit text-xs pointer-events-none" 
+                  data-testid={isRejected ? "owner-badge-rejected" : "owner-badge"}
+                >
+                  {isRejected && <XCircle className="h-3 w-3 mr-1" />}
+                  {getBadgeContent()}
+                </Badge>
               </div>
             </div>
           </SidebarHeader>
@@ -248,7 +260,10 @@ export function OwnerLayout({ children }: OwnerLayoutProps) {
         </Sidebar>
 
         <SidebarInset className="flex flex-col">
-          <header className="flex h-14 items-center gap-4 border-b px-4 lg:px-6">
+          <header 
+            className={`flex h-14 items-center gap-4 border-b px-4 lg:px-6 ${isRejected ? 'cursor-pointer' : ''}`}
+            onClick={handleHeaderClick}
+          >
             <SidebarTrigger data-testid="sidebar-toggle" />
             <div className="flex-1">
               <h1 className="text-lg font-semibold" data-testid="page-title">
@@ -256,6 +271,20 @@ export function OwnerLayout({ children }: OwnerLayoutProps) {
               </h1>
             </div>
           </header>
+          
+          {isRejected && (
+            <button
+              type="button"
+              onClick={handleBannerClick}
+              className="w-full bg-red-600 hover:bg-red-700 text-white py-3 px-4 flex items-center justify-center gap-2 font-semibold transition-colors relative z-[10000]"
+              style={{ pointerEvents: 'auto' }}
+              data-testid="kyc-rejection-banner"
+            >
+              <XCircle className="h-5 w-5" />
+              KYC Rejected — Click here to fix verification
+            </button>
+          )}
+          
           <main className="flex-1 overflow-auto p-4 lg:p-6">
             {children}
           </main>
