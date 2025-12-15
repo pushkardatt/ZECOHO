@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Heart, User, LogOut, Menu, Building, MessageCircle, History, PlusCircle, Shield, Settings, FileText, MapPin, CheckCircle, Clock, XCircle, Globe, Check, LayoutDashboard, CalendarCheck, IndianRupee, Star, UserCircle, ArrowRightLeft } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
+import { useKycGuard } from "@/hooks/useKycGuard";
 import { useQuery } from "@tanstack/react-query";
 import type { Conversation, KycApplication } from "@shared/schema";
 
@@ -32,6 +33,7 @@ type ConversationWithUnread = Conversation & { unreadCount: number };
 
 export function Header() {
   const { user, isAuthenticated, isAdmin, isOwner } = useAuth();
+  const { isKycRejected } = useKycGuard();
   const [location] = useLocation();
   const [isScrolled, setIsScrolled] = useState(false);
   const [selectedLanguage, setSelectedLanguage] = useState(() => {
@@ -304,18 +306,33 @@ export function Header() {
                 </div>
               )}
 
-              <Link href={getListPropertyLink()}>
-                <Button 
-                  size="sm"
-                  className="font-semibold text-sm bg-primary text-primary-foreground border-0"
-                  style={{ boxShadow: '0 4px 6px -1px hsl(var(--primary) / 0.25)' }}
-                  data-testid="button-list-property"
-                >
-                  <PlusCircle className="h-4 w-4 md:mr-2" />
-                  <span className="hidden md:inline">List Your Property FREE</span>
-                  <span className="md:hidden">List FREE</span>
-                </Button>
-              </Link>
+              {isOwner && isKycRejected ? (
+                <Link href="/owner/kyc">
+                  <Button 
+                    size="sm"
+                    variant="destructive"
+                    className="font-semibold text-sm"
+                    data-testid="button-fix-kyc"
+                  >
+                    <XCircle className="h-4 w-4 md:mr-2" />
+                    <span className="hidden md:inline">Fix KYC</span>
+                    <span className="md:hidden">Fix KYC</span>
+                  </Button>
+                </Link>
+              ) : (
+                <Link href={getListPropertyLink()}>
+                  <Button 
+                    size="sm"
+                    className="font-semibold text-sm bg-primary text-primary-foreground border-0"
+                    style={{ boxShadow: '0 4px 6px -1px hsl(var(--primary) / 0.25)' }}
+                    data-testid="button-list-property"
+                  >
+                    <PlusCircle className="h-4 w-4 md:mr-2" />
+                    <span className="hidden md:inline">List Your Property FREE</span>
+                    <span className="md:hidden">List FREE</span>
+                  </Button>
+                </Link>
+              )}
 
               {/* Owner Context Indicator - shows when user is in owner mode */}
               {isOwner && location.startsWith("/owner") && (
