@@ -45,6 +45,7 @@ import ForgotPassword from "@/pages/forgot-password";
 import NotFound from "@/pages/not-found";
 import OwnerDashboard from "@/pages/owner-dashboard";
 import OwnerBookings from "@/pages/owner-bookings";
+import MyBookings from "@/pages/my-bookings";
 import OwnerMessagesPage from "@/pages/owner-messages";
 import OwnerProperty from "@/pages/owner-property";
 import OwnerEarnings from "@/pages/owner-earnings";
@@ -67,6 +68,7 @@ function Router() {
           <Route path="/wishlist" component={Wishlist} />
           <Route path="/search-history" component={SearchHistoryPage} />
           <Route path="/messages" component={Messages} />
+          <Route path="/my-bookings" component={MyBookings} />
           <Route path="/owner/properties" component={OwnerProperties} />
           <Route path="/owner/properties/new" component={AddProperty} />
           <Route path="/owner/properties/:id/edit" component={AddProperty} />

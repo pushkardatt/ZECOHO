@@ -2293,18 +2293,27 @@ Hi! I've just made a booking request for your property. Looking forward to heari
         return res.status(401).json({ message: "User not found" });
       }
 
-      let bookings;
-      if (user.userRole === "guest") {
-        bookings = await storage.getBookingsByGuest(userId);
-      } else {
-        const properties = await storage.getProperties({ ownerId: userId });
-        const propertyIds = properties.map(p => p.id);
-        bookings = (await Promise.all(
-          propertyIds.map(id => storage.getBookingsByProperty(id))
-        )).flat();
-      }
+      // Get guest's bookings with property details
+      const bookings = await storage.getBookingsByGuest(userId);
       
-      res.json(bookings);
+      // Enrich with property info
+      const enrichedBookings = await Promise.all(
+        bookings.map(async (booking) => {
+          const property = await storage.getProperty(booking.propertyId);
+          return {
+            ...booking,
+            property: property ? {
+              id: property.id,
+              title: property.title,
+              images: property.images,
+              city: property.city,
+              state: property.state,
+            } : null,
+          };
+        })
+      );
+      
+      res.json(enrichedBookings);
     } catch (error) {
       console.error("Error fetching bookings:", error);
       res.status(500).json({ message: "Failed to fetch bookings" });

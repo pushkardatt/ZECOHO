@@ -451,6 +451,12 @@ export function Header() {
                       Profile & Settings
                     </Link>
                   </DropdownMenuItem>
+                  <DropdownMenuItem asChild data-testid="link-my-bookings">
+                    <Link href="/my-bookings">
+                      <CalendarCheck className="h-4 w-4 mr-2" />
+                      My Bookings
+                    </Link>
+                  </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem asChild>
                     <a href="/api/logout" className="cursor-pointer" data-testid="link-logout">
