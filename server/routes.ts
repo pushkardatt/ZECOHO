@@ -187,7 +187,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Password-based Registration - Step 1: Register with name, email, password
+  // Disabled in development to allow OIDC testing
   app.post('/api/auth/register', async (req: any, res) => {
+    if (process.env.NODE_ENV === 'development') {
+      return res.status(403).json({ message: "Password registration is disabled in development mode. Use OIDC login instead." });
+    }
     try {
       const { firstName, lastName, email, password } = req.body;
       
@@ -317,7 +321,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Password-based Login
+  // Disabled in development to allow OIDC testing
   app.post('/api/auth/login/password', async (req: any, res) => {
+    if (process.env.NODE_ENV === 'development') {
+      return res.status(403).json({ message: "Password login is disabled in development mode. Use OIDC login instead." });
+    }
     try {
       const { email, password } = req.body;
       

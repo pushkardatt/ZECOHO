@@ -13,13 +13,17 @@ import { Mail, Lock, ArrowLeft, Loader2, Shield, Eye, EyeOff } from "lucide-reac
 type LoginStep = "input" | "otp";
 type LoginMethod = "password" | "otp";
 
+// Password login is disabled in development to allow OIDC testing
+const isDevMode = import.meta.env.MODE === "development";
+
 export default function Login() {
   const [, setLocation] = useLocation();
   const search = useSearch();
   const { toast } = useToast();
   
   const urlParams = new URLSearchParams(search);
-  const initialMethod = urlParams.get("method") === "otp" ? "otp" : "password";
+  // In development, always default to OTP; in production, respect URL param
+  const initialMethod = isDevMode ? "otp" : (urlParams.get("method") === "otp" ? "otp" : "password");
   const returnTo = urlParams.get("returnTo") || "/";
   
   const [step, setStep] = useState<LoginStep>("input");
@@ -248,16 +252,18 @@ export default function Login() {
         <CardContent>
           {step === "input" ? (
             <Tabs value={loginMethod} onValueChange={(v) => setLoginMethod(v as LoginMethod)} className="w-full">
-              <TabsList className="grid w-full grid-cols-2 mb-6">
-                <TabsTrigger value="password" data-testid="tab-password">
-                  <Lock className="h-4 w-4 mr-2" />
-                  Password
-                </TabsTrigger>
-                <TabsTrigger value="otp" data-testid="tab-otp">
-                  <Mail className="h-4 w-4 mr-2" />
-                  OTP
-                </TabsTrigger>
-              </TabsList>
+              {!isDevMode && (
+                <TabsList className="grid w-full grid-cols-2 mb-6">
+                  <TabsTrigger value="password" data-testid="tab-password">
+                    <Lock className="h-4 w-4 mr-2" />
+                    Password
+                  </TabsTrigger>
+                  <TabsTrigger value="otp" data-testid="tab-otp">
+                    <Mail className="h-4 w-4 mr-2" />
+                    OTP
+                  </TabsTrigger>
+                </TabsList>
+              )}
 
               <TabsContent value="password">
                 <form onSubmit={handlePasswordSubmit} className="space-y-4">
