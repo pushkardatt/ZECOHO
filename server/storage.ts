@@ -492,7 +492,7 @@ export class DatabaseStorage implements IStorage {
     const userConversations = await db.execute(sql`
       SELECT 
         c.*,
-        p.id as property_id, p.title as property_title, p.destination as property_destination, 
+        p.id as property_id, p.property_code as property_code, p.title as property_title, p.destination as property_destination, 
         p.price_per_night as property_price_per_night, p.images as property_images, p.videos as property_videos,
         p.property_type as property_type, p.max_guests as property_max_guests,
         p.owner_id as property_owner_id, p.status as property_status, p.rating as property_rating,
@@ -536,6 +536,7 @@ export class DatabaseStorage implements IStorage {
       createdAt: row.created_at,
       property: {
         id: row.property_id,
+        propertyCode: row.property_code,
         title: row.property_title,
         destination: row.property_destination,
         pricePerNight: row.property_price_per_night,
@@ -557,7 +558,7 @@ export class DatabaseStorage implements IStorage {
         policies: row.property_policies,
         createdAt: row.property_created_at,
         updatedAt: row.property_updated_at,
-      },
+      } as Property,
       guest: {
         id: row.guest_id,
         email: row.guest_email,
@@ -573,7 +574,7 @@ export class DatabaseStorage implements IStorage {
         kycVerifiedAt: row.guest_kyc_verified_at,
         createdAt: row.guest_created_at,
         updatedAt: row.guest_updated_at,
-      },
+      } as User,
       owner: {
         id: row.owner_id,
         email: row.owner_email,
@@ -589,7 +590,7 @@ export class DatabaseStorage implements IStorage {
         kycVerifiedAt: row.owner_kyc_verified_at,
         createdAt: row.owner_created_at,
         updatedAt: row.owner_updated_at,
-      },
+      } as User,
       unreadCount: row.unread_count,
     }));
   }
