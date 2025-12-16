@@ -188,57 +188,57 @@ export function Header() {
                       </p>
                     </div>
                     <DropdownMenuSeparator />
-                    <Link href="/owner/dashboard">
-                      <DropdownMenuItem data-testid="link-owner-dashboard">
+                    <DropdownMenuItem asChild data-testid="link-owner-dashboard">
+                      <Link href="/owner/dashboard">
                         <LayoutDashboard className="h-4 w-4 mr-2" />
                         Dashboard
-                      </DropdownMenuItem>
-                    </Link>
+                      </Link>
+                    </DropdownMenuItem>
                     {hasRejectedKyc ? (
-                      <Link href="/owner/kyc">
-                        <DropdownMenuItem data-testid="link-owner-kyc">
+                      <DropdownMenuItem asChild data-testid="link-owner-kyc">
+                        <Link href="/owner/kyc">
                           <FileText className="h-4 w-4 mr-2" />
                           Fix KYC
-                        </DropdownMenuItem>
-                      </Link>
+                        </Link>
+                      </DropdownMenuItem>
                     ) : (
                       <>
-                        <Link href="/owner/bookings">
-                          <DropdownMenuItem data-testid="link-owner-bookings">
+                        <DropdownMenuItem asChild data-testid="link-owner-bookings">
+                          <Link href="/owner/bookings">
                             <CalendarCheck className="h-4 w-4 mr-2" />
                             Bookings
-                          </DropdownMenuItem>
-                        </Link>
-                        <Link href="/owner/messages">
-                          <DropdownMenuItem data-testid="link-owner-messages">
+                          </Link>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem asChild data-testid="link-owner-messages">
+                          <Link href="/owner/messages">
                             <MessageCircle className="h-4 w-4 mr-2" />
                             Messages
-                          </DropdownMenuItem>
-                        </Link>
-                        <Link href="/owner/property">
-                          <DropdownMenuItem data-testid="link-owner-property">
+                          </Link>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem asChild data-testid="link-owner-property">
+                          <Link href="/owner/property">
                             <Building className="h-4 w-4 mr-2" />
                             My Properties
-                          </DropdownMenuItem>
-                        </Link>
-                        <Link href="/owner/earnings">
-                          <DropdownMenuItem data-testid="link-owner-earnings">
+                          </Link>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem asChild data-testid="link-owner-earnings">
+                          <Link href="/owner/earnings">
                             <IndianRupee className="h-4 w-4 mr-2" />
                             Earnings
-                          </DropdownMenuItem>
-                        </Link>
-                        <Link href="/owner/reviews">
-                          <DropdownMenuItem data-testid="link-owner-reviews">
+                          </Link>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem asChild data-testid="link-owner-reviews">
+                          <Link href="/owner/reviews">
                             <Star className="h-4 w-4 mr-2" />
                             Reviews
-                          </DropdownMenuItem>
-                        </Link>
-                        <Link href="/owner/settings">
-                          <DropdownMenuItem data-testid="link-owner-settings">
+                          </Link>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem asChild data-testid="link-owner-settings">
+                          <Link href="/owner/settings">
                             <Settings className="h-4 w-4 mr-2" />
                             Settings
-                          </DropdownMenuItem>
-                        </Link>
+                          </Link>
+                        </DropdownMenuItem>
                       </>
                     )}
                   </DropdownMenuContent>
@@ -268,24 +268,24 @@ export function Header() {
                         <p className="text-xs text-muted-foreground">Manage platform content</p>
                       </div>
                       <DropdownMenuSeparator />
-                      <Link href="/admin/properties">
-                        <DropdownMenuItem data-testid="link-admin-properties">
+                      <DropdownMenuItem asChild data-testid="link-admin-properties">
+                        <Link href="/admin/properties">
                           <Building className="h-4 w-4 mr-2" />
                           Manage Properties
-                        </DropdownMenuItem>
-                      </Link>
-                      <Link href="/admin/kyc">
-                        <DropdownMenuItem data-testid="link-admin-kyc">
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild data-testid="link-admin-kyc">
+                        <Link href="/admin/kyc">
                           <FileText className="h-4 w-4 mr-2" />
                           KYC Applications
-                        </DropdownMenuItem>
-                      </Link>
-                      <Link href="/admin/destinations">
-                        <DropdownMenuItem data-testid="link-admin-destinations">
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild data-testid="link-admin-destinations">
+                        <Link href="/admin/destinations">
                           <MapPin className="h-4 w-4 mr-2" />
                           Manage Destinations
-                        </DropdownMenuItem>
-                      </Link>
+                        </Link>
+                      </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </>
@@ -395,11 +395,8 @@ export function Header() {
                       <p className="text-xs text-muted-foreground">Toggle between customer and owner views</p>
                     </div>
                     <DropdownMenuSeparator />
-                    <Link href="/">
-                      <DropdownMenuItem 
-                        className="cursor-pointer"
-                        data-testid="switch-customer-mode"
-                      >
+                    <DropdownMenuItem asChild className="cursor-pointer" data-testid="switch-customer-mode">
+                      <Link href="/">
                         <UserCircle className="h-4 w-4 mr-2" />
                         <div className="flex flex-col">
                           <span className="font-medium">Customer Mode</span>
@@ -408,13 +405,10 @@ export function Header() {
                         {!location.startsWith("/owner") && (
                           <Check className="h-4 w-4 ml-auto text-primary" />
                         )}
-                      </DropdownMenuItem>
-                    </Link>
-                    <Link href="/owner/dashboard">
-                      <DropdownMenuItem 
-                        className="cursor-pointer"
-                        data-testid="switch-owner-mode"
-                      >
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild className="cursor-pointer" data-testid="switch-owner-mode">
+                      <Link href="/owner/dashboard">
                         <Building className="h-4 w-4 mr-2" />
                         <div className="flex flex-col">
                           <span className="font-medium">Owner Mode</span>
@@ -423,8 +417,8 @@ export function Header() {
                         {location.startsWith("/owner") && (
                           <Check className="h-4 w-4 ml-auto text-primary" />
                         )}
-                      </DropdownMenuItem>
-                    </Link>
+                      </Link>
+                    </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
               )}
@@ -444,12 +438,12 @@ export function Header() {
                     <p className="text-xs text-muted-foreground">{user?.email}</p>
                   </div>
                   <DropdownMenuSeparator />
-                  <Link href="/profile">
-                    <DropdownMenuItem data-testid="link-profile">
+                  <DropdownMenuItem asChild data-testid="link-profile">
+                    <Link href="/profile">
                       <User className="h-4 w-4 mr-2" />
                       Profile & Settings
-                    </DropdownMenuItem>
-                  </Link>
+                    </Link>
+                  </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem asChild>
                     <a href="/api/logout" className="cursor-pointer" data-testid="link-logout">
