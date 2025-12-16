@@ -164,7 +164,8 @@ export function Header() {
                 </>
               )}
 
-              {isOwner && (
+              {/* Show Owner Portal for owners OR users who have engaged with KYC (pending/rejected) */}
+              {(isOwner || hasRejectedKyc || isKycPending) && (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button 

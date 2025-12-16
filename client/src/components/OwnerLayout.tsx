@@ -70,11 +70,17 @@ export function OwnerLayout({ children }: OwnerLayoutProps) {
   const { user, isLoading, isOwner } = useAuth();
   const [location, setLocation] = useLocation();
   const [showWelcomeModal, setShowWelcomeModal] = useState(false);
-  const { showModal: showKycPrompt, setShowModal: setShowKycPrompt } = useKycPromptModal(isOwner, user?.kycStatus);
+  
+  // Check if user has engaged with KYC process (pending or rejected status)
+  const hasKycEngagement = user?.kycStatus === "rejected" || user?.kycStatus === "pending";
+  // Allow access if user is owner OR has engaged with KYC process
+  const canAccessOwnerPortal = isOwner || hasKycEngagement;
+  
+  const { showModal: showKycPrompt, setShowModal: setShowKycPrompt } = useKycPromptModal(canAccessOwnerPortal, user?.kycStatus);
 
   const { data: ownerProperties = [] } = useQuery<Property[]>({
     queryKey: ["/api/owner/properties"],
-    enabled: !!user && isOwner,
+    enabled: !!user && canAccessOwnerPortal,
   });
   
   const ownerPropertyId = ownerProperties.length > 0 ? ownerProperties[0].id : null;
@@ -113,8 +119,8 @@ export function OwnerLayout({ children }: OwnerLayoutProps) {
     );
   }
 
-  if (!isOwner) {
-    // Not an owner - redirect to home
+  if (!canAccessOwnerPortal) {
+    // Not an owner and hasn't engaged with KYC - redirect to home
     window.location.href = "/";
     return (
       <div className="flex items-center justify-center min-h-screen" data-testid="owner-layout-redirecting">
