@@ -95,7 +95,7 @@ export interface IStorage {
   getBookingsByProperty(propertyId: string): Promise<Booking[]>;
   getBookingsByGuest(guestId: string): Promise<Booking[]>;
   getPropertyBookedDates(propertyId: string, startDate: Date, endDate: Date): Promise<{ checkIn: Date; checkOut: Date }[]>;
-  updateBookingStatus(id: string, status: "pending" | "confirmed" | "cancelled" | "completed"): Promise<Booking | undefined>;
+  updateBookingStatus(id: string, status: "pending" | "confirmed" | "rejected" | "cancelled" | "completed", responseMessage?: string): Promise<Booking | undefined>;
   deleteBooking(id: string): Promise<void>;
 
   // Conversation operations
@@ -448,11 +448,17 @@ export class DatabaseStorage implements IStorage {
 
   async updateBookingStatus(
     id: string,
-    status: "pending" | "confirmed" | "cancelled" | "completed"
+    status: "pending" | "confirmed" | "rejected" | "cancelled" | "completed",
+    responseMessage?: string
   ): Promise<Booking | undefined> {
+    const updateData: any = { status, updatedAt: new Date() };
+    if (responseMessage !== undefined) {
+      updateData.ownerResponseMessage = responseMessage;
+      updateData.respondedAt = new Date();
+    }
     const [updated] = await db
       .update(bookings)
-      .set({ status, updatedAt: new Date() })
+      .set(updateData)
       .where(eq(bookings.id, id))
       .returning();
     return updated;

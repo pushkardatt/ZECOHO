@@ -84,10 +84,11 @@ export const propertyStatusEnum = pgEnum("property_status", [
 
 // Booking status enum
 export const bookingStatusEnum = pgEnum("booking_status", [
-  "pending",
-  "confirmed",
-  "cancelled",
-  "completed",
+  "pending",      // Guest submitted request, waiting for owner response
+  "confirmed",    // Owner accepted the booking
+  "rejected",     // Owner rejected the booking
+  "cancelled",    // Guest cancelled the booking
+  "completed",    // Stay completed
 ]);
 
 // KYC status enum
@@ -231,6 +232,8 @@ export const bookings = pgTable("bookings", {
   totalPrice: decimal("total_price", { precision: 10, scale: 2 }).notNull(),
   guests: integer("guests").notNull().default(1),
   status: bookingStatusEnum("status").notNull().default("pending"),
+  ownerResponseMessage: text("owner_response_message"),
+  respondedAt: timestamp("responded_at"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
