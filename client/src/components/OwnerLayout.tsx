@@ -245,7 +245,8 @@ export function OwnerLayout({ children }: OwnerLayoutProps) {
           {isRejected && (
             <Link href="/owner/kyc">
               <div
-                className="w-full bg-red-600 hover:bg-red-700 text-white py-3 px-4 flex items-center justify-center gap-2 font-semibold transition-colors cursor-pointer"
+                className="w-full bg-red-600 hover:bg-red-700 text-white py-3 px-4 flex items-center justify-center gap-2 font-semibold transition-colors cursor-pointer relative z-[10000]"
+                style={{ pointerEvents: 'auto' }}
                 data-testid="kyc-rejection-banner"
               >
                 <XCircle className="h-5 w-5" />
