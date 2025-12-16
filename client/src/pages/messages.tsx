@@ -13,7 +13,8 @@ import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Send, MessageCircle, Paperclip, X, Image, FileText, Film, Download } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import type { Conversation, Message, User, Property, MessageAttachment } from "@shared/schema";
+import { BookingActionCard } from "@/components/BookingActionCard";
+import type { Conversation, Message, User, Property, MessageAttachment, Booking } from "@shared/schema";
 
 type PendingAttachment = {
   file: File;
@@ -32,6 +33,7 @@ type ConversationWithDetails = Conversation & {
 
 type MessageWithSender = Message & {
   sender: User;
+  booking?: Booking;
 };
 
 export default function Messages() {
@@ -471,6 +473,28 @@ export default function Messages() {
                 <div className="space-y-4">
                   {messages.map((message) => {
                     const isCurrentUser = message.senderId === user.id;
+                    
+                    // Check if this is a booking-related message
+                    if ((message.messageType === "booking_request" || message.messageType === "booking_update") && message.booking) {
+                      return (
+                        <div key={message.id} className="max-w-[85%]" data-testid={`message-${message.id}`}>
+                          <p className="text-xs text-muted-foreground mb-2">
+                            {isCurrentUser ? 'You' : `${message.sender?.firstName || 'Owner'}`} • {new Date(message.createdAt!).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </p>
+                          {message.content && (
+                            <p className="text-sm text-muted-foreground mb-2">{message.content}</p>
+                          )}
+                          <BookingActionCard 
+                            booking={message.booking as any}
+                            isOwner={false}
+                            onStatusChange={() => {
+                              queryClient.invalidateQueries({ queryKey: ["/api/conversations", selectedConversationId, "messages"] });
+                            }}
+                          />
+                        </div>
+                      );
+                    }
+                    
                     return (
                       <div
                         key={message.id}
