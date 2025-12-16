@@ -84,7 +84,7 @@ export default function OwnerBookings() {
   }
 
   const { data: bookings, isLoading } = useQuery<Booking[]>({
-    queryKey: ["/api/owner/bookings", activeTab],
+    queryKey: ["/api/owner/bookings"],
   });
 
   const updateStatusMutation = useMutation({
