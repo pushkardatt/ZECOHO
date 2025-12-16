@@ -36,6 +36,7 @@ import { useToast } from "@/hooks/use-toast";
 
 interface Booking {
   id: string;
+  bookingCode?: string | null;
   checkIn: string;
   checkOut: string;
   guests: number;
@@ -155,9 +156,16 @@ export function BookingActionCard({
       <Card className="bg-muted/50 border-primary/20" data-testid={`booking-card-chat-${booking.id}`}>
         <CardContent className="p-4 space-y-3">
           <div className="flex items-center justify-between gap-2 flex-wrap">
-            <span className="text-sm font-medium">
-              {isOwner ? "Booking Request" : "Your Booking Request"}
-            </span>
+            <div>
+              <span className="text-sm font-medium">
+                {isOwner ? "Booking Request" : "Your Booking Request"}
+              </span>
+              {booking.bookingCode && (
+                <span className="ml-2 text-xs text-muted-foreground font-mono" data-testid="booking-code">
+                  {booking.bookingCode}
+                </span>
+              )}
+            </div>
             {getStatusBadge()}
           </div>
 

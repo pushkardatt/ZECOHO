@@ -667,6 +667,11 @@ export default function PropertyDetails() {
             )}
           </div>
           <div className="flex flex-wrap items-center gap-2">
+            {property.propertyCode && (
+              <Badge variant="outline" className="font-mono text-xs" data-testid="property-code">
+                {property.propertyCode}
+              </Badge>
+            )}
             <Badge>{property.propertyType}</Badge>
             <Badge className="bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 border-0">
               <BadgeCheck className="h-3 w-3 mr-1" />

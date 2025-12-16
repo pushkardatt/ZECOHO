@@ -21,6 +21,7 @@ import { Link } from "wouter";
 
 interface Booking {
   id: string;
+  bookingCode?: string | null;
   propertyId: string;
   checkIn: string;
   checkOut: string;
@@ -96,7 +97,14 @@ export default function MyBookings() {
           <CardHeader className="pb-2">
             <div className="flex items-start justify-between gap-2 flex-wrap">
               <div>
-                <CardTitle className="text-base">{booking.property?.title || "Property"}</CardTitle>
+                <div className="flex items-center gap-2">
+                  <CardTitle className="text-base">{booking.property?.title || "Property"}</CardTitle>
+                  {booking.bookingCode && (
+                    <Badge variant="outline" className="text-xs font-mono" data-testid={`booking-code-${booking.id}`}>
+                      {booking.bookingCode}
+                    </Badge>
+                  )}
+                </div>
                 {booking.property && (
                   <p className="text-sm text-muted-foreground mt-1 flex items-center gap-1">
                     <MapPin className="h-3 w-3" />
