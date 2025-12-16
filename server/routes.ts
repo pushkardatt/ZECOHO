@@ -2067,6 +2067,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "You cannot book your own property" });
       }
 
+      // Check owner's KYC status - cannot book if owner's KYC is not verified
+      const owner = await storage.getUser(property.ownerId);
+      if (!owner || owner.kycStatus !== "verified") {
+        return res.status(400).json({ 
+          message: "This property is currently not accepting bookings. The property owner needs to complete verification first.",
+          reason: "owner_kyc_not_verified"
+        });
+      }
+
       // Check for date overlaps
       const checkIn = new Date(validatedData.checkIn);
       const checkOut = new Date(validatedData.checkOut);
@@ -2793,6 +2802,24 @@ Hi! I've just made a booking request for your property. Looking forward to heari
       
       if (!property) {
         return res.status(404).json({ message: "Property not found" });
+      }
+
+      // Check owner's KYC status - cannot approve property if KYC is not verified
+      const owner = await storage.getUser(property.ownerId);
+      if (!owner) {
+        return res.status(400).json({ message: "Property owner not found" });
+      }
+      
+      if (owner.kycStatus !== "verified") {
+        const statusMessage = owner.kycStatus === "rejected" 
+          ? "Owner's KYC has been rejected. Property cannot be approved until KYC is resubmitted and verified."
+          : owner.kycStatus === "pending"
+          ? "Owner's KYC is pending review. Property cannot be approved until KYC is verified."
+          : "Owner has not completed KYC verification. Property cannot be approved until KYC is verified.";
+        return res.status(400).json({ 
+          message: statusMessage,
+          ownerKycStatus: owner.kycStatus
+        });
       }
 
       const { notes } = req.body;
