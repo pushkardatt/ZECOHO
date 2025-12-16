@@ -8,6 +8,14 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Dialog,
   DialogContent,
@@ -60,7 +68,18 @@ export default function OwnerBookings() {
   const [activeTab, setActiveTab] = useState("all");
   const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
-  const [rejectionReason, setRejectionReason] = useState("");
+  const [selectedRejectionReason, setSelectedRejectionReason] = useState("");
+  const [customRejectionReason, setCustomRejectionReason] = useState("");
+
+  const REJECTION_REASONS = [
+    { value: "dates_unavailable", label: "Property is not available for the requested dates" },
+    { value: "fully_booked", label: "We are fully booked during this period" },
+    { value: "maintenance", label: "Property is under maintenance" },
+    { value: "minimum_stay", label: "Booking doesn't meet our minimum stay requirements" },
+    { value: "guest_count", label: "The number of guests exceeds our capacity" },
+    { value: "policy_violation", label: "Request doesn't comply with our property policies" },
+    { value: "other", label: "Other (specify below)" },
+  ];
   const { toast } = useToast();
   const { isKycRejected } = useKycGuard();
 
@@ -104,7 +123,8 @@ export default function OwnerBookings() {
       });
       setRejectDialogOpen(false);
       setSelectedBooking(null);
-      setRejectionReason("");
+      setSelectedRejectionReason("");
+      setCustomRejectionReason("");
     },
     onError: () => {
       toast({
@@ -117,16 +137,24 @@ export default function OwnerBookings() {
 
   const handleReject = () => {
     if (!selectedBooking) return;
+    let finalReason = "";
+    if (selectedRejectionReason === "other") {
+      finalReason = customRejectionReason.trim();
+    } else if (selectedRejectionReason) {
+      const selectedOption = REJECTION_REASONS.find(r => r.value === selectedRejectionReason);
+      finalReason = selectedOption?.label || "";
+    }
     updateStatusMutation.mutate({
       id: selectedBooking.id,
       status: "rejected",
-      responseMessage: rejectionReason.trim() || undefined,
+      responseMessage: finalReason || undefined,
     });
   };
 
   const openRejectDialog = (booking: Booking) => {
     setSelectedBooking(booking);
-    setRejectionReason("");
+    setSelectedRejectionReason("");
+    setCustomRejectionReason("");
     setRejectDialogOpen(true);
   };
 
@@ -299,14 +327,38 @@ export default function OwnerBookings() {
               Let the guest know why you're declining their booking request. This helps them understand and find a better match.
             </DialogDescription>
           </DialogHeader>
-          <div className="py-4">
-            <Textarea
-              placeholder="e.g., Property is not available for those dates, or we're fully booked..."
-              value={rejectionReason}
-              onChange={(e) => setRejectionReason(e.target.value)}
-              className="min-h-[100px]"
-              data-testid="input-rejection-reason"
-            />
+          <div className="py-4 space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="rejection-reason">Select a reason</Label>
+              <Select
+                value={selectedRejectionReason}
+                onValueChange={setSelectedRejectionReason}
+              >
+                <SelectTrigger data-testid="select-rejection-reason">
+                  <SelectValue placeholder="Choose a reason..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {REJECTION_REASONS.map((reason) => (
+                    <SelectItem key={reason.value} value={reason.value} data-testid={`reason-${reason.value}`}>
+                      {reason.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            {selectedRejectionReason === "other" && (
+              <div className="space-y-2">
+                <Label htmlFor="custom-reason">Specify your reason</Label>
+                <Textarea
+                  id="custom-reason"
+                  placeholder="Please provide more details..."
+                  value={customRejectionReason}
+                  onChange={(e) => setCustomRejectionReason(e.target.value)}
+                  className="min-h-[80px]"
+                  data-testid="input-custom-rejection-reason"
+                />
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setRejectDialogOpen(false)} data-testid="btn-cancel-reject">
@@ -315,7 +367,7 @@ export default function OwnerBookings() {
             <Button 
               variant="destructive" 
               onClick={handleReject}
-              disabled={updateStatusMutation.isPending}
+              disabled={updateStatusMutation.isPending || !selectedRejectionReason || (selectedRejectionReason === "other" && !customRejectionReason.trim())}
               data-testid="btn-confirm-reject"
             >
               {updateStatusMutation.isPending ? "Declining..." : "Decline Booking"}

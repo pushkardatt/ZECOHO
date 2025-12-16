@@ -3,6 +3,14 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Dialog,
   DialogContent,
@@ -43,6 +51,16 @@ interface BookingActionCardProps {
   onStatusChange?: () => void;
 }
 
+const REJECTION_REASONS = [
+  { value: "dates_unavailable", label: "Property is not available for the requested dates" },
+  { value: "fully_booked", label: "We are fully booked during this period" },
+  { value: "maintenance", label: "Property is under maintenance" },
+  { value: "minimum_stay", label: "Booking doesn't meet our minimum stay requirements" },
+  { value: "guest_count", label: "The number of guests exceeds our capacity" },
+  { value: "policy_violation", label: "Request doesn't comply with our property policies" },
+  { value: "other", label: "Other (specify below)" },
+];
+
 export function BookingActionCard({ 
   booking, 
   isOwner, 
@@ -50,7 +68,8 @@ export function BookingActionCard({
   onStatusChange 
 }: BookingActionCardProps) {
   const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
-  const [rejectionReason, setRejectionReason] = useState("");
+  const [selectedRejectionReason, setSelectedRejectionReason] = useState("");
+  const [customRejectionReason, setCustomRejectionReason] = useState("");
   const { toast } = useToast();
 
   const formatCurrency = (amount: string) => {
@@ -82,7 +101,8 @@ export function BookingActionCard({
         description: message,
       });
       setRejectDialogOpen(false);
-      setRejectionReason("");
+      setSelectedRejectionReason("");
+      setCustomRejectionReason("");
       onStatusChange?.();
     },
     onError: () => {
@@ -99,9 +119,16 @@ export function BookingActionCard({
   };
 
   const handleReject = () => {
+    let finalReason = "";
+    if (selectedRejectionReason === "other") {
+      finalReason = customRejectionReason.trim();
+    } else if (selectedRejectionReason) {
+      const selectedOption = REJECTION_REASONS.find(r => r.value === selectedRejectionReason);
+      finalReason = selectedOption?.label || "";
+    }
     updateStatusMutation.mutate({
       status: "rejected",
-      responseMessage: rejectionReason.trim() || undefined,
+      responseMessage: finalReason || undefined,
     });
   };
 
@@ -220,14 +247,38 @@ export function BookingActionCard({
               Let the guest know why you're declining their booking request.
             </DialogDescription>
           </DialogHeader>
-          <div className="py-4">
-            <Textarea
-              placeholder="e.g., Property is not available for those dates..."
-              value={rejectionReason}
-              onChange={(e) => setRejectionReason(e.target.value)}
-              className="min-h-[100px]"
-              data-testid="input-rejection-reason-chat"
-            />
+          <div className="py-4 space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="rejection-reason-chat">Select a reason</Label>
+              <Select
+                value={selectedRejectionReason}
+                onValueChange={setSelectedRejectionReason}
+              >
+                <SelectTrigger data-testid="select-rejection-reason-chat">
+                  <SelectValue placeholder="Choose a reason..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {REJECTION_REASONS.map((reason) => (
+                    <SelectItem key={reason.value} value={reason.value} data-testid={`chat-reason-${reason.value}`}>
+                      {reason.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            {selectedRejectionReason === "other" && (
+              <div className="space-y-2">
+                <Label htmlFor="custom-reason-chat">Specify your reason</Label>
+                <Textarea
+                  id="custom-reason-chat"
+                  placeholder="Please provide more details..."
+                  value={customRejectionReason}
+                  onChange={(e) => setCustomRejectionReason(e.target.value)}
+                  className="min-h-[80px]"
+                  data-testid="input-custom-rejection-reason-chat"
+                />
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setRejectDialogOpen(false)}>
@@ -236,7 +287,7 @@ export function BookingActionCard({
             <Button 
               variant="destructive" 
               onClick={handleReject}
-              disabled={updateStatusMutation.isPending}
+              disabled={updateStatusMutation.isPending || !selectedRejectionReason || (selectedRejectionReason === "other" && !customRejectionReason.trim())}
               data-testid="btn-confirm-reject-chat"
             >
               {updateStatusMutation.isPending ? "Declining..." : "Decline Booking"}
