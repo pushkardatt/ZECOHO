@@ -504,7 +504,7 @@ export default function PropertyDetails() {
       queryClient.invalidateQueries({ queryKey: ["/api/conversations"] });
       toast({
         title: "Booking Created",
-        description: "Your booking request has been submitted successfully!",
+        description: "Your booking request has been submitted successfully! Check your Messages or My Bookings in your profile to track the status.",
       });
       setCheckIn("");
       setCheckOut("");
