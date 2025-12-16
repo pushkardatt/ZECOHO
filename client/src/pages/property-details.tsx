@@ -499,6 +499,9 @@ export default function PropertyDetails() {
       });
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/owner/bookings"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/bookings"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/conversations"] });
       toast({
         title: "Booking Created",
         description: "Your booking request has been submitted successfully!",
