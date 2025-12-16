@@ -117,7 +117,7 @@ export default function Messages() {
             }
             
             // Refresh conversations list to update unread counts (without auto-refetch to prevent message flicker)
-            queryClient.invalidateQueries({ queryKey: ["/api/conversations"], refetchType: 'none' });
+            queryClient.invalidateQueries({ queryKey: ["/api/conversations"] });
           }
         } catch (e) {
           console.error("WebSocket message parse error:", e);
@@ -152,11 +152,15 @@ export default function Messages() {
 
   const { data: conversations = [], isLoading: conversationsLoading } = useQuery<ConversationWithDetails[]>({
     queryKey: ["/api/conversations"],
+    refetchOnMount: "always",
+    staleTime: 0,
   });
 
   const { data: messages = [], isLoading: messagesLoading, isSuccess: messagesSuccess } = useQuery<MessageWithSender[]>({
     queryKey: ["/api/conversations", selectedConversationId, "messages"],
     enabled: !!selectedConversationId,
+    refetchOnMount: "always",
+    staleTime: 0,
   });
 
 
@@ -287,7 +291,7 @@ export default function Messages() {
           }
         );
       }
-      queryClient.invalidateQueries({ queryKey: ["/api/conversations"], refetchType: 'none' });
+      queryClient.invalidateQueries({ queryKey: ["/api/conversations"] });
       setMessageInput("");
       setPendingAttachments([]);
       setTimeout(() => messageInputRef.current?.focus(), 0);
