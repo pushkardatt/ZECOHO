@@ -1151,11 +1151,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       if (!application) {
         // Return user's kycStatus even if no application exists
+        const status = user?.kycStatus || "not_started";
+        
+        // If user is rejected but has no application, provide generic rejection message
+        let rejectionDetails = null;
+        if (status === "rejected") {
+          rejectionDetails = {
+            sections: [{
+              sectionId: "personal" as const,
+              message: "Your KYC application was rejected. Please contact support or resubmit your documents."
+            }],
+            isRevocation: false
+          };
+        }
+        
         return res.json({ 
-          status: user?.kycStatus || "not_started",
+          status,
           hasActiveApplication: false,
           userId: userId,
-          rejectionDetails: null
+          rejectionDetails
         });
       }
       
