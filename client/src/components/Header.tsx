@@ -195,10 +195,10 @@ export function Header() {
                       </DropdownMenuItem>
                     </Link>
                     {hasRejectedKyc ? (
-                      <Link href="/owner/kyc">
+                      <Link href="/list-property">
                         <DropdownMenuItem data-testid="link-owner-kyc">
                           <FileText className="h-4 w-4 mr-2" />
-                          KYC Review
+                          Fix KYC
                         </DropdownMenuItem>
                       </Link>
                     ) : (
@@ -320,7 +320,7 @@ export function Header() {
               )}
 
               {hasRejectedKyc ? (
-                <Link href="/owner/kyc">
+                <Link href="/list-property">
                   <Button 
                     size="sm"
                     variant="destructive"
