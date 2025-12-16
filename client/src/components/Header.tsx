@@ -350,6 +350,8 @@ export function Header() {
                     <span className="md:hidden">KYC</span>
                   </Button>
                 </Link>
+              ) : isOwner && isKycVerified ? (
+                null
               ) : (
                 <Link href={getListPropertyLink()}>
                   <Button 
