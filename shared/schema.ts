@@ -261,11 +261,20 @@ export type MessageAttachment = {
   thumbnailUrl?: string;
 };
 
+// Message type enum for special message types
+export const messageTypeEnum = pgEnum("message_type", [
+  "text",           // Regular text message
+  "booking_request", // Booking request from guest
+  "booking_update", // Status update for booking
+]);
+
 export const messages = pgTable("messages", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   conversationId: varchar("conversation_id").notNull().references(() => conversations.id, { onDelete: "cascade" }),
   senderId: varchar("sender_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   content: text("content").notNull(),
+  messageType: messageTypeEnum("message_type").notNull().default("text"),
+  bookingId: varchar("booking_id").references(() => bookings.id, { onDelete: "set null" }),
   attachments: jsonb("attachments").$type<MessageAttachment[]>(),
   read: boolean("read").notNull().default(false),
   createdAt: timestamp("created_at").defaultNow(),

@@ -16,7 +16,8 @@ import { Link } from "wouter";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
-import type { Conversation as BaseConversation, Message as BaseMessage, User, Property, MessageAttachment } from "@shared/schema";
+import type { Conversation as BaseConversation, Message as BaseMessage, User, Property, MessageAttachment, Booking } from "@shared/schema";
+import { BookingActionCard } from "@/components/BookingActionCard";
 
 type PendingAttachment = {
   file: File;
@@ -35,6 +36,7 @@ type ConversationWithDetails = BaseConversation & {
 
 type MessageWithSender = BaseMessage & {
   sender: User;
+  booking?: Booking;
 };
 
 export default function OwnerMessagesPage() {
@@ -536,6 +538,28 @@ export default function OwnerMessagesPage() {
                       <div className="space-y-4">
                         {messages.map((msg) => {
                           const isCurrentUser = msg.senderId === user?.id;
+                          
+                          // Check if this is a booking-related message
+                          if ((msg.messageType === "booking_request" || msg.messageType === "booking_update") && msg.booking) {
+                            return (
+                              <div key={msg.id} className="max-w-[85%]">
+                                <p className="text-xs text-muted-foreground mb-2">
+                                  {!isCurrentUser ? `${msg.sender?.firstName || 'Guest'}` : 'You'} • {msg.createdAt ? format(new Date(msg.createdAt), "HH:mm") : ""}
+                                </p>
+                                {msg.content && (
+                                  <p className="text-sm text-muted-foreground mb-2">{msg.content}</p>
+                                )}
+                                <BookingActionCard 
+                                  booking={msg.booking as any}
+                                  isOwner={true}
+                                  onStatusChange={() => {
+                                    queryClient.invalidateQueries({ queryKey: ["/api/conversations", selectedConversation, "messages"] });
+                                  }}
+                                />
+                              </div>
+                            );
+                          }
+                          
                           return (
                             <div
                               key={msg.id}

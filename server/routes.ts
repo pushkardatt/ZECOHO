@@ -2209,20 +2209,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       try {
         const conversation = await storage.getOrCreateConversation(validatedData.propertyId, userId);
         
-        const bookingMessage = `New Booking Request
-
-Property: ${property.title}
-Check-in: ${checkInFormatted}
-Check-out: ${checkOutFormatted}
-Number of Guests: ${validatedData.guests || 1}
-Total Amount: Rs. ${totalPrice}
-
-Hi! I've just made a booking request for your property. Looking forward to hearing from you!`;
+        const bookingMessage = `I'd like to book your property for ${validatedData.guests || 1} guest(s) from ${checkInFormatted} to ${checkOutFormatted}. Total: Rs. ${totalPrice}`;
         
         const message = await storage.createMessage({
           conversationId: conversation.id,
           senderId: userId,
           content: bookingMessage,
+          messageType: "booking_request",
+          bookingId: booking.id,
         });
         
         // Broadcast the message to both guest and owner for real-time updates
@@ -2443,9 +2437,20 @@ Hi! I've just made a booking request for your property. Looking forward to heari
 
       const messages = await storage.getMessagesByConversation(req.params.id);
       
+      // Enrich messages with booking data if they have a bookingId
+      const enrichedMessages = await Promise.all(
+        messages.map(async (message) => {
+          if (message.bookingId) {
+            const booking = await storage.getBooking(message.bookingId);
+            return { ...message, booking };
+          }
+          return message;
+        })
+      );
+      
       await storage.markMessagesAsRead(req.params.id, userId);
       
-      res.json(messages);
+      res.json(enrichedMessages);
     } catch (error) {
       console.error("Error fetching messages:", error);
       res.status(500).json({ message: "Failed to fetch messages" });
@@ -3349,6 +3354,47 @@ Hi! I've just made a booking request for your property. Looking forward to heari
       // Get guest info for notification
       const guest = await storage.getUser(booking.guestId);
       
+      // Send a booking update message to the conversation
+      try {
+        const conversation = await storage.getOrCreateConversation(booking.propertyId, booking.guestId);
+        
+        const updateMessage = status === "confirmed"
+          ? "I've accepted your booking request. Looking forward to hosting you!"
+          : status === "rejected"
+          ? `I'm sorry, I cannot accept this booking${responseMessage ? `: ${responseMessage}` : '. Please feel free to check other dates or properties.'}`
+          : `Booking status updated to ${status}.`;
+        
+        const message = await storage.createMessage({
+          conversationId: conversation.id,
+          senderId: userId,
+          content: updateMessage,
+          messageType: "booking_update",
+          bookingId: booking.id,
+        });
+        
+        // Broadcast the update message to both parties
+        const messageWithSender = {
+          ...message,
+          sender: {
+            id: userId,
+            firstName: user?.firstName || null,
+            lastName: user?.lastName || null,
+            profileImageUrl: user?.profileImageUrl || null,
+          },
+        };
+        
+        const broadcastData = {
+          type: "new_message",
+          conversationId: conversation.id,
+          message: messageWithSender,
+        };
+        
+        broadcastToUser(booking.guestId, broadcastData);
+        broadcastToUser(userId, broadcastData);
+      } catch (msgError) {
+        console.error('Failed to send booking update message:', msgError);
+      }
+      
       // Broadcast status update via WebSocket if available
       if (wss && guest) {
         const statusMessage = status === "confirmed" 
@@ -3366,15 +3412,7 @@ Hi! I've just made a booking request for your property. Looking forward to heari
           responseMessage: responseMessage || null,
         };
         
-        wss.clients.forEach((client: WebSocket) => {
-          if (client.readyState === WebSocket.OPEN) {
-            // Send to guest
-            client.send(JSON.stringify({
-              ...notification,
-              recipientId: guest.id,
-            }));
-          }
-        });
+        broadcastToUser(guest.id, notification);
       }
       
       res.json(updated);
