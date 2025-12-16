@@ -296,9 +296,9 @@ export function Header() {
                 </>
               )}
 
-              <Link href="/messages">
+              <Link href={isOwner ? "/owner/messages" : "/messages"}>
                 <Button 
-                  variant={location === "/messages" ? "secondary" : "ghost"}
+                  variant={location === "/messages" || location === "/owner/messages" ? "secondary" : "ghost"}
                   size="sm"
                   className="relative font-medium text-sm"
                   data-testid="link-messages"
