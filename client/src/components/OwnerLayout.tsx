@@ -103,9 +103,24 @@ export function OwnerLayout({ children }: OwnerLayoutProps) {
     );
   }
 
-  if (!user || !isOwner) {
-    // Not an owner - let centralized guard handle redirect
-    return null;
+  if (!user) {
+    // Not authenticated - redirect to login
+    window.location.href = "/login?returnTo=" + encodeURIComponent(location);
+    return (
+      <div className="flex items-center justify-center min-h-screen" data-testid="owner-layout-redirecting">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
+  if (!isOwner) {
+    // Not an owner - redirect to home
+    window.location.href = "/";
+    return (
+      <div className="flex items-center justify-center min-h-screen" data-testid="owner-layout-redirecting">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
   }
 
   const listingMode = (user as any).listingMode;
