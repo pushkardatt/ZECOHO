@@ -1294,7 +1294,11 @@ export default function PropertyDetails() {
                             <div className="flex items-center gap-3">
                               <button
                                 type="button"
-                                onClick={() => setAdults(Math.max(1, adults - 1))}
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  setAdults(Math.max(1, adults - 1));
+                                }}
                                 disabled={adults <= 1}
                                 className="w-8 h-8 rounded-full border border-gray-300 flex items-center justify-center hover:border-gray-400 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                                 data-testid="button-adults-minus"
@@ -1304,7 +1308,9 @@ export default function PropertyDetails() {
                               <span className="w-6 text-center font-medium" data-testid="text-adults-count">{adults}</span>
                               <button
                                 type="button"
-                                onClick={() => {
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
                                   const maxAllowed = property?.maxGuests || 10;
                                   if (adults + children < maxAllowed) {
                                     setAdults(Math.min(10, adults + 1));
@@ -1328,7 +1334,11 @@ export default function PropertyDetails() {
                             <div className="flex items-center gap-3">
                               <button
                                 type="button"
-                                onClick={() => setChildren(Math.max(0, children - 1))}
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  setChildren(Math.max(0, children - 1));
+                                }}
                                 disabled={children <= 0}
                                 className="w-8 h-8 rounded-full border border-gray-300 flex items-center justify-center hover:border-gray-400 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                                 data-testid="button-children-minus"
@@ -1338,7 +1348,9 @@ export default function PropertyDetails() {
                               <span className="w-6 text-center font-medium" data-testid="text-children-count">{children}</span>
                               <button
                                 type="button"
-                                onClick={() => {
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
                                   const maxAllowed = property?.maxGuests || 10;
                                   if (adults + children < maxAllowed) {
                                     setChildren(Math.min(6, children + 1));
@@ -1362,7 +1374,11 @@ export default function PropertyDetails() {
                             <div className="flex items-center gap-3">
                               <button
                                 type="button"
-                                onClick={() => setRooms(Math.max(1, rooms - 1))}
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  setRooms(Math.max(1, rooms - 1));
+                                }}
                                 disabled={rooms <= 1}
                                 className="w-8 h-8 rounded-full border border-gray-300 flex items-center justify-center hover:border-gray-400 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                                 data-testid="button-rooms-minus"
@@ -1372,7 +1388,11 @@ export default function PropertyDetails() {
                               <span className="w-6 text-center font-medium" data-testid="text-rooms-count">{rooms}</span>
                               <button
                                 type="button"
-                                onClick={() => setRooms(Math.min(5, rooms + 1))}
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  setRooms(Math.min(5, rooms + 1));
+                                }}
                                 disabled={rooms >= 5}
                                 className="w-8 h-8 rounded-full border border-gray-300 flex items-center justify-center hover:border-gray-400 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                                 data-testid="button-rooms-plus"
