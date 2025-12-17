@@ -35,8 +35,7 @@ interface Booking {
     id: string;
     title: string;
     images: string[];
-    city: string;
-    state: string;
+    destination: string;
   };
 }
 
@@ -105,10 +104,10 @@ export default function MyBookings() {
                     </Badge>
                   )}
                 </div>
-                {booking.property && (
+                {booking.property?.destination && (
                   <p className="text-sm text-muted-foreground mt-1 flex items-center gap-1">
                     <MapPin className="h-3 w-3" />
-                    {booking.property.city}, {booking.property.state}
+                    {booking.property.destination}
                   </p>
                 )}
               </div>
