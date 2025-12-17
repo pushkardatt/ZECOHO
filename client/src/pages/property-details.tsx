@@ -551,11 +551,36 @@ export default function PropertyDetails() {
     
     if (nights <= 0) return 0;
     
-    // Price = pricePerNight × nights × rooms
-    return nights * Number(property.pricePerNight) * rooms;
+    // Calculate guests per room to determine occupancy type
+    const guestsPerRoom = Math.ceil(guests / rooms);
+    
+    // Determine price based on occupancy type
+    let pricePerNight = Number(property.pricePerNight);
+    
+    if (guestsPerRoom === 1 && property.singleOccupancyPrice) {
+      pricePerNight = Number(property.singleOccupancyPrice);
+    } else if (guestsPerRoom === 2 && property.doubleOccupancyPrice) {
+      pricePerNight = Number(property.doubleOccupancyPrice);
+    } else if (guestsPerRoom >= 3 && property.tripleOccupancyPrice) {
+      pricePerNight = Number(property.tripleOccupancyPrice);
+    }
+    
+    // Calculate base price
+    let basePrice = nights * pricePerNight * rooms;
+    
+    // Apply bulk booking discount if applicable
+    if (property.bulkBookingEnabled && 
+        property.bulkBookingMinRooms && 
+        rooms >= property.bulkBookingMinRooms && 
+        property.bulkBookingDiscountPercent) {
+      const discountPercent = Number(property.bulkBookingDiscountPercent);
+      basePrice = basePrice * (1 - discountPercent / 100);
+    }
+    
+    return Math.round(basePrice);
   };
 
-  const totalPrice = useMemo(() => calculateTotalPrice(), [checkIn, checkOut, property, rooms]);
+  const totalPrice = useMemo(() => calculateTotalPrice(), [checkIn, checkOut, property, rooms, guests]);
   const nights = useMemo(() => {
     if (!checkIn || !checkOut) return 0;
     const start = new Date(checkIn);
@@ -1176,8 +1201,26 @@ export default function PropertyDetails() {
                     </span>
                     <span className="text-muted-foreground">/ night</span>
                   </div>
+                  {(property.singleOccupancyPrice || property.doubleOccupancyPrice || property.tripleOccupancyPrice) && (
+                    <div className="text-xs text-muted-foreground mt-1 space-y-0.5">
+                      {property.singleOccupancyPrice && (
+                        <div>Single: ₹{Number(property.singleOccupancyPrice).toLocaleString('en-IN')}/night</div>
+                      )}
+                      {property.doubleOccupancyPrice && (
+                        <div>Double: ₹{Number(property.doubleOccupancyPrice).toLocaleString('en-IN')}/night</div>
+                      )}
+                      {property.tripleOccupancyPrice && (
+                        <div>Triple: ₹{Number(property.tripleOccupancyPrice).toLocaleString('en-IN')}/night</div>
+                      )}
+                    </div>
+                  )}
+                  {property.bulkBookingEnabled && property.bulkBookingMinRooms && property.bulkBookingDiscountPercent && (
+                    <div className="text-xs text-green-600 dark:text-green-400 mt-1">
+                      {Number(property.bulkBookingDiscountPercent)}% off on {property.bulkBookingMinRooms}+ rooms
+                    </div>
+                  )}
                   {property.rating && Number(property.rating) > 0 && (
-                    <div className="flex items-center gap-1 text-sm">
+                    <div className="flex items-center gap-1 text-sm mt-2">
                       <Star className="h-4 w-4 fill-current text-yellow-500" />
                       <span className="font-semibold">{Number(property.rating).toFixed(1)}</span>
                       <span className="text-muted-foreground">
@@ -1436,23 +1479,57 @@ export default function PropertyDetails() {
                   </div>
                 )}
 
-                {nights > 0 && totalPrice > 0 && !hasDateOverlap && (
-                  <div className="mb-6 p-4 bg-muted rounded-lg space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">
-                        ₹{Number(property.pricePerNight).toLocaleString('en-IN')} × {nights} {nights === 1 ? 'night' : 'nights'} × {rooms} {rooms === 1 ? 'room' : 'rooms'}
-                      </span>
-                      <span className="font-semibold">₹{totalPrice.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                {nights > 0 && totalPrice > 0 && !hasDateOverlap && (() => {
+                  const guestsPerRoom = Math.ceil(guests / rooms);
+                  let effectivePrice = Number(property.pricePerNight);
+                  let occupancyLabel = "";
+                  
+                  if (guestsPerRoom === 1 && property.singleOccupancyPrice) {
+                    effectivePrice = Number(property.singleOccupancyPrice);
+                    occupancyLabel = "Single";
+                  } else if (guestsPerRoom === 2 && property.doubleOccupancyPrice) {
+                    effectivePrice = Number(property.doubleOccupancyPrice);
+                    occupancyLabel = "Double";
+                  } else if (guestsPerRoom >= 3 && property.tripleOccupancyPrice) {
+                    effectivePrice = Number(property.tripleOccupancyPrice);
+                    occupancyLabel = "Triple";
+                  }
+                  
+                  const hasBulkDiscount = property.bulkBookingEnabled && 
+                    property.bulkBookingMinRooms && 
+                    rooms >= property.bulkBookingMinRooms && 
+                    property.bulkBookingDiscountPercent;
+                  
+                  const discountPercent = hasBulkDiscount ? Number(property.bulkBookingDiscountPercent) : 0;
+                  const subtotal = nights * effectivePrice * rooms;
+                  
+                  return (
+                    <div className="mb-6 p-4 bg-muted rounded-lg space-y-2">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">
+                          ₹{effectivePrice.toLocaleString('en-IN')} × {nights} {nights === 1 ? 'night' : 'nights'} × {rooms} {rooms === 1 ? 'room' : 'rooms'}
+                        </span>
+                        <span className="font-semibold">₹{subtotal.toLocaleString('en-IN')}</span>
+                      </div>
+                      <div className="flex justify-between text-xs text-muted-foreground">
+                        <span>
+                          {guests} guest{guests !== 1 ? 's' : ''} ({adults} adult{adults !== 1 ? 's' : ''}, {children} child{children !== 1 ? 'ren' : ''})
+                          {occupancyLabel && <span className="ml-1">• {occupancyLabel} occupancy</span>}
+                        </span>
+                      </div>
+                      {hasBulkDiscount && (
+                        <div className="flex justify-between text-sm text-green-600 dark:text-green-400">
+                          <span>Bulk booking discount ({discountPercent}%)</span>
+                          <span>-₹{Math.round(subtotal * discountPercent / 100).toLocaleString('en-IN')}</span>
+                        </div>
+                      )}
+                      <div className="flex justify-between text-base font-semibold pt-2 border-t">
+                        <span>Total</span>
+                        <span data-testid="text-total-price">₹{totalPrice.toLocaleString('en-IN')}</span>
+                      </div>
                     </div>
-                    <div className="flex justify-between text-xs text-muted-foreground">
-                      <span>{guests} guest{guests !== 1 ? 's' : ''} ({adults} adult{adults !== 1 ? 's' : ''}, {children} child{children !== 1 ? 'ren' : ''})</span>
-                    </div>
-                    <div className="flex justify-between text-base font-semibold pt-2 border-t">
-                      <span>Total</span>
-                      <span data-testid="text-total-price">₹{totalPrice.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                    </div>
-                  </div>
-                )}
+                  );
+                })()}
 
                 <Button 
                   className="w-full" 
