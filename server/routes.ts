@@ -1977,7 +1977,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Not authorized to modify this property" });
       }
 
-      const { overrideType, startDate, endDate, reason } = req.body;
+      const { overrideType, startDate, endDate, reason, availableRooms } = req.body;
 
       if (!overrideType || !startDate || !endDate) {
         return res.status(400).json({ message: "Override type, start date, and end date are required" });
@@ -1996,6 +1996,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         startDate: start,
         endDate: end,
         reason: reason || null,
+        availableRooms: availableRooms !== undefined ? availableRooms : null,
         createdBy: userId,
       });
       
@@ -2425,8 +2426,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               id: property.id,
               title: property.title,
               images: property.images,
-              city: property.city,
-              state: property.state,
+              destination: property.destination,
             } : null,
           };
         })

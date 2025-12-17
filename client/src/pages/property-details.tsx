@@ -618,6 +618,28 @@ export default function PropertyDetails() {
     });
   }, [checkIn, checkOut, bookedDates]);
 
+  const blockedDateInfo = useMemo(() => {
+    if (!checkIn || !checkOut || blockedDates.length === 0) return null;
+    
+    const selectedStart = new Date(checkIn);
+    const selectedEnd = new Date(checkOut);
+    selectedStart.setHours(0, 0, 0, 0);
+    selectedEnd.setHours(0, 0, 0, 0);
+    
+    const overlappingBlock = blockedDates.find((blocked) => {
+      const blockStart = new Date(blocked.startDate);
+      const blockEnd = new Date(blocked.endDate);
+      blockStart.setHours(0, 0, 0, 0);
+      blockEnd.setHours(0, 0, 0, 0);
+      
+      return (selectedStart < blockEnd && selectedEnd > blockStart);
+    });
+    
+    return overlappingBlock || null;
+  }, [checkIn, checkOut, blockedDates]);
+
+  const hasBlockedDateOverlap = blockedDateInfo !== null;
+
   const handleBooking = () => {
     if (!user) {
       toast({
@@ -1517,7 +1539,22 @@ export default function PropertyDetails() {
                   </div>
                 )}
 
-                {nights > 0 && totalPrice > 0 && !hasDateOverlap && (() => {
+                {hasBlockedDateOverlap && !hasDateOverlap && (
+                  <div className="mb-4 p-3 bg-amber-100 dark:bg-amber-900/30 border border-amber-300 dark:border-amber-700 rounded-lg" data-testid="blocked-dates-warning">
+                    <p className="text-sm text-amber-800 dark:text-amber-200 font-medium">
+                      {blockedDateInfo?.type === "hold" && "This property is temporarily not accepting bookings for these dates."}
+                      {blockedDateInfo?.type === "sold_out" && "This property is fully booked for these dates."}
+                      {blockedDateInfo?.type === "maintenance" && "This property is under maintenance during these dates."}
+                    </p>
+                    {blockedDateInfo?.type === "hold" && (
+                      <p className="text-xs text-amber-700 dark:text-amber-300 mt-1">
+                        The owner has placed a temporary hold on bookings. Please select different dates or contact the owner.
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                {nights > 0 && totalPrice > 0 && !hasDateOverlap && !hasBlockedDateOverlap && (() => {
                   const guestsPerRoom = Math.ceil(guests / rooms);
                   let effectivePrice = Number(property.pricePerNight);
                   let occupancyLabel = "";
@@ -1573,7 +1610,7 @@ export default function PropertyDetails() {
                   className="w-full" 
                   size="lg" 
                   onClick={handleBooking}
-                  disabled={bookingMutation.isPending || !checkIn || !checkOut || hasDateOverlap}
+                  disabled={bookingMutation.isPending || !checkIn || !checkOut || hasDateOverlap || hasBlockedDateOverlap}
                   data-testid="button-reserve"
                 >
                   {bookingMutation.isPending ? "Processing..." : "Reserve"}

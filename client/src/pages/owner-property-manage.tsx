@@ -343,9 +343,10 @@ function AvailabilitySection({
   const [endDate, setEndDate] = useState<Date>();
   const [overrideType, setOverrideType] = useState<string>("hold");
   const [reason, setReason] = useState("");
+  const [availableRooms, setAvailableRooms] = useState<string>("");
 
   const createMutation = useMutation({
-    mutationFn: async (data: { overrideType: string; startDate: Date; endDate: Date; reason?: string }) => {
+    mutationFn: async (data: { overrideType: string; startDate: Date; endDate: Date; reason?: string; availableRooms?: number }) => {
       return apiRequest("POST", `/api/properties/${propertyId}/availability-overrides`, data);
     },
     onSuccess: () => {
@@ -353,6 +354,7 @@ function AvailabilitySection({
       setStartDate(undefined);
       setEndDate(undefined);
       setReason("");
+      setAvailableRooms("");
       toast({
         title: "Dates Blocked",
         description: "The selected dates have been marked as unavailable.",
@@ -402,6 +404,7 @@ function AvailabilitySection({
       startDate,
       endDate,
       reason: reason || undefined,
+      availableRooms: availableRooms ? parseInt(availableRooms) : undefined,
     });
   };
 
@@ -491,16 +494,33 @@ function AvailabilitySection({
             </Select>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="reason">Reason (optional)</Label>
-            <Textarea
-              id="reason"
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
-              placeholder="e.g., Rooms booked through travel agent, Personal use"
-              rows={2}
-              data-testid="input-block-reason"
-            />
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="availableRooms">Available Rooms (optional)</Label>
+              <Input
+                id="availableRooms"
+                type="number"
+                min="0"
+                value={availableRooms}
+                onChange={(e) => setAvailableRooms(e.target.value)}
+                placeholder="Leave empty for full block"
+                data-testid="input-available-rooms"
+              />
+              <p className="text-xs text-muted-foreground">
+                Set to 0 to block all rooms. Leave empty for complete unavailability.
+              </p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="reason">Reason (optional)</Label>
+              <Textarea
+                id="reason"
+                value={reason}
+                onChange={(e) => setReason(e.target.value)}
+                placeholder="e.g., Rooms booked through travel agent, Personal use"
+                rows={2}
+                data-testid="input-block-reason"
+              />
+            </div>
           </div>
 
           <Button 
@@ -537,10 +557,15 @@ function AvailabilitySection({
                   className="flex items-center justify-between p-3 rounded-lg border"
                   data-testid={`override-${override.id}`}
                 >
-                  <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-4 flex-wrap">
                     <Badge variant={getTypeBadgeVariant(override.overrideType)}>
                       {getTypeLabel(override.overrideType)}
                     </Badge>
+                    {override.availableRooms !== null && override.availableRooms !== undefined && (
+                      <Badge variant="secondary">
+                        {override.availableRooms} rooms available
+                      </Badge>
+                    )}
                     <div>
                       <p className="font-medium">
                         {format(new Date(override.startDate), "MMM d, yyyy")} - {format(new Date(override.endDate), "MMM d, yyyy")}

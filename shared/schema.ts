@@ -264,6 +264,7 @@ export const availabilityOverrides = pgTable("availability_overrides", {
   startDate: timestamp("start_date").notNull(),
   endDate: timestamp("end_date").notNull(),
   reason: text("reason"),
+  availableRooms: integer("available_rooms"),
   createdBy: varchar("created_by").notNull().references(() => users.id, { onDelete: "cascade" }),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
