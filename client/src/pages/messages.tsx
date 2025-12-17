@@ -390,7 +390,7 @@ export default function Messages() {
     <div className="flex h-[calc(100vh-64px)]">
       <div className="w-96 border-r flex flex-col">
         <div className="p-4 border-b">
-          <h1 className="text-2xl font-semibold">Messages</h1>
+          <h1 className="text-3xl font-semibold">Messages</h1>
         </div>
 
         <ScrollArea className="flex-1">

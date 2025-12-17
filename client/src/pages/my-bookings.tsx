@@ -202,7 +202,7 @@ export default function MyBookings() {
               <ChevronLeft className="h-5 w-5" />
             </Button>
           </Link>
-          <h1 className="text-2xl font-bold">My Bookings</h1>
+          <h1 className="text-3xl font-semibold">My Bookings</h1>
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>

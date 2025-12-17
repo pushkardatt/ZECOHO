@@ -493,7 +493,7 @@ export default function Search() {
         {/* Results */}
         <div className="w-full">
             <div className="mb-6">
-              <h1 className="text-2xl font-semibold mb-2">
+              <h1 className="text-3xl font-semibold mb-2">
                 {filteredProperties.length} {filteredProperties.length === 1 ? "stay" : "stays"} available
               </h1>
               {searchDestination && (

@@ -1329,7 +1329,7 @@ export default function ListPropertyWizard() {
           <div className="mb-8">
             <div className="flex items-center gap-2 mb-4">
               <AlertTriangle className="h-6 w-6 text-orange-500" />
-              <h1 className="text-2xl font-semibold">Update Your KYC Application</h1>
+              <h1 className="text-3xl font-semibold">Update Your KYC Application</h1>
             </div>
             <p className="text-muted-foreground">
               Your previous application was returned for updates. Please review and update the sections highlighted below.
