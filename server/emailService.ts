@@ -551,7 +551,7 @@ export async function sendBookingConfirmationEmail(
               </div>
               
               <div style="text-align: center;">
-                <a href="https://zecoho.replit.app/${isOwner ? 'owner/dashboard' : 'bookings'}" style="display: inline-block; background: #10b981; color: white; text-decoration: none; padding: 12px 32px; border-radius: 8px; font-weight: 600;">
+                <a href="https://zecoho.replit.app/${isOwner ? 'owner/dashboard' : 'my-bookings'}" style="display: inline-block; background: #10b981; color: white; text-decoration: none; padding: 12px 32px; border-radius: 8px; font-weight: 600;">
                   ${isOwner ? 'View in Dashboard' : 'View Booking'}
                 </a>
               </div>
