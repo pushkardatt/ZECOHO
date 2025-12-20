@@ -1616,6 +1616,15 @@ export default function PropertyDetails() {
                   {bookingMutation.isPending ? "Processing..." : "Reserve"}
                 </Button>
                 
+                <div className="text-center mt-2 space-y-1">
+                  <p className="text-sm text-muted-foreground" data-testid="text-no-payment-now">
+                    No payment required now
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Booking confirmation pending hotel approval
+                  </p>
+                </div>
+                
                 {property.status === "published" && (
                   <div className="flex flex-col gap-2 mt-3">
                     {(property as any).ownerContact?.phone && (
@@ -1679,10 +1688,7 @@ export default function PropertyDetails() {
                   </div>
                 )}
                 
-                <p className="text-sm text-center text-muted-foreground mt-4">
-                  You won't be charged yet
-                </p>
-              </CardContent>
+                              </CardContent>
             </Card>
           </div>
         </div>

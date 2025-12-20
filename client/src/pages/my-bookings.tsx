@@ -59,7 +59,7 @@ export default function MyBookings() {
 
   const getStatusBadge = (status: string) => {
     const statusConfig: Record<string, { variant: "default" | "secondary" | "destructive" | "outline"; label: string; icon: any }> = {
-      pending: { variant: "outline", label: "Awaiting Confirmation", icon: Clock },
+      pending: { variant: "outline", label: "Awaiting Hotel Confirmation", icon: Clock },
       confirmed: { variant: "default", label: "Confirmed", icon: CheckCircle },
       rejected: { variant: "destructive", label: "Declined", icon: XCircle },
       checked_in: { variant: "default", label: "Checked In", icon: CheckCircle },
@@ -151,9 +151,17 @@ export default function MyBookings() {
             </div>
 
             {booking.status === "pending" && (
-              <div className="text-sm p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-md">
-                <p className="text-amber-800 dark:text-amber-200">
-                  Your booking request has been sent to the property owner. They typically respond within 24 hours.
+              <div className="text-sm p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-md space-y-3">
+                <div>
+                  <p className="font-medium text-amber-800 dark:text-amber-200 mb-1">What happens next?</p>
+                  <ul className="text-amber-700 dark:text-amber-300 space-y-1 text-xs">
+                    <li>1. The hotel will review and confirm your booking (usually within 24 hours)</li>
+                    <li>2. Once confirmed, you'll receive details about the token payment</li>
+                    <li>3. The remaining balance is paid directly at the hotel during check-in</li>
+                  </ul>
+                </div>
+                <p className="text-amber-600 dark:text-amber-400 text-xs">
+                  No payment is required until the hotel confirms your booking.
                 </p>
               </div>
             )}

@@ -137,7 +137,7 @@ export function BookingActionCard({
 
   const getStatusBadge = () => {
     const statusConfig: Record<string, { variant: "default" | "secondary" | "destructive" | "outline"; label: string; icon: any }> = {
-      pending: { variant: "outline", label: "Awaiting Response", icon: Clock },
+      pending: { variant: "outline", label: "Awaiting Hotel Confirmation", icon: Clock },
       confirmed: { variant: "default", label: "Confirmed", icon: CheckCircle },
       rejected: { variant: "destructive", label: "Declined", icon: XCircle },
       completed: { variant: "secondary", label: "Completed", icon: CheckCircle },
