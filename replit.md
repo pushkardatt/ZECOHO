@@ -57,9 +57,18 @@ The application uses **PostgreSQL** via Neon's serverless driver. **Drizzle ORM*
     - API endpoints: PATCH /api/properties/:id/pause, /resume, /deactivate for managing property visibility.
 -   **Availability Override System**: Owners can manage property availability through the `/owner/properties/:id/manage` page with three block types (hold, sold_out, maintenance), optional room count specification, and custom reasons. 
     - **Room Availability Tracking**: Owners can specify the number of available rooms during a blocked period (useful for partial holds during events). If left empty, the entire property is blocked.
+    - **Room-Type-Specific Blocking**: Owners can block specific room types (e.g., block only Deluxe rooms while Standard rooms remain available). Select "All Rooms" to block the entire property.
     - **Booking Validation**: Frontend booking form checks both booked dates AND blocked dates before allowing booking. When dates are unavailable, specific error messages show the block type (hold/sold-out/maintenance) and the owner's reason.
-    - **Schema**: `availability_overrides` table with fields: id, propertyId, overrideType enum, startDate, endDate, reason, availableRooms, createdBy, timestamps.
+    - **Schema**: `availability_overrides` table with fields: id, propertyId, roomTypeId (nullable), overrideType enum, startDate, endDate, reason, availableRooms, createdBy, timestamps.
     - **API endpoints**: GET/POST /api/properties/:id/availability-overrides, DELETE /api/properties/:id/availability-overrides/:overrideId.
+-   **Room Type & Meal Plan Management**: Comprehensive room type and meal option system enabling OTA-style property configuration.
+    - **Room Types**: Each property can have multiple room types (e.g., Standard, Deluxe, Suite) with individual base prices, max occupancy, and availability counts. Managed via the "Rooms" tab in property management.
+    - **Meal Options (Room Options)**: Each room type can have multiple meal plans (e.g., Room Only, Breakfast Included, Half Board, Full Board) with price adjustments per night per room. Supports detailed descriptions.
+    - **Customer UI**: OTA-style room selection on property details page showing room types as cards with features, meal plan dropdown, and price breakdown. Price updates dynamically based on room type + meal option + nights + rooms.
+    - **Price Calculation**: Server-side pricing uses `(roomTypeBasePrice + mealOptionPriceAdjustment) × nights × rooms`. Falls back to property-level `pricePerNight` if no room type selected.
+    - **Room-Type-Specific Availability**: Different room types can be booked on overlapping dates. Booking validation checks availability per room type, not property-wide.
+    - **Schema**: `room_types` table (id, propertyId, name, description, basePrice, maxOccupancy, availableCount, isActive), `room_options` table (id, roomTypeId, name, description, priceAdjustment, isActive). Bookings store `roomTypeId` and `roomOptionId`.
+    - **API endpoints**: GET/POST /api/properties/:id/room-types, PATCH/DELETE /api/room-types/:id, GET/POST /api/room-types/:id/options, PATCH/DELETE /api/room-options/:id.
 
 ## External Dependencies
 
