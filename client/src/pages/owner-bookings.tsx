@@ -329,7 +329,7 @@ export default function OwnerBookings() {
     if (!extendStayBooking || !extendDate) return;
     extendStayMutation.mutate({
       id: extendStayBooking.id,
-      newCheckOutDate: extendDate.toISOString(),
+      newCheckOutDate: format(extendDate, "yyyy-MM-dd"),
     });
   };
 
