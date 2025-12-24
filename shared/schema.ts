@@ -93,6 +93,12 @@ export const bookingStatusEnum = pgEnum("booking_status", [
   "completed",    // Stay completed
 ]);
 
+// Booking type enum - for tracking standard vs extension bookings
+export const bookingTypeEnum = pgEnum("booking_type", [
+  "standard",     // Regular booking
+  "extension",    // Stay extension linked to parent booking
+]);
+
 // Availability override type enum - for property date range blocks
 export const availabilityOverrideTypeEnum = pgEnum("availability_override_type", [
   "hold",         // Temporary hold - owner not accepting bookings for this period
@@ -259,6 +265,12 @@ export const bookings = pgTable("bookings", {
   checkOutTime: timestamp("check_out_time"),
   checkedInBy: varchar("checked_in_by").references(() => users.id),
   checkedOutBy: varchar("checked_out_by").references(() => users.id),
+  // Early checkout tracking
+  actualCheckOutDate: timestamp("actual_check_out_date"),
+  earlyCheckout: boolean("early_checkout").default(false),
+  // Booking type and extension linking
+  bookingType: bookingTypeEnum("booking_type").notNull().default("standard"),
+  parentBookingId: varchar("parent_booking_id"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
