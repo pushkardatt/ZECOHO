@@ -150,7 +150,8 @@ export default function OwnerPropertyManage() {
             <AvailabilitySection 
               propertyId={id!} 
               overrides={overrides} 
-              isLoading={overridesLoading} 
+              isLoading={overridesLoading}
+              roomTypes={roomTypes}
             />
           </TabsContent>
 
@@ -356,11 +357,13 @@ function PricingSection({ property }: { property: Property }) {
 function AvailabilitySection({ 
   propertyId, 
   overrides, 
-  isLoading 
+  isLoading,
+  roomTypes = []
 }: { 
   propertyId: string; 
   overrides: AvailabilityOverride[]; 
   isLoading: boolean;
+  roomTypes?: RoomType[];
 }) {
   const { toast } = useToast();
   const [startDate, setStartDate] = useState<Date>();
@@ -368,9 +371,10 @@ function AvailabilitySection({
   const [overrideType, setOverrideType] = useState<string>("hold");
   const [reason, setReason] = useState("");
   const [availableRooms, setAvailableRooms] = useState<string>("");
+  const [selectedRoomTypeId, setSelectedRoomTypeId] = useState<string>("");
 
   const createMutation = useMutation({
-    mutationFn: async (data: { overrideType: string; startDate: Date; endDate: Date; reason?: string; availableRooms?: number }) => {
+    mutationFn: async (data: { overrideType: string; startDate: Date; endDate: Date; reason?: string; availableRooms?: number; roomTypeId?: string }) => {
       return apiRequest("POST", `/api/properties/${propertyId}/availability-overrides`, data);
     },
     onSuccess: () => {
@@ -379,6 +383,7 @@ function AvailabilitySection({
       setEndDate(undefined);
       setReason("");
       setAvailableRooms("");
+      setSelectedRoomTypeId("");
       toast({
         title: "Dates Blocked",
         description: "The selected dates have been marked as unavailable.",
@@ -429,7 +434,15 @@ function AvailabilitySection({
       endDate,
       reason: reason || undefined,
       availableRooms: availableRooms ? parseInt(availableRooms) : undefined,
+      roomTypeId: selectedRoomTypeId || undefined,
     });
+  };
+  
+  // Get room type name by id for display
+  const getRoomTypeName = (roomTypeId: string | null | undefined) => {
+    if (!roomTypeId) return "All Rooms";
+    const roomType = roomTypes.find(rt => rt.id === roomTypeId);
+    return roomType ? roomType.name : "Unknown Room Type";
   };
 
   const getTypeLabel = (type: string) => {
@@ -504,18 +517,40 @@ function AvailabilitySection({
             </div>
           </div>
 
-          <div className="space-y-2">
-            <Label>Block Type</Label>
-            <Select value={overrideType} onValueChange={setOverrideType}>
-              <SelectTrigger data-testid="select-block-type">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="hold">Temporary Hold</SelectItem>
-                <SelectItem value="sold_out">Sold Out</SelectItem>
-                <SelectItem value="maintenance">Maintenance</SelectItem>
-              </SelectContent>
-            </Select>
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="space-y-2">
+              <Label>Block Type</Label>
+              <Select value={overrideType} onValueChange={setOverrideType}>
+                <SelectTrigger data-testid="select-block-type">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="hold">Temporary Hold</SelectItem>
+                  <SelectItem value="sold_out">Sold Out</SelectItem>
+                  <SelectItem value="maintenance">Maintenance</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div className="space-y-2">
+              <Label>Room Type (optional)</Label>
+              <Select value={selectedRoomTypeId} onValueChange={setSelectedRoomTypeId}>
+                <SelectTrigger data-testid="select-room-type-block">
+                  <SelectValue placeholder="All rooms" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">All Rooms</SelectItem>
+                  {roomTypes.map((rt) => (
+                    <SelectItem key={rt.id} value={rt.id}>
+                      {rt.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Leave empty to block all room types
+              </p>
+            </div>
           </div>
 
           <div className="grid gap-4 md:grid-cols-2">
@@ -584,6 +619,9 @@ function AvailabilitySection({
                   <div className="flex items-center gap-4 flex-wrap">
                     <Badge variant={getTypeBadgeVariant(override.overrideType)}>
                       {getTypeLabel(override.overrideType)}
+                    </Badge>
+                    <Badge variant="outline">
+                      {getRoomTypeName(override.roomTypeId)}
                     </Badge>
                     {override.availableRooms !== null && override.availableRooms !== undefined && (
                       <Badge variant="secondary">
