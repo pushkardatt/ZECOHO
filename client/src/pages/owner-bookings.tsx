@@ -28,6 +28,8 @@ import { useToast } from "@/hooks/use-toast";
 import { useKycGuard } from "@/hooks/useKycGuard";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { format } from "date-fns";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   CalendarDays,
   Users,
@@ -37,6 +39,8 @@ import {
   Clock,
   MessageSquare,
   XCircle,
+  CalendarPlus,
+  AlertTriangle,
 } from "lucide-react";
 import { Link } from "wouter";
 
@@ -55,11 +59,16 @@ interface Booking {
   checkOutTime?: string;
   checkedInBy?: string;
   checkedOutBy?: string;
+  actualCheckOutDate?: string;
+  earlyCheckout?: boolean;
+  bookingType?: "standard" | "extension";
+  parentBookingId?: string | null;
   createdAt: string;
   property?: {
     id: string;
     title: string;
     images: string[];
+    pricePerNight?: string;
   };
   guest?: {
     id: string;
@@ -75,6 +84,11 @@ export default function OwnerBookings() {
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
   const [selectedRejectionReason, setSelectedRejectionReason] = useState("");
   const [customRejectionReason, setCustomRejectionReason] = useState("");
+  const [earlyCheckoutDialogOpen, setEarlyCheckoutDialogOpen] = useState(false);
+  const [earlyCheckoutBooking, setEarlyCheckoutBooking] = useState<Booking | null>(null);
+  const [extendStayDialogOpen, setExtendStayDialogOpen] = useState(false);
+  const [extendStayBooking, setExtendStayBooking] = useState<Booking | null>(null);
+  const [extendDate, setExtendDate] = useState<Date | undefined>(undefined);
 
   const REJECTION_REASONS = [
     { value: "dates_unavailable", label: "Property is not available for the requested dates" },
@@ -161,20 +175,56 @@ export default function OwnerBookings() {
   });
 
   const checkOutMutation = useMutation({
-    mutationFn: async (id: string) => {
-      return apiRequest("PATCH", `/api/owner/bookings/${id}/check-out`);
+    mutationFn: async ({ id, confirmEarlyCheckout }: { id: string; confirmEarlyCheckout?: boolean }) => {
+      return apiRequest("PATCH", `/api/owner/bookings/${id}/check-out`, { confirmEarlyCheckout });
     },
-    onSuccess: () => {
+    onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ["/api/owner/bookings"] });
+      setEarlyCheckoutDialogOpen(false);
+      setEarlyCheckoutBooking(null);
+      const isEarly = data?.isEarlyCheckout;
       toast({
-        title: "Guest Checked Out",
-        description: "The guest has been checked out and the booking is now complete.",
+        title: isEarly ? "Early Check-out Complete" : "Guest Checked Out",
+        description: isEarly 
+          ? "The guest has checked out early. Any refund policies should be discussed directly." 
+          : "The guest has been checked out and the booking is now complete.",
+      });
+    },
+    onError: (error: any) => {
+      if (error?.requiresConfirmation) {
+        const booking = bookings?.find(b => b.id === error?.bookingId);
+        if (booking) {
+          setEarlyCheckoutBooking(booking);
+          setEarlyCheckoutDialogOpen(true);
+        }
+        return;
+      }
+      toast({
+        title: "Check-out Failed",
+        description: error?.message || "Failed to mark guest as checked out.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const extendStayMutation = useMutation({
+    mutationFn: async ({ id, newCheckOutDate }: { id: string; newCheckOutDate: string }) => {
+      return apiRequest("POST", `/api/owner/bookings/${id}/extend`, { newCheckOutDate });
+    },
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/owner/bookings"] });
+      setExtendStayDialogOpen(false);
+      setExtendStayBooking(null);
+      setExtendDate(undefined);
+      toast({
+        title: "Stay Extended",
+        description: `${data.additionalNights} night(s) added. Additional payment of ₹${data.additionalAmount?.toLocaleString('en-IN')} to be collected at hotel.`,
       });
     },
     onError: (error: any) => {
       toast({
-        title: "Check-out Failed",
-        description: error?.message || "Failed to mark guest as checked out.",
+        title: "Extension Failed",
+        description: error?.message || "Failed to extend the stay.",
         variant: "destructive",
       });
     },
@@ -236,14 +286,51 @@ export default function OwnerBookings() {
     return today >= checkInDate;
   };
 
-  // Helper to check if check-out is allowed (today >= check-out date)
+  // Helper to check if check-out is allowed (any checked-in booking can be checked out)
   const canCheckOut = (booking: Booking) => {
-    if (booking.status !== "checked_in") return false;
+    return booking.status === "checked_in";
+  };
+
+  // Check if this is an early checkout (before scheduled date)
+  const isEarlyCheckout = (booking: Booking) => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const checkOutDate = new Date(booking.checkOut);
     checkOutDate.setHours(0, 0, 0, 0);
-    return today >= checkOutDate;
+    return today < checkOutDate;
+  };
+
+  // Handle check-out button click
+  const handleCheckOut = (booking: Booking) => {
+    if (isEarlyCheckout(booking)) {
+      setEarlyCheckoutBooking(booking);
+      setEarlyCheckoutDialogOpen(true);
+    } else {
+      checkOutMutation.mutate({ id: booking.id });
+    }
+  };
+
+  // Confirm early checkout
+  const confirmEarlyCheckout = () => {
+    if (!earlyCheckoutBooking) return;
+    checkOutMutation.mutate({ id: earlyCheckoutBooking.id, confirmEarlyCheckout: true });
+  };
+
+  // Handle extend stay
+  const openExtendStayDialog = (booking: Booking) => {
+    setExtendStayBooking(booking);
+    const defaultDate = new Date(booking.checkOut);
+    defaultDate.setDate(defaultDate.getDate() + 1);
+    setExtendDate(defaultDate);
+    setExtendStayDialogOpen(true);
+  };
+
+  const handleExtendStay = () => {
+    if (!extendStayBooking || !extendDate) return;
+    extendStayMutation.mutate({
+      id: extendStayBooking.id,
+      newCheckOutDate: extendDate.toISOString(),
+    });
   };
 
   const filteredBookings = bookings?.filter((booking) => {
@@ -354,21 +441,28 @@ export default function OwnerBookings() {
               Check-in available from {format(new Date(booking.checkIn), "dd MMM")}
             </Badge>
           )}
-          {booking.status === "checked_in" && canCheckOut(booking) && (
-            <Button
-              size="sm"
-              onClick={() => checkOutMutation.mutate(booking.id)}
-              disabled={checkOutMutation.isPending}
-              data-testid={`check-out-booking-${booking.id}`}
-            >
-              <Check className="h-4 w-4 mr-1" />
-              Mark Checked-out
-            </Button>
-          )}
-          {booking.status === "checked_in" && !canCheckOut(booking) && (
-            <Badge variant="outline" className="text-xs">
-              Check-out available from {format(new Date(booking.checkOut), "dd MMM")}
-            </Badge>
+          {booking.status === "checked_in" && (
+            <>
+              <Button
+                size="sm"
+                onClick={() => handleCheckOut(booking)}
+                disabled={checkOutMutation.isPending}
+                data-testid={`check-out-booking-${booking.id}`}
+              >
+                <Check className="h-4 w-4 mr-1" />
+                {isEarlyCheckout(booking) ? "Early Check-out" : "Mark Checked-out"}
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => openExtendStayDialog(booking)}
+                disabled={extendStayMutation.isPending}
+                data-testid={`extend-stay-${booking.id}`}
+              >
+                <CalendarPlus className="h-4 w-4 mr-1" />
+                Extend Stay
+              </Button>
+            </>
           )}
           {booking.checkInTime && (
             <span className="text-xs text-muted-foreground">
@@ -476,6 +570,155 @@ export default function OwnerBookings() {
               data-testid="btn-confirm-reject"
             >
               {updateStatusMutation.isPending ? "Declining..." : "Decline Booking"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Early Checkout Confirmation Dialog */}
+      <Dialog open={earlyCheckoutDialogOpen} onOpenChange={setEarlyCheckoutDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-amber-500" />
+              Early Check-out Confirmation
+            </DialogTitle>
+            <DialogDescription>
+              The guest is checking out before their scheduled date. Please confirm to proceed.
+            </DialogDescription>
+          </DialogHeader>
+          {earlyCheckoutBooking && (
+            <div className="py-4 space-y-4">
+              <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 p-4 rounded-lg space-y-2">
+                <p className="text-sm font-medium">Booking Details:</p>
+                <div className="text-sm text-muted-foreground space-y-1">
+                  <p>Property: {earlyCheckoutBooking.property?.title}</p>
+                  <p>Scheduled Check-out: {format(new Date(earlyCheckoutBooking.checkOut), "dd MMM yyyy")}</p>
+                  <p>Today: {format(new Date(), "dd MMM yyyy")}</p>
+                </div>
+              </div>
+              <Alert>
+                <AlertTriangle className="h-4 w-4" />
+                <AlertTitle>Note</AlertTitle>
+                <AlertDescription>
+                  Early check-out does not automatically process refunds. Please discuss any refund policies directly with the guest.
+                </AlertDescription>
+              </Alert>
+            </div>
+          )}
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                setEarlyCheckoutDialogOpen(false);
+                setEarlyCheckoutBooking(null);
+              }}
+              data-testid="btn-cancel-early-checkout"
+            >
+              Cancel
+            </Button>
+            <Button 
+              onClick={confirmEarlyCheckout}
+              disabled={checkOutMutation.isPending}
+              data-testid="btn-confirm-early-checkout"
+            >
+              {checkOutMutation.isPending ? "Processing..." : "Confirm Early Check-out"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Extend Stay Dialog */}
+      <Dialog open={extendStayDialogOpen} onOpenChange={setExtendStayDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <CalendarPlus className="h-5 w-5 text-primary" />
+              Extend Guest Stay
+            </DialogTitle>
+            <DialogDescription>
+              Select a new check-out date to extend the guest's stay. Payment will be collected at the hotel.
+            </DialogDescription>
+          </DialogHeader>
+          {extendStayBooking && (
+            <div className="py-4 space-y-4">
+              <div className="bg-muted p-4 rounded-lg space-y-2">
+                <p className="text-sm font-medium">Current Booking:</p>
+                <div className="text-sm text-muted-foreground space-y-1">
+                  <p>Property: {extendStayBooking.property?.title}</p>
+                  <p>Guest: {extendStayBooking.guest?.name}</p>
+                  <p>Current Check-out: {format(new Date(extendStayBooking.checkOut), "dd MMM yyyy")}</p>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>New Check-out Date</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className="w-full justify-start text-left font-normal"
+                      data-testid="input-extend-date"
+                    >
+                      <CalendarDays className="mr-2 h-4 w-4" />
+                      {extendDate ? format(extendDate, "dd MMM yyyy") : "Select date"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={extendDate}
+                      onSelect={setExtendDate}
+                      disabled={(date) => {
+                        const minDate = new Date(extendStayBooking.checkOut);
+                        return date <= minDate;
+                      }}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+
+              {extendDate && extendStayBooking.property?.pricePerNight && (
+                <div className="bg-primary/5 p-4 rounded-lg">
+                  <p className="text-sm font-medium">Extension Summary:</p>
+                  <div className="text-sm text-muted-foreground mt-2">
+                    {(() => {
+                      const originalCheckout = new Date(extendStayBooking.checkOut);
+                      const nights = Math.ceil((extendDate.getTime() - originalCheckout.getTime()) / (1000 * 60 * 60 * 24));
+                      const price = nights * parseFloat(extendStayBooking.property?.pricePerNight || "0");
+                      return (
+                        <>
+                          <p>Additional Nights: {nights}</p>
+                          <p className="font-medium text-foreground">
+                            Additional Payment: {formatCurrency(price.toString())}
+                          </p>
+                        </>
+                      );
+                    })()}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                setExtendStayDialogOpen(false);
+                setExtendStayBooking(null);
+                setExtendDate(undefined);
+              }}
+              data-testid="btn-cancel-extend"
+            >
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleExtendStay}
+              disabled={extendStayMutation.isPending || !extendDate}
+              data-testid="btn-confirm-extend"
+            >
+              {extendStayMutation.isPending ? "Extending..." : "Confirm Extension"}
             </Button>
           </DialogFooter>
         </DialogContent>
