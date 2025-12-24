@@ -2431,10 +2431,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Check for availability overrides (holds, sold-out, maintenance)
+      // If a room type is selected, check blocks for that specific room type (plus property-wide blocks)
       const blockedDates = await storage.getPropertyBlockedDates(
         validatedData.propertyId,
         checkIn,
-        checkOut
+        checkOut,
+        validatedData.roomTypeId || null
       );
 
       if (blockedDates.length > 0) {
@@ -2451,10 +2453,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Calculate total price server-side (don't trust client)
-      // Price = pricePerNight × nights × rooms
+      // Price = (roomBasePrice + mealOptionPrice) × nights × rooms
       const nights = Math.ceil((checkOut.getTime() - checkIn.getTime()) / (1000 * 60 * 60 * 24));
       const roomsCount = validatedData.rooms || 1;
-      const totalPrice = nights * Number(property.pricePerNight) * roomsCount;
+      
+      let basePrice = Number(property.pricePerNight);
+      let mealPrice = 0;
+      
+      // If room type is selected, use room type pricing
+      if (validatedData.roomTypeId) {
+        const roomType = await storage.getRoomType(validatedData.roomTypeId);
+        if (roomType) {
+          basePrice = Number(roomType.basePrice);
+          
+          // If meal option is selected, add meal option price
+          if (validatedData.roomOptionId) {
+            const mealOption = await storage.getRoomOption(validatedData.roomOptionId);
+            if (mealOption && mealOption.roomTypeId === validatedData.roomTypeId) {
+              mealPrice = Number(mealOption.priceAdjustment);
+            }
+          }
+        }
+      }
+      
+      const totalPrice = nights * (basePrice + mealPrice) * roomsCount;
       
       const booking = await storage.createBooking({
         ...validatedData,

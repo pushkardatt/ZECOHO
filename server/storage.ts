@@ -198,7 +198,7 @@ export interface IStorage {
   getAvailabilityOverrides(propertyId: string): Promise<AvailabilityOverride[]>;
   createAvailabilityOverride(override: InsertAvailabilityOverride): Promise<AvailabilityOverride>;
   deleteAvailabilityOverride(id: string): Promise<void>;
-  getPropertyBlockedDates(propertyId: string, startDate: Date, endDate: Date): Promise<{ startDate: Date; endDate: Date; type: string }[]>;
+  getPropertyBlockedDates(propertyId: string, startDate: Date, endDate: Date, roomTypeId?: string | null): Promise<{ startDate: Date; endDate: Date; type: string; roomTypeId: string | null }[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1257,7 +1257,7 @@ export class DatabaseStorage implements IStorage {
     await db.delete(availabilityOverrides).where(eq(availabilityOverrides.id, id));
   }
 
-  async getPropertyBlockedDates(propertyId: string, checkIn: Date, checkOut: Date): Promise<{ startDate: Date; endDate: Date; type: string }[]> {
+  async getPropertyBlockedDates(propertyId: string, checkIn: Date, checkOut: Date, roomTypeId?: string | null): Promise<{ startDate: Date; endDate: Date; type: string; roomTypeId: string | null }[]> {
     // Overlap with exclusive end date semantics:
     // Override blocks [startDate, endDate), booking occupies [checkIn, checkOut)
     // Overlap exists when: overrideStart < checkOut AND overrideEnd > checkIn
@@ -1272,10 +1272,18 @@ export class DatabaseStorage implements IStorage {
         )
       );
     
-    return overrides.map(o => ({
+    // Filter by roomTypeId if provided:
+    // - If roomTypeId is provided, return blocks that apply to ALL rooms (roomTypeId is null) OR to the specific room type
+    // - If roomTypeId is not provided, return all blocks (property-wide check)
+    const filteredOverrides = roomTypeId 
+      ? overrides.filter(o => o.roomTypeId === null || o.roomTypeId === roomTypeId)
+      : overrides;
+    
+    return filteredOverrides.map(o => ({
       startDate: o.startDate,
       endDate: o.endDate,
       type: o.overrideType,
+      roomTypeId: o.roomTypeId,
     }));
   }
 }
