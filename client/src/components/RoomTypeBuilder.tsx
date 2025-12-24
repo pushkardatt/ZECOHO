@@ -21,8 +21,8 @@ export interface WizardRoomType {
 export interface WizardMealOption {
   id: string;
   name: string;
-  priceAdjustment: number;
   inclusions?: string;
+  priceAdjustment: number;
 }
 
 interface RoomTypeBuilderProps {
@@ -60,15 +60,21 @@ export function RoomTypeBuilder({ value, onChange, propertyType }: RoomTypeBuild
   };
 
   const handleAddRoom = () => {
-    if (!newRoomName || !newRoomPrice) return;
+    const price = parseFloat(newRoomPrice);
+    const maxGuests = parseInt(newRoomMaxGuests);
+    const totalRooms = parseInt(newRoomTotalRooms);
+    
+    if (!newRoomName || !newRoomPrice || isNaN(price) || price < 100) return;
+    if (isNaN(maxGuests) || maxGuests < 1) return;
+    if (isNaN(totalRooms) || totalRooms < 1) return;
 
     const newRoom: WizardRoomType = {
       id: generateId(),
       name: newRoomName,
       description: newRoomDescription || undefined,
-      basePrice: parseFloat(newRoomPrice),
-      maxGuests: parseInt(newRoomMaxGuests) || 2,
-      totalRooms: parseInt(newRoomTotalRooms) || 1,
+      basePrice: price,
+      maxGuests: maxGuests,
+      totalRooms: totalRooms,
       mealOptions: DEFAULT_MEAL_OPTIONS.map(opt => ({ ...opt, id: generateId() })),
     };
 
@@ -204,13 +210,13 @@ export function RoomTypeBuilder({ value, onChange, propertyType }: RoomTypeBuild
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Number of Rooms Available</Label>
+                  <Label>Total Rooms Available</Label>
                   <Input
                     type="number"
                     min="1"
                     value={newRoomTotalRooms}
                     onChange={(e) => setNewRoomTotalRooms(e.target.value)}
-                    data-testid="input-new-room-total"
+                    data-testid="input-new-room-total-rooms"
                   />
                 </div>
               </div>
@@ -307,12 +313,20 @@ function RoomTypeCard({
   const [editTotalRooms, setEditTotalRooms] = useState(String(room.totalRooms));
 
   const handleSave = () => {
+    const price = parseFloat(editPrice);
+    const maxGuests = parseInt(editMaxGuests);
+    const totalRooms = parseInt(editTotalRooms);
+    
+    if (isNaN(price) || price < 100) return;
+    if (isNaN(maxGuests) || maxGuests < 1) return;
+    if (isNaN(totalRooms) || totalRooms < 1) return;
+    
     onUpdate({
       name: editName,
       description: editDescription || undefined,
-      basePrice: parseFloat(editPrice),
-      maxGuests: parseInt(editMaxGuests),
-      totalRooms: parseInt(editTotalRooms),
+      basePrice: price,
+      maxGuests: maxGuests,
+      totalRooms: totalRooms,
     });
   };
 
@@ -413,7 +427,7 @@ function RoomTypeCard({
                   min="1"
                   value={editMaxGuests}
                   onChange={(e) => setEditMaxGuests(e.target.value)}
-                  data-testid={`edit-room-guests-${room.id}`}
+                  data-testid={`edit-room-max-guests-${room.id}`}
                 />
               </div>
               <div className="space-y-1">
@@ -423,7 +437,7 @@ function RoomTypeCard({
                   min="1"
                   value={editTotalRooms}
                   onChange={(e) => setEditTotalRooms(e.target.value)}
-                  data-testid={`edit-room-total-${room.id}`}
+                  data-testid={`edit-room-total-rooms-${room.id}`}
                 />
               </div>
             </div>
@@ -523,7 +537,7 @@ function MealOptionsSection({
               <Input
                 value={newInclusions}
                 onChange={(e) => setNewInclusions(e.target.value)}
-                placeholder="e.g., All meals"
+                placeholder="e.g., All meals included"
                 data-testid="input-new-meal-inclusions"
               />
             </div>

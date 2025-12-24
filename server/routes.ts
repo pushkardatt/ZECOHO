@@ -943,6 +943,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
             await storage.setPropertyAmenities(createdProperty.id, amenityIds);
           }
           
+          // Create room types if provided
+          const { roomTypes } = req.body;
+          if (roomTypes && Array.isArray(roomTypes) && roomTypes.length > 0) {
+            for (const rt of roomTypes) {
+              // Validate required fields
+              const basePrice = parseFloat(rt.basePrice);
+              const maxGuests = parseInt(rt.maxGuests);
+              const totalRooms = parseInt(rt.totalRooms);
+              
+              if (!rt.name || isNaN(basePrice) || basePrice < 100) {
+                throw new Error(`Invalid room type: ${rt.name || 'unnamed'} - base price must be at least 100`);
+              }
+              if (isNaN(maxGuests) || maxGuests < 1) {
+                throw new Error(`Invalid room type: ${rt.name} - max guests must be at least 1`);
+              }
+              if (isNaN(totalRooms) || totalRooms < 1) {
+                throw new Error(`Invalid room type: ${rt.name} - total rooms must be at least 1`);
+              }
+              
+              const createdRoomType = await storage.createRoom({
+                propertyId: createdProperty.id,
+                name: rt.name,
+                description: rt.description || null,
+                basePrice: String(basePrice),
+                maxGuests: maxGuests,
+                totalRooms: totalRooms,
+                isActive: true,
+              });
+              
+              // Create meal options for this room type
+              if (rt.mealOptions && Array.isArray(rt.mealOptions)) {
+                for (const mo of rt.mealOptions) {
+                  await storage.createRoomOption({
+                    roomTypeId: createdRoomType.id,
+                    name: mo.name,
+                    inclusions: mo.inclusions || null,
+                    priceAdjustment: String(mo.priceAdjustment || 0),
+                    isActive: true,
+                  });
+                }
+              }
+            }
+          }
+          
           const statusMessage = isVerified 
             ? "Property submitted successfully! Your property is pending admin review."
             : "Property submitted successfully! Both your KYC and new property are pending admin review.";
@@ -1033,6 +1077,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Step 4: Set amenities if provided
         if (amenityIds && amenityIds.length > 0) {
           await storage.setPropertyAmenities(createdProperty.id, amenityIds);
+        }
+        
+        // Step 5: Create room types if provided
+        const { roomTypes } = req.body;
+        if (roomTypes && Array.isArray(roomTypes) && roomTypes.length > 0) {
+          for (const rt of roomTypes) {
+            // Validate required fields
+            const basePrice = parseFloat(rt.basePrice);
+            const maxGuests = parseInt(rt.maxGuests);
+            const totalRooms = parseInt(rt.totalRooms);
+            
+            if (!rt.name || isNaN(basePrice) || basePrice < 100) {
+              throw new Error(`Invalid room type: ${rt.name || 'unnamed'} - base price must be at least 100`);
+            }
+            if (isNaN(maxGuests) || maxGuests < 1) {
+              throw new Error(`Invalid room type: ${rt.name} - max guests must be at least 1`);
+            }
+            if (isNaN(totalRooms) || totalRooms < 1) {
+              throw new Error(`Invalid room type: ${rt.name} - total rooms must be at least 1`);
+            }
+            
+            const createdRoomType = await storage.createRoom({
+              propertyId: createdProperty.id,
+              name: rt.name,
+              description: rt.description || null,
+              basePrice: String(basePrice),
+              maxGuests: maxGuests,
+              totalRooms: totalRooms,
+              isActive: true,
+            });
+            
+            // Create meal options for this room type
+            if (rt.mealOptions && Array.isArray(rt.mealOptions)) {
+              for (const mo of rt.mealOptions) {
+                await storage.createRoomOption({
+                  roomTypeId: createdRoomType.id,
+                  name: mo.name,
+                  inclusions: mo.inclusions || null,
+                  priceAdjustment: String(mo.priceAdjustment || 0),
+                  isActive: true,
+                });
+              }
+            }
+          }
         }
       } catch (innerError) {
         // Rollback: If property creation fails after KYC was created, delete the KYC application

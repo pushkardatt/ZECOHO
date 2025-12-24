@@ -873,6 +873,10 @@ export default function ListPropertyWizard() {
         throw new Error("Please upload at least one property image");
       }
 
+      // Calculate fallback pricing from room types if no base price set
+      const basePrice = data.pricePerNight || (wizardRoomTypes.length > 0 ? wizardRoomTypes[0].basePrice : 1000);
+      const maxGuests = data.maxGuests || (wizardRoomTypes.length > 0 ? Math.max(...wizardRoomTypes.map(rt => rt.maxGuests)) : 2);
+
       // Submit combined KYC + Property
       const response = await apiRequest("POST", "/api/kyc/submit-with-property", {
         // KYC data
@@ -916,23 +920,36 @@ export default function ListPropertyWizard() {
           propPincode: data.propPincode,
           latitude: propertyAddress.latitude,
           longitude: propertyAddress.longitude,
-          pricePerNight: data.pricePerNight,
+          pricePerNight: basePrice,
           singleOccupancyPrice: data.singleOccupancyPrice || null,
           doubleOccupancyPrice: data.doubleOccupancyPrice || null,
           tripleOccupancyPrice: data.tripleOccupancyPrice || null,
           bulkBookingEnabled: data.bulkBookingEnabled || false,
           bulkBookingMinRooms: data.bulkBookingMinRooms || 5,
           bulkBookingDiscountPercent: data.bulkBookingDiscountPercent || 10,
-          maxGuests: data.maxGuests,
-          bedrooms: data.bedrooms,
-          beds: data.beds,
-          bathrooms: data.bathrooms,
+          maxGuests: maxGuests,
+          bedrooms: data.bedrooms || 1,
+          beds: data.beds || 1,
+          bathrooms: data.bathrooms || 1,
           policies: data.policies,
           images: allImages,
           categorizedImages: categorizedImages,
           videos: videos,
           amenityIds: selectedAmenities,
         },
+        // Room types to create after property
+        roomTypes: wizardRoomTypes.map(rt => ({
+          name: rt.name,
+          description: rt.description,
+          basePrice: rt.basePrice,
+          maxGuests: rt.maxGuests,
+          totalRooms: rt.totalRooms,
+          mealOptions: rt.mealOptions.map(mo => ({
+            name: mo.name,
+            inclusions: mo.inclusions,
+            priceAdjustment: mo.priceAdjustment,
+          })),
+        })),
       });
       return await response.json();
     },
@@ -1115,8 +1132,19 @@ export default function ListPropertyWizard() {
         fieldsToValidate = ["businessName", "kycStreetAddress", "kycLocality", "kycCity", "kycDistrict", "kycState", "kycPincode", "panNumber"];
       } else if (s === 3) {
         fieldsToValidate = ["propertyTitle", "propertyType", "description", "propStreetAddress", "propLocality", "propCity", "propDistrict", "propState", "propPincode"];
+        // Also validate that at least one room type is added
+        if (wizardRoomTypes.length === 0) {
+          setStep(s);
+          toast({
+            title: "Room Types Required",
+            description: "Please add at least one room type with pricing before proceeding.",
+            variant: "destructive",
+          });
+          return;
+        }
       } else if (s === 4) {
-        fieldsToValidate = ["pricePerNight", "maxGuests", "bedrooms", "beds", "bathrooms"];
+        // Step 4 is now only for amenities which are optional - no required fields
+        fieldsToValidate = [];
       }
       
       const isValid = await form.trigger(fieldsToValidate);
@@ -1140,8 +1168,8 @@ export default function ListPropertyWizard() {
   const fullModeStepTitles = [
     { title: "Personal Information", icon: User },
     { title: "Business & KYC Documents", icon: FileText },
-    { title: "Property Details", icon: Home },
-    { title: "Pricing & Amenities", icon: Building2 },
+    { title: "Property Details & Room Types", icon: Home },
+    { title: "Amenities & Extras", icon: Building2 },
     { title: "Photos & Submit", icon: CheckCircle },
   ];
   
