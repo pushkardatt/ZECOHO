@@ -3,6 +3,8 @@ import {
   users,
   properties,
   rooms,
+  roomTypes,
+  roomOptions,
   amenities,
   propertyAmenities,
   wishlists,
@@ -22,6 +24,10 @@ import {
   type InsertProperty,
   type Room,
   type InsertRoom,
+  type RoomType,
+  type InsertRoomType,
+  type RoomOption,
+  type InsertRoomOption,
   type Amenity,
   type InsertAmenity,
   type Wishlist,
@@ -86,9 +92,18 @@ export interface IStorage {
   updateProperty(id: string, property: Partial<InsertProperty>): Promise<Property | undefined>;
   deleteProperty(id: string): Promise<void>;
 
-  // Room operations
+  // Room Type operations (hotel-style room management)
   getRoomsByProperty(propertyId: string): Promise<Room[]>;
   createRoom(room: InsertRoom): Promise<Room>;
+  updateRoom(id: string, room: Partial<InsertRoom>): Promise<Room | undefined>;
+  deleteRoom(id: string): Promise<void>;
+  getRoomType(id: string): Promise<RoomType | undefined>;
+  
+  // Room Option operations (meal plans, amenity packages)
+  getRoomOptions(roomTypeId: string): Promise<RoomOption[]>;
+  createRoomOption(option: InsertRoomOption): Promise<RoomOption>;
+  updateRoomOption(id: string, option: Partial<InsertRoomOption>): Promise<RoomOption | undefined>;
+  deleteRoomOption(id: string): Promise<void>;
 
   // Wishlist operations
   getWishlists(userId: string): Promise<Wishlist[]>;
@@ -324,6 +339,51 @@ export class DatabaseStorage implements IStorage {
   async createRoom(roomData: InsertRoom): Promise<Room> {
     const [room] = await db.insert(rooms).values(roomData).returning();
     return room;
+  }
+
+  async updateRoom(id: string, roomData: Partial<InsertRoom>): Promise<Room | undefined> {
+    const [room] = await db
+      .update(rooms)
+      .set({ ...roomData, updatedAt: new Date() })
+      .where(eq(rooms.id, id))
+      .returning();
+    return room;
+  }
+
+  async deleteRoom(id: string): Promise<void> {
+    await db.delete(rooms).where(eq(rooms.id, id));
+  }
+
+  async getRoomType(id: string): Promise<RoomType | undefined> {
+    const [room] = await db.select().from(rooms).where(eq(rooms.id, id));
+    return room as RoomType | undefined;
+  }
+
+  // Room Option operations
+  async getRoomOptions(roomTypeId: string): Promise<RoomOption[]> {
+    return await db
+      .select()
+      .from(roomOptions)
+      .where(eq(roomOptions.roomTypeId, roomTypeId))
+      .orderBy(roomOptions.createdAt);
+  }
+
+  async createRoomOption(optionData: InsertRoomOption): Promise<RoomOption> {
+    const [option] = await db.insert(roomOptions).values(optionData).returning();
+    return option;
+  }
+
+  async updateRoomOption(id: string, optionData: Partial<InsertRoomOption>): Promise<RoomOption | undefined> {
+    const [option] = await db
+      .update(roomOptions)
+      .set({ ...optionData, updatedAt: new Date() })
+      .where(eq(roomOptions.id, id))
+      .returning();
+    return option;
+  }
+
+  async deleteRoomOption(id: string): Promise<void> {
+    await db.delete(roomOptions).where(eq(roomOptions.id, id));
   }
 
   // Wishlist operations
