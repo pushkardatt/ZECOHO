@@ -1,0 +1,152 @@
+You are working on the Zecoho owner portal.
+
+TASK:
+Add Room Type + Room Option (meal plan) management and integrate it with availability, pricing, and booking selection.
+
+This must match real hotel booking behavior (like MakeMyTrip / Booking.com).
+
+--------------------------------
+DATA MODEL CHANGES
+--------------------------------
+
+1) RoomType Model (NEW)
+Fields:
+- id
+- propertyId
+- name (e.g. Deluxe Room, Family Room)
+- maxGuests
+- totalRooms
+- basePrice
+- isActive
+
+2) RoomOption Model (NEW – linked to RoomType)
+Fields:
+- id
+- roomTypeId
+- name (Room Only / Room + Breakfast / MAP)
+- priceAdjustment (number)
+- refundable (boolean)
+- inclusions (string)
+- isActive
+
+3) Availability Overrides (UPDATE)
+- Availability must now be stored PER roomTypeId, not property-level
+- availableRooms applies to that room type only
+
+--------------------------------
+OWNER UI CHANGES
+--------------------------------
+
+### 1️⃣ Add New Tab: Property → Rooms
+
+Each Room Type card should show:
+- Room name
+- Max guests
+- Total rooms
+- Base price
+- Edit / Disable buttons
+
+Button:
+➕ Add Room Type
+
+Room Type Form:
+- Room name
+- Max guests
+- Total rooms
+- Base price per night
+- Save
+
+--------------------------------
+
+### 2️⃣ Inside Each Room Type → Room Options Section
+
+Show list of options:
+- Room Only
+- Room with Breakfast
+- Room with Breakfast + Lunch/Dinner
+
+Button:
+➕ Add Room Option
+
+Room Option Form:
+- Option name
+- Price adjustment (₹)
+- Refundable toggle
+- Inclusions text
+- Save
+
+--------------------------------
+
+### 3️⃣ Availability Tab (UPDATE UI + LOGIC)
+
+Modify Availability tab to work like this:
+
+Top selector:
+- Dropdown: Select Room Type
+
+Calendar:
+- Shows availability ONLY for selected room type
+- Date cells show:
+  - Available: X rooms
+  - Sold out
+  - Blocked
+
+Override form:
+- Start date
+- End date
+- Available rooms
+- Applies ONLY to selected room type
+
+--------------------------------
+CUSTOMER SIDE CHANGES
+--------------------------------
+
+### Select Room Page
+
+Replace single price card with:
+
+Room Type Card:
+- Room name
+- Max guests
+- Photos (existing)
+- “X rooms left” indicator
+
+Under each Room Type:
+- List Room Options with:
+  - Option name
+  - Inclusions
+  - Price
+  - Select Room button
+
+--------------------------------
+BOOKING LOGIC
+--------------------------------
+
+When customer selects:
+- roomTypeId
+- roomOptionId
+- dates
+- number of rooms
+
+System must:
+- Validate availability for that roomTypeId across dates
+- Lock availability only after owner accepts booking
+- Reduce inventory per date on acceptance
+- Restore on decline / expiry
+
+--------------------------------
+RULES
+--------------------------------
+- Meal plans do NOT affect inventory
+- Availability is always room-type specific
+- Disable room types or options without deleting data
+- No auto-approval
+
+--------------------------------
+DELIVERABLE
+--------------------------------
+- Room Types management UI
+- Room Options (meal plans)
+- Availability per room type
+- Customer room selection UI like OTA
+- Booking respects room type inventory

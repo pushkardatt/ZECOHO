@@ -213,17 +213,40 @@ export const propertyAmenities = pgTable("property_amenities", {
   amenityId: varchar("amenity_id").notNull().references(() => amenities.id, { onDelete: "cascade" }),
 });
 
-// Rooms table
-export const rooms = pgTable("rooms", {
+// Room Types table (formerly "rooms") - represents different room categories like Deluxe, Family, etc.
+export const roomTypes = pgTable("room_types", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   propertyId: varchar("property_id").notNull().references(() => properties.id, { onDelete: "cascade" }),
   name: varchar("name", { length: 255 }).notNull(),
   description: text("description"),
-  pricePerNight: decimal("price_per_night", { precision: 10, scale: 2 }).notNull(),
-  maxOccupancy: integer("max_occupancy").notNull().default(2),
-  quantity: integer("quantity").notNull().default(1),
+  basePrice: decimal("base_price", { precision: 10, scale: 2 }).notNull(),
+  maxGuests: integer("max_guests").notNull().default(2),
+  totalRooms: integer("total_rooms").notNull().default(1),
   images: text("images").array().default(sql`ARRAY[]::text[]`),
-});
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("idx_roomtype_property").on(table.propertyId),
+]);
+
+// Room Options table - meal plans and rate options for each room type
+export const roomOptions = pgTable("room_options", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  roomTypeId: varchar("room_type_id").notNull().references(() => roomTypes.id, { onDelete: "cascade" }),
+  name: varchar("name", { length: 255 }).notNull(),
+  priceAdjustment: decimal("price_adjustment", { precision: 10, scale: 2 }).notNull().default("0"),
+  refundable: boolean("refundable").notNull().default(true),
+  inclusions: text("inclusions"),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("idx_roomoption_roomtype").on(table.roomTypeId),
+]);
+
+// Legacy rooms table alias for backwards compatibility
+export const rooms = roomTypes;
 
 // Wishlists table
 export const wishlists = pgTable("wishlists", {
@@ -252,6 +275,9 @@ export const bookings = pgTable("bookings", {
   bookingCode: varchar("booking_code", { length: 20 }).unique(),
   propertyId: varchar("property_id").notNull().references(() => properties.id, { onDelete: "cascade" }),
   guestId: varchar("guest_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  // Room type and option selection (for hotel-style bookings)
+  roomTypeId: varchar("room_type_id").references(() => roomTypes.id, { onDelete: "set null" }),
+  roomOptionId: varchar("room_option_id").references(() => roomOptions.id, { onDelete: "set null" }),
   checkIn: timestamp("check_in").notNull(),
   checkOut: timestamp("check_out").notNull(),
   totalPrice: decimal("total_price", { precision: 10, scale: 2 }).notNull(),
@@ -275,10 +301,11 @@ export const bookings = pgTable("bookings", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
-// Availability overrides table - for date-range holds/sold-out/maintenance
+// Availability overrides table - for date-range holds/sold-out/maintenance (now room-type specific)
 export const availabilityOverrides = pgTable("availability_overrides", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   propertyId: varchar("property_id").notNull().references(() => properties.id, { onDelete: "cascade" }),
+  roomTypeId: varchar("room_type_id").references(() => roomTypes.id, { onDelete: "cascade" }),
   overrideType: availabilityOverrideTypeEnum("override_type").notNull(),
   startDate: timestamp("start_date").notNull(),
   endDate: timestamp("end_date").notNull(),
@@ -289,6 +316,7 @@ export const availabilityOverrides = pgTable("availability_overrides", {
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => [
   index("idx_property_dates").on(table.propertyId, table.startDate, table.endDate),
+  index("idx_roomtype_dates").on(table.roomTypeId, table.startDate, table.endDate),
 ]);
 
 // Conversations table
@@ -441,7 +469,8 @@ export const propertiesRelations = relations(properties, ({ one, many }) => ({
     fields: [properties.ownerId],
     references: [users.id],
   }),
-  rooms: many(rooms),
+  roomTypes: many(roomTypes),
+  rooms: many(rooms), // Alias for roomTypes
   amenities: many(propertyAmenities),
   wishlists: many(wishlists),
   bookings: many(bookings),
@@ -455,18 +484,35 @@ export const availabilityOverridesRelations = relations(availabilityOverrides, (
     fields: [availabilityOverrides.propertyId],
     references: [properties.id],
   }),
+  roomType: one(roomTypes, {
+    fields: [availabilityOverrides.roomTypeId],
+    references: [roomTypes.id],
+  }),
   createdByUser: one(users, {
     fields: [availabilityOverrides.createdBy],
     references: [users.id],
   }),
 }));
 
-export const roomsRelations = relations(rooms, ({ one }) => ({
+export const roomTypesRelations = relations(roomTypes, ({ one, many }) => ({
   property: one(properties, {
-    fields: [rooms.propertyId],
+    fields: [roomTypes.propertyId],
     references: [properties.id],
   }),
+  roomOptions: many(roomOptions),
+  availabilityOverrides: many(availabilityOverrides),
+  bookings: many(bookings),
 }));
+
+export const roomOptionsRelations = relations(roomOptions, ({ one }) => ({
+  roomType: one(roomTypes, {
+    fields: [roomOptions.roomTypeId],
+    references: [roomTypes.id],
+  }),
+}));
+
+// Alias for backwards compatibility
+export const roomsRelations = roomTypesRelations;
 
 export const propertyAmenitiesRelations = relations(propertyAmenities, ({ one }) => ({
   property: one(properties, {
@@ -506,6 +552,14 @@ export const bookingsRelations = relations(bookings, ({ one, many }) => ({
     fields: [bookings.guestId],
     references: [users.id],
     relationName: "guestBookings",
+  }),
+  roomType: one(roomTypes, {
+    fields: [bookings.roomTypeId],
+    references: [roomTypes.id],
+  }),
+  roomOption: one(roomOptions, {
+    fields: [bookings.roomOptionId],
+    references: [roomOptions.id],
   }),
   reviews: many(reviews),
 }));
@@ -582,6 +636,12 @@ export type Property = typeof properties.$inferSelect;
 export type InsertRoom = typeof rooms.$inferInsert;
 export type Room = typeof rooms.$inferSelect;
 
+export type RoomType = typeof roomTypes.$inferSelect;
+export type InsertRoomType = typeof roomTypes.$inferInsert;
+
+export type RoomOption = typeof roomOptions.$inferSelect;
+export type InsertRoomOption = typeof roomOptions.$inferInsert;
+
 export type Amenity = typeof amenities.$inferSelect;
 export type InsertAmenity = typeof amenities.$inferInsert;
 
@@ -628,6 +688,24 @@ export const insertPropertySchema = createInsertSchema(properties).omit({
 
 export const insertRoomSchema = createInsertSchema(rooms).omit({
   id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertRoomTypeSchema = createInsertSchema(roomTypes).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  basePrice: z.string().or(z.number()).pipe(z.coerce.number()),
+});
+
+export const insertRoomOptionSchema = createInsertSchema(roomOptions).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  priceAdjustment: z.string().or(z.number()).pipe(z.coerce.number()),
 });
 
 export const insertWishlistSchema = createInsertSchema(wishlists).omit({
