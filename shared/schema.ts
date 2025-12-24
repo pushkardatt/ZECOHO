@@ -690,6 +690,10 @@ export const insertRoomSchema = createInsertSchema(rooms).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
+}).extend({
+  basePrice: z.union([z.string(), z.number()]).pipe(z.coerce.number().min(100)).transform(v => String(v)),
+  maxGuests: z.coerce.number().int().min(1).optional(),
+  totalRooms: z.coerce.number().int().min(1).optional(),
 });
 
 export const insertRoomTypeSchema = createInsertSchema(roomTypes).omit({
@@ -697,7 +701,9 @@ export const insertRoomTypeSchema = createInsertSchema(roomTypes).omit({
   createdAt: true,
   updatedAt: true,
 }).extend({
-  basePrice: z.string().or(z.number()).transform(v => String(v)),
+  basePrice: z.union([z.string(), z.number()]).pipe(z.coerce.number().min(100)).transform(v => String(v)),
+  maxGuests: z.coerce.number().int().min(1).optional(),
+  totalRooms: z.coerce.number().int().min(1).optional(),
 });
 
 export const insertRoomOptionSchema = createInsertSchema(roomOptions).omit({
