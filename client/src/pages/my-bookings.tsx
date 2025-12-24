@@ -16,6 +16,8 @@ import {
   MapPin,
   MessageSquare,
   ChevronLeft,
+  AlertTriangle,
+  Link2,
 } from "lucide-react";
 import { Link } from "wouter";
 
@@ -32,6 +34,10 @@ interface Booking {
   respondedAt?: string;
   checkInTime?: string;
   checkOutTime?: string;
+  actualCheckOutDate?: string;
+  earlyCheckout?: boolean;
+  bookingType?: "standard" | "extension";
+  parentBookingId?: string | null;
   createdAt: string;
   property?: {
     id: string;
@@ -197,12 +203,42 @@ export default function MyBookings() {
             )}
 
             {(booking.status === "checked_out" || booking.status === "completed") && booking.checkOutTime && (
-              <div className="text-sm p-3 bg-muted border rounded-md">
-                <p className="text-muted-foreground">
-                  Your stay is complete. Thank you for choosing us!
-                  <span className="block text-xs mt-1">
-                    Checked out on {format(new Date(booking.checkOutTime), "dd MMM yyyy 'at' HH:mm")}
-                  </span>
+              <div className={`text-sm p-3 border rounded-md ${booking.earlyCheckout ? 'bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800' : 'bg-muted'}`}>
+                <p className={booking.earlyCheckout ? 'text-amber-800 dark:text-amber-200' : 'text-muted-foreground'}>
+                  {booking.earlyCheckout ? (
+                    <>
+                      <span className="flex items-center gap-1 font-medium">
+                        <AlertTriangle className="h-4 w-4" />
+                        You checked out early
+                      </span>
+                      <span className="block text-xs mt-1">
+                        Original check-out: {format(new Date(booking.checkOut), "dd MMM yyyy")} | 
+                        Actual check-out: {format(new Date(booking.checkOutTime), "dd MMM yyyy 'at' HH:mm")}
+                      </span>
+                      <span className="block text-xs mt-1 text-amber-600 dark:text-amber-400">
+                        Please contact the hotel regarding any refund policies.
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      Your stay is complete. Thank you for choosing us!
+                      <span className="block text-xs mt-1">
+                        Checked out on {format(new Date(booking.checkOutTime), "dd MMM yyyy 'at' HH:mm")}
+                      </span>
+                    </>
+                  )}
+                </p>
+              </div>
+            )}
+
+            {booking.bookingType === "extension" && (
+              <div className="text-sm p-3 bg-primary/5 border border-primary/20 rounded-md">
+                <p className="flex items-center gap-1 text-primary font-medium">
+                  <Link2 className="h-4 w-4" />
+                  Stay Extension
+                </p>
+                <p className="text-muted-foreground text-xs mt-1">
+                  This booking is an extension of a previous stay. Payment to be settled at the hotel.
                 </p>
               </div>
             )}

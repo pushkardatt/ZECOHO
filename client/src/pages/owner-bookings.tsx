@@ -401,6 +401,22 @@ export default function OwnerBookings() {
           </div>
         )}
 
+        {booking.earlyCheckout && booking.status === "completed" && (
+          <div className="text-sm p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-md flex items-center gap-2">
+            <AlertTriangle className="h-4 w-4 text-amber-500" />
+            <span className="text-amber-800 dark:text-amber-200">
+              Early check-out on {booking.actualCheckOutDate && format(new Date(booking.actualCheckOutDate), "dd MMM yyyy")}
+              (scheduled: {format(new Date(booking.checkOut), "dd MMM yyyy")})
+            </span>
+          </div>
+        )}
+
+        {booking.bookingType === "extension" && (
+          <Badge variant="outline" className="bg-primary/5 border-primary/20 text-primary">
+            Stay Extension
+          </Badge>
+        )}
+
         <div className="flex items-center gap-2 flex-wrap">
           {booking.status === "pending" && (
             <>
