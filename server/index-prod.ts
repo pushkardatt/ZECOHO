@@ -5,6 +5,10 @@ import { type Server } from "node:http";
 import express, { type Express } from "express";
 import runApp from "./app";
 
+console.log("[PRODUCTION] Starting server...");
+console.log("[PRODUCTION] NODE_ENV:", process.env.NODE_ENV);
+console.log("[PRODUCTION] PORT:", process.env.PORT);
+
 export async function serveStatic(app: Express, _server: Server) {
   const distPath = path.resolve(import.meta.dirname, "public");
 
