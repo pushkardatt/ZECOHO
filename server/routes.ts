@@ -2129,7 +2129,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/properties/:id/rooms", async (req, res) => {
     try {
       const rooms = await storage.getRoomsByProperty(req.params.id);
-      res.json(rooms);
+      
+      // Fetch meal options for each room type
+      const roomsWithMealOptions = await Promise.all(
+        rooms.map(async (room) => {
+          const mealOptions = await storage.getRoomOptions(room.id);
+          return {
+            ...room,
+            mealOptions: mealOptions.filter(opt => opt.isActive),
+          };
+        })
+      );
+      
+      res.json(roomsWithMealOptions);
     } catch (error) {
       console.error("Error fetching rooms:", error);
       res.status(500).json({ message: "Failed to fetch rooms" });
