@@ -459,6 +459,13 @@ function RoomTypeCard({
   );
 }
 
+const PRESET_MEAL_OPTIONS_WIZARD = [
+  { name: "Room Only", priceAdjustment: 0, inclusions: "No meals included" },
+  { name: "Breakfast Included", priceAdjustment: 300, inclusions: "Daily breakfast buffet" },
+  { name: "Half Board", priceAdjustment: 600, inclusions: "Breakfast and dinner included" },
+  { name: "Full Board", priceAdjustment: 900, inclusions: "All meals included (breakfast, lunch, dinner)" },
+];
+
 function MealOptionsSection({
   options,
   onAdd,
@@ -489,6 +496,14 @@ function MealOptionsSection({
     setShowAddForm(false);
   };
 
+  const handleQuickAdd = (preset: typeof PRESET_MEAL_OPTIONS_WIZARD[0]) => {
+    onAdd({
+      name: preset.name,
+      priceAdjustment: preset.priceAdjustment,
+      inclusions: preset.inclusions,
+    });
+  };
+
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
@@ -511,7 +526,44 @@ function MealOptionsSection({
       </div>
 
       {showAddForm && (
-        <div className="p-3 bg-muted/30 rounded-lg space-y-3">
+        <div className="p-3 bg-muted/30 rounded-lg space-y-3 border border-dashed border-primary/30">
+          <div className="space-y-2">
+            <Label className="text-xs font-medium">Quick Add Preset Plans</Label>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+              {PRESET_MEAL_OPTIONS_WIZARD.map((preset) => {
+                const alreadyExists = options.some(o => o.name === preset.name);
+                return (
+                  <Button
+                    key={preset.name}
+                    type="button"
+                    variant={alreadyExists ? "secondary" : "outline"}
+                    size="sm"
+                    className="justify-start h-auto py-2 px-3"
+                    onClick={() => !alreadyExists && handleQuickAdd(preset)}
+                    disabled={alreadyExists}
+                    data-testid={`quick-add-${preset.name.toLowerCase().replace(/\s+/g, '-')}`}
+                  >
+                    <div className="text-left">
+                      <div className="font-medium text-xs">{preset.name}</div>
+                      <div className="text-xs text-muted-foreground">
+                        {preset.priceAdjustment === 0 ? "Included" : `+₹${preset.priceAdjustment}`}
+                      </div>
+                    </div>
+                  </Button>
+                );
+              })}
+            </div>
+          </div>
+          
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <span className="w-full border-t" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-muted/30 px-2 text-muted-foreground">Or add custom plan</span>
+            </div>
+          </div>
+
           <div className="grid gap-3 md:grid-cols-3">
             <div className="space-y-1">
               <Label className="text-xs">Plan Name *</Label>
@@ -544,10 +596,10 @@ function MealOptionsSection({
           </div>
           <div className="flex gap-2">
             <Button type="button" size="sm" onClick={handleAdd} disabled={!newName} data-testid="button-save-meal">
-              Add
+              Add Custom Plan
             </Button>
             <Button type="button" size="sm" variant="outline" onClick={() => setShowAddForm(false)} data-testid="button-cancel-meal">
-              Cancel
+              Done
             </Button>
           </div>
         </div>
