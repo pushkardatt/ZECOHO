@@ -2764,10 +2764,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get guest's bookings with property details
       const bookings = await storage.getBookingsByGuest(userId);
       
-      // Enrich with property info
+      // Enrich with property, room type and meal option info
       const enrichedBookings = await Promise.all(
         bookings.map(async (booking) => {
           const property = await storage.getProperty(booking.propertyId);
+          
+          // Fetch room type and meal option if present
+          let roomType = null;
+          let roomOption = null;
+          
+          if (booking.roomTypeId) {
+            const rt = await storage.getRoomType(booking.roomTypeId);
+            if (rt) {
+              roomType = { id: rt.id, name: rt.name, basePrice: rt.basePrice };
+            }
+          }
+          
+          if (booking.roomOptionId) {
+            const ro = await storage.getRoomOption(booking.roomOptionId);
+            if (ro) {
+              roomOption = { id: ro.id, name: ro.name, priceAdjustment: ro.priceAdjustment };
+            }
+          }
+          
           return {
             ...booking,
             property: property ? {
@@ -2776,6 +2795,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
               images: property.images,
               destination: property.destination,
             } : null,
+            roomType,
+            roomOption,
           };
         })
       );
@@ -3768,11 +3789,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
         );
       }
       
-      // Enrich with property and guest info
+      // Enrich with property, guest, room type and meal option info
       const enrichedBookings = await Promise.all(
         filteredBookings.map(async (booking) => {
           const property = properties.find(p => p.id === booking.propertyId);
           const guest = await storage.getUser(booking.guestId);
+          
+          // Fetch room type and meal option if present
+          let roomType = null;
+          let roomOption = null;
+          
+          if (booking.roomTypeId) {
+            const rt = await storage.getRoomType(booking.roomTypeId);
+            if (rt) {
+              roomType = { id: rt.id, name: rt.name, basePrice: rt.basePrice };
+            }
+          }
+          
+          if (booking.roomOptionId) {
+            const ro = await storage.getRoomOption(booking.roomOptionId);
+            if (ro) {
+              roomOption = { id: ro.id, name: ro.name, priceAdjustment: ro.priceAdjustment };
+            }
+          }
+          
           return {
             ...booking,
             property: property ? { id: property.id, title: property.title, images: property.images } : null,
@@ -3782,6 +3822,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
               email: guest.email,
               phone: guest.phone,
             } : null,
+            roomType,
+            roomOption,
           };
         })
       );

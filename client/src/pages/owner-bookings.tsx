@@ -41,6 +41,8 @@ import {
   XCircle,
   CalendarPlus,
   AlertTriangle,
+  BedDouble,
+  Utensils,
 } from "lucide-react";
 import { Link } from "wouter";
 
@@ -76,6 +78,16 @@ interface Booking {
     email: string;
     phone?: string;
   };
+  roomType?: {
+    id: string;
+    name: string;
+    basePrice: string;
+  } | null;
+  roomOption?: {
+    id: string;
+    name: string;
+    priceAdjustment: string;
+  } | null;
 }
 
 export default function OwnerBookings() {
@@ -393,6 +405,25 @@ export default function OwnerBookings() {
             </div>
           </div>
         </div>
+
+        {(booking.roomType || booking.roomOption) && (
+          <div className="flex flex-wrap gap-3 text-sm pt-1">
+            {booking.roomType && (
+              <div className="flex items-center gap-2" data-testid={`room-type-${booking.id}`}>
+                <BedDouble className="h-4 w-4 text-muted-foreground" />
+                <span className="text-muted-foreground">Room:</span>
+                <span className="font-medium">{booking.roomType.name}</span>
+              </div>
+            )}
+            {booking.roomOption && (
+              <div className="flex items-center gap-2" data-testid={`meal-plan-${booking.id}`}>
+                <Utensils className="h-4 w-4 text-muted-foreground" />
+                <span className="text-muted-foreground">Meal Plan:</span>
+                <span className="font-medium">{booking.roomOption.name}</span>
+              </div>
+            )}
+          </div>
+        )}
 
         {booking.ownerResponseMessage && booking.status === "rejected" && (
           <div className="text-sm p-3 bg-muted rounded-md">

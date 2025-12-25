@@ -20,6 +20,8 @@ import {
   AlertTriangle,
   Link2,
   AlertCircle,
+  BedDouble,
+  Utensils,
 } from "lucide-react";
 import { Link } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
@@ -48,6 +50,16 @@ interface Booking {
     images: string[];
     destination: string;
   };
+  roomType?: {
+    id: string;
+    name: string;
+    basePrice: string;
+  } | null;
+  roomOption?: {
+    id: string;
+    name: string;
+    priceAdjustment: string;
+  } | null;
 }
 
 export default function MyBookings() {
@@ -168,6 +180,25 @@ export default function MyBookings() {
                 </div>
               </div>
             </div>
+
+            {(booking.roomType || booking.roomOption) && (
+              <div className="flex flex-wrap gap-3 text-sm pt-1">
+                {booking.roomType && (
+                  <div className="flex items-center gap-2" data-testid={`room-type-${booking.id}`}>
+                    <BedDouble className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-muted-foreground">Room:</span>
+                    <span className="font-medium">{booking.roomType.name}</span>
+                  </div>
+                )}
+                {booking.roomOption && (
+                  <div className="flex items-center gap-2" data-testid={`meal-plan-${booking.id}`}>
+                    <Utensils className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-muted-foreground">Meal Plan:</span>
+                    <span className="font-medium">{booking.roomOption.name}</span>
+                  </div>
+                )}
+              </div>
+            )}
 
             {booking.status === "pending" && (
               <div className="text-sm p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-md space-y-3">
