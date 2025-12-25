@@ -81,6 +81,22 @@ const parseLocalDate = (dateStr: string): Date => {
   const [year, month, day] = dateStr.split('-').map(Number);
   return new Date(year, month - 1, day);
 };
+
+// Shared helper for fallback meal option when no options exist
+const FALLBACK_MEAL_OPTION = {
+  id: null as null,
+  name: "Room only",
+  inclusions: "Room accommodation only",
+  priceAdjustment: "0",
+  refundable: null as boolean | null,
+  isFallback: true,
+};
+
+// Helper to get display options for a room type (with fallback)
+const getMealOptionsForDisplay = (roomType: any): any[] => {
+  const activeOptions = roomType?.mealOptions?.filter((opt: any) => opt.isActive !== false) || [];
+  return activeOptions.length > 0 ? activeOptions : [FALLBACK_MEAL_OPTION];
+};
 import type { LucideIcon } from "lucide-react";
 import { PropertyMap } from "@/components/PropertyMap";
 import type { Property, Amenity } from "@shared/schema";
@@ -260,6 +276,21 @@ export default function PropertyDetails() {
       }
     }
   }, [roomTypes, selectedRoomTypeId]);
+
+  // Sync meal option when selected room type changes or options become invalid
+  useEffect(() => {
+    if (selectedRoomTypeId && roomTypes.length > 0) {
+      const selectedRoomType = roomTypes.find((rt: any) => rt.id === selectedRoomTypeId);
+      if (selectedRoomType) {
+        const activeOptions = selectedRoomType.mealOptions?.filter((opt: any) => opt.isActive !== false) || [];
+        // If current selection is invalid or null but options exist, reset to first valid option
+        const isCurrentSelectionValid = selectedMealOptionId && activeOptions.some((opt: any) => opt.id === selectedMealOptionId);
+        if (!isCurrentSelectionValid) {
+          setSelectedMealOptionId(activeOptions.length > 0 ? activeOptions[0].id : null);
+        }
+      }
+    }
+  }, [selectedRoomTypeId, roomTypes, selectedMealOptionId]);
 
   const { data: userBookings = [] } = useQuery<any[]>({
     queryKey: ["/api/bookings"],
@@ -1758,9 +1789,9 @@ export default function PropertyDetails() {
                             }`}
                             onClick={() => {
                               setSelectedRoomTypeId(roomType.id);
-                              // Set first active meal option as default (typically "Room Only")
-                              const activeOptions = roomType.mealOptions?.filter((opt: any) => opt.isActive !== false) || [];
-                              setSelectedMealOptionId(activeOptions.length > 0 ? activeOptions[0].id : null);
+                              // Set first active meal option as default using shared helper
+                              const displayOptions = getMealOptionsForDisplay(roomType);
+                              setSelectedMealOptionId(displayOptions[0]?.id ?? null);
                             }}
                             data-testid={`card-room-type-${roomType.id}`}
                           >
@@ -1794,10 +1825,7 @@ export default function PropertyDetails() {
                             
                             {/* Meal Options for selected room type */}
                             {selectedRoomTypeId === roomType.id && (() => {
-                              const activeOptions = roomType.mealOptions?.filter((opt: any) => opt.isActive !== false) || [];
-                              const displayOptions = activeOptions.length > 0 
-                                ? activeOptions 
-                                : [{ id: null, name: "Room only", inclusions: "Room accommodation only", priceAdjustment: "0" }];
+                              const displayOptions = getMealOptionsForDisplay(roomType);
                               
                               return (
                                 <div className="mt-3 pt-3 border-t space-y-2">
