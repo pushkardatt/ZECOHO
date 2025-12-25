@@ -941,42 +941,43 @@ function RoomsSection({
         </CardHeader>
         <CardContent>
           {showAddForm && (
-            <Card className="mb-6 border-dashed">
-              <CardHeader>
+            <Card className="mb-6 border-dashed border-2 border-primary/30">
+              <CardHeader className="pb-2">
                 <CardTitle className="text-lg">New Room Type</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid gap-4 md:grid-cols-2">
                   <div className="space-y-2">
-                    <Label htmlFor="roomName">Room Name</Label>
+                    <Label htmlFor="roomName">Room Type Name *</Label>
                     <Input
                       id="roomName"
                       value={newRoomName}
                       onChange={(e) => setNewRoomName(e.target.value)}
-                      placeholder="e.g., Deluxe Room, Suite"
+                      placeholder="e.g., Deluxe Room, Family Suite"
                       data-testid="input-new-room-name"
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="roomPrice">Base Price per Night (₹)</Label>
+                    <Label htmlFor="roomPrice">Base Price per Night (₹) *</Label>
                     <Input
                       id="roomPrice"
                       type="number"
+                      min="100"
                       value={newRoomPrice}
                       onChange={(e) => setNewRoomPrice(e.target.value)}
-                      placeholder="2000"
+                      placeholder="e.g., 2500"
                       data-testid="input-new-room-price"
                     />
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="roomDescription">Description (optional)</Label>
+                  <Label htmlFor="roomDescription">Description</Label>
                   <Textarea
                     id="roomDescription"
                     value={newRoomDescription}
                     onChange={(e) => setNewRoomDescription(e.target.value)}
-                    placeholder="Describe this room type..."
-                    rows={2}
+                    placeholder="Describe the room features, view, amenities..."
+                    rows={3}
                     data-testid="input-new-room-description"
                   />
                 </div>
@@ -993,7 +994,7 @@ function RoomsSection({
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="roomCount">Number of Rooms</Label>
+                    <Label htmlFor="roomCount">Total Rooms Available</Label>
                     <Input
                       id="roomCount"
                       type="number"
@@ -1004,13 +1005,16 @@ function RoomsSection({
                     />
                   </div>
                 </div>
+                <p className="text-sm text-muted-foreground">
+                  Default meal options (Room Only, Breakfast, Half Board, Full Board) will be added automatically. You can customize them after adding the room.
+                </p>
                 <div className="flex gap-2">
                   <Button 
                     onClick={handleAddRoom}
                     disabled={createRoomMutation.isPending}
                     data-testid="save-new-room"
                   >
-                    {createRoomMutation.isPending ? "Adding..." : "Add Room"}
+                    {createRoomMutation.isPending ? "Adding..." : "Add Room Type"}
                   </Button>
                   <Button 
                     variant="outline" 

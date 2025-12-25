@@ -2171,6 +2171,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const room = await storage.createRoom(validatedData);
       
       console.log("Room created successfully:", room.id);
+      
+      // Auto-add the 4 default meal options
+      const defaultMealOptions = [
+        { name: "Room Only", priceAdjustment: "0", inclusions: "No meals included" },
+        { name: "Breakfast Included", priceAdjustment: "300", inclusions: "Daily breakfast buffet" },
+        { name: "Half Board", priceAdjustment: "600", inclusions: "Breakfast and dinner included" },
+        { name: "Full Board", priceAdjustment: "900", inclusions: "All meals included (breakfast, lunch, dinner)" },
+      ];
+      
+      for (const mealOpt of defaultMealOptions) {
+        try {
+          await storage.createRoomOption({
+            roomTypeId: room.id,
+            name: mealOpt.name,
+            priceAdjustment: mealOpt.priceAdjustment,
+            inclusions: mealOpt.inclusions,
+          });
+        } catch (mealError) {
+          console.error("Error creating default meal option:", mealError);
+        }
+      }
+      
       res.json(room);
     } catch (error: any) {
       console.error("Error creating room:", error);
@@ -4080,7 +4102,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         guests: parentBooking.guests,
         rooms: roomsCount,
         totalPrice: totalPrice.toString(),
-        specialRequests: specialRequests || `Stay extension from ${parentBooking.bookingCode || parentBooking.id}`,
         status: "confirmed", // Auto-confirm extension since guest is already checked in
         bookingType: "extension",
         parentBookingId: parentBooking.id,

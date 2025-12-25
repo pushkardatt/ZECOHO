@@ -220,7 +220,7 @@ export function RoomTypeBuilder({ value, onChange, propertyType }: RoomTypeBuild
                   />
                 </div>
               </div>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-sm text-muted-foreground">
                 Default meal options (Room Only, Breakfast, Half Board, Full Board) will be added automatically. You can customize them after adding the room.
               </p>
               <div className="flex gap-2">
