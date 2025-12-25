@@ -1053,6 +1053,9 @@ function RoomsSection({
                   isDeleting={deleteRoomMutation.isPending}
                 />
               ))}
+              <div className="bg-muted/30 rounded-lg p-4 text-sm text-muted-foreground">
+                <strong>Tip:</strong> Click on a room type to expand and manage its meal plans. The final price shown to customers is: Room Base Price + Meal Option Price Adjustment.
+              </div>
             </div>
           )}
         </CardContent>
@@ -1092,6 +1095,11 @@ function RoomTypeCard({
   const [editTotalRooms, setEditTotalRooms] = useState(String(room.totalRooms || 1));
   const [editPrice, setEditPrice] = useState(room.basePrice || "");
   const [editActive, setEditActive] = useState(room.isActive ?? true);
+  
+  // Fetch meal plan count for this room
+  const { data: mealOptions = [] } = useQuery<RoomOption[]>({
+    queryKey: ["/api/rooms", room.id, "options"],
+  });
 
   const handleSave = () => {
     onSave({
@@ -1139,6 +1147,10 @@ function RoomTypeCard({
                 {room.basePrice && (
                   <Badge variant="default">₹{room.basePrice}/night</Badge>
                 )}
+                <Badge variant="outline" className="gap-1">
+                  <Utensils className="h-3 w-3" />
+                  {mealOptions.length} meal plans
+                </Badge>
                 {room.isActive === false && (
                   <Badge variant="destructive">Inactive</Badge>
                 )}
