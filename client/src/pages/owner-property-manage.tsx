@@ -809,9 +809,12 @@ function RoomsSection({
   const [newRoomCapacity, setNewRoomCapacity] = useState("2");
   const [newRoomCount, setNewRoomCount] = useState("1");
   const [newRoomPrice, setNewRoomPrice] = useState("");
+  const [newSingleOccupancyBase, setNewSingleOccupancyBase] = useState("1");
+  const [newDoubleOccupancyAdjustment, setNewDoubleOccupancyAdjustment] = useState("");
+  const [newTripleOccupancyAdjustment, setNewTripleOccupancyAdjustment] = useState("");
 
   const createRoomMutation = useMutation({
-    mutationFn: async (data: { name: string; description?: string; maxGuests: number; totalRooms: number; basePrice: string }) => {
+    mutationFn: async (data: { name: string; description?: string; maxGuests: number; totalRooms: number; basePrice: string; singleOccupancyBase?: number; doubleOccupancyAdjustment?: number; tripleOccupancyAdjustment?: number }) => {
       return apiRequest("POST", `/api/properties/${propertyId}/rooms`, data);
     },
     onSuccess: () => {
@@ -879,6 +882,9 @@ function RoomsSection({
     setNewRoomCapacity("2");
     setNewRoomCount("1");
     setNewRoomPrice("");
+    setNewSingleOccupancyBase("1");
+    setNewDoubleOccupancyAdjustment("");
+    setNewTripleOccupancyAdjustment("");
   };
 
   const handleAddRoom = () => {
@@ -899,12 +905,19 @@ function RoomsSection({
       return;
     }
 
+    const singleOccupancyBase = parseInt(newSingleOccupancyBase) || 1;
+    const doubleAdj = newDoubleOccupancyAdjustment ? parseFloat(newDoubleOccupancyAdjustment) : undefined;
+    const tripleAdj = newTripleOccupancyAdjustment ? parseFloat(newTripleOccupancyAdjustment) : undefined;
+
     createRoomMutation.mutate({
       name: newRoomName.trim(),
       description: newRoomDescription.trim() || undefined,
       maxGuests: parseInt(newRoomCapacity),
       totalRooms: parseInt(newRoomCount),
       basePrice: newRoomPrice,
+      singleOccupancyBase: singleOccupancyBase,
+      doubleOccupancyAdjustment: doubleAdj,
+      tripleOccupancyAdjustment: tripleAdj,
     });
   };
 
@@ -1005,6 +1018,58 @@ function RoomsSection({
                     />
                   </div>
                 </div>
+                
+                <div className="border rounded-lg p-4 space-y-4 bg-muted/20">
+                  <div className="flex items-center gap-2">
+                    <Label className="text-sm font-medium">Occupancy-Based Pricing</Label>
+                    <Badge variant="secondary" className="text-xs">Optional</Badge>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Set extra charges when guest count exceeds the base occupancy. Base price applies for single occupancy.
+                  </p>
+                  <div className="grid gap-4 md:grid-cols-3">
+                    <div className="space-y-2">
+                      <Label className="text-xs">Single Occupancy (Base)</Label>
+                      <div className="flex items-center gap-2">
+                        <Input
+                          type="number"
+                          min="1"
+                          max="3"
+                          value={newSingleOccupancyBase}
+                          onChange={(e) => setNewSingleOccupancyBase(e.target.value)}
+                          className="w-20"
+                          data-testid="input-new-room-single-occupancy"
+                        />
+                        <span className="text-xs text-muted-foreground">guest(s) at base price</span>
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs">Double Occupancy (+₹)</Label>
+                      <Input
+                        type="number"
+                        min="0"
+                        value={newDoubleOccupancyAdjustment}
+                        onChange={(e) => setNewDoubleOccupancyAdjustment(e.target.value)}
+                        placeholder="e.g., 500"
+                        data-testid="input-new-room-double-occupancy"
+                      />
+                      <p className="text-xs text-muted-foreground">Extra per night for 2 guests</p>
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs">Triple Occupancy (+₹)</Label>
+                      <Input
+                        type="number"
+                        min="0"
+                        value={newTripleOccupancyAdjustment}
+                        onChange={(e) => setNewTripleOccupancyAdjustment(e.target.value)}
+                        placeholder="e.g., 1000"
+                        data-testid="input-new-room-triple-occupancy"
+                      />
+                      <p className="text-xs text-muted-foreground">Extra per night for 3+ guests</p>
+                    </div>
+                  </div>
+                </div>
+
                 <p className="text-sm text-muted-foreground">
                   Default meal options (Room Only, Breakfast, Half Board, Full Board) will be added automatically. You can customize them after adding the room.
                 </p>
