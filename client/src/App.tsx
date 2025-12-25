@@ -21,7 +21,6 @@ function ScrollToTop() {
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import Landing from "@/pages/landing";
-import Home from "@/pages/home";
 import Search from "@/pages/search";
 import SearchHistoryPage from "@/pages/search-history";
 import PropertyDetails from "@/pages/property-details";
@@ -55,19 +54,10 @@ import OwnerSettings from "@/pages/owner-settings";
 import OwnerKyc from "@/pages/owner-kyc";
 import ChooseListingMode from "@/pages/choose-listing-mode";
 
-// Component wrappers to handle auth-required routes
-function AuthenticatedHome() {
-  const { isAuthenticated, isLoading } = useAuth();
-  if (isLoading) return null;
-  return isAuthenticated ? <Home /> : <Landing />;
-}
-
 function Router() {
-  const { isAuthenticated, isLoading } = useAuth();
-
   return (
     <Switch>
-      <Route path="/" component={AuthenticatedHome} />
+      <Route path="/" component={Landing} />
       <Route path="/my-bookings" component={MyBookings} />
       <Route path="/owner/dashboard" component={OwnerDashboard} />
       <Route path="/owner/bookings" component={OwnerBookings} />
