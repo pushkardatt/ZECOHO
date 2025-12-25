@@ -1,0 +1,91 @@
+@replit
+
+CONTEXT:
+Booking confirmation emails currently redirect users to a URL that shows "Not Found".
+This happens when users click the email link while logged out or when the route does not exist or is not handled on page refresh.
+
+GOAL:
+Ensure ALL booking confirmation email links always land users on a valid Zecoho page and NEVER show "Not Found".
+
+--------------------------------
+TASKS (DO ALL)
+--------------------------------
+
+1. EMAIL TEMPLATE FIX (CRITICAL)
+Update booking confirmation email templates (customer side):
+
+- Replace any booking-specific deep link like:
+  /booking/:id
+  /bookings/:id
+  /messages/:bookingId
+
+- With this SAFE LINK ONLY:
+  {{BASE_URL}}/my-bookings
+
+This ensures the link always exists.
+
+--------------------------------
+
+2. FRONTEND ROUTE CONFIRMATION
+Ensure the following route exists in the frontend router:
+  /my-bookings
+
+If missing, add it and map it to the user's booking list page.
+
+--------------------------------
+
+3. AUTH REDIRECT HANDLING
+On /my-bookings page load:
+
+- If user is NOT logged in:
+  Redirect to:
+    /login?redirect=/my-bookings
+
+- After successful login:
+  Automatically redirect back to /my-bookings
+
+--------------------------------
+
+4. SPA REFRESH FIX (VERY IMPORTANT)
+Ensure the backend serves index.html for ALL frontend routes
+to prevent 404 errors on direct URL access.
+
+Add a catch-all route AFTER all API routes:
+
+(Node / Express example)
+
+app.get("*", (req, res) => {
+  res.sendFile(path.join(__dirname, "dist/index.html"));
+});
+
+This ensures:
+- Email clicks
+- Page refresh
+- Direct URL access
+never return "Not Found".
+
+--------------------------------
+
+5. FAILSAFE BOOKING HANDLING
+If booking data fails to load on /my-bookings:
+- Do NOT show "Not Found"
+- Show booking list page with a message:
+  "Your booking is available in the list below."
+
+--------------------------------
+
+RULES (DO NOT BREAK THESE)
+--------------------------------
+- Do NOT add new routes like /booking/:id in email links
+- Do NOT expose internal booking IDs in URLs
+- Do NOT change booking logic or payment logic
+- Do NOT add new redirects except login redirect
+
+--------------------------------
+
+SUCCESS CRITERIA
+--------------------------------
+- Clicking booking confirmation email ALWAYS opens Zecoho
+- Logged-out users are redirected to login, then back to bookings
+- No "Not Found" page is shown for email links
+- Works on mobile, desktop, and incognito mode

@@ -69,7 +69,6 @@ function Router() {
           <Route path="/wishlist" component={Wishlist} />
           <Route path="/search-history" component={SearchHistoryPage} />
           <Route path="/messages" component={Messages} />
-          <Route path="/my-bookings" component={MyBookings} />
           <Route path="/owner/properties" component={OwnerProperties} />
           <Route path="/owner/properties/new" component={AddProperty} />
           <Route path="/owner/properties/:id/edit" component={OwnerPropertyManage} />
@@ -79,6 +78,7 @@ function Router() {
           <Route path="/profile" component={Profile} />
         </>
       )}
+      <Route path="/my-bookings" component={MyBookings} />
       <Route path="/owner/dashboard" component={OwnerDashboard} />
       <Route path="/owner/bookings" component={OwnerBookings} />
       <Route path="/owner/messages" component={OwnerMessagesPage} />

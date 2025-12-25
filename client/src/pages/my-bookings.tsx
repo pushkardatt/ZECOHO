@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -18,8 +19,10 @@ import {
   ChevronLeft,
   AlertTriangle,
   Link2,
+  AlertCircle,
 } from "lucide-react";
 import { Link } from "wouter";
+import { useAuth } from "@/hooks/useAuth";
 
 interface Booking {
   id: string;
@@ -49,9 +52,19 @@ interface Booking {
 
 export default function MyBookings() {
   const [activeTab, setActiveTab] = useState("all");
+  const [, setLocation] = useLocation();
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
 
-  const { data: bookings, isLoading } = useQuery<Booking[]>({
+  // Redirect to login if not authenticated
+  useEffect(() => {
+    if (!authLoading && !isAuthenticated) {
+      setLocation("/login?returnTo=/my-bookings");
+    }
+  }, [authLoading, isAuthenticated, setLocation]);
+
+  const { data: bookings, isLoading, isError, error } = useQuery<Booking[]>({
     queryKey: ["/api/bookings"],
+    enabled: isAuthenticated && !authLoading, // Only fetch when authenticated
   });
 
   const formatCurrency = (amount: string) => {
@@ -264,6 +277,29 @@ export default function MyBookings() {
     </Card>
   );
 
+  // Show loading state while checking authentication
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-background">
+        <div className="container mx-auto px-4 py-8 max-w-4xl">
+          <div className="flex items-center gap-4 mb-6">
+            <Skeleton className="h-10 w-10 rounded" />
+            <Skeleton className="h-10 w-48" />
+          </div>
+          <div className="space-y-4">
+            <Skeleton className="h-48 w-full" />
+            <Skeleton className="h-48 w-full" />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // If not authenticated, don't render content (redirect will happen via useEffect)
+  if (!isAuthenticated) {
+    return null;
+  }
+
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto px-4 py-8 max-w-4xl">
@@ -275,6 +311,18 @@ export default function MyBookings() {
           </Link>
           <h1 className="text-3xl font-semibold">My Bookings</h1>
         </div>
+
+        {/* Show error message with failsafe - never show "Not Found" */}
+        {isError && (
+          <Card className="mb-6">
+            <CardContent className="flex items-center gap-3 py-4">
+              <AlertCircle className="h-5 w-5 text-amber-500" />
+              <p className="text-muted-foreground">
+                Unable to load booking details. Your bookings are available in the list below.
+              </p>
+            </CardContent>
+          </Card>
+        )}
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="grid w-full grid-cols-3" data-testid="booking-tabs">
