@@ -873,8 +873,18 @@ export default function ListPropertyWizard() {
         throw new Error("Please upload at least one property image");
       }
 
-      // Calculate fallback pricing from room types if no base price set
-      const basePrice = data.pricePerNight || (wizardRoomTypes.length > 0 ? wizardRoomTypes[0].basePrice : 1000);
+      // Calculate pricing: Use room type's minimum price if room types exist, otherwise use form price
+      // Only use default 1000 if user hasn't entered any price anywhere
+      let basePrice: number;
+      if (wizardRoomTypes.length > 0) {
+        // Use the minimum room type base price
+        basePrice = Math.min(...wizardRoomTypes.map(rt => rt.basePrice));
+      } else if (data.pricePerNight && data.pricePerNight >= 100) {
+        // Use user-entered price
+        basePrice = data.pricePerNight;
+      } else {
+        basePrice = 1000; // Fallback default
+      }
       const maxGuests = data.maxGuests || (wizardRoomTypes.length > 0 ? Math.max(...wizardRoomTypes.map(rt => rt.maxGuests)) : 2);
 
       // Submit combined KYC + Property
