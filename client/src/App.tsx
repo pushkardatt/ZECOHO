@@ -55,39 +55,39 @@ import OwnerSettings from "@/pages/owner-settings";
 import OwnerKyc from "@/pages/owner-kyc";
 import ChooseListingMode from "@/pages/choose-listing-mode";
 
+// Component wrappers to handle auth-required routes
+function AuthenticatedHome() {
+  const { isAuthenticated, isLoading } = useAuth();
+  if (isLoading) return null;
+  return isAuthenticated ? <Home /> : <Landing />;
+}
+
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
 
   return (
     <Switch>
-      {(!isAuthenticated || isLoading) && (
-        <Route path="/" component={Landing} />
-      )}
-      {isAuthenticated && !isLoading && (
-        <>
-          <Route path="/" component={Home} />
-          <Route path="/wishlist" component={Wishlist} />
-          <Route path="/search-history" component={SearchHistoryPage} />
-          <Route path="/messages" component={Messages} />
-          <Route path="/owner/properties" component={OwnerProperties} />
-          <Route path="/owner/properties/new" component={AddProperty} />
-          <Route path="/owner/properties/:id/edit" component={OwnerPropertyManage} />
-          <Route path="/admin/destinations" component={AdminDestinations} />
-          <Route path="/admin/properties" component={AdminProperties} />
-          <Route path="/admin/kyc" component={AdminKYC} />
-          <Route path="/profile" component={Profile} />
-        </>
-      )}
+      <Route path="/" component={AuthenticatedHome} />
       <Route path="/my-bookings" component={MyBookings} />
       <Route path="/owner/dashboard" component={OwnerDashboard} />
       <Route path="/owner/bookings" component={OwnerBookings} />
       <Route path="/owner/messages" component={OwnerMessagesPage} />
       <Route path="/owner/property" component={OwnerProperty} />
+      <Route path="/owner/properties" component={OwnerProperties} />
+      <Route path="/owner/properties/new" component={AddProperty} />
+      <Route path="/owner/properties/:id/edit" component={OwnerPropertyManage} />
       <Route path="/owner/earnings" component={OwnerEarnings} />
       <Route path="/owner/reviews" component={OwnerReviews} />
       <Route path="/owner/settings" component={OwnerSettings} />
       <Route path="/owner/kyc" component={OwnerKyc} />
       <Route path="/owner/choose-mode" component={ChooseListingMode} />
+      <Route path="/wishlist" component={Wishlist} />
+      <Route path="/search-history" component={SearchHistoryPage} />
+      <Route path="/messages" component={Messages} />
+      <Route path="/profile" component={Profile} />
+      <Route path="/admin/destinations" component={AdminDestinations} />
+      <Route path="/admin/properties" component={AdminProperties} />
+      <Route path="/admin/kyc" component={AdminKYC} />
       <Route path="/login" component={Login} />
       <Route path="/register" component={Register} />
       <Route path="/forgot-password" component={ForgotPassword} />
@@ -112,7 +112,9 @@ function AppContent() {
   const { isAuthenticated, isLoading } = useAuth();
   const [location] = useLocation();
 
-  const showHeader = location !== "/" || (isAuthenticated && !isLoading);
+  // Show header on all pages except landing page when not authenticated
+  const isLandingPage = location === "/" && !isAuthenticated && !isLoading;
+  const showHeader = !isLandingPage;
 
   return (
     <KycRouteGuard>
