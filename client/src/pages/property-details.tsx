@@ -247,6 +247,20 @@ export default function PropertyDetails() {
     enabled: !!propertyId,
   });
 
+  // Initialize room selection when roomTypes are loaded
+  useEffect(() => {
+    if (roomTypes.length > 0 && !selectedRoomTypeId) {
+      const activeRoomTypes = roomTypes.filter((rt: any) => rt.isActive);
+      if (activeRoomTypes.length > 0) {
+        const firstRoomType = activeRoomTypes[0];
+        setSelectedRoomTypeId(firstRoomType.id);
+        // Set first active meal option as default
+        const activeOptions = firstRoomType.mealOptions?.filter((opt: any) => opt.isActive !== false) || [];
+        setSelectedMealOptionId(activeOptions.length > 0 ? activeOptions[0].id : null);
+      }
+    }
+  }, [roomTypes, selectedRoomTypeId]);
+
   const { data: userBookings = [] } = useQuery<any[]>({
     queryKey: ["/api/bookings"],
     enabled: user?.userRole === "guest",
@@ -935,6 +949,168 @@ export default function PropertyDetails() {
               )}
             </div>
 
+            {/* OTA-Style Room Selection Table */}
+            {roomTypes.length > 0 && (
+              <div id="rooms-section">
+                <h2 className="text-xl font-semibold mb-6">Select Your Room</h2>
+                <div className="border rounded-xl overflow-hidden">
+                  {/* Table Header */}
+                  <div className="hidden md:grid grid-cols-12 bg-muted/50 p-4 text-sm font-medium text-muted-foreground border-b">
+                    <div className="col-span-4">Room type</div>
+                    <div className="col-span-5">Room options</div>
+                    <div className="col-span-3">Today's price</div>
+                  </div>
+                  
+                  {/* Room Type Rows */}
+                  {roomTypes.filter((rt: any) => rt.isActive).map((roomType: any, roomIndex: number) => {
+                    const roomImage = roomType.images?.[0] || property.images?.[0] || "/placeholder-room.jpg";
+                    const availableRooms = roomType.totalRooms || 1;
+                    const mealOptions = roomType.mealOptions || [];
+                    
+                    // Use actual meal options from database (auto-created during room type creation)
+                    const activeOptions = mealOptions.filter((opt: any) => opt.isActive !== false);
+                    
+                    // Fallback: if no meal options exist, show a default room-only option
+                    // Use null for ID (booking submission will not include roomOptionId) but stable key for React
+                    const allOptions = activeOptions.length > 0 
+                      ? activeOptions 
+                      : [{ id: null, key: `${roomType.id}-fallback`, name: "Room only", inclusions: "Room accommodation only", priceAdjustment: "0", refundable: true }];
+                    
+                    return (
+                      <div key={roomType.id} className={`${roomIndex > 0 ? 'border-t' : ''}`} data-testid={`room-row-${roomType.id}`}>
+                        <div className="grid grid-cols-1 md:grid-cols-12">
+                          {/* Room Type Column - spans all option rows */}
+                          <div className="md:col-span-4 p-4 md:border-r bg-background">
+                            <div className="flex flex-col gap-3">
+                              <div className="flex items-start justify-between gap-2">
+                                <div>
+                                  <h3 className="font-semibold text-lg">{roomType.name}</h3>
+                                  <p className="text-sm text-muted-foreground">{roomType.maxGuests} guests</p>
+                                </div>
+                                {availableRooms <= 5 && (
+                                  <Badge variant="destructive" className="whitespace-nowrap text-xs">
+                                    {availableRooms} rooms left, hurry!
+                                  </Badge>
+                                )}
+                              </div>
+                              
+                              {/* Room Image */}
+                              <div className="relative aspect-video rounded-lg overflow-hidden">
+                                <img 
+                                  src={roomImage} 
+                                  alt={roomType.name}
+                                  className="w-full h-full object-cover"
+                                />
+                                {roomType.images?.length > 1 && (
+                                  <div className="absolute bottom-2 right-2 bg-black/60 text-white text-xs px-2 py-1 rounded">
+                                    +{roomType.images.length - 1}
+                                  </div>
+                                )}
+                              </div>
+                              
+                              {/* Room Features */}
+                              <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+                                <span className="flex items-center gap-1">
+                                  <Users className="h-3.5 w-3.5" />
+                                  {roomType.maxGuests} guests
+                                </span>
+                                <span className="flex items-center gap-1">
+                                  <Bed className="h-3.5 w-3.5" />
+                                  Double bed
+                                </span>
+                              </div>
+                              
+                              {roomType.description && (
+                                <p className="text-xs text-muted-foreground line-clamp-2">{roomType.description}</p>
+                              )}
+                            </div>
+                          </div>
+                          
+                          {/* Options & Pricing Column */}
+                          <div className="md:col-span-8">
+                            {allOptions.map((option: any, optionIndex: number) => {
+                              const basePrice = Number(roomType.basePrice);
+                              const adjustment = Number(option.priceAdjustment || 0);
+                              const totalPerNight = basePrice + adjustment;
+                              const gstRate = 0.12;
+                              const gstAmount = Math.round(totalPerNight * gstRate);
+                              const isRecommended = roomIndex === 0 && optionIndex === 0;
+                              const isSelected = selectedRoomTypeId === roomType.id && selectedMealOptionId === option.id;
+                              
+                              return (
+                                <div 
+                                  key={option.key || option.id || 'room-only'}
+                                  className={`grid grid-cols-1 md:grid-cols-8 ${optionIndex > 0 ? 'border-t' : ''} ${isSelected ? 'bg-primary/5' : ''}`}
+                                  data-testid={`option-row-${roomType.id}-${option.id || 'room-only'}`}
+                                >
+                                  {/* Option Details */}
+                                  <div className="md:col-span-5 p-4 md:border-r">
+                                    <div className="space-y-1">
+                                      <h4 className="font-medium">{option.name}</h4>
+                                      <ul className="text-sm text-muted-foreground space-y-0.5">
+                                        <li className="flex items-center gap-1">
+                                          <span className="text-muted-foreground">•</span>
+                                          {option.refundable === true ? "Refundable" : option.refundable === false ? "Non refundable" : "Refundable"}
+                                        </li>
+                                        <li className="flex items-center gap-1">
+                                          <span className="text-muted-foreground">•</span>
+                                          {option.inclusions || "No meals"}
+                                        </li>
+                                      </ul>
+                                    </div>
+                                  </div>
+                                  
+                                  {/* Pricing & Select */}
+                                  <div className="md:col-span-3 p-4 flex flex-col justify-between gap-3">
+                                    <div className="space-y-1">
+                                      <div className="flex items-center gap-2 flex-wrap">
+                                        {adjustment > 0 && (
+                                          <span className="text-sm text-muted-foreground line-through">
+                                            ₹{Math.round(totalPerNight * 1.15).toLocaleString('en-IN')}
+                                          </span>
+                                        )}
+                                        {isRecommended && (
+                                          <Badge className="bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 border-0 text-xs">
+                                            Recommended
+                                          </Badge>
+                                        )}
+                                      </div>
+                                      <div className="flex items-baseline gap-1 flex-wrap">
+                                        <span className="text-xl font-bold">₹{totalPerNight.toLocaleString('en-IN')}</span>
+                                        <span className="text-sm text-muted-foreground">+ ₹{gstAmount} GST</span>
+                                      </div>
+                                      <p className="text-xs text-muted-foreground">Per night for 1 room</p>
+                                    </div>
+                                    <Button
+                                      variant={isSelected ? "default" : "outline"}
+                                      size="sm"
+                                      onClick={() => {
+                                        setSelectedRoomTypeId(roomType.id);
+                                        setSelectedMealOptionId(option.id);
+                                        // Scroll to booking section
+                                        const bookingSection = document.getElementById('booking-section');
+                                        if (bookingSection) {
+                                          bookingSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                                        }
+                                      }}
+                                      className="w-full"
+                                      data-testid={`select-room-${roomType.id}-${option.id || 'room-only'}`}
+                                    >
+                                      {isSelected ? "Selected" : "Select room"}
+                                    </Button>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
             {/* Location Map */}
             {property.latitude && property.longitude && (
               <div>
@@ -1266,7 +1442,7 @@ export default function PropertyDetails() {
           </div>
 
           {/* Booking Card */}
-          <div className="md:sticky md:top-24 h-fit">
+          <div id="booking-section" className="md:sticky md:top-24 h-fit">
             <Card>
               <CardContent className="p-6">
                 <div className="mb-6">
@@ -1582,7 +1758,9 @@ export default function PropertyDetails() {
                             }`}
                             onClick={() => {
                               setSelectedRoomTypeId(roomType.id);
-                              setSelectedMealOptionId(null);
+                              // Set first active meal option as default (typically "Room Only")
+                              const activeOptions = roomType.mealOptions?.filter((opt: any) => opt.isActive !== false) || [];
+                              setSelectedMealOptionId(activeOptions.length > 0 ? activeOptions[0].id : null);
                             }}
                             data-testid={`card-room-type-${roomType.id}`}
                           >
@@ -1615,57 +1793,47 @@ export default function PropertyDetails() {
                             </div>
                             
                             {/* Meal Options for selected room type */}
-                            {selectedRoomTypeId === roomType.id && roomType.mealOptions && roomType.mealOptions.length > 0 && (
-                              <div className="mt-3 pt-3 border-t space-y-2">
-                                <p className="text-sm font-medium text-muted-foreground">Meal Options</p>
-                                <div className="space-y-2">
-                                  <div
-                                    className={`p-2 rounded border cursor-pointer text-sm transition-all ${
-                                      selectedMealOptionId === null
-                                        ? "border-primary bg-primary/5"
-                                        : "border-border hover-elevate"
-                                    }`}
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setSelectedMealOptionId(null);
-                                    }}
-                                    data-testid="option-no-meal"
-                                  >
-                                    <div className="flex justify-between items-center">
-                                      <span>Room only (no meals)</span>
-                                      <span className="text-muted-foreground">Included</span>
-                                    </div>
-                                  </div>
-                                  {roomType.mealOptions.map((option: any) => (
-                                    <div
-                                      key={option.id}
-                                      className={`p-2 rounded border cursor-pointer text-sm transition-all ${
-                                        selectedMealOptionId === option.id
-                                          ? "border-primary bg-primary/5"
-                                          : "border-border hover-elevate"
-                                      }`}
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        setSelectedMealOptionId(option.id);
-                                      }}
-                                      data-testid={`option-meal-${option.id}`}
-                                    >
-                                      <div className="flex justify-between items-center">
-                                        <div>
-                                          <span className="font-medium">{option.name}</span>
-                                          {option.description && (
-                                            <p className="text-xs text-muted-foreground">{option.description}</p>
-                                          )}
+                            {selectedRoomTypeId === roomType.id && (() => {
+                              const activeOptions = roomType.mealOptions?.filter((opt: any) => opt.isActive !== false) || [];
+                              const displayOptions = activeOptions.length > 0 
+                                ? activeOptions 
+                                : [{ id: null, name: "Room only", inclusions: "Room accommodation only", priceAdjustment: "0" }];
+                              
+                              return (
+                                <div className="mt-3 pt-3 border-t space-y-2">
+                                  <p className="text-sm font-medium text-muted-foreground">Meal Options</p>
+                                  <div className="space-y-2">
+                                    {displayOptions.map((option: any) => (
+                                      <div
+                                        key={option.id || 'room-only-fallback'}
+                                        className={`p-2 rounded border cursor-pointer text-sm transition-all ${
+                                          selectedMealOptionId === option.id
+                                            ? "border-primary bg-primary/5"
+                                            : "border-border hover-elevate"
+                                        }`}
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setSelectedMealOptionId(option.id);
+                                        }}
+                                        data-testid={`option-meal-${option.id || 'fallback'}`}
+                                      >
+                                        <div className="flex justify-between items-center">
+                                          <div>
+                                            <span className="font-medium">{option.name}</span>
+                                            {option.inclusions && (
+                                              <p className="text-xs text-muted-foreground">{option.inclusions}</p>
+                                            )}
+                                          </div>
+                                          <span className="text-primary font-medium">
+                                            {Number(option.priceAdjustment) > 0 ? `+₹${Number(option.priceAdjustment).toLocaleString('en-IN')}` : 'Included'}
+                                          </span>
                                         </div>
-                                        <span className="text-primary font-medium">
-                                          +₹{Number(option.priceAdjustment).toLocaleString('en-IN')}
-                                        </span>
                                       </div>
-                                    </div>
-                                  ))}
+                                    ))}
+                                  </div>
                                 </div>
-                              </div>
-                            )}
+                              );
+                            })()}
                           </div>
                         ))}
                       </div>
