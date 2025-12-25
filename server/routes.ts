@@ -2576,18 +2576,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Calculate total price server-side (don't trust client)
-      // Price = (roomBasePrice + mealOptionPrice) × nights × rooms
+      // Price = (roomBasePrice + occupancyAdjustment + mealOptionPrice) × nights × rooms
       const nights = Math.ceil((checkOut.getTime() - checkIn.getTime()) / (1000 * 60 * 60 * 24));
       const roomsCount = validatedData.rooms || 1;
+      const guestCount = validatedData.guests || 1;
       
       let basePrice = Number(property.pricePerNight);
       let mealPrice = 0;
+      let occupancyAdjustment = 0;
       
       // If room type is selected, use room type pricing
       if (validatedData.roomTypeId) {
         const roomType = await storage.getRoomType(validatedData.roomTypeId);
         if (roomType) {
           basePrice = Number(roomType.basePrice);
+          
+          // Calculate occupancy-based pricing adjustment
+          // singleOccupancyBase defines how many guests are included in the base price
+          // Adjustments apply when guest count exceeds this base
+          const singleOccupancyBase = roomType.singleOccupancyBase || 1;
+          const guestsOverBase = guestCount - singleOccupancyBase;
+          
+          if (guestsOverBase >= 2 && roomType.tripleOccupancyAdjustment) {
+            // Triple occupancy: 2+ guests over base (e.g., base=1, guests=3+)
+            occupancyAdjustment = Number(roomType.tripleOccupancyAdjustment);
+          } else if (guestsOverBase >= 1 && roomType.doubleOccupancyAdjustment) {
+            // Double occupancy: 1 guest over base (e.g., base=1, guests=2)
+            occupancyAdjustment = Number(roomType.doubleOccupancyAdjustment);
+          }
+          // No adjustment when guestCount <= singleOccupancyBase
           
           // If meal option is selected, add meal option price
           if (validatedData.roomOptionId) {
@@ -2599,7 +2616,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
-      const totalPrice = nights * (basePrice + mealPrice) * roomsCount;
+      const totalPrice = nights * (basePrice + occupancyAdjustment + mealPrice) * roomsCount;
       
       const booking = await storage.createBooking({
         ...validatedData,
@@ -4072,15 +4089,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Calculate extension price using room type pricing from original booking
       const nights = Math.ceil((extensionCheckOut.getTime() - extensionCheckIn.getTime()) / (1000 * 60 * 60 * 24));
       const roomsCount = rooms || parentBooking.rooms || 1;
+      const guestCount = parentBooking.guests || 1;
       
       let basePrice = Number(property.pricePerNight);
       let mealPrice = 0;
+      let occupancyAdjustment = 0;
       
       // Use same room type and meal option pricing from parent booking
       if (parentBooking.roomTypeId) {
         const roomType = await storage.getRoomType(parentBooking.roomTypeId);
         if (roomType) {
           basePrice = Number(roomType.basePrice);
+          
+          // Calculate occupancy-based pricing adjustment
+          // singleOccupancyBase defines how many guests are included in the base price
+          const singleOccupancyBase = roomType.singleOccupancyBase || 1;
+          const guestsOverBase = guestCount - singleOccupancyBase;
+          
+          if (guestsOverBase >= 2 && roomType.tripleOccupancyAdjustment) {
+            // Triple occupancy: 2+ guests over base
+            occupancyAdjustment = Number(roomType.tripleOccupancyAdjustment);
+          } else if (guestsOverBase >= 1 && roomType.doubleOccupancyAdjustment) {
+            // Double occupancy: 1 guest over base
+            occupancyAdjustment = Number(roomType.doubleOccupancyAdjustment);
+          }
+          // No adjustment when guestCount <= singleOccupancyBase
           
           if (parentBooking.roomOptionId) {
             const mealOption = await storage.getRoomOption(parentBooking.roomOptionId);
@@ -4091,7 +4124,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
-      const totalPrice = nights * (basePrice + mealPrice) * roomsCount;
+      const totalPrice = nights * (basePrice + occupancyAdjustment + mealPrice) * roomsCount;
 
       // Create extension booking (payment at hotel)
       const extensionBooking = await storage.createBooking({

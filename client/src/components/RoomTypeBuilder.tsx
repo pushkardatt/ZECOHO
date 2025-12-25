@@ -13,6 +13,9 @@ export interface WizardRoomType {
   name: string;
   description?: string;
   basePrice: number;
+  singleOccupancyBase?: number; // Number of guests included in base price (default 1)
+  doubleOccupancyAdjustment?: number; // Extra charge for 2 guests
+  tripleOccupancyAdjustment?: number; // Extra charge for 3+ guests
   maxGuests: number;
   totalRooms: number;
   mealOptions: WizardMealOption[];
@@ -50,6 +53,9 @@ export function RoomTypeBuilder({ value, onChange, propertyType }: RoomTypeBuild
   const [newRoomPrice, setNewRoomPrice] = useState("");
   const [newRoomMaxGuests, setNewRoomMaxGuests] = useState("2");
   const [newRoomTotalRooms, setNewRoomTotalRooms] = useState("1");
+  const [newSingleOccupancyBase, setNewSingleOccupancyBase] = useState("1");
+  const [newDoubleOccupancyAdjustment, setNewDoubleOccupancyAdjustment] = useState("");
+  const [newTripleOccupancyAdjustment, setNewTripleOccupancyAdjustment] = useState("");
 
   const resetForm = () => {
     setNewRoomName("");
@@ -57,12 +63,18 @@ export function RoomTypeBuilder({ value, onChange, propertyType }: RoomTypeBuild
     setNewRoomPrice("");
     setNewRoomMaxGuests("2");
     setNewRoomTotalRooms("1");
+    setNewSingleOccupancyBase("1");
+    setNewDoubleOccupancyAdjustment("");
+    setNewTripleOccupancyAdjustment("");
   };
 
   const handleAddRoom = () => {
     const price = parseFloat(newRoomPrice);
     const maxGuests = parseInt(newRoomMaxGuests);
     const totalRooms = parseInt(newRoomTotalRooms);
+    const singleOccupancyBase = parseInt(newSingleOccupancyBase) || 1;
+    const doubleAdj = newDoubleOccupancyAdjustment ? parseFloat(newDoubleOccupancyAdjustment) : undefined;
+    const tripleAdj = newTripleOccupancyAdjustment ? parseFloat(newTripleOccupancyAdjustment) : undefined;
     
     if (!newRoomName || !newRoomPrice || isNaN(price) || price < 100) return;
     if (isNaN(maxGuests) || maxGuests < 1) return;
@@ -73,6 +85,9 @@ export function RoomTypeBuilder({ value, onChange, propertyType }: RoomTypeBuild
       name: newRoomName,
       description: newRoomDescription || undefined,
       basePrice: price,
+      singleOccupancyBase: singleOccupancyBase,
+      doubleOccupancyAdjustment: doubleAdj,
+      tripleOccupancyAdjustment: tripleAdj,
       maxGuests: maxGuests,
       totalRooms: totalRooms,
       mealOptions: DEFAULT_MEAL_OPTIONS.map(opt => ({ ...opt, id: generateId() })),
@@ -220,6 +235,58 @@ export function RoomTypeBuilder({ value, onChange, propertyType }: RoomTypeBuild
                   />
                 </div>
               </div>
+              
+              <div className="border rounded-lg p-4 space-y-4 bg-muted/20">
+                <div className="flex items-center gap-2">
+                  <Label className="text-sm font-medium">Occupancy-Based Pricing</Label>
+                  <Badge variant="secondary" className="text-xs">Optional</Badge>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Set extra charges when guest count exceeds the base occupancy. Base price applies for single occupancy.
+                </p>
+                <div className="grid gap-4 md:grid-cols-3">
+                  <div className="space-y-2">
+                    <Label className="text-xs">Single Occupancy (Base)</Label>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        type="number"
+                        min="1"
+                        max="3"
+                        value={newSingleOccupancyBase}
+                        onChange={(e) => setNewSingleOccupancyBase(e.target.value)}
+                        className="w-20"
+                        data-testid="input-new-room-single-occupancy"
+                      />
+                      <span className="text-xs text-muted-foreground">guest(s) at base price</span>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-xs">Double Occupancy (+₹)</Label>
+                    <Input
+                      type="number"
+                      min="0"
+                      value={newDoubleOccupancyAdjustment}
+                      onChange={(e) => setNewDoubleOccupancyAdjustment(e.target.value)}
+                      placeholder="e.g., 500"
+                      data-testid="input-new-room-double-occupancy"
+                    />
+                    <p className="text-xs text-muted-foreground">Extra per night for 2 guests</p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-xs">Triple Occupancy (+₹)</Label>
+                    <Input
+                      type="number"
+                      min="0"
+                      value={newTripleOccupancyAdjustment}
+                      onChange={(e) => setNewTripleOccupancyAdjustment(e.target.value)}
+                      placeholder="e.g., 1000"
+                      data-testid="input-new-room-triple-occupancy"
+                    />
+                    <p className="text-xs text-muted-foreground">Extra per night for 3+ guests</p>
+                  </div>
+                </div>
+              </div>
+              
               <p className="text-sm text-muted-foreground">
                 Default meal options (Room Only, Breakfast, Half Board, Full Board) will be added automatically. You can customize them after adding the room.
               </p>
@@ -311,11 +378,17 @@ function RoomTypeCard({
   const [editPrice, setEditPrice] = useState(String(room.basePrice));
   const [editMaxGuests, setEditMaxGuests] = useState(String(room.maxGuests));
   const [editTotalRooms, setEditTotalRooms] = useState(String(room.totalRooms));
+  const [editSingleOccupancyBase, setEditSingleOccupancyBase] = useState(String(room.singleOccupancyBase || 1));
+  const [editDoubleOccupancy, setEditDoubleOccupancy] = useState(room.doubleOccupancyAdjustment !== undefined ? String(room.doubleOccupancyAdjustment) : "");
+  const [editTripleOccupancy, setEditTripleOccupancy] = useState(room.tripleOccupancyAdjustment !== undefined ? String(room.tripleOccupancyAdjustment) : "");
 
   const handleSave = () => {
     const price = parseFloat(editPrice);
     const maxGuests = parseInt(editMaxGuests);
     const totalRooms = parseInt(editTotalRooms);
+    const singleOccupancyBase = parseInt(editSingleOccupancyBase) || 1;
+    const doubleAdj = editDoubleOccupancy ? parseFloat(editDoubleOccupancy) : undefined;
+    const tripleAdj = editTripleOccupancy ? parseFloat(editTripleOccupancy) : undefined;
     
     if (isNaN(price) || price < 100) return;
     if (isNaN(maxGuests) || maxGuests < 1) return;
@@ -327,6 +400,9 @@ function RoomTypeCard({
       basePrice: price,
       maxGuests: maxGuests,
       totalRooms: totalRooms,
+      singleOccupancyBase: singleOccupancyBase,
+      doubleOccupancyAdjustment: doubleAdj,
+      tripleOccupancyAdjustment: tripleAdj,
     });
   };
 
@@ -336,6 +412,9 @@ function RoomTypeCard({
     setEditPrice(String(room.basePrice));
     setEditMaxGuests(String(room.maxGuests));
     setEditTotalRooms(String(room.totalRooms));
+    setEditSingleOccupancyBase(String(room.singleOccupancyBase || 1));
+    setEditDoubleOccupancy(room.doubleOccupancyAdjustment !== undefined ? String(room.doubleOccupancyAdjustment) : "");
+    setEditTripleOccupancy(room.tripleOccupancyAdjustment !== undefined ? String(room.tripleOccupancyAdjustment) : "");
     onCancelEdit();
   };
 
@@ -439,6 +518,52 @@ function RoomTypeCard({
                   onChange={(e) => setEditTotalRooms(e.target.value)}
                   data-testid={`edit-room-total-rooms-${room.id}`}
                 />
+              </div>
+            </div>
+            
+            <div className="border rounded-lg p-3 space-y-3 bg-muted/20">
+              <div className="flex items-center gap-2">
+                <Label className="text-xs font-medium">Occupancy-Based Pricing</Label>
+                <Badge variant="secondary" className="text-xs">Optional</Badge>
+              </div>
+              <div className="grid gap-3 md:grid-cols-3">
+                <div className="space-y-1">
+                  <Label className="text-xs">Single Occupancy (Base)</Label>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      type="number"
+                      min="1"
+                      max="3"
+                      value={editSingleOccupancyBase}
+                      onChange={(e) => setEditSingleOccupancyBase(e.target.value)}
+                      className="w-20"
+                      data-testid={`edit-room-single-occupancy-${room.id}`}
+                    />
+                    <span className="text-xs text-muted-foreground">guest(s)</span>
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Double Occupancy (+₹)</Label>
+                  <Input
+                    type="number"
+                    min="0"
+                    value={editDoubleOccupancy}
+                    onChange={(e) => setEditDoubleOccupancy(e.target.value)}
+                    placeholder="0"
+                    data-testid={`edit-room-double-occupancy-${room.id}`}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Triple Occupancy (+₹)</Label>
+                  <Input
+                    type="number"
+                    min="0"
+                    value={editTripleOccupancy}
+                    onChange={(e) => setEditTripleOccupancy(e.target.value)}
+                    placeholder="0"
+                    data-testid={`edit-room-triple-occupancy-${room.id}`}
+                  />
+                </div>
               </div>
             </div>
           </div>

@@ -1099,6 +1099,9 @@ function RoomTypeCard({
   const [editTotalRooms, setEditTotalRooms] = useState(String(room.totalRooms || 1));
   const [editPrice, setEditPrice] = useState(room.basePrice || "");
   const [editActive, setEditActive] = useState(room.isActive ?? true);
+  const [editSingleOccupancyBase, setEditSingleOccupancyBase] = useState(String(room.singleOccupancyBase || 1));
+  const [editDoubleOccupancy, setEditDoubleOccupancy] = useState(room.doubleOccupancyAdjustment || "");
+  const [editTripleOccupancy, setEditTripleOccupancy] = useState(room.tripleOccupancyAdjustment || "");
   
   // Fetch meal plan count for this room
   const { data: mealOptions = [] } = useQuery<RoomOption[]>({
@@ -1113,6 +1116,9 @@ function RoomTypeCard({
       totalRooms: parseInt(editTotalRooms),
       basePrice: editPrice,
       isActive: editActive,
+      singleOccupancyBase: parseInt(editSingleOccupancyBase) || 1,
+      doubleOccupancyAdjustment: editDoubleOccupancy || null,
+      tripleOccupancyAdjustment: editTripleOccupancy || null,
     });
   };
 
@@ -1124,6 +1130,9 @@ function RoomTypeCard({
     setEditTotalRooms(String(room.totalRooms || 1));
     setEditPrice(room.basePrice || "");
     setEditActive(room.isActive ?? true);
+    setEditSingleOccupancyBase(String(room.singleOccupancyBase || 1));
+    setEditDoubleOccupancy(room.doubleOccupancyAdjustment || "");
+    setEditTripleOccupancy(room.tripleOccupancyAdjustment || "");
   };
 
   return (
@@ -1220,7 +1229,7 @@ function RoomTypeCard({
                 />
               </div>
               <div className="space-y-2">
-                <Label>Number of Rooms</Label>
+                <Label>Total Rooms Available</Label>
                 <Input
                   type="number"
                   min="1"
@@ -1230,7 +1239,7 @@ function RoomTypeCard({
                 />
               </div>
               <div className="space-y-2">
-                <Label>Base Price (₹)</Label>
+                <Label>Base Price per Night (₹)</Label>
                 <Input
                   type="number"
                   value={editPrice}
@@ -1249,6 +1258,57 @@ function RoomTypeCard({
                   <span className="text-sm text-muted-foreground">
                     {editActive ? "Accepting bookings" : "Not accepting bookings"}
                   </span>
+                </div>
+              </div>
+            </div>
+            
+            <div className="border rounded-lg p-4 space-y-4 bg-muted/20">
+              <div className="flex items-center gap-2">
+                <Label className="text-sm font-medium">Occupancy-Based Pricing</Label>
+                <Badge variant="secondary" className="text-xs">Optional</Badge>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Set extra charges when guest count exceeds the base occupancy. Base price applies for single occupancy.
+              </p>
+              <div className="grid gap-4 md:grid-cols-3">
+                <div className="space-y-2">
+                  <Label className="text-xs">Single Occupancy (Base)</Label>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      type="number"
+                      min="1"
+                      max="3"
+                      value={editSingleOccupancyBase}
+                      onChange={(e) => setEditSingleOccupancyBase(e.target.value)}
+                      className="w-20"
+                      data-testid={`edit-room-single-occupancy-${room.id}`}
+                    />
+                    <span className="text-xs text-muted-foreground">guest(s) at base price</span>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-xs">Double Occupancy (+₹)</Label>
+                  <Input
+                    type="number"
+                    min="0"
+                    value={editDoubleOccupancy}
+                    onChange={(e) => setEditDoubleOccupancy(e.target.value)}
+                    placeholder="e.g., 500"
+                    data-testid={`edit-room-double-occupancy-${room.id}`}
+                  />
+                  <p className="text-xs text-muted-foreground">Extra per night for 2 guests</p>
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-xs">Triple Occupancy (+₹)</Label>
+                  <Input
+                    type="number"
+                    min="0"
+                    value={editTripleOccupancy}
+                    onChange={(e) => setEditTripleOccupancy(e.target.value)}
+                    placeholder="e.g., 1000"
+                    data-testid={`edit-room-triple-occupancy-${room.id}`}
+                  />
+                  <p className="text-xs text-muted-foreground">Extra per night for 3+ guests</p>
                 </div>
               </div>
             </div>

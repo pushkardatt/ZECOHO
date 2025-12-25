@@ -220,6 +220,10 @@ export const roomTypes = pgTable("room_types", {
   name: varchar("name", { length: 255 }).notNull(),
   description: text("description"),
   basePrice: decimal("base_price", { precision: 10, scale: 2 }).notNull(),
+  // Occupancy-based pricing adjustments (nullable - if not set, basePrice applies to all occupancy levels)
+  singleOccupancyBase: integer("single_occupancy_base").default(1), // Number of guests included in base price
+  doubleOccupancyAdjustment: decimal("double_occupancy_adjustment", { precision: 10, scale: 2 }), // Extra charge per night for 2 guests
+  tripleOccupancyAdjustment: decimal("triple_occupancy_adjustment", { precision: 10, scale: 2 }), // Extra charge per night for 3+ guests
   maxGuests: integer("max_guests").notNull().default(2),
   totalRooms: integer("total_rooms").notNull().default(1),
   images: text("images").array().default(sql`ARRAY[]::text[]`),
@@ -704,6 +708,9 @@ export const insertRoomTypeSchema = createInsertSchema(roomTypes).omit({
   basePrice: z.union([z.string(), z.number()]).pipe(z.coerce.number().min(100)).transform(v => String(v)),
   maxGuests: z.coerce.number().int().min(1).optional(),
   totalRooms: z.coerce.number().int().min(1).optional(),
+  singleOccupancyBase: z.coerce.number().int().min(1).optional(),
+  doubleOccupancyAdjustment: z.union([z.string(), z.number()]).pipe(z.coerce.number().min(0)).transform(v => String(v)).nullable().optional(),
+  tripleOccupancyAdjustment: z.union([z.string(), z.number()]).pipe(z.coerce.number().min(0)).transform(v => String(v)).nullable().optional(),
 });
 
 export const insertRoomOptionSchema = createInsertSchema(roomOptions).omit({
