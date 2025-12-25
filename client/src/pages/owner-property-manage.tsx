@@ -1432,13 +1432,14 @@ function RoomOptionsSection({ roomId }: { roomId: string }) {
             >
               <div className="flex items-center gap-3 flex-wrap">
                 <span className="font-medium">{option.name}</span>
-                {Number(option.priceAdjustment) !== 0 && (
-                  <Badge variant={Number(option.priceAdjustment) > 0 ? "default" : "secondary"}>
-                    {Number(option.priceAdjustment) > 0 ? "+" : ""}₹{option.priceAdjustment}
+                {Number(option.priceAdjustment) === 0 ? (
+                  <Badge variant="secondary" className="bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300">
+                    Included
                   </Badge>
-                )}
-                {option.refundable && (
-                  <Badge variant="outline">Refundable</Badge>
+                ) : (
+                  <Badge className="bg-orange-500 text-white hover:bg-orange-600">
+                    +₹{option.priceAdjustment}
+                  </Badge>
                 )}
                 {option.isActive === false && (
                   <Badge variant="destructive">Inactive</Badge>
@@ -1447,15 +1448,26 @@ function RoomOptionsSection({ roomId }: { roomId: string }) {
                   <span className="text-sm text-muted-foreground">{option.inclusions}</span>
                 )}
               </div>
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => deleteOptionMutation.mutate(option.id)}
-                disabled={deleteOptionMutation.isPending}
-                data-testid={`delete-option-${option.id}`}
-              >
-                <Trash2 className="h-4 w-4 text-destructive" />
-              </Button>
+              <div className="flex items-center gap-1">
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="h-8 w-8"
+                  data-testid={`edit-option-${option.id}`}
+                >
+                  <Edit className="h-4 w-4 text-muted-foreground" />
+                </Button>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="h-8 w-8"
+                  onClick={() => deleteOptionMutation.mutate(option.id)}
+                  disabled={deleteOptionMutation.isPending}
+                  data-testid={`delete-option-${option.id}`}
+                >
+                  <Trash2 className="h-4 w-4 text-muted-foreground" />
+                </Button>
+              </div>
             </div>
           ))}
         </div>
