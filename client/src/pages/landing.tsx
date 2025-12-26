@@ -169,6 +169,100 @@ export default function Landing() {
         </div>
       </div>
 
+      {/* Featured Properties - Enhanced */}
+      <div className="py-16 px-4 md:px-6 bg-muted/20">
+        <div className="container mx-auto">
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-10">
+            <div>
+              <Badge className="mb-3 bg-rose-100 dark:bg-rose-900/30 text-rose-700 dark:text-rose-400 border-0 px-3 py-1">
+                <Star className="h-3 w-3 mr-1 fill-current" />
+                Hand-Picked
+              </Badge>
+              <h2 className="text-3xl md:text-4xl font-bold mb-2" data-testid="text-featured-stays-heading">Featured Stays</h2>
+              <p className="text-muted-foreground text-lg">Curated properties with exceptional value and reviews</p>
+            </div>
+            <Button 
+              variant="outline" 
+              onClick={() => setLocation("/search")}
+              className="group self-start md:self-auto"
+              data-testid="button-view-all-properties"
+            >
+              View All Properties
+              <ChevronRight className="ml-1 h-4 w-4 transition-transform group-hover:translate-x-1" />
+            </Button>
+          </div>
+
+          {propertiesLoading ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              {[...Array(8)].map((_, i) => (
+                <div key={i} className="space-y-3">
+                  <Skeleton className="aspect-[4/3] rounded-2xl" />
+                  <Skeleton className="h-6 w-3/4" />
+                  <Skeleton className="h-4 w-1/2" />
+                </div>
+              ))}
+            </div>
+          ) : featuredProperties.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              {featuredProperties.map((property) => (
+                <PropertyCard
+                  key={property.id}
+                  property={property}
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-16 bg-background rounded-2xl">
+              <Hotel className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
+              <p className="text-lg text-muted-foreground">
+                No properties available yet. Check back soon!
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Explore by Category Section - Enhanced */}
+      <div className="py-16 px-4 md:px-6 bg-background">
+        <div className="container mx-auto">
+          <div className="text-center mb-10">
+            <h2 className="text-3xl md:text-4xl font-bold mb-3">Explore by Category</h2>
+            <p className="text-muted-foreground max-w-2xl mx-auto">Find the perfect stay that matches your style and budget</p>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-4">
+            {categories.map((category, index) => {
+              const gradients = [
+                "from-rose-500 to-pink-600",
+                "from-amber-500 to-orange-600",
+                "from-emerald-500 to-teal-600",
+                "from-blue-500 to-indigo-600",
+                "from-purple-500 to-violet-600",
+                "from-cyan-500 to-blue-600",
+                "from-green-500 to-emerald-600",
+                "from-pink-500 to-rose-600",
+              ];
+              return (
+                <div
+                  key={category.type}
+                  className="group cursor-pointer"
+                  onClick={() => setLocation(`/search?type=${category.type}`)}
+                  data-testid={`category-${category.type}`}
+                >
+                  <div className={`relative overflow-hidden rounded-2xl bg-gradient-to-br ${gradients[index]} p-1 transition-all duration-300 group-hover:scale-105 group-hover:shadow-xl`}>
+                    <div className="bg-background/95 dark:bg-background/90 backdrop-blur rounded-xl p-5 flex flex-col items-center">
+                      <div className={`p-3 rounded-xl bg-gradient-to-br ${gradients[index]} mb-3 shadow-lg`}>
+                        <category.icon className="h-6 w-6 text-white" />
+                      </div>
+                      <span className="text-sm font-semibold text-center">{category.label}</span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
       {/* Popular Destinations Section - Single Grid */}
       <div className="py-16 px-4 md:px-6">
         <div className="container mx-auto">
@@ -233,100 +327,6 @@ export default function Landing() {
               </div>
             ))}
           </div>
-        </div>
-      </div>
-
-      {/* Explore by Category Section - Enhanced */}
-      <div className="py-16 px-4 md:px-6 bg-background">
-        <div className="container mx-auto">
-          <div className="text-center mb-10">
-            <h2 className="text-3xl md:text-4xl font-bold mb-3">Explore by Category</h2>
-            <p className="text-muted-foreground max-w-2xl mx-auto">Find the perfect stay that matches your style and budget</p>
-          </div>
-          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-4">
-            {categories.map((category, index) => {
-              const gradients = [
-                "from-rose-500 to-pink-600",
-                "from-amber-500 to-orange-600",
-                "from-emerald-500 to-teal-600",
-                "from-blue-500 to-indigo-600",
-                "from-purple-500 to-violet-600",
-                "from-cyan-500 to-blue-600",
-                "from-green-500 to-emerald-600",
-                "from-pink-500 to-rose-600",
-              ];
-              return (
-                <div
-                  key={category.type}
-                  className="group cursor-pointer"
-                  onClick={() => setLocation(`/search?type=${category.type}`)}
-                  data-testid={`category-${category.type}`}
-                >
-                  <div className={`relative overflow-hidden rounded-2xl bg-gradient-to-br ${gradients[index]} p-1 transition-all duration-300 group-hover:scale-105 group-hover:shadow-xl`}>
-                    <div className="bg-background/95 dark:bg-background/90 backdrop-blur rounded-xl p-5 flex flex-col items-center">
-                      <div className={`p-3 rounded-xl bg-gradient-to-br ${gradients[index]} mb-3 shadow-lg`}>
-                        <category.icon className="h-6 w-6 text-white" />
-                      </div>
-                      <span className="text-sm font-semibold text-center">{category.label}</span>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </div>
-
-      {/* Featured Properties - Enhanced */}
-      <div className="py-16 px-4 md:px-6 bg-muted/20">
-        <div className="container mx-auto">
-          <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-10">
-            <div>
-              <Badge className="mb-3 bg-rose-100 dark:bg-rose-900/30 text-rose-700 dark:text-rose-400 border-0 px-3 py-1">
-                <Star className="h-3 w-3 mr-1 fill-current" />
-                Hand-Picked
-              </Badge>
-              <h2 className="text-3xl md:text-4xl font-bold mb-2" data-testid="text-featured-stays-heading">Featured Stays</h2>
-              <p className="text-muted-foreground text-lg">Curated properties with exceptional value and reviews</p>
-            </div>
-            <Button 
-              variant="outline" 
-              onClick={() => setLocation("/search")}
-              className="group self-start md:self-auto"
-              data-testid="button-view-all-properties"
-            >
-              View All Properties
-              <ChevronRight className="ml-1 h-4 w-4 transition-transform group-hover:translate-x-1" />
-            </Button>
-          </div>
-
-          {propertiesLoading ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              {[...Array(8)].map((_, i) => (
-                <div key={i} className="space-y-3">
-                  <Skeleton className="aspect-[4/3] rounded-2xl" />
-                  <Skeleton className="h-6 w-3/4" />
-                  <Skeleton className="h-4 w-1/2" />
-                </div>
-              ))}
-            </div>
-          ) : featuredProperties.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              {featuredProperties.map((property) => (
-                <PropertyCard
-                  key={property.id}
-                  property={property}
-                />
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-16 bg-background rounded-2xl">
-              <Hotel className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
-              <p className="text-lg text-muted-foreground">
-                No properties available yet. Check back soon!
-              </p>
-            </div>
-          )}
         </div>
       </div>
 
