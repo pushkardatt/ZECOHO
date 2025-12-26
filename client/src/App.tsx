@@ -102,9 +102,8 @@ function AppContent() {
   const { isAuthenticated, isLoading } = useAuth();
   const [location] = useLocation();
 
-  // Show header on all pages except landing page when not authenticated
-  const isLandingPage = location === "/" && !isAuthenticated && !isLoading;
-  const showHeader = !isLandingPage;
+  // Always show header on all pages including landing page
+  const showHeader = true;
 
   return (
     <KycRouteGuard>
