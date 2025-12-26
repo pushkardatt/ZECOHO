@@ -308,6 +308,55 @@ export default function PropertyDetails() {
     enabled: !!propertyId,
   });
 
+  // Get selected room type data for auto-calculation
+  const selectedRoomType = useMemo(() => {
+    if (!selectedRoomTypeId) return null;
+    return roomTypes.find((rt: any) => rt.id === selectedRoomTypeId) || null;
+  }, [selectedRoomTypeId, roomTypes]);
+  
+  // Calculate required rooms based on guest count and room type's maxGuests
+  const requiredRooms = useMemo(() => {
+    if (!selectedRoomType) {
+      // Fallback to property's maxGuests if no room type selected
+      const guestsPerRoom = property?.maxGuests || 2;
+      return Math.ceil(guests / guestsPerRoom);
+    }
+    const maxGuestsPerRoomType = selectedRoomType.maxGuests || 2;
+    return Math.ceil(guests / maxGuestsPerRoomType);
+  }, [guests, selectedRoomType, property?.maxGuests]);
+  
+  // Get available rooms for selected room type
+  const availableRoomsForType = useMemo(() => {
+    if (!selectedRoomType) return null;
+    return selectedRoomType.totalRooms || 1;
+  }, [selectedRoomType]);
+  
+  // Check if we have enough rooms available
+  const hasInsufficientRooms = useMemo(() => {
+    if (availableRoomsForType === null) return false;
+    return rooms > availableRoomsForType;
+  }, [rooms, availableRoomsForType]);
+  
+  // Low inventory warning (≤5 rooms left)
+  const isLowInventory = useMemo(() => {
+    if (availableRoomsForType === null) return false;
+    return availableRoomsForType <= 5 && availableRoomsForType > 0;
+  }, [availableRoomsForType]);
+  
+  // Auto-adjust rooms when guest count changes (only if room type is selected)
+  useEffect(() => {
+    if (selectedRoomType && guests > 0) {
+      const maxGuestsPerRoomType = selectedRoomType.maxGuests || 2;
+      const neededRooms = Math.ceil(guests / maxGuestsPerRoomType);
+      const maxAvailable = selectedRoomType.totalRooms || 1;
+      
+      // Only auto-adjust if needed rooms is different and within available limit
+      if (neededRooms !== rooms && neededRooms >= 1) {
+        setRooms(Math.min(neededRooms, maxAvailable));
+      }
+    }
+  }, [guests, selectedRoomType]);
+
   const isWishlisted = wishlists.some((w: any) => w.propertyId === propertyId);
 
   const wishlistMutation = useMutation({
@@ -1672,6 +1721,44 @@ export default function PropertyDetails() {
                       </div>
                     </div>
                   )}
+                  
+                  {/* Guest/Room calculation helper and warnings */}
+                  {selectedRoomType && (
+                    <div className="space-y-2">
+                      {/* Helper text showing auto-calculated rooms */}
+                      <div className="p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg" data-testid="room-calculation-helper">
+                        <p className="text-sm text-blue-800 dark:text-blue-200">
+                          <span className="font-medium">{guests} guest{guests !== 1 ? 's' : ''} · {rooms} room{rooms !== 1 ? 's' : ''}</span>
+                          {requiredRooms !== rooms && (
+                            <span className="ml-2 text-blue-600 dark:text-blue-300">
+                              (Based on guest count, {requiredRooms} room{requiredRooms !== 1 ? 's' : ''} required)
+                            </span>
+                          )}
+                        </p>
+                      </div>
+                      
+                      {/* Low inventory warning */}
+                      {isLowInventory && !hasInsufficientRooms && (
+                        <div className="p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg" data-testid="low-inventory-warning">
+                          <p className="text-sm text-amber-800 dark:text-amber-200 font-medium">
+                            Only {availableRoomsForType} room{availableRoomsForType !== 1 ? 's' : ''} left for this room type!
+                          </p>
+                        </div>
+                      )}
+                      
+                      {/* Insufficient rooms error */}
+                      {hasInsufficientRooms && (
+                        <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-lg" data-testid="insufficient-rooms-error">
+                          <p className="text-sm text-destructive font-medium">
+                            Only {availableRoomsForType} room{availableRoomsForType !== 1 ? 's' : ''} available for selected dates.
+                          </p>
+                          <p className="text-xs text-destructive/80 mt-1">
+                            Please reduce the number of guests or select a different room type.
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 {hasDateOverlap && (
@@ -1789,7 +1876,7 @@ export default function PropertyDetails() {
                   className="w-full" 
                   size="lg" 
                   onClick={handleBooking}
-                  disabled={bookingMutation.isPending || !checkIn || !checkOut || hasDateOverlap || hasBlockedDateOverlap}
+                  disabled={bookingMutation.isPending || !checkIn || !checkOut || hasDateOverlap || hasBlockedDateOverlap || hasInsufficientRooms}
                   data-testid="button-reserve"
                 >
                   {bookingMutation.isPending ? "Processing..." : "Reserve"}

@@ -1,0 +1,111 @@
+@replit
+
+CONTEXT:
+Zecoho currently supports room types and reservations, but has two critical issues:
+1) Room availability does NOT reduce based on number of rooms selected.
+2) Increasing guest count does NOT automatically adjust required rooms or price.
+
+GOAL:
+Implement correct hotel-grade room, guest, pricing, and inventory logic.
+
+--------------------------------
+DATA ASSUMPTIONS
+--------------------------------
+Each RoomType has:
+- baseGuestCount (number of guests per room)
+- pricePerRoomPerNight
+- totalRooms
+
+--------------------------------
+TASKS (DO ALL)
+--------------------------------
+
+1. GUEST → ROOM AUTO-CALCULATION (CRITICAL)
+
+When customer selects number of guests:
+
+- Automatically calculate requiredRooms as:
+  requiredRooms = ceil(selectedGuests / baseGuestCount)
+
+- Automatically update room count field to requiredRooms basis minimum guest rule set by owner (Normally 2 Adults and 2 Kids below 12) 
+- Owner should have this right to set rules 
+
+- Display helper text:
+  "Based on guest count, X rooms are required"
+
+--------------------------------
+
+2. PRICE AUTO-CALCULATION
+
+Whenever:
+- guest count changes OR
+- dates change OR
+- room type changes
+
+Recalculate total price as:
+  totalPrice =
+    requiredRooms
+    × pricePerRoomPerNight
+    × numberOfNights
+
+Update price instantly in UI.
+
+--------------------------------
+
+3. INVENTORY VALIDATION (PRE-RESERVE)
+
+Before allowing Reserve:
+- Check availability for the roomType across selected dates
+- If availableRooms < requiredRooms on any date:
+  - Block reservation
+  - Show error:
+    "Only X rooms available for selected dates"
+
+--------------------------------
+
+4. INVENTORY REDUCTION (ON OWNER ACCEPT)
+
+When owner accepts a booking:
+
+- For each booked date:
+  availableRooms = availableRooms − requiredRooms
+
+- Persist date-wise availability override
+
+--------------------------------
+
+5. INVENTORY RESTORE (DECLINE / EXPIRE)
+
+If booking is:
+- Declined by owner
+- Expired
+- Cancelled before confirmation
+
+Restore inventory:
+- availableRooms = availableRooms + requiredRooms
+
+--------------------------------
+
+6. UI FEEDBACK (IMPORTANT)
+
+Show on Select Room page:
+- "X guests · Y rooms"
+- "Only Z rooms left" (if Z ≤ 5)
+
+--------------------------------
+
+RULES
+--------------------------------
+- Do NOT allow overbooking
+- Do NOT hardcode guest limits
+- Do NOT change booking flow order
+- Inventory logic must be roomType-specific
+
+--------------------------------
+SUCCESS CRITERIA
+--------------------------------
+- Guest count automatically adjusts room count
+- Price updates correctly
+- Inventory reduces correctly on accept
+- Inventory restores on decline
+- Overbooking is impossible
