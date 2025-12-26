@@ -2904,8 +2904,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Update status to customer_confirmed
-      const updated = await storage.updateBookingStatus(req.params.id, "customer_confirmed");
+      // Update status to customer_confirmed (cast to any to work around TypeScript enum sync)
+      const updated = await storage.updateBookingStatus(req.params.id, "customer_confirmed" as any);
       
       // Create notification for owner about customer confirmation
       const property = await storage.getProperty(booking.propertyId);
@@ -2922,9 +2922,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
             await storage.createMessage({
               conversationId: existingConv.id,
               senderId: userId,
-              receiverId: property.ownerId,
               content: `Great news! I've confirmed my booking (${booking.bookingCode || booking.id.slice(0, 8).toUpperCase()}). Looking forward to my stay!`,
-              isRead: false,
+              read: false,
             });
           }
         } catch (msgError) {

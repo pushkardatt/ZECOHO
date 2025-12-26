@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -22,9 +22,13 @@ import {
   AlertCircle,
   BedDouble,
   Utensils,
+  PartyPopper,
+  Phone,
 } from "lucide-react";
 import { Link } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 
 interface Booking {
   id: string;
@@ -34,7 +38,7 @@ interface Booking {
   checkOut: string;
   guests: number;
   totalPrice: string;
-  status: "pending" | "confirmed" | "rejected" | "cancelled" | "checked_in" | "checked_out" | "completed";
+  status: "pending" | "confirmed" | "customer_confirmed" | "rejected" | "cancelled" | "checked_in" | "checked_out" | "completed";
   ownerResponseMessage?: string;
   respondedAt?: string;
   checkInTime?: string;
@@ -107,10 +111,55 @@ export default function MyBookings() {
     }).format(parseFloat(amount));
   };
 
+  const { toast } = useToast();
+
+  // Customer booking confirmation mutation
+  const confirmBookingMutation = useMutation({
+    mutationFn: async (bookingId: string) => {
+      return await apiRequest("POST", `/api/bookings/${bookingId}/customer-confirm`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/bookings"] });
+      toast({
+        title: "Booking Confirmed!",
+        description: "The hotel has been notified. Your room is now secured.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Confirmation Failed",
+        description: error.message || "Unable to confirm booking. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Cancel booking mutation
+  const cancelBookingMutation = useMutation({
+    mutationFn: async (bookingId: string) => {
+      return await apiRequest("PATCH", `/api/bookings/${bookingId}/status`, { status: "cancelled" });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/bookings"] });
+      toast({
+        title: "Booking Cancelled",
+        description: "Your booking request has been cancelled.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Cancellation Failed",
+        description: error.message || "Unable to cancel booking. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
   const getStatusBadge = (status: string) => {
     const statusConfig: Record<string, { variant: "default" | "secondary" | "destructive" | "outline"; label: string; icon: any }> = {
       pending: { variant: "outline", label: "Awaiting Hotel Confirmation", icon: Clock },
-      confirmed: { variant: "default", label: "Confirmed", icon: CheckCircle },
+      confirmed: { variant: "default", label: "Accepted by Hotel", icon: CheckCircle },
+      customer_confirmed: { variant: "default", label: "Confirmed", icon: CheckCircle },
       rejected: { variant: "destructive", label: "Declined", icon: XCircle },
       checked_in: { variant: "default", label: "Checked In", icon: CheckCircle },
       checked_out: { variant: "secondary", label: "Checked Out", icon: CheckCircle },
@@ -120,16 +169,21 @@ export default function MyBookings() {
     const config = statusConfig[status] || { variant: "secondary", label: status, icon: Clock };
     const Icon = config.icon;
     return (
-      <Badge variant={config.variant} className="flex items-center gap-1">
-        <Icon className="h-3 w-3" />
-        {config.label}
-      </Badge>
+      <div className="flex flex-col items-end gap-1">
+        <Badge variant={config.variant} className="flex items-center gap-1">
+          <Icon className="h-3 w-3" />
+          {config.label}
+        </Badge>
+        {status === "confirmed" && (
+          <span className="text-xs text-muted-foreground">Please confirm to proceed</span>
+        )}
+      </div>
     );
   };
 
   const filteredBookings = sortedBookings?.filter((booking) => {
     if (activeTab === "all") return true;
-    if (activeTab === "upcoming") return booking.status === "pending" || booking.status === "confirmed" || booking.status === "checked_in";
+    if (activeTab === "upcoming") return booking.status === "pending" || booking.status === "confirmed" || booking.status === "customer_confirmed" || booking.status === "checked_in";
     if (activeTab === "past") return booking.status === "completed" || booking.status === "cancelled" || booking.status === "rejected" || booking.status === "checked_out";
     return true;
   });
@@ -288,7 +342,77 @@ export default function MyBookings() {
             )}
 
             {booking.status === "confirmed" && (
+              <div className="space-y-4">
+                {/* Full-width Hotel Acceptance Confirmation Card */}
+                <div className="p-5 bg-gradient-to-r from-green-50 via-emerald-50 to-teal-50 dark:from-green-950/50 dark:via-emerald-950/50 dark:to-teal-950/50 border-2 border-green-300 dark:border-green-700 rounded-xl shadow-sm">
+                  <div className="flex items-start gap-4">
+                    <div className="p-3 bg-green-100 dark:bg-green-900/60 rounded-full flex-shrink-0">
+                      <PartyPopper className="h-6 w-6 text-green-600 dark:text-green-400" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h4 className="font-bold text-green-900 dark:text-green-100 text-lg flex items-center gap-2">
+                        Hotel has accepted your booking!
+                      </h4>
+                      <p className="text-green-700 dark:text-green-300 text-sm mt-1">
+                        Please confirm your booking to secure your room. The hotel is holding this reservation for you.
+                      </p>
+                      
+                      {/* Booking Summary */}
+                      <div className="mt-4 p-4 bg-white/60 dark:bg-black/20 rounded-lg border border-green-200 dark:border-green-800">
+                        <p className="text-sm font-medium text-green-900 dark:text-green-100 mb-3">Booking Summary</p>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+                          <div>
+                            <p className="text-muted-foreground text-xs">Check-in</p>
+                            <p className="font-medium text-green-900 dark:text-green-100">{format(new Date(booking.checkIn), "dd MMM yyyy")}</p>
+                          </div>
+                          <div>
+                            <p className="text-muted-foreground text-xs">Check-out</p>
+                            <p className="font-medium text-green-900 dark:text-green-100">{format(new Date(booking.checkOut), "dd MMM yyyy")}</p>
+                          </div>
+                          <div>
+                            <p className="text-muted-foreground text-xs">Guests</p>
+                            <p className="font-medium text-green-900 dark:text-green-100">{booking.guests}</p>
+                          </div>
+                          <div>
+                            <p className="text-muted-foreground text-xs">Total Price</p>
+                            <p className="font-semibold text-green-900 dark:text-green-100">{formatCurrency(booking.totalPrice)}</p>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      {/* Confirmation Action Buttons - Fixed at bottom, always visible */}
+                      <div className="mt-4 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+                        <Button 
+                          size="lg"
+                          className="flex-1 sm:flex-none bg-green-600 hover:bg-green-700 text-white gap-2"
+                          onClick={() => confirmBookingMutation.mutate(booking.id)}
+                          disabled={confirmBookingMutation.isPending}
+                          data-testid={`btn-confirm-booking-${booking.id}`}
+                        >
+                          <CheckCircle className="h-5 w-5" />
+                          {confirmBookingMutation.isPending ? "Confirming..." : "Confirm Booking"}
+                        </Button>
+                        <Button 
+                          size="lg"
+                          variant="outline" 
+                          className="flex-1 sm:flex-none text-red-600 border-red-200 hover:bg-red-50 dark:border-red-800 dark:hover:bg-red-950/30"
+                          onClick={() => cancelBookingMutation.mutate(booking.id)}
+                          disabled={cancelBookingMutation.isPending}
+                          data-testid={`btn-cancel-request-${booking.id}`}
+                        >
+                          <XCircle className="h-5 w-5 mr-1" />
+                          {cancelBookingMutation.isPending ? "Cancelling..." : "Cancel Request"}
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {booking.status === "customer_confirmed" && (
               <div className="space-y-3">
+                {/* Success Banner for Customer Confirmed */}
                 <div className="p-4 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-950/40 dark:to-emerald-950/40 border border-green-200 dark:border-green-800 rounded-lg">
                   <div className="flex items-start gap-3">
                     <div className="p-2 bg-green-100 dark:bg-green-900/50 rounded-full">
@@ -296,30 +420,30 @@ export default function MyBookings() {
                     </div>
                     <div className="flex-1">
                       <h4 className="font-semibold text-green-900 dark:text-green-100 text-base">
-                        Booking Confirmed
+                        Booking Confirmed!
                       </h4>
                       <p className="text-green-700 dark:text-green-300 text-sm mt-1">
-                        Great news! Your booking is confirmed. You'll receive check-in details closer to your arrival date.
+                        Your room is secured. The hotel has been notified. You'll receive check-in details closer to your arrival date.
                       </p>
                     </div>
                   </div>
                 </div>
                 
-                {/* Action Buttons for Confirmed */}
-                <div className="flex items-center gap-3">
+                {/* Action Buttons for Customer Confirmed - Chat and Call enabled */}
+                <div className="flex items-center gap-3 flex-wrap">
+                  <Link href="/messages">
+                    <Button size="sm" className="gap-2" data-testid={`btn-message-hotel-${booking.id}`}>
+                      <MessageSquare className="h-4 w-4" />
+                      Chat with Hotel
+                    </Button>
+                  </Link>
                   {booking.property && (
                     <Link href={`/properties/${booking.property.id}`}>
-                      <Button size="sm" data-testid={`btn-view-details-${booking.id}`}>
-                        View Booking Details
+                      <Button size="sm" variant="outline" data-testid={`btn-view-property-confirmed-${booking.id}`}>
+                        View Property
                       </Button>
                     </Link>
                   )}
-                  <Link href="/messages">
-                    <Button size="sm" variant="outline" className="gap-2" data-testid={`btn-message-confirmed-${booking.id}`}>
-                      <MessageSquare className="h-4 w-4" />
-                      Message Owner
-                    </Button>
-                  </Link>
                 </div>
               </div>
             )}
@@ -379,7 +503,7 @@ export default function MyBookings() {
             )}
 
             {/* Only show generic action buttons for statuses that don't have their own */}
-            {booking.status !== "pending" && booking.status !== "confirmed" && (
+            {booking.status !== "pending" && booking.status !== "confirmed" && booking.status !== "customer_confirmed" && (
               <div className="flex items-center gap-2 flex-wrap">
                 {booking.property && (
                   <Link href={`/properties/${booking.property.id}`}>

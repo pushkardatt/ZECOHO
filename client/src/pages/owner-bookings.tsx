@@ -334,6 +334,7 @@ export default function OwnerBookings() {
     const statusConfig: Record<string, { variant: "default" | "secondary" | "destructive" | "outline"; label: string }> = {
       pending: { variant: "outline", label: "Pending Your Response" },
       confirmed: { variant: "default", label: "Accepted – Awaiting Guest Confirmation" },
+      customer_confirmed: { variant: "default", label: "Guest Confirmed – Ready for Check-in" },
       rejected: { variant: "destructive", label: "Declined" },
       checked_in: { variant: "default", label: "Checked In" },
       checked_out: { variant: "secondary", label: "Checked Out" },
@@ -346,7 +347,7 @@ export default function OwnerBookings() {
 
   // Helper to check if check-in is allowed (today >= check-in date)
   const canCheckIn = (booking: Booking) => {
-    if (booking.status !== "confirmed") return false;
+    if (booking.status !== "confirmed" && booking.status !== "customer_confirmed") return false;
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const checkInDate = new Date(booking.checkIn);
@@ -569,6 +570,40 @@ export default function OwnerBookings() {
               </Link>
             </div>
             {renderBookingTimeline(booking.status)}
+          </div>
+        )}
+
+        {booking.status === "customer_confirmed" && (
+          <div className="space-y-3">
+            <div className="p-2 bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-md">
+              <p className="text-xs text-green-700 dark:text-green-300 font-medium">
+                The guest has confirmed their booking. Room is secured and ready for their arrival.
+              </p>
+            </div>
+            <div className="flex items-center gap-2 flex-wrap">
+              {canCheckIn(booking) && (
+                <Button
+                  size="sm"
+                  onClick={() => checkInMutation.mutate(booking.id)}
+                  disabled={checkInMutation.isPending}
+                  data-testid={`check-in-booking-${booking.id}`}
+                >
+                  <Check className="h-4 w-4 mr-1" />
+                  Mark Checked-in
+                </Button>
+              )}
+              {!canCheckIn(booking) && (
+                <Badge variant="outline" className="text-xs">
+                  Check-in available from {format(new Date(booking.checkIn), "dd MMM")}
+                </Badge>
+              )}
+              <Link href="/owner/messages">
+                <Button size="sm" data-testid={`message-guest-customer-confirmed-${booking.id}`}>
+                  <MessageSquare className="h-4 w-4 mr-1" />
+                  Message Guest
+                </Button>
+              </Link>
+            </div>
           </div>
         )}
 
