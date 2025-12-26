@@ -54,6 +54,10 @@ interface Booking {
     images: string[];
     destination: string;
   };
+  ownerContact?: {
+    name: string;
+    phone?: string;
+  };
   roomType?: {
     id: string;
     name: string;
@@ -314,13 +318,25 @@ export default function MyBookings() {
                 </div>
 
                 {/* Action Buttons */}
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3 flex-wrap">
                   <Link href="/messages">
                     <Button size="sm" className="gap-2" data-testid={`btn-chat-owner-${booking.id}`}>
                       <MessageSquare className="h-4 w-4" />
                       Chat with Owner
                     </Button>
                   </Link>
+                  {booking.ownerContact?.phone && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="gap-2"
+                      onClick={() => window.location.href = `tel:${booking.ownerContact!.phone}`}
+                      data-testid={`btn-call-owner-${booking.id}`}
+                    >
+                      <Phone className="h-4 w-4" />
+                      Call Owner
+                    </Button>
+                  )}
                   {booking.property && (
                     <Link href={`/properties/${booking.property.id}`}>
                       <Button size="sm" variant="outline" data-testid={`btn-view-property-pending-${booking.id}`}>
@@ -404,6 +420,31 @@ export default function MyBookings() {
                           {cancelBookingMutation.isPending ? "Cancelling..." : "Cancel Request"}
                         </Button>
                       </div>
+                      
+                      {/* Contact Options */}
+                      <div className="mt-3 pt-3 border-t border-green-200 dark:border-green-800">
+                        <p className="text-xs text-muted-foreground mb-2">Have questions?</p>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <Link href="/messages">
+                            <Button size="sm" variant="outline" className="gap-2" data-testid={`btn-chat-hotel-confirmed-${booking.id}`}>
+                              <MessageSquare className="h-4 w-4" />
+                              Chat
+                            </Button>
+                          </Link>
+                          {booking.ownerContact?.phone && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="gap-2"
+                              onClick={() => window.location.href = `tel:${booking.ownerContact!.phone}`}
+                              data-testid={`btn-call-hotel-confirmed-${booking.id}`}
+                            >
+                              <Phone className="h-4 w-4" />
+                              Call
+                            </Button>
+                          )}
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -437,6 +478,18 @@ export default function MyBookings() {
                       Chat with Hotel
                     </Button>
                   </Link>
+                  {booking.ownerContact?.phone && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="gap-2"
+                      onClick={() => window.location.href = `tel:${booking.ownerContact!.phone}`}
+                      data-testid={`btn-call-hotel-${booking.id}`}
+                    >
+                      <Phone className="h-4 w-4" />
+                      Call Hotel
+                    </Button>
+                  )}
                   {booking.property && (
                     <Link href={`/properties/${booking.property.id}`}>
                       <Button size="sm" variant="outline" data-testid={`btn-view-property-confirmed-${booking.id}`}>

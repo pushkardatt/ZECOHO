@@ -46,6 +46,7 @@ import {
   Utensils,
   CheckCircle,
   AlertCircle,
+  Phone,
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 
@@ -527,6 +528,23 @@ export default function OwnerBookings() {
                 <X className="h-4 w-4 mr-1" />
                 Decline
               </Button>
+              <Link href="/owner/messages">
+                <Button size="sm" variant="ghost" data-testid={`message-guest-pending-${booking.id}`}>
+                  <MessageSquare className="h-4 w-4 mr-1" />
+                  Message
+                </Button>
+              </Link>
+              {booking.guest?.phone && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => window.location.href = `tel:${booking.guest!.phone}`}
+                  data-testid={`call-guest-pending-${booking.id}`}
+                >
+                  <Phone className="h-4 w-4 mr-1" />
+                  Call
+                </Button>
+              )}
             </div>
             <div className="flex items-start gap-2 p-2 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-md">
               <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
@@ -568,6 +586,17 @@ export default function OwnerBookings() {
                   Message Guest
                 </Button>
               </Link>
+              {booking.guest?.phone && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => window.location.href = `tel:${booking.guest!.phone}`}
+                  data-testid={`call-guest-confirmed-${booking.id}`}
+                >
+                  <Phone className="h-4 w-4 mr-1" />
+                  Call Guest
+                </Button>
+              )}
             </div>
             {renderBookingTimeline(booking.status)}
           </div>
@@ -603,6 +632,17 @@ export default function OwnerBookings() {
                   Message Guest
                 </Button>
               </Link>
+              {booking.guest?.phone && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => window.location.href = `tel:${booking.guest!.phone}`}
+                  data-testid={`call-guest-customer-confirmed-${booking.id}`}
+                >
+                  <Phone className="h-4 w-4 mr-1" />
+                  Call Guest
+                </Button>
+              )}
             </div>
           </div>
         )}
@@ -635,6 +675,17 @@ export default function OwnerBookings() {
                   Message Guest
                 </Button>
               </Link>
+              {booking.guest?.phone && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => window.location.href = `tel:${booking.guest!.phone}`}
+                  data-testid={`call-guest-checked-in-${booking.id}`}
+                >
+                  <Phone className="h-4 w-4 mr-1" />
+                  Call Guest
+                </Button>
+              )}
             </div>
             {booking.checkInTime && (
               <span className="text-xs text-muted-foreground">
@@ -656,12 +707,25 @@ export default function OwnerBookings() {
         )}
 
         {(booking.status === "rejected" || booking.status === "cancelled") && (
-          <Link href="/owner/messages">
-            <Button size="sm" variant="ghost" data-testid={`message-guest-${booking.id}`}>
-              <MessageSquare className="h-4 w-4 mr-1" />
-              Message Guest
-            </Button>
-          </Link>
+          <div className="flex items-center gap-2 flex-wrap">
+            <Link href="/owner/messages">
+              <Button size="sm" variant="ghost" data-testid={`message-guest-${booking.id}`}>
+                <MessageSquare className="h-4 w-4 mr-1" />
+                Message Guest
+              </Button>
+            </Link>
+            {booking.guest?.phone && (
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => window.location.href = `tel:${booking.guest!.phone}`}
+                data-testid={`call-guest-rejected-${booking.id}`}
+              >
+                <Phone className="h-4 w-4 mr-1" />
+                Call Guest
+              </Button>
+            )}
+          </div>
         )}
       </CardContent>
     </Card>

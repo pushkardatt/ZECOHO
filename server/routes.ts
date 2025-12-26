@@ -2892,10 +2892,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get guest's bookings with property details
       const bookings = await storage.getBookingsByGuest(userId);
       
-      // Enrich with property, room type and meal option info
+      // Enrich with property, owner contact, room type and meal option info
       const enrichedBookings = await Promise.all(
         bookings.map(async (booking) => {
           const property = await storage.getProperty(booking.propertyId);
+          
+          // Fetch owner contact info
+          let ownerContact = null;
+          if (property?.ownerId) {
+            const owner = await storage.getUser(property.ownerId);
+            if (owner) {
+              ownerContact = {
+                name: `${owner.firstName || ""} ${owner.lastName || ""}`.trim() || "Owner",
+                phone: owner.phone,
+              };
+            }
+          }
           
           // Fetch room type and meal option if present
           let roomType = null;
@@ -2923,6 +2935,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               images: property.images,
               destination: property.destination,
             } : null,
+            ownerContact,
             roomType,
             roomOption,
           };
