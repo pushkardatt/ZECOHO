@@ -57,7 +57,7 @@ interface Booking {
   checkOut: string;
   guests: number;
   totalPrice: string;
-  status: "pending" | "confirmed" | "rejected" | "cancelled" | "checked_in" | "checked_out" | "completed";
+  status: "pending" | "confirmed" | "customer_confirmed" | "rejected" | "cancelled" | "checked_in" | "checked_out" | "completed";
   ownerResponseMessage?: string;
   respondedAt?: string;
   checkInTime?: string;
@@ -404,7 +404,7 @@ export default function OwnerBookings() {
 
   const filteredBookings = bookings?.filter((booking) => {
     if (activeTab === "all") return true;
-    if (activeTab === "upcoming") return booking.status === "confirmed" || booking.status === "checked_in";
+    if (activeTab === "upcoming") return booking.status === "confirmed" || booking.status === "customer_confirmed" || booking.status === "checked_in";
     if (activeTab === "past") return booking.status === "completed" || booking.status === "cancelled" || booking.status === "rejected" || booking.status === "checked_out";
     if (activeTab === "pending") return booking.status === "pending";
     return true;
