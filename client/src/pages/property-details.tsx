@@ -339,16 +339,16 @@ export default function PropertyDetails() {
     return roomInventory.find((ri: any) => ri.roomTypeId === selectedRoomTypeId) || null;
   }, [selectedRoomTypeId, roomInventory]);
   
-  // Calculate required rooms based on guest count and room type's maxGuests
+  // Calculate required rooms based on adult count only (children share rooms with adults)
   const requiredRooms = useMemo(() => {
     if (!selectedRoomType) {
       // Fallback to property's maxGuests if no room type selected
-      const guestsPerRoom = property?.maxGuests || 2;
-      return Math.ceil(guests / guestsPerRoom);
+      const adultsPerRoom = property?.maxGuests || 2;
+      return Math.ceil(adults / adultsPerRoom);
     }
-    const maxGuestsPerRoomType = selectedRoomType.maxGuests || 2;
-    return Math.ceil(guests / maxGuestsPerRoomType);
-  }, [guests, selectedRoomType, property?.maxGuests]);
+    const maxAdultsPerRoomType = selectedRoomType.maxGuests || 2;
+    return Math.ceil(adults / maxAdultsPerRoomType);
+  }, [adults, selectedRoomType, property?.maxGuests]);
   
   // Get available rooms for selected room type (real-time if available, fallback to totalRooms)
   const availableRoomsForType = useMemo(() => {
@@ -374,12 +374,12 @@ export default function PropertyDetails() {
     return availableRoomsForType <= 5 && availableRoomsForType > 0;
   }, [availableRoomsForType]);
   
-  // Auto-adjust rooms when guest count changes (works with or without room type selected)
+  // Auto-adjust rooms when adult count changes (children share rooms, don't affect room count)
   useEffect(() => {
-    if (guests > 0) {
+    if (adults > 0) {
       // Use room type's maxGuests if selected, otherwise fall back to property's maxGuests
-      const guestsPerRoom = selectedRoomType?.maxGuests || property?.maxGuests || 2;
-      const neededRooms = Math.ceil(guests / guestsPerRoom);
+      const adultsPerRoom = selectedRoomType?.maxGuests || property?.maxGuests || 2;
+      const neededRooms = Math.ceil(adults / adultsPerRoom);
       
       // Determine max available rooms
       const maxAvailable = selectedRoomType 
@@ -391,7 +391,7 @@ export default function PropertyDetails() {
         setRooms(Math.min(neededRooms, maxAvailable));
       }
     }
-  }, [guests, selectedRoomType, availableRoomsForType, property?.maxGuests]);
+  }, [adults, selectedRoomType, availableRoomsForType, property?.maxGuests]);
 
   const isWishlisted = wishlists.some((w: any) => w.propertyId === propertyId);
 
@@ -1785,7 +1785,7 @@ export default function PropertyDetails() {
                           <span className="font-medium">{guests} guest{guests !== 1 ? 's' : ''} · {rooms} room{rooms !== 1 ? 's' : ''}</span>
                           {requiredRooms !== rooms && (
                             <span className="ml-2 text-blue-600 dark:text-blue-300">
-                              (Based on guest count, {requiredRooms} room{requiredRooms !== 1 ? 's' : ''} required)
+                              ({requiredRooms} room{requiredRooms !== 1 ? 's' : ''} needed for {adults} adult{adults !== 1 ? 's' : ''})
                             </span>
                           )}
                         </p>
