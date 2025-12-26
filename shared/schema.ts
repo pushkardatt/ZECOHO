@@ -84,13 +84,14 @@ export const propertyStatusEnum = pgEnum("property_status", [
 
 // Booking status enum
 export const bookingStatusEnum = pgEnum("booking_status", [
-  "pending",      // Guest submitted request, waiting for owner response
-  "confirmed",    // Owner accepted the booking
-  "rejected",     // Owner rejected the booking
-  "cancelled",    // Guest cancelled the booking
-  "checked_in",   // Guest has checked in (owner marked)
-  "checked_out",  // Guest has checked out (owner marked)
-  "completed",    // Stay completed
+  "pending",            // Guest submitted request, waiting for owner response
+  "confirmed",          // Owner accepted the booking, waiting for guest confirmation
+  "customer_confirmed", // Guest confirmed booking after owner acceptance
+  "rejected",           // Owner rejected the booking
+  "cancelled",          // Guest cancelled the booking
+  "checked_in",         // Guest has checked in (owner marked)
+  "checked_out",        // Guest has checked out (owner marked)
+  "completed",          // Stay completed
 ]);
 
 // Booking type enum - for tracking standard vs extension bookings

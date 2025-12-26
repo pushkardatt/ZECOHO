@@ -2882,6 +2882,67 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Customer booking confirmation (after owner accepts)
+  app.post("/api/bookings/:id/customer-confirm", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const booking = await storage.getBooking(req.params.id);
+      
+      if (!booking) {
+        return res.status(404).json({ message: "Booking not found" });
+      }
+
+      // Only the guest who made the booking can confirm
+      if (booking.guestId !== userId) {
+        return res.status(403).json({ message: "Not authorized to confirm this booking" });
+      }
+
+      // Can only confirm if the owner has accepted (status is "confirmed")
+      if (booking.status !== "confirmed") {
+        return res.status(400).json({ 
+          message: "Booking cannot be confirmed. The hotel must accept your request first." 
+        });
+      }
+
+      // Update status to customer_confirmed
+      const updated = await storage.updateBookingStatus(req.params.id, "customer_confirmed");
+      
+      // Create notification for owner about customer confirmation
+      const property = await storage.getProperty(booking.propertyId);
+      if (property) {
+        try {
+          // Find or create conversation to notify the owner
+          const conversations = await storage.getConversationsByUser(property.ownerId);
+          const existingConv = conversations.find(c => 
+            (c.guestId === userId && c.ownerId === property.ownerId && c.propertyId === property.id)
+          );
+          
+          if (existingConv) {
+            // Send system message to owner about confirmation
+            await storage.createMessage({
+              conversationId: existingConv.id,
+              senderId: userId,
+              receiverId: property.ownerId,
+              content: `Great news! I've confirmed my booking (${booking.bookingCode || booking.id.slice(0, 8).toUpperCase()}). Looking forward to my stay!`,
+              isRead: false,
+            });
+          }
+        } catch (msgError) {
+          console.error("Error sending confirmation notification:", msgError);
+          // Don't fail the request if messaging fails
+        }
+      }
+      
+      res.json({ 
+        ...updated, 
+        message: "Booking confirmed! The hotel has been notified." 
+      });
+    } catch (error) {
+      console.error("Error confirming booking:", error);
+      res.status(500).json({ message: "Failed to confirm booking" });
+    }
+  });
+
   // Conversation routes
   app.get("/api/conversations", isAuthenticated, async (req: any, res) => {
     try {
