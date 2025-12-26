@@ -361,11 +361,12 @@ export default function PropertyDetails() {
     return selectedRoomType.totalRooms || 1;
   }, [selectedRoomType, selectedRoomInventory]);
   
-  // Check if we have enough rooms available
+  // Check if we have enough rooms available (use requiredRooms based on guest count)
   const hasInsufficientRooms = useMemo(() => {
     if (availableRoomsForType === null) return false;
-    return rooms > availableRoomsForType;
-  }, [rooms, availableRoomsForType]);
+    // Compare required rooms (based on guest count) against available rooms
+    return requiredRooms > availableRoomsForType;
+  }, [requiredRooms, availableRoomsForType]);
   
   // Low inventory warning (≤5 rooms left)
   const isLowInventory = useMemo(() => {
@@ -373,19 +374,24 @@ export default function PropertyDetails() {
     return availableRoomsForType <= 5 && availableRoomsForType > 0;
   }, [availableRoomsForType]);
   
-  // Auto-adjust rooms when guest count changes (only if room type is selected)
+  // Auto-adjust rooms when guest count changes (works with or without room type selected)
   useEffect(() => {
-    if (selectedRoomType && guests > 0) {
-      const maxGuestsPerRoomType = selectedRoomType.maxGuests || 2;
-      const neededRooms = Math.ceil(guests / maxGuestsPerRoomType);
-      const maxAvailable = availableRoomsForType || selectedRoomType.totalRooms || 1;
+    if (guests > 0) {
+      // Use room type's maxGuests if selected, otherwise fall back to property's maxGuests
+      const guestsPerRoom = selectedRoomType?.maxGuests || property?.maxGuests || 2;
+      const neededRooms = Math.ceil(guests / guestsPerRoom);
+      
+      // Determine max available rooms
+      const maxAvailable = selectedRoomType 
+        ? (availableRoomsForType || selectedRoomType.totalRooms || 10)
+        : 10; // Default max when no room type selected
       
       // Only auto-adjust if needed rooms is different and within available limit
       if (neededRooms !== rooms && neededRooms >= 1) {
         setRooms(Math.min(neededRooms, maxAvailable));
       }
     }
-  }, [guests, selectedRoomType, availableRoomsForType]);
+  }, [guests, selectedRoomType, availableRoomsForType, property?.maxGuests]);
 
   const isWishlisted = wishlists.some((w: any) => w.propertyId === propertyId);
 
@@ -587,8 +593,15 @@ export default function PropertyDetails() {
       if (!checkIn || !checkOut) {
         throw new Error("Please select check-in and check-out dates");
       }
-      if (guests < 1 || guests > maxAllowedGuests) {
-        throw new Error(`Guests must be between 1 and ${maxAllowedGuests} for ${rooms} room${rooms > 1 ? 's' : ''}`);
+      if (!selectedRoomTypeId) {
+        throw new Error("Please select a room type");
+      }
+      if (guests < 1) {
+        throw new Error("At least 1 guest is required");
+      }
+      // Validate that required rooms don't exceed available capacity
+      if (hasInsufficientRooms) {
+        throw new Error(`Not enough rooms available for ${guests} guest${guests !== 1 ? 's' : ''}. Please reduce guest count or select different dates.`);
       }
       
       const totalPrice = calculateTotalPrice();
@@ -652,7 +665,18 @@ export default function PropertyDetails() {
   // Max guests per room - use property.maxGuests as the per-room capacity
   const maxGuestsPerRoom = property?.maxGuests || 2;
   
-  // Calculate maximum allowed guests based on rooms selected
+  // Set a reasonable absolute maximum for guests (not tied to current room selection)
+  // This allows users to increase guests first, then rooms auto-adjust
+  const absoluteMaxGuests = useMemo(() => {
+    // Calculate based on max possible rooms (use selectedRoomType's totalRooms or property maxGuests * 10)
+    if (selectedRoomType) {
+      return (selectedRoomType.totalRooms || 10) * (selectedRoomType.maxGuests || 2);
+    }
+    // Default: allow up to 20 guests (reasonable max for most properties)
+    return 20;
+  }, [selectedRoomType]);
+  
+  // Calculate maximum allowed guests based on rooms selected (for display/validation)
   const maxAllowedGuests = useMemo(() => {
     return rooms * maxGuestsPerRoom;
   }, [rooms, maxGuestsPerRoom]);
@@ -1549,11 +1573,11 @@ export default function PropertyDetails() {
                                 onClick={(e) => {
                                   e.preventDefault();
                                   e.stopPropagation();
-                                  if (adults + children < maxAllowedGuests) {
-                                    setAdults(Math.min(maxAllowedGuests, adults + 1));
+                                  if (adults + children < absoluteMaxGuests) {
+                                    setAdults(adults + 1);
                                   }
                                 }}
-                                disabled={adults >= maxAllowedGuests || (adults + children) >= maxAllowedGuests}
+                                disabled={(adults + children) >= absoluteMaxGuests}
                                 className="w-8 h-8 rounded-full border border-gray-300 flex items-center justify-center hover:border-gray-400 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                                 data-testid="button-adults-plus"
                               >
@@ -1588,11 +1612,11 @@ export default function PropertyDetails() {
                                 onClick={(e) => {
                                   e.preventDefault();
                                   e.stopPropagation();
-                                  if (adults + children < maxAllowedGuests) {
-                                    setChildren(Math.min(maxAllowedGuests - adults, children + 1));
+                                  if (adults + children < absoluteMaxGuests) {
+                                    setChildren(children + 1);
                                   }
                                 }}
-                                disabled={children >= (maxAllowedGuests - adults) || (adults + children) >= maxAllowedGuests}
+                                disabled={(adults + children) >= absoluteMaxGuests}
                                 className="w-8 h-8 rounded-full border border-gray-300 flex items-center justify-center hover:border-gray-400 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                                 data-testid="button-children-plus"
                               >
@@ -1906,10 +1930,10 @@ export default function PropertyDetails() {
                   className="w-full" 
                   size="lg" 
                   onClick={handleBooking}
-                  disabled={bookingMutation.isPending || !checkIn || !checkOut || hasDateOverlap || hasBlockedDateOverlap || hasInsufficientRooms}
+                  disabled={bookingMutation.isPending || !checkIn || !checkOut || !selectedRoomTypeId || hasDateOverlap || hasBlockedDateOverlap || hasInsufficientRooms}
                   data-testid="button-reserve"
                 >
-                  {bookingMutation.isPending ? "Processing..." : "Reserve"}
+                  {bookingMutation.isPending ? "Processing..." : !selectedRoomTypeId ? "Select Room Type" : "Reserve"}
                 </Button>
                 
                 <div className="text-center mt-2 space-y-1">
