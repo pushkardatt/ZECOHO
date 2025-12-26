@@ -76,9 +76,9 @@ export default function Landing() {
 
   return (
     <div className="min-h-screen">
-      {/* Sticky Search Bar - Appears on Scroll */}
+      {/* Sticky Search Bar - Appears on Scroll (positioned below main header) */}
       <div 
-        className={`fixed top-0 left-0 right-0 z-[100] transition-all duration-300 ${
+        className={`fixed top-16 left-0 right-0 z-40 transition-all duration-300 ${
           showStickySearch 
             ? "translate-y-0 opacity-100" 
             : "-translate-y-full opacity-0 pointer-events-none"
@@ -86,17 +86,8 @@ export default function Landing() {
         data-testid="sticky-search-bar"
       >
         <div className="bg-white dark:bg-background border-b shadow-lg">
-          <div className="container mx-auto px-4 py-3">
+          <div className="container mx-auto px-4 py-2">
             <div className="flex items-center gap-4">
-              {/* Logo */}
-              <Link href="/">
-                <div className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity flex-shrink-0" data-testid="link-sticky-logo">
-                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-rose-500 to-rose-600 flex items-center justify-center shadow-md">
-                    <span className="text-white font-bold text-lg">Z</span>
-                  </div>
-                  <span className="font-bold text-lg text-foreground hidden sm:block">ZECOHO</span>
-                </div>
-              </Link>
               {/* Compact Search Bar */}
               <div className="flex-1">
                 <SearchBar onSearch={handleSearch} compact={true} showDates={true} showGuests={true} />
@@ -106,47 +97,10 @@ export default function Landing() {
         </div>
       </div>
 
-      {/* Top Navigation Header with Logo */}
-      <header className="absolute top-0 left-0 right-0 z-50 px-4 md:px-6 py-4">
-        <div className="container mx-auto flex items-center justify-between">
-          <Link href="/">
-            <div className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity" data-testid="link-home-logo">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-rose-500 to-rose-600 flex items-center justify-center shadow-lg">
-                <span className="text-white font-bold text-xl">Z</span>
-              </div>
-              <div className="flex items-baseline">
-                <span className="font-bold text-2xl text-foreground tracking-tight">
-                  ZECOHO
-                </span>
-                <span className="font-bold text-lg bg-gradient-to-r from-rose-500 to-amber-500 bg-clip-text text-transparent">.com</span>
-              </div>
-            </div>
-          </Link>
-          <div className="flex items-center gap-3 md:gap-4">
-            <Link href="/login?returnTo=/list-property">
-              <span 
-                className="text-sm font-medium text-muted-foreground hover:text-foreground cursor-pointer hidden md:inline transition-colors"
-                data-testid="link-own-property"
-              >
-                Own a Property
-              </span>
-            </Link>
-            <Button 
-              size="default"
-              variant="default" 
-              onClick={() => setLocation("/login")}
-              data-testid="button-login-hero"
-            >
-              Login / Sign Up
-            </Button>
-          </div>
-        </div>
-      </header>
-
       {/* Hero Section - Clean Modern Design */}
-      <div className="relative min-h-[490px] md:min-h-[520px] flex items-center justify-center overflow-hidden bg-gradient-to-br from-rose-50 via-background to-amber-50 dark:from-rose-950/20 dark:via-background dark:to-amber-950/20">
+      <div className="relative min-h-[450px] md:min-h-[480px] flex items-center justify-center overflow-hidden bg-gradient-to-br from-rose-50 via-background to-amber-50 dark:from-rose-950/20 dark:via-background dark:to-amber-950/20">
         
-        <div className="relative z-10 container px-4 md:px-6 text-center py-12 pt-24">
+        <div className="relative z-10 container px-4 md:px-6 text-center py-8">
           {/* Premium Badge - Subtle */}
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary/10 border border-primary/20 mb-3">
             <Sparkles className="h-3.5 w-3.5 text-amber-500" />
