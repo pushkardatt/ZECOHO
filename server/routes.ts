@@ -1661,10 +1661,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         properties.map(async (property) => {
           if (property.status === "published") {
             const owner = await storage.getUser(property.ownerId);
+            // Clean phone value - trim whitespace and convert empty strings to null
+            const ownerPhone = owner?.phone && owner.phone.trim() ? owner.phone.trim() : null;
             return {
               ...property,
               ownerContact: owner ? {
-                phone: owner.phone || null,
+                phone: ownerPhone,
                 name: owner.firstName && owner.lastName 
                   ? `${owner.firstName} ${owner.lastName}` 
                   : owner.firstName || null,
@@ -1692,10 +1694,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // For published properties, include owner contact info
       if (property.status === "published") {
         const owner = await storage.getUser(property.ownerId);
+        // Clean phone value - trim whitespace and convert empty strings to null
+        const ownerPhone = owner?.phone && owner.phone.trim() ? owner.phone.trim() : null;
         return res.json({
           ...property,
           ownerContact: owner ? {
-            phone: owner.phone || null,
+            phone: ownerPhone,
             name: owner.firstName && owner.lastName 
               ? `${owner.firstName} ${owner.lastName}` 
               : owner.firstName || null,

@@ -293,6 +293,17 @@ export function PropertyCard({ property, onWishlistToggle, searchParams }: Prope
           <div className="flex items-center justify-between gap-2 pt-2 border-t">
             {isPublished && (
               <div className="flex items-center gap-1">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleChat}
+                  disabled={chatMutation.isPending}
+                  className="text-muted-foreground"
+                  data-testid={`button-chat-${property.id}`}
+                >
+                  <MessageCircle className="h-4 w-4 mr-1" />
+                  {chatMutation.isPending ? "..." : "Chat"}
+                </Button>
                 {hasOwnerPhone && (
                   <Button
                     variant="ghost"
@@ -305,17 +316,6 @@ export function PropertyCard({ property, onWishlistToggle, searchParams }: Prope
                     Call
                   </Button>
                 )}
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleChat}
-                  disabled={chatMutation.isPending}
-                  className="text-muted-foreground"
-                  data-testid={`button-chat-${property.id}`}
-                >
-                  <MessageCircle className="h-4 w-4 mr-1" />
-                  {chatMutation.isPending ? "..." : "Chat"}
-                </Button>
               </div>
             )}
             <div className="flex items-center gap-1 ml-auto">
