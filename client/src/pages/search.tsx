@@ -38,7 +38,6 @@ export default function Search() {
   const [coupleFriendly, setCoupleFriendly] = useState<string>("");
   const [hourlyAvailability, setHourlyAvailability] = useState<string>("");
   const [localIdAllowed, setLocalIdAllowed] = useState<string>("");
-  const [selectedBrand, setSelectedBrand] = useState<string>("");
   const [selectedStarRating, setSelectedStarRating] = useState<string>("");
   const [selectedLocality, setSelectedLocality] = useState<string>("");
   
@@ -130,19 +129,6 @@ export default function Search() {
     { value: "1", label: "1 Star" },
   ];
 
-  const hotelBrands = [
-    { value: "taj", label: "Taj Hotels" },
-    { value: "oberoi", label: "The Oberoi Group" },
-    { value: "itc", label: "ITC Hotels" },
-    { value: "marriott", label: "Marriott" },
-    { value: "hyatt", label: "Hyatt" },
-    { value: "radisson", label: "Radisson" },
-    { value: "oyo", label: "OYO" },
-    { value: "treebo", label: "Treebo" },
-    { value: "fabhotels", label: "FabHotels" },
-    { value: "lemon_tree", label: "Lemon Tree" },
-  ];
-
   const booleanOptions = [
     { value: "yes", label: "Yes" },
     { value: "no", label: "No" },
@@ -217,7 +203,6 @@ export default function Search() {
     setCoupleFriendly("");
     setHourlyAvailability("");
     setLocalIdAllowed("");
-    setSelectedBrand("");
     setSelectedStarRating("");
     setSelectedLocality("");
     setSearchDestination("");
@@ -225,7 +210,7 @@ export default function Search() {
 
   const hasActiveFilters = selectedType || selectedBudget || selectedRating || 
     selectedAmenity || coupleFriendly || hourlyAvailability || localIdAllowed || 
-    selectedBrand || selectedStarRating || selectedLocality || searchDestination;
+    selectedStarRating || selectedLocality || searchDestination;
 
   return (
     <div className="min-h-screen bg-background">
@@ -425,23 +410,6 @@ export default function Search() {
                       {booleanOptions.map((option) => (
                         <SelectItem key={option.value} value={option.value} data-testid={`select-localid-${option.value}`}>
                           {option.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* Hotel Brands Filter */}
-                <div className="min-w-[160px]">
-                  <Label className="text-sm font-medium mb-2 block">Hotel Brands</Label>
-                  <Select value={selectedBrand} onValueChange={setSelectedBrand}>
-                    <SelectTrigger data-testid="select-brand" className="w-full">
-                      <SelectValue placeholder="All brands" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {hotelBrands.map((brand) => (
-                        <SelectItem key={brand.value} value={brand.value} data-testid={`select-brand-${brand.value}`}>
-                          {brand.label}
                         </SelectItem>
                       ))}
                     </SelectContent>
