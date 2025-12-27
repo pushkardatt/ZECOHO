@@ -105,17 +105,13 @@ export function MultiSelectFilter({
                   data-testid={`${testId}-option-${option.value}`}
                 >
                   <Checkbox
-                    id={`${testId}-${option.value}`}
                     checked={selectedValues.includes(option.value)}
-                    onCheckedChange={() => toggleValue(option.value)}
+                    className="pointer-events-none"
                     data-testid={`${testId}-checkbox-${option.value}`}
                   />
-                  <label
-                    htmlFor={`${testId}-${option.value}`}
-                    className="text-sm cursor-pointer flex-1"
-                  >
+                  <span className="text-sm flex-1">
                     {option.label}
-                  </label>
+                  </span>
                 </div>
               ))}
             </div>
