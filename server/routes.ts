@@ -2211,10 +2211,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get all room types for this property
       const roomTypes = await storage.getRoomsByProperty(req.params.id);
       
-      // Get all bookings that overlap with the date range (only confirmed or customer_confirmed bookings)
+      // Get all bookings that overlap with the date range
+      // ONLY count ACTIVE bookings: confirmed (owner_accepted), customer_confirmed, checked_in
+      // Do NOT count: pending, rejected, cancelled, checked_out, completed
+      const ACTIVE_BOOKING_STATUSES = ['confirmed', 'customer_confirmed', 'checked_in'];
       const allBookings = await storage.getBookingsByProperty(req.params.id);
       const overlappingBookings = allBookings.filter((booking: any) => {
-        if (booking.status !== 'confirmed' && booking.status !== 'customer_confirmed') return false;
+        if (!ACTIVE_BOOKING_STATUSES.includes(booking.status)) return false;
         const bookingStart = new Date(booking.checkIn);
         const bookingEnd = new Date(booking.checkOut);
         return bookingStart < end && bookingEnd > start;
@@ -2228,52 +2231,90 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return overrideStart < end && overrideEnd > start;
       });
       
-      // Calculate available rooms for each room type
+      // Calculate available rooms for each room type (per-date minimum availability)
       const roomInventory = roomTypes.map((roomType: any) => {
-        const totalRooms = roomType.totalRooms || 1;
+        const totalRoomsDefault = roomType.totalRooms || 1;
         
-        // Count rooms booked for this room type in the date range
-        const bookedRooms = overlappingBookings
-          .filter((booking: any) => booking.roomTypeId === roomType.id)
-          .reduce((sum: number, booking: any) => sum + (booking.rooms || 1), 0);
-        
-        // Check for sold_out overrides for this room type
-        const hasSoldOutOverride = overlappingOverrides.some((override: any) => 
-          override.overrideType === 'sold_out' && 
-          (override.roomTypeId === roomType.id || !override.roomTypeId)
+        // Get bookings and overrides for this room type
+        const roomTypeBookings = overlappingBookings.filter((b: any) => b.roomTypeId === roomType.id);
+        const roomTypeOverrides = overlappingOverrides.filter((o: any) => 
+          o.roomTypeId === roomType.id || !o.roomTypeId
         );
         
-        // Check for maintenance overrides for this room type
-        const hasMaintenanceOverride = overlappingOverrides.some((override: any) => 
-          override.overrideType === 'maintenance' && 
-          (override.roomTypeId === roomType.id || !override.roomTypeId)
-        );
+        // Calculate minimum available rooms across all dates in the range
+        // Also track if any date has a blocking override
+        let minAvailableRooms = totalRoomsDefault;
+        let maxBookedRooms = 0;
+        let hasSoldOutOverride = false;
+        let hasMaintenanceOverride = false;
+        let hasHoldOverride = false;
+        const dateToCheck = new Date(start);
         
-        // Get any custom available rooms from overrides
-        const customAvailability = overlappingOverrides.find((override: any) =>
-          override.roomTypeId === roomType.id && override.availableRooms !== null
-        );
-        
-        let availableRooms = totalRooms - bookedRooms;
-        
-        // Apply custom availability if set
-        if (customAvailability && customAvailability.availableRooms !== null) {
-          availableRooms = Math.min(availableRooms, customAvailability.availableRooms);
-        }
-        
-        // If sold out or under maintenance, no rooms available
-        if (hasSoldOutOverride || hasMaintenanceOverride) {
-          availableRooms = 0;
+        while (dateToCheck < end) {
+          const currentDate = new Date(dateToCheck);
+          const nextDate = new Date(dateToCheck);
+          nextDate.setDate(nextDate.getDate() + 1);
+          
+          // Check for blocking overrides on this specific date
+          const blockingOverride = roomTypeOverrides.find((o: any) => {
+            const overrideStart = new Date(o.startDate);
+            const overrideEnd = new Date(o.endDate);
+            const overlapsDate = overrideStart <= currentDate && overrideEnd > currentDate;
+            const isBlockingType = ['hold', 'sold_out', 'maintenance'].includes(o.overrideType);
+            return overlapsDate && isBlockingType;
+          });
+          
+          if (blockingOverride) {
+            // Mark the type of block found
+            if (blockingOverride.overrideType === 'sold_out') hasSoldOutOverride = true;
+            if (blockingOverride.overrideType === 'maintenance') hasMaintenanceOverride = true;
+            if (blockingOverride.overrideType === 'hold') hasHoldOverride = true;
+            // If blocked, this date has 0 availability
+            minAvailableRooms = 0;
+          } else {
+            // Count rooms booked for this specific date
+            const bookedOnDate = roomTypeBookings
+              .filter((b: any) => {
+                const bookingStart = new Date(b.checkIn);
+                const bookingEnd = new Date(b.checkOut);
+                return bookingStart < nextDate && bookingEnd > currentDate;
+              })
+              .reduce((sum: number, b: any) => sum + (b.rooms || 1), 0);
+            
+            // Check for custom availability override on this date
+            let availableOnDate = totalRoomsDefault;
+            const dateOverride = roomTypeOverrides.find((o: any) => {
+              const overrideStart = new Date(o.startDate);
+              const overrideEnd = new Date(o.endDate);
+              return overrideStart <= currentDate && overrideEnd > currentDate && o.availableRooms !== null;
+            });
+            
+            if (dateOverride && dateOverride.availableRooms !== null) {
+              availableOnDate = dateOverride.availableRooms;
+            }
+            
+            const remainingOnDate = Math.max(0, availableOnDate - bookedOnDate);
+            
+            if (remainingOnDate < minAvailableRooms) {
+              minAvailableRooms = remainingOnDate;
+            }
+            if (bookedOnDate > maxBookedRooms) {
+              maxBookedRooms = bookedOnDate;
+            }
+          }
+          
+          dateToCheck.setDate(dateToCheck.getDate() + 1);
         }
         
         return {
           roomTypeId: roomType.id,
           roomTypeName: roomType.name,
-          totalRooms,
-          bookedRooms,
-          availableRooms: Math.max(0, availableRooms),
+          totalRooms: totalRoomsDefault,
+          bookedRooms: maxBookedRooms,
+          availableRooms: minAvailableRooms,
           hasSoldOutOverride,
           hasMaintenanceOverride,
+          hasHoldOverride,
         };
       });
       
@@ -2730,59 +2771,177 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Check for availability overrides (holds, sold-out, maintenance)
-      // If a room type is selected, check blocks for that specific room type (plus property-wide blocks)
-      const blockedDates = await storage.getPropertyBlockedDates(
-        validatedData.propertyId,
-        checkIn,
-        checkOut,
-        validatedData.roomTypeId || null
-      );
+      // Note: Blocking overrides (hold, sold_out, maintenance) are now handled in the per-date 
+      // inventory check below, which provides more specific date-based messaging
 
-      if (blockedDates.length > 0) {
-        const blockType = blockedDates[0].type;
-        let message = "Selected dates are unavailable. Please choose different dates.";
-        if (blockType === "maintenance") {
-          message = "This property is under maintenance during the selected dates.";
-        } else if (blockType === "sold_out") {
-          message = "This property is fully booked during the selected dates.";
-        } else if (blockType === "hold") {
-          message = "This property is temporarily not accepting bookings for the selected dates.";
-        }
-        return res.status(400).json({ message });
-      }
-
-      // Validate room inventory availability (if room type selected)
+      // Validate room inventory availability per-date (if room type selected)
       if (validatedData.roomTypeId) {
         const roomType = await storage.getRoomType(validatedData.roomTypeId);
         if (!roomType) {
           return res.status(400).json({ message: "Selected room type not found" });
         }
         
-        const totalRoomsAvailable = roomType.totalRooms || 1;
+        const totalRoomsDefault = roomType.totalRooms || 1;
         const requestedRooms = validatedData.rooms || 1;
         
-        // Get all confirmed/customer_confirmed bookings for this room type in the date range
+        // ONLY count ACTIVE bookings: confirmed (owner_accepted), customer_confirmed, checked_in
+        // Do NOT count: pending, rejected, cancelled, checked_out, completed
+        // This allows multiple pending bookings for the same date - inventory locks only after owner accepts
+        const ACTIVE_BOOKING_STATUSES = ['confirmed', 'customer_confirmed', 'checked_in'];
         const allBookings = await storage.getBookingsByProperty(validatedData.propertyId);
-        const overlappingConfirmedBookings = allBookings.filter((booking: any) => {
-          if (booking.status !== 'confirmed' && booking.status !== 'customer_confirmed') return false;
+        const activeBookingsForRoomType = allBookings.filter((booking: any) => {
+          if (!ACTIVE_BOOKING_STATUSES.includes(booking.status)) return false;
           if (booking.roomTypeId !== validatedData.roomTypeId) return false;
-          const bookingStart = new Date(booking.checkIn);
-          const bookingEnd = new Date(booking.checkOut);
-          return bookingStart < checkOut && bookingEnd > checkIn;
+          return true;
         });
         
-        const bookedRooms = overlappingConfirmedBookings.reduce(
-          (sum: number, booking: any) => sum + (booking.rooms || 1), 0
+        // Get availability overrides for this room type
+        const overrides = await storage.getAvailabilityOverrides(validatedData.propertyId);
+        const roomTypeOverrides = overrides.filter((o: any) => 
+          o.roomTypeId === validatedData.roomTypeId || !o.roomTypeId
         );
         
-        const availableRooms = totalRoomsAvailable - bookedRooms;
+        // Check availability PER DATE - iterate through each night
+        const dateToCheck = new Date(checkIn);
+        let insufficientDate: Date | null = null;
+        let minAvailable = totalRoomsDefault;
+        let blockedReason: string | null = null;
         
-        if (requestedRooms > availableRooms) {
-          return res.status(400).json({ 
-            message: `Only ${availableRooms} room${availableRooms !== 1 ? 's' : ''} available for the selected dates. Please reduce the number of rooms or select different dates.`,
-            availableRooms 
+        while (dateToCheck < checkOut) {
+          const currentDate = new Date(dateToCheck);
+          const nextDate = new Date(dateToCheck);
+          nextDate.setDate(nextDate.getDate() + 1);
+          
+          // Check for blocking overrides on this specific date (hold, sold_out, maintenance)
+          const blockingOverride = roomTypeOverrides.find((o: any) => {
+            const overrideStart = new Date(o.startDate);
+            const overrideEnd = new Date(o.endDate);
+            const overlapsDate = overrideStart <= currentDate && overrideEnd > currentDate;
+            const isBlockingType = ['hold', 'sold_out', 'maintenance'].includes(o.overrideType);
+            return overlapsDate && isBlockingType;
           });
+          
+          if (blockingOverride) {
+            insufficientDate = currentDate;
+            blockedReason = blockingOverride.overrideType;
+            console.log('[INVENTORY BLOCK - OVERRIDE]', {
+              roomTypeId: validatedData.roomTypeId,
+              date: currentDate.toISOString().split('T')[0],
+              overrideType: blockingOverride.overrideType,
+              requestedRooms,
+            });
+            break;
+          }
+          
+          // Count rooms booked for this specific date
+          const bookedRoomsOnDate = activeBookingsForRoomType
+            .filter((booking: any) => {
+              const bookingStart = new Date(booking.checkIn);
+              const bookingEnd = new Date(booking.checkOut);
+              // Booking overlaps this date if it starts before next day and ends after current day
+              return bookingStart < nextDate && bookingEnd > currentDate;
+            })
+            .reduce((sum: number, booking: any) => sum + (booking.rooms || 1), 0);
+          
+          // Check for custom availability on this date
+          let availableOnDate = totalRoomsDefault;
+          const dateOverride = roomTypeOverrides.find((o: any) => {
+            const overrideStart = new Date(o.startDate);
+            const overrideEnd = new Date(o.endDate);
+            return overrideStart <= currentDate && overrideEnd > currentDate && o.availableRooms !== null;
+          });
+          
+          if (dateOverride && dateOverride.availableRooms !== null) {
+            availableOnDate = dateOverride.availableRooms;
+          }
+          
+          const remainingRooms = availableOnDate - bookedRoomsOnDate;
+          
+          if (remainingRooms < minAvailable) {
+            minAvailable = remainingRooms;
+          }
+          
+          if (requestedRooms > remainingRooms) {
+            insufficientDate = currentDate;
+            // Debug logging when blocking a booking
+            console.log('[INVENTORY BLOCK]', {
+              roomTypeId: validatedData.roomTypeId,
+              date: currentDate.toISOString().split('T')[0],
+              totalRoomsAvailable: availableOnDate,
+              bookedRoomsOnDate,
+              remainingRooms,
+              requestedRooms,
+              activeBookings: activeBookingsForRoomType
+                .filter((b: any) => {
+                  const bs = new Date(b.checkIn);
+                  const be = new Date(b.checkOut);
+                  return bs < nextDate && be > currentDate;
+                })
+                .map((b: any) => ({ id: b.id, status: b.status, rooms: b.rooms })),
+            });
+            break;
+          }
+          
+          dateToCheck.setDate(dateToCheck.getDate() + 1);
+        }
+        
+        if (insufficientDate) {
+          const dateStr = insufficientDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+          
+          // Show appropriate message based on block reason
+          if (blockedReason === 'hold') {
+            return res.status(400).json({ 
+              message: `Property is temporarily not accepting bookings on ${dateStr}. Please choose different dates.`,
+              availableRooms: 0
+            });
+          } else if (blockedReason === 'sold_out') {
+            return res.status(400).json({ 
+              message: `Property is fully booked on ${dateStr}. Please choose different dates.`,
+              availableRooms: 0
+            });
+          } else if (blockedReason === 'maintenance') {
+            return res.status(400).json({ 
+              message: `Property is under maintenance on ${dateStr}. Please choose different dates.`,
+              availableRooms: 0
+            });
+          }
+          
+          return res.status(400).json({ 
+            message: `Only ${Math.max(0, minAvailable)} room${minAvailable !== 1 ? 's' : ''} available on ${dateStr}. Please reduce the number of rooms or select different dates.`,
+            availableRooms: Math.max(0, minAvailable)
+          });
+        }
+      } else {
+        // No room type selected - still check for blocking overrides (property-wide)
+        const overrides = await storage.getAvailabilityOverrides(validatedData.propertyId);
+        const propertyWideOverrides = overrides.filter((o: any) => !o.roomTypeId);
+        
+        const dateToCheck = new Date(checkIn);
+        while (dateToCheck < checkOut) {
+          const currentDate = new Date(dateToCheck);
+          
+          const blockingOverride = propertyWideOverrides.find((o: any) => {
+            const overrideStart = new Date(o.startDate);
+            const overrideEnd = new Date(o.endDate);
+            const overlapsDate = overrideStart <= currentDate && overrideEnd > currentDate;
+            const isBlockingType = ['hold', 'sold_out', 'maintenance'].includes(o.overrideType);
+            return overlapsDate && isBlockingType;
+          });
+          
+          if (blockingOverride) {
+            const dateStr = currentDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+            let message = `Selected dates are unavailable on ${dateStr}. Please choose different dates.`;
+            if (blockingOverride.overrideType === 'maintenance') {
+              message = `Property is under maintenance on ${dateStr}. Please choose different dates.`;
+            } else if (blockingOverride.overrideType === 'sold_out') {
+              message = `Property is fully booked on ${dateStr}. Please choose different dates.`;
+            } else if (blockingOverride.overrideType === 'hold') {
+              message = `Property is temporarily not accepting bookings on ${dateStr}. Please choose different dates.`;
+            }
+            return res.status(400).json({ message });
+          }
+          
+          dateToCheck.setDate(dateToCheck.getDate() + 1);
         }
       }
 

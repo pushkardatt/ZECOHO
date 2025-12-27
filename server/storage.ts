@@ -546,10 +546,16 @@ export class DatabaseStorage implements IStorage {
     endDate: Date,
     roomTypeId?: string | null
   ): Promise<{ checkIn: Date; checkOut: Date }[]> {
+    // ONLY count ACTIVE bookings: confirmed (owner_accepted), customer_confirmed, checked_in
+    // Do NOT count: pending, rejected, cancelled, checked_out, completed
+    // This allows multiple pending bookings for the same date - inventory locks only after owner accepts
+    const ACTIVE_BOOKING_STATUSES: ("confirmed" | "customer_confirmed" | "checked_in")[] = 
+      ["confirmed", "customer_confirmed", "checked_in"];
+    
     // Build where conditions
     const conditions = [
       eq(bookings.propertyId, propertyId),
-      inArray(bookings.status, ["pending", "confirmed"]),
+      inArray(bookings.status, ACTIVE_BOOKING_STATUSES),
       gt(bookings.checkOut, startDate),
       lt(bookings.checkIn, endDate)
     ];
