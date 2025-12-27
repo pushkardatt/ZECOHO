@@ -2052,6 +2052,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Only paused properties can be resumed" });
       }
 
+      // Check if property has geolocation - required for publishing
+      if (!property.latitude || !property.longitude) {
+        return res.status(400).json({ 
+          message: "Property cannot be resumed without GPS coordinates. Please set the property location in the Location tab first.",
+          missingGeotag: true
+        });
+      }
+
       const updatedProperty = await storage.updateProperty(req.params.id, { status: "published" });
       
       // Send email notification to owner
@@ -3903,6 +3911,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ 
           message: statusMessage,
           ownerKycStatus: owner.kycStatus
+        });
+      }
+
+      // Check if property has geolocation - required for publishing
+      if (!property.latitude || !property.longitude) {
+        return res.status(400).json({ 
+          message: "Property cannot be approved without GPS coordinates. Please ask the owner to set the property location using the map picker in the Owner Portal.",
+          missingGeotag: true
         });
       }
 

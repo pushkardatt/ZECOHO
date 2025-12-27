@@ -20,6 +20,7 @@ import {
   Users,
   Check,
   X,
+  AlertTriangle,
 } from "lucide-react";
 
 interface Property {
@@ -34,6 +35,8 @@ interface Property {
   bedrooms: number;
   status: string;
   imageUrl?: string;
+  latitude?: string | null;
+  longitude?: string | null;
 }
 
 export default function OwnerProperty() {
@@ -149,6 +152,15 @@ export default function OwnerProperty() {
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
+                  {!property.latitude || !property.longitude ? (
+                    <div className="flex items-center gap-2 p-2 rounded-md bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800">
+                      <AlertTriangle className="h-4 w-4 text-amber-600 flex-shrink-0" />
+                      <span className="text-xs text-amber-800 dark:text-amber-200">
+                        Location not set - required for publishing
+                      </span>
+                    </div>
+                  ) : null}
+                  
                   <p className="text-sm text-muted-foreground line-clamp-2">
                     {property.description}
                   </p>

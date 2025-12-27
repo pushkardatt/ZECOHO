@@ -34,7 +34,10 @@ import {
   Utensils,
   ChevronDown,
   ChevronUp,
+  MapPin,
 } from "lucide-react";
+import { AddressInput, type AddressDetails } from "@/components/AddressInput";
+import { PropertyMap } from "@/components/PropertyMap";
 import type { Property, AvailabilityOverride, RoomType, RoomOption } from "@shared/schema";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Switch } from "@/components/ui/switch";
@@ -115,7 +118,7 @@ export default function OwnerPropertyManage() {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid grid-cols-4 w-full max-w-lg">
+          <TabsList className="grid grid-cols-5 w-full max-w-2xl">
             <TabsTrigger value="rooms" data-testid="tab-rooms">
               <Bed className="h-4 w-4 mr-2" />
               Rooms
@@ -127,6 +130,10 @@ export default function OwnerPropertyManage() {
             <TabsTrigger value="availability" data-testid="tab-availability">
               <CalendarIcon className="h-4 w-4 mr-2" />
               Availability
+            </TabsTrigger>
+            <TabsTrigger value="location" data-testid="tab-location">
+              <MapPin className="h-4 w-4 mr-2" />
+              Location
             </TabsTrigger>
             <TabsTrigger value="status" data-testid="tab-status">
               <Settings className="h-4 w-4 mr-2" />
@@ -155,6 +162,10 @@ export default function OwnerPropertyManage() {
             />
           </TabsContent>
 
+          <TabsContent value="location" className="mt-6">
+            <LocationSection property={property} />
+          </TabsContent>
+
           <TabsContent value="status" className="mt-6">
             <StatusSection property={property} />
           </TabsContent>
@@ -174,6 +185,139 @@ function PropertyStatusBadge({ status }: { status: string }) {
   };
   const { variant, label } = config[status] || { variant: "secondary", label: status };
   return <Badge variant={variant}>{label}</Badge>;
+}
+
+function LocationSection({ property }: { property: Property }) {
+  const { toast } = useToast();
+  const propertyIdStr = String(property.id);
+  const [address, setAddress] = useState<AddressDetails>({
+    fullAddress: property.address || "",
+    streetAddress: property.propStreet || "",
+    locality: property.propLocality || "",
+    city: property.propCity || "",
+    state: property.propState || "",
+    pincode: property.propPincode || "",
+    landmark: property.propLandmark || "",
+    latitude: property.latitude ? Number(property.latitude) : undefined,
+    longitude: property.longitude ? Number(property.longitude) : undefined,
+  });
+
+  const hasLocation = address.latitude && address.longitude;
+
+  const updateMutation = useMutation({
+    mutationFn: async (updates: Record<string, any>) => {
+      return apiRequest("PATCH", `/api/properties/${property.id}`, updates);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/properties", propertyIdStr] });
+      toast({
+        title: "Location Updated",
+        description: "Your property location has been saved.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to update location.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleSaveLocation = () => {
+    if (!address.latitude || !address.longitude) {
+      toast({
+        title: "Location Required",
+        description: "Please set the property location using the map picker or by searching for the address.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    updateMutation.mutate({
+      address: address.fullAddress || null,
+      propStreet: address.streetAddress || null,
+      propLocality: address.locality || null,
+      propCity: address.city || null,
+      propState: address.state || null,
+      propPincode: address.pincode || null,
+      propLandmark: address.landmark || null,
+      latitude: address.latitude,
+      longitude: address.longitude,
+    });
+  };
+
+  return (
+    <div className="space-y-6">
+      {!hasLocation && (
+        <Card className="border-amber-500 bg-amber-50 dark:bg-amber-950/20">
+          <CardContent className="pt-4">
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="font-medium text-amber-800 dark:text-amber-200">Location Not Set</p>
+                <p className="text-sm text-amber-700 dark:text-amber-300 mt-1">
+                  Your property doesn't have GPS coordinates set. Properties without location data cannot be approved for publishing.
+                  Please use the address search or map picker below to set your property's exact location.
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <MapPin className="h-5 w-5" />
+            Property Location
+          </CardTitle>
+          <CardDescription>
+            Set your property's exact location for guests to find you easily. 
+            Search for your address or click on the map to pin your location.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <AddressInput
+            value={address}
+            onChange={setAddress}
+            placeholder="Search for your property address..."
+            testIdPrefix="location"
+          />
+
+          {hasLocation && (
+            <div className="space-y-4">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <CheckCircle className="h-4 w-4 text-green-600" />
+                <span>
+                  Location set: {address.latitude?.toFixed(6)}, {address.longitude?.toFixed(6)}
+                </span>
+              </div>
+              
+              <div className="rounded-xl overflow-hidden border h-[300px]">
+                <PropertyMap 
+                  latitude={address.latitude!} 
+                  longitude={address.longitude!}
+                  title={property.title}
+                />
+              </div>
+            </div>
+          )}
+
+          <div className="flex justify-end gap-2">
+            <Button
+              onClick={handleSaveLocation}
+              disabled={updateMutation.isPending}
+              data-testid="save-location"
+            >
+              <Save className="h-4 w-4 mr-2" />
+              {updateMutation.isPending ? "Saving..." : "Save Location"}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
 }
 
 function PricingSection({ property }: { property: Property }) {
