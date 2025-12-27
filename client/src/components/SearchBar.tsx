@@ -499,9 +499,13 @@ export function SearchBar({
                 {/* View all hotels CTA */}
                 <button
                   onClick={() => {
-                    setDestination(groupedSuggestions.matchedCity || '');
+                    const city = groupedSuggestions.matchedCity || '';
+                    setDestination(city);
                     setShowSuggestions(false);
-                    handleSearch();
+                    // Trigger search with the matched city directly
+                    const checkIn = checkInDate ? format(checkInDate, 'yyyy-MM-dd') : '';
+                    const checkOut = checkOutDate ? format(checkOutDate, 'yyyy-MM-dd') : '';
+                    onSearch?.({ destination: city, checkIn, checkOut, guests, adults, children, rooms });
                   }}
                   className="w-full text-left px-4 py-3 hover:bg-primary/5 text-sm transition-colors text-primary font-medium flex items-center justify-between"
                   data-testid="view-all-hotels-cta"
@@ -820,9 +824,13 @@ export function SearchBar({
               {/* View all hotels CTA */}
               <button
                 onClick={() => {
-                  setDestination(groupedSuggestions.matchedCity || '');
+                  const city = groupedSuggestions.matchedCity || '';
+                  setDestination(city);
                   setShowSuggestions(false);
-                  handleSearch();
+                  // Trigger search with the matched city directly
+                  const checkIn = checkInDate ? format(checkInDate, 'yyyy-MM-dd') : '';
+                  const checkOut = checkOutDate ? format(checkOutDate, 'yyyy-MM-dd') : '';
+                  onSearch?.({ destination: city, checkIn, checkOut, guests, adults, children, rooms });
                 }}
                 className="w-full text-left px-4 py-3 hover:bg-primary/5 text-sm transition-colors text-primary font-medium flex items-center justify-between border-b border-gray-100 dark:border-gray-700"
                 data-testid="view-all-hotels-cta-full"
