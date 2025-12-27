@@ -2,7 +2,8 @@
 import { Resend } from 'resend';
 
 function getAppBaseUrl(): string {
-  return process.env.APP_BASE_URL || 'https://zecoho.replit.app';
+  // Production domain - never use replit.app in emails
+  return process.env.APP_BASE_URL || 'https://www.zecoho.com';
 }
 
 async function getResendClient() {
