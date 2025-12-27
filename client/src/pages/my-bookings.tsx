@@ -75,11 +75,16 @@ export default function MyBookings() {
   const [location, setLocation] = useLocation();
   const { isAuthenticated, isLoading: authLoading } = useAuth();
   const [showNewBookingBanner, setShowNewBookingBanner] = useState(false);
+  const [highlightedBookingCode, setHighlightedBookingCode] = useState<string | null>(null);
+  const [bookingNotFound, setBookingNotFound] = useState<string | null>(null);
 
-  // Check if user just created a booking (via URL param)
+  // Check if user just created a booking (via URL param) or came from email link with bookingRef
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    if (params.get("new") === "true") {
+    const newParam = params.get("new");
+    const bookingRef = params.get("bookingRef");
+    
+    if (newParam === "true") {
       setShowNewBookingBanner(true);
       // Clean up URL without triggering navigation
       window.history.replaceState({}, "", "/my-bookings");
@@ -87,12 +92,23 @@ export default function MyBookings() {
       const timer = setTimeout(() => setShowNewBookingBanner(false), 10000);
       return () => clearTimeout(timer);
     }
+    
+    if (bookingRef) {
+      setHighlightedBookingCode(bookingRef);
+      // Clean up URL without triggering navigation but preserve the booking highlight state
+      window.history.replaceState({}, "", "/my-bookings");
+    }
   }, []);
 
-  // Redirect to login if not authenticated
+  // Redirect to login if not authenticated, preserving bookingRef for return
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
-      setLocation("/login?returnTo=/my-bookings");
+      const params = new URLSearchParams(window.location.search);
+      const bookingRef = params.get("bookingRef");
+      const returnUrl = bookingRef 
+        ? `/my-bookings?bookingRef=${bookingRef}` 
+        : "/my-bookings";
+      setLocation(`/login?returnTo=${encodeURIComponent(returnUrl)}`);
     }
   }, [authLoading, isAuthenticated, setLocation]);
 
@@ -105,6 +121,24 @@ export default function MyBookings() {
   const sortedBookings = bookings?.slice().sort((a, b) => 
     new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
   );
+
+  // Check if the highlighted booking exists in user's bookings
+  useEffect(() => {
+    if (highlightedBookingCode && bookings && !isLoading) {
+      const foundBooking = bookings.find(b => b.bookingCode === highlightedBookingCode);
+      if (!foundBooking) {
+        setBookingNotFound(highlightedBookingCode);
+        setHighlightedBookingCode(null);
+      } else {
+        setBookingNotFound(null);
+        // Auto-scroll to the booking after a short delay
+        setTimeout(() => {
+          const element = document.querySelector(`[data-booking-code="${highlightedBookingCode}"]`);
+          element?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }, 300);
+      }
+    }
+  }, [highlightedBookingCode, bookings, isLoading]);
 
   const formatCurrency = (amount: string) => {
     return new Intl.NumberFormat("en-IN", {
@@ -195,12 +229,15 @@ export default function MyBookings() {
   const renderBookingCard = (booking: Booking, index: number) => {
     // Highlight the newest booking when success banner is shown
     const isNewestBooking = index === 0 && showNewBookingBanner;
+    // Highlight booking from email deep link
+    const isHighlightedFromEmail = highlightedBookingCode && booking.bookingCode === highlightedBookingCode;
     
     return (
     <Card 
       key={booking.id} 
-      data-testid={`booking-card-${booking.id}`} 
-      className={`overflow-hidden transition-all duration-500 ${isNewestBooking ? 'ring-2 ring-primary ring-offset-2 shadow-lg' : ''}`}
+      data-testid={`booking-card-${booking.id}`}
+      data-booking-code={booking.bookingCode || undefined}
+      className={`overflow-hidden transition-all duration-500 ${isNewestBooking || isHighlightedFromEmail ? 'ring-2 ring-primary ring-offset-2 shadow-lg' : ''}`}
     >
       <div className="flex flex-col md:flex-row">
         {booking.property?.images?.[0] && (
@@ -691,6 +728,63 @@ export default function MyBookings() {
                 onClick={() => setShowNewBookingBanner(false)}
                 className="text-green-700 dark:text-green-300 hover:text-green-900 dark:hover:text-green-100"
                 data-testid="btn-dismiss-banner"
+              >
+                <XCircle className="h-4 w-4" />
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Booking Not Found Banner - when deep link reference doesn't match */}
+        {bookingNotFound && (
+          <Card className="mb-6 border-amber-200 dark:border-amber-800 bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-950/40 dark:to-orange-950/40">
+            <CardContent className="flex items-center gap-3 py-4" data-testid="booking-not-found-banner">
+              <div className="p-2 bg-amber-100 dark:bg-amber-900/50 rounded-full">
+                <AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+              </div>
+              <div className="flex-1">
+                <p className="font-medium text-amber-800 dark:text-amber-200">
+                  Booking Not Found
+                </p>
+                <p className="text-sm text-amber-700 dark:text-amber-300">
+                  We couldn't find a booking with reference <span className="font-mono font-semibold">{bookingNotFound}</span> in your account. 
+                  Please check your other bookings below or contact support if you believe this is an error.
+                </p>
+              </div>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={() => setBookingNotFound(null)}
+                className="text-amber-700 dark:text-amber-300 hover:text-amber-900 dark:hover:text-amber-100"
+                data-testid="btn-dismiss-not-found-banner"
+              >
+                <XCircle className="h-4 w-4" />
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Booking Found Banner - when deep link reference matches */}
+        {highlightedBookingCode && !isLoading && (
+          <Card className="mb-6 border-blue-200 dark:border-blue-800 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/40 dark:to-indigo-950/40">
+            <CardContent className="flex items-center gap-3 py-4" data-testid="booking-found-banner">
+              <div className="p-2 bg-blue-100 dark:bg-blue-900/50 rounded-full">
+                <CheckCircle className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+              </div>
+              <div className="flex-1">
+                <p className="font-medium text-blue-800 dark:text-blue-200">
+                  Viewing Booking <span className="font-mono">{highlightedBookingCode}</span>
+                </p>
+                <p className="text-sm text-blue-700 dark:text-blue-300">
+                  The booking from your email is highlighted below.
+                </p>
+              </div>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={() => setHighlightedBookingCode(null)}
+                className="text-blue-700 dark:text-blue-300 hover:text-blue-900 dark:hover:text-blue-100"
+                data-testid="btn-dismiss-found-banner"
               >
                 <XCircle className="h-4 w-4" />
               </Button>
