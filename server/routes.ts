@@ -3230,6 +3230,152 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Calendar availability endpoint - returns per-date availability for customer calendar
+  // Returns array of dates with their availability status (available, partial, full)
+  app.get("/api/properties/:id/calendar-availability", async (req, res) => {
+    try {
+      const { startDate, endDate } = req.query;
+      
+      if (!startDate || !endDate) {
+        return res.status(400).json({ message: "startDate and endDate are required" });
+      }
+      
+      const start = new Date(startDate as string);
+      const end = new Date(endDate as string);
+      start.setHours(0, 0, 0, 0);
+      end.setHours(0, 0, 0, 0);
+      
+      // Get all room types for this property
+      const roomTypes = await storage.getRoomsByProperty(req.params.id);
+      
+      if (roomTypes.length === 0) {
+        return res.json([]);
+      }
+      
+      // Get all bookings that overlap with the date range
+      // Count ACTIVE bookings: confirmed (owner_accepted), customer_confirmed, checked_in
+      const ACTIVE_BOOKING_STATUSES = ['confirmed', 'customer_confirmed', 'checked_in'];
+      const allBookings = await storage.getBookingsByProperty(req.params.id);
+      const overlappingBookings = allBookings.filter((booking: any) => {
+        if (!ACTIVE_BOOKING_STATUSES.includes(booking.status)) return false;
+        const bookingStart = new Date(booking.checkIn);
+        const bookingEnd = new Date(booking.checkOut);
+        return bookingStart < end && bookingEnd > start;
+      });
+      
+      // Get availability overrides for the date range
+      const overrides = await storage.getAvailabilityOverrides(req.params.id);
+      const overlappingOverrides = overrides.filter((override: any) => {
+        const overrideStart = new Date(override.startDate);
+        const overrideEnd = new Date(override.endDate);
+        return overrideStart < end && overrideEnd > start;
+      });
+      
+      // Calculate availability for each date
+      const calendarDates: Array<{
+        date: string;
+        totalRooms: number;
+        availableRooms: number;
+        status: 'available' | 'partial' | 'full';
+        isBlocked: boolean;
+      }> = [];
+      
+      const dateToCheck = new Date(start);
+      while (dateToCheck < end) {
+        const currentDate = new Date(dateToCheck);
+        currentDate.setHours(0, 0, 0, 0); // Normalize to midnight for consistent comparison
+        const nextDate = new Date(dateToCheck);
+        nextDate.setDate(nextDate.getDate() + 1);
+        
+        // Calculate total rooms and booked rooms across all room types for this date
+        let totalRoomsAllTypes = 0;
+        let availableRoomsAllTypes = 0;
+        let isBlocked = false;
+        
+        for (const roomType of roomTypes) {
+          const totalRoomsDefault = roomType.totalRooms || 1;
+          totalRoomsAllTypes += totalRoomsDefault;
+          
+          // Check for blocking overrides on this specific date for this room type
+          const blockingOverride = overlappingOverrides.find((o: any) => {
+            if (o.roomTypeId && o.roomTypeId !== roomType.id) return false;
+            const overrideStart = new Date(o.startDate);
+            const overrideEnd = new Date(o.endDate);
+            const overlapsDate = overrideStart <= currentDate && overrideEnd > currentDate;
+            const isBlockingType = ['hold', 'sold_out', 'maintenance'].includes(o.overrideType);
+            return overlapsDate && isBlockingType;
+          });
+          
+          if (blockingOverride && !blockingOverride.roomTypeId) {
+            // Property-wide block
+            isBlocked = true;
+            continue;
+          }
+          
+          if (blockingOverride) {
+            // Room type specific block - this room type has 0 availability
+            continue;
+          }
+          
+          // Count rooms booked for this specific night (check-in date up to but excluding checkout date)
+          // A room is booked on a given night if: checkIn <= currentDate < checkOut
+          // The checkout day itself is NOT counted as booked (guest leaves that morning)
+          const roomTypeBookings = overlappingBookings.filter((b: any) => b.roomTypeId === roomType.id);
+          const bookedOnDate = roomTypeBookings
+            .filter((b: any) => {
+              const bookingStart = new Date(b.checkIn);
+              const bookingEnd = new Date(b.checkOut);
+              bookingStart.setHours(0, 0, 0, 0);
+              bookingEnd.setHours(0, 0, 0, 0);
+              // Room is occupied on nights where: checkIn <= date < checkOut
+              // Checkout day is available for new check-ins
+              return bookingStart <= currentDate && bookingEnd > currentDate;
+            })
+            .reduce((sum: number, b: any) => sum + (b.rooms || 1), 0);
+          
+          // Check for custom availability override on this date
+          let baseAvailable = totalRoomsDefault;
+          const dateOverride = overlappingOverrides.find((o: any) => {
+            if (o.roomTypeId && o.roomTypeId !== roomType.id) return false;
+            const overrideStart = new Date(o.startDate);
+            const overrideEnd = new Date(o.endDate);
+            return overrideStart <= currentDate && overrideEnd > currentDate && o.availableRooms !== null;
+          });
+          
+          if (dateOverride && dateOverride.availableRooms !== null) {
+            baseAvailable = dateOverride.availableRooms;
+          }
+          
+          const remainingOnDate = Math.max(0, baseAvailable - bookedOnDate);
+          availableRoomsAllTypes += remainingOnDate;
+        }
+        
+        // Determine status
+        let status: 'available' | 'partial' | 'full' = 'available';
+        if (isBlocked || availableRoomsAllTypes === 0) {
+          status = 'full';
+        } else if (availableRoomsAllTypes < totalRoomsAllTypes) {
+          status = 'partial';
+        }
+        
+        calendarDates.push({
+          date: dateToCheck.toISOString().split('T')[0],
+          totalRooms: totalRoomsAllTypes,
+          availableRooms: availableRoomsAllTypes,
+          status,
+          isBlocked,
+        });
+        
+        dateToCheck.setDate(dateToCheck.getDate() + 1);
+      }
+      
+      res.json(calendarDates);
+    } catch (error) {
+      console.error("Error fetching calendar availability:", error);
+      res.status(500).json({ message: "Failed to fetch calendar availability" });
+    }
+  });
+
   app.patch("/api/bookings/:id/status", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;

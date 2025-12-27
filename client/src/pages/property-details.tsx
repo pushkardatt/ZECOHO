@@ -262,35 +262,48 @@ export default function PropertyDetails() {
     enabled: !!propertyId,
   });
 
-  const { data: bookedDates = [] } = useQuery<{ checkIn: Date; checkOut: Date }[]>({
-    queryKey: ["/api/properties", propertyId, "/booked-dates"],
+  // Fetch per-date calendar availability (total rooms vs available rooms)
+  interface CalendarAvailability {
+    date: string;
+    totalRooms: number;
+    availableRooms: number;
+    status: 'available' | 'partial' | 'full';
+    isBlocked: boolean;
+  }
+  
+  const { data: calendarAvailability = [] } = useQuery<CalendarAvailability[]>({
+    queryKey: ["/api/properties", propertyId, "calendar-availability"],
     queryFn: async () => {
       if (!propertyId) return [];
       
       const startDate = new Date();
+      startDate.setHours(0, 0, 0, 0);
       const endDate = new Date();
       endDate.setFullYear(endDate.getFullYear() + 1);
       
       const response = await fetch(
-        `/api/properties/${propertyId}/booked-dates?startDate=${startDate.toISOString()}&endDate=${endDate.toISOString()}`
+        `/api/properties/${propertyId}/calendar-availability?startDate=${startDate.toISOString()}&endDate=${endDate.toISOString()}`
       );
       
       if (!response.ok) {
-        console.error(`Failed to fetch booked dates: ${response.status} ${response.statusText}`);
-        const errorText = await response.text();
-        console.error(`Error body: ${errorText}`);
-        throw new Error(`Failed to fetch booked dates: ${response.statusText}`);
+        console.error(`Failed to fetch calendar availability: ${response.status} ${response.statusText}`);
+        return [];
       }
       
-      const data = await response.json();
-      return data.map((d: any) => ({
-        checkIn: new Date(d.checkIn),
-        checkOut: new Date(d.checkOut),
-      }));
+      return await response.json();
     },
     enabled: !!propertyId,
     retry: 1,
   });
+  
+  // Create a lookup map for fast date availability checks
+  const availabilityByDate = useMemo(() => {
+    const map = new Map<string, CalendarAvailability>();
+    calendarAvailability.forEach((day) => {
+      map.set(day.date, day);
+    });
+    return map;
+  }, [calendarAvailability]);
 
   const { data: blockedDates = [] } = useQuery<{ startDate: Date; endDate: Date; type: string }[]>({
     queryKey: ["/api/properties", propertyId, "availability-overrides"],
@@ -751,19 +764,25 @@ export default function PropertyDetails() {
     return Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
   }, [checkIn, checkOut]);
 
+  // Check if any date in selected range has 0 available rooms
   const hasDateOverlap = useMemo(() => {
-    if (!checkIn || !checkOut || bookedDates.length === 0) return false;
+    if (!checkIn || !checkOut || calendarAvailability.length === 0) return false;
     
-    const selectedStart = new Date(checkIn);
-    const selectedEnd = new Date(checkOut);
+    const start = parseLocalDate(checkIn);
+    const end = parseLocalDate(checkOut);
+    const dateToCheck = new Date(start);
     
-    return bookedDates.some((booked) => {
-      const bookedStart = new Date(booked.checkIn);
-      const bookedEnd = new Date(booked.checkOut);
-      
-      return (selectedStart < bookedEnd && selectedEnd > bookedStart);
-    });
-  }, [checkIn, checkOut, bookedDates]);
+    while (dateToCheck < end) {
+      const dateStr = format(dateToCheck, "yyyy-MM-dd");
+      const availability = availabilityByDate.get(dateStr);
+      // Only block if availableRooms === 0 (fully booked)
+      if (availability && availability.availableRooms === 0) {
+        return true;
+      }
+      dateToCheck.setDate(dateToCheck.getDate() + 1);
+    }
+    return false;
+  }, [checkIn, checkOut, calendarAvailability, availabilityByDate]);
 
   const blockedDateInfo = useMemo(() => {
     if (!checkIn || !checkOut || blockedDates.length === 0) return null;
@@ -786,6 +805,33 @@ export default function PropertyDetails() {
   }, [checkIn, checkOut, blockedDates]);
 
   const hasBlockedDateOverlap = blockedDateInfo !== null;
+
+  // Check if any date in selected range has partial availability (some but not all rooms booked)
+  const partialAvailabilityInfo = useMemo(() => {
+    if (!checkIn || !checkOut || calendarAvailability.length === 0) return null;
+    
+    const start = parseLocalDate(checkIn);
+    const end = parseLocalDate(checkOut);
+    const dateToCheck = new Date(start);
+    
+    let hasPartialDates = false;
+    let minAvailable = Infinity;
+    
+    while (dateToCheck < end) {
+      const dateStr = format(dateToCheck, "yyyy-MM-dd");
+      const availability = availabilityByDate.get(dateStr);
+      if (availability && availability.status === 'partial') {
+        hasPartialDates = true;
+        if (availability.availableRooms < minAvailable) {
+          minAvailable = availability.availableRooms;
+        }
+      }
+      dateToCheck.setDate(dateToCheck.getDate() + 1);
+    }
+    
+    if (!hasPartialDates) return null;
+    return { minAvailable: minAvailable === Infinity ? 0 : minAvailable };
+  }, [checkIn, checkOut, calendarAvailability, availabilityByDate]);
 
   const handleBooking = () => {
     if (!user) {
@@ -1453,18 +1499,18 @@ export default function PropertyDetails() {
                           disabled={(date) => {
                             const today = new Date(new Date().setHours(0, 0, 0, 0));
                             if (date < today) return true;
+                            
+                            // Check availability using the new calendar availability data
+                            // Only disable if availableRooms === 0
+                            const dateStr = format(date, "yyyy-MM-dd");
+                            const availability = availabilityByDate.get(dateStr);
+                            if (availability && availability.availableRooms === 0) {
+                              return true;
+                            }
+                            
+                            // Also check owner-blocked dates
                             const currentDate = new Date(date);
                             currentDate.setHours(0, 0, 0, 0);
-                            
-                            const isBooked = bookedDates.some((booked) => {
-                              const bookedStart = new Date(booked.checkIn);
-                              const bookedEnd = new Date(booked.checkOut);
-                              bookedStart.setHours(0, 0, 0, 0);
-                              bookedEnd.setHours(0, 0, 0, 0);
-                              return currentDate >= bookedStart && currentDate < bookedEnd;
-                            });
-                            if (isBooked) return true;
-
                             const isBlocked = blockedDates.some((blocked) => {
                               const blockStart = new Date(blocked.startDate);
                               const blockEnd = new Date(blocked.endDate);
@@ -1507,18 +1553,18 @@ export default function PropertyDetails() {
                             const today = new Date(new Date().setHours(0, 0, 0, 0));
                             if (date <= today) return true;
                             if (checkIn && date <= parseLocalDate(checkIn)) return true;
+                            
+                            // Check availability using the new calendar availability data
+                            // Only disable if availableRooms === 0
+                            const dateStr = format(date, "yyyy-MM-dd");
+                            const availability = availabilityByDate.get(dateStr);
+                            if (availability && availability.availableRooms === 0) {
+                              return true;
+                            }
+                            
+                            // Also check owner-blocked dates
                             const currentDate = new Date(date);
                             currentDate.setHours(0, 0, 0, 0);
-                            
-                            const isBooked = bookedDates.some((booked) => {
-                              const bookedStart = new Date(booked.checkIn);
-                              const bookedEnd = new Date(booked.checkOut);
-                              bookedStart.setHours(0, 0, 0, 0);
-                              bookedEnd.setHours(0, 0, 0, 0);
-                              return currentDate >= bookedStart && currentDate < bookedEnd;
-                            });
-                            if (isBooked) return true;
-
                             const isBlocked = blockedDates.some((blocked) => {
                               const blockStart = new Date(blocked.startDate);
                               const blockEnd = new Date(blocked.endDate);
@@ -1841,6 +1887,18 @@ export default function PropertyDetails() {
                         The owner has placed a temporary hold on bookings. Please select different dates or contact the owner.
                       </p>
                     )}
+                  </div>
+                )}
+
+                {/* Limited availability info label - shown when dates have partial availability */}
+                {partialAvailabilityInfo && !hasDateOverlap && !hasBlockedDateOverlap && (
+                  <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg" data-testid="limited-availability-info">
+                    <p className="text-sm text-blue-800 dark:text-blue-200 font-medium">
+                      Limited availability for selected dates
+                    </p>
+                    <p className="text-xs text-blue-600 dark:text-blue-300 mt-1">
+                      Only {partialAvailabilityInfo.minAvailable} room{partialAvailabilityInfo.minAvailable !== 1 ? 's' : ''} available on some dates. Book now to secure your stay!
+                    </p>
                   </div>
                 )}
 
