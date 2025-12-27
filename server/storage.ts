@@ -535,7 +535,12 @@ export class DatabaseStorage implements IStorage {
   // Booking operations
   async createBooking(bookingData: InsertBooking): Promise<Booking> {
     const bookingCode = await generateBookingCode();
-    const [booking] = await db.insert(bookings).values({ ...bookingData, bookingCode }).returning();
+    // Explicitly set bookingCreatedAt to server time (immutable after creation)
+    const [booking] = await db.insert(bookings).values({ 
+      ...bookingData, 
+      bookingCode,
+      bookingCreatedAt: new Date(),
+    }).returning();
     return booking;
   }
 
@@ -549,7 +554,7 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(bookings)
       .where(eq(bookings.propertyId, propertyId))
-      .orderBy(sql`${bookings.checkIn} DESC`);
+      .orderBy(sql`${bookings.bookingCreatedAt} DESC NULLS LAST`);
   }
 
   async getBookingsByGuest(guestId: string): Promise<Booking[]> {
@@ -557,7 +562,7 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(bookings)
       .where(eq(bookings.guestId, guestId))
-      .orderBy(sql`${bookings.checkIn} DESC`);
+      .orderBy(sql`${bookings.bookingCreatedAt} DESC NULLS LAST`);
   }
 
   async getPropertyBookedDates(

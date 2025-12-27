@@ -3021,6 +3021,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const checkInFormatted = checkIn.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
       const checkOutFormatted = checkOut.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
       
+      // Format booking created date for emails
+      const bookingCreatedAtFormatted = booking.bookingCreatedAt 
+        ? new Date(booking.bookingCreatedAt).toLocaleString('en-IN', { 
+            day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true 
+          })
+        : undefined;
+        
       const bookingEmailData = {
         bookingCode: booking.bookingCode || booking.id.slice(0, 8).toUpperCase(),
         propertyName: property.title,
@@ -3033,6 +3040,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           ? `${guest.firstName} ${guest.lastName}` 
           : guest?.email || 'Guest',
         guestEmail: guest?.email || '',
+        bookingCreatedAt: bookingCreatedAtFormatted,
       };
       
       // Email to guest: "Reservation Requested"
@@ -3481,6 +3489,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // STATE: CUSTOMER_CONFIRMED - Send confirmation emails to both guest and owner
         const checkInFormatted = new Date(booking.checkIn).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
         const checkOutFormatted = new Date(booking.checkOut).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+        const bookingCreatedAtFormatted = booking.bookingCreatedAt 
+          ? new Date(booking.bookingCreatedAt).toLocaleString('en-IN', { 
+              day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true 
+            })
+          : undefined;
         
         const bookingEmailData = {
           bookingCode: booking.bookingCode || booking.id.slice(0, 8).toUpperCase(),
@@ -3494,6 +3507,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             ? `${guest.firstName} ${guest.lastName}` 
             : guest?.email || 'Guest',
           guestEmail: guest?.email || '',
+          bookingCreatedAt: bookingCreatedAtFormatted,
         };
         
         // Email to guest: "Booking Confirmed"
@@ -4662,6 +4676,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (guest?.email) {
         const checkInFormatted = new Date(booking.checkIn).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
         const checkOutFormatted = new Date(booking.checkOut).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+        const bookingCreatedAtFormatted = booking.bookingCreatedAt 
+          ? new Date(booking.bookingCreatedAt).toLocaleString('en-IN', { 
+              day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true 
+            })
+          : undefined;
         
         const bookingEmailData = {
           bookingCode: booking.bookingCode || booking.id.slice(0, 8).toUpperCase(),
@@ -4671,6 +4690,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           guests: booking.guests || 1,
           rooms: booking.rooms || 1,
           totalPrice: booking.totalPrice?.toString() || '0',
+          bookingCreatedAt: bookingCreatedAtFormatted,
         };
         
         if (status === "confirmed") {

@@ -302,6 +302,8 @@ export const bookings = pgTable("bookings", {
   // Booking type and extension linking
   bookingType: bookingTypeEnum("booking_type").notNull().default("standard"),
   parentBookingId: varchar("parent_booking_id"),
+  // Booking creation tracking - immutable after creation
+  bookingCreatedAt: timestamp("booking_created_at").defaultNow(),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

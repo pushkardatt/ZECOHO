@@ -778,6 +778,7 @@ interface BookingEmailData {
   totalPrice: string;
   guestName?: string;
   guestEmail?: string;
+  bookingCreatedAt?: string;
 }
 
 // CREATED STATE: Email to Guest - "Reservation Requested"
@@ -834,6 +835,7 @@ export async function sendBookingCreatedGuestEmail(
                 <p style="color: #6b7280; margin: 0 0 8px 0;"><strong>Check-in:</strong> ${data.checkIn}</p>
                 <p style="color: #6b7280; margin: 0 0 8px 0;"><strong>Check-out:</strong> ${data.checkOut}</p>
                 <p style="color: #6b7280; margin: 0 0 8px 0;"><strong>Guests:</strong> ${data.guests} | <strong>Rooms:</strong> ${data.rooms}</p>
+                ${data.bookingCreatedAt ? `<p style="color: #6b7280; margin: 0 0 8px 0;"><strong>Booked On:</strong> ${data.bookingCreatedAt}</p>` : ''}
                 <p style="color: #1f2937; margin: 0; font-weight: 600; font-size: 18px;">Total: Rs. ${data.totalPrice}</p>
               </div>
               
@@ -940,6 +942,7 @@ export async function sendBookingOwnerAcceptedEmail(
                 <p style="color: #6b7280; margin: 0 0 8px 0;"><strong>Check-in:</strong> ${data.checkIn}</p>
                 <p style="color: #6b7280; margin: 0 0 8px 0;"><strong>Check-out:</strong> ${data.checkOut}</p>
                 <p style="color: #6b7280; margin: 0 0 8px 0;"><strong>Guests:</strong> ${data.guests} | <strong>Rooms:</strong> ${data.rooms}</p>
+                ${data.bookingCreatedAt ? `<p style="color: #6b7280; margin: 0 0 8px 0;"><strong>Booked On:</strong> ${data.bookingCreatedAt}</p>` : ''}
                 <p style="color: #1f2937; margin: 0; font-weight: 600; font-size: 18px;">Total: Rs. ${data.totalPrice}</p>
               </div>
               
@@ -1036,6 +1039,7 @@ export async function sendBookingConfirmedGuestEmail(
                 <p style="color: #6b7280; margin: 0 0 8px 0;"><strong>Check-in:</strong> ${data.checkIn}</p>
                 <p style="color: #6b7280; margin: 0 0 8px 0;"><strong>Check-out:</strong> ${data.checkOut}</p>
                 <p style="color: #6b7280; margin: 0 0 8px 0;"><strong>Guests:</strong> ${data.guests} | <strong>Rooms:</strong> ${data.rooms}</p>
+                ${data.bookingCreatedAt ? `<p style="color: #6b7280; margin: 0 0 8px 0;"><strong>Booked On:</strong> ${data.bookingCreatedAt}</p>` : ''}
                 <p style="color: #1f2937; margin: 0; font-weight: 600; font-size: 18px;">Total: Rs. ${data.totalPrice}</p>
               </div>
               
@@ -1139,6 +1143,7 @@ export async function sendBookingConfirmedOwnerEmail(
                 <p style="color: #6b7280; margin: 0 0 8px 0;"><strong>Check-in:</strong> ${data.checkIn}</p>
                 <p style="color: #6b7280; margin: 0 0 8px 0;"><strong>Check-out:</strong> ${data.checkOut}</p>
                 <p style="color: #6b7280; margin: 0 0 8px 0;"><strong>Guests:</strong> ${data.guests} | <strong>Rooms:</strong> ${data.rooms}</p>
+                ${data.bookingCreatedAt ? `<p style="color: #6b7280; margin: 0 0 8px 0;"><strong>Booked On:</strong> ${data.bookingCreatedAt}</p>` : ''}
                 <p style="color: #1f2937; margin: 0; font-weight: 600; font-size: 18px;">Total: Rs. ${data.totalPrice}</p>
               </div>
               

@@ -69,6 +69,7 @@ interface Booking {
   earlyCheckout?: boolean;
   bookingType?: "standard" | "extension";
   parentBookingId?: string | null;
+  bookingCreatedAt?: string;
   createdAt: string;
   property?: {
     id: string;
@@ -463,6 +464,14 @@ export default function OwnerBookings() {
             </div>
           </div>
         </div>
+        
+        {/* Booked On date */}
+        {(booking.bookingCreatedAt || booking.createdAt) && (
+          <div className="flex items-center gap-2 text-sm text-muted-foreground" data-testid={`booked-on-${booking.id}`}>
+            <Clock className="h-3.5 w-3.5" />
+            <span>Booked on {format(new Date(booking.bookingCreatedAt || booking.createdAt), "dd MMM yyyy, h:mm a")}</span>
+          </div>
+        )}
 
         {(booking.roomType || booking.roomOption) && (
           <div className="flex flex-wrap gap-3 text-sm pt-1">
