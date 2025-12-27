@@ -3899,6 +3899,59 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Get top hotels for a specific city - for Swiggy-style search suggestions
+  app.get("/api/cities/:city/top-hotels", async (req, res) => {
+    try {
+      const { city } = req.params;
+      const limit = parseInt(req.query.limit as string) || 5;
+      
+      if (!city || city.trim().length === 0) {
+        return res.json([]);
+      }
+      
+      const cityLower = city.toLowerCase().trim();
+      
+      // Get all published properties in the city
+      const allProperties = await storage.getProperties();
+      const cityProperties = allProperties
+        .filter((p: any) => 
+          p.status === "published" && 
+          p.availability === "active" &&
+          p.propCity?.toLowerCase() === cityLower
+        );
+      
+      // Sort by rating DESC, then by number of reviews (as proxy for booking count)
+      const sortedProperties = cityProperties.sort((a: any, b: any) => {
+        // First by rating DESC
+        const ratingA = parseFloat(a.rating) || 0;
+        const ratingB = parseFloat(b.rating) || 0;
+        if (ratingB !== ratingA) return ratingB - ratingA;
+        
+        // Then by review count (proxy for popularity)
+        const reviewsA = a.reviewCount || 0;
+        const reviewsB = b.reviewCount || 0;
+        return reviewsB - reviewsA;
+      });
+      
+      // Take top N hotels
+      const topHotels = sortedProperties.slice(0, limit).map((p: any) => ({
+        id: p.id,
+        name: p.title || "Unnamed Hotel",
+        city: p.propCity || "",
+        state: p.propState || "",
+        rating: p.rating ? parseFloat(p.rating).toFixed(1) : null,
+        reviewCount: p.reviewCount || 0,
+        imageUrl: p.images?.[0]?.url || null,
+        pricePerNight: p.pricePerNight,
+      }));
+      
+      res.json(topHotels);
+    } catch (error) {
+      console.error("Error fetching top hotels for city:", error);
+      res.status(500).json({ message: "Failed to fetch top hotels" });
+    }
+  });
+  
   app.get("/api/destinations", async (req, res) => {
     try {
       const { search } = req.query;

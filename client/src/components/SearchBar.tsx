@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Search, MapPin, Calendar as CalendarIcon, Users, Loader2, Building2, Minus, Plus, ChevronDown } from "lucide-react";
+import { Search, MapPin, Calendar as CalendarIcon, Users, Loader2, Building2, Minus, Plus, ChevronDown, Star, ChevronRight } from "lucide-react";
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
@@ -90,6 +90,7 @@ export function SearchBar({
   const [googleHotelPredictions, setGoogleHotelPredictions] = useState<GooglePlacePrediction[]>([]);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [googleMapsLoaded, setGoogleMapsLoaded] = useState(false);
+  const [matchedCity, setMatchedCity] = useState<string | null>(null);
   const suggestionsRef = useRef<HTMLDivElement>(null);
   const autocompleteServiceRef = useRef<any>(null);
   const guestsInputRef = useRef<HTMLInputElement>(null);
@@ -242,7 +243,50 @@ export function SearchBar({
     enabled: debouncedDestination.length > 0,
   });
 
-  const combinedDestinations = useMemo(() => {
+  // Detect matched city from destinations or Google predictions for Swiggy-style suggestions
+  const detectedCity = useMemo(() => {
+    if (debouncedDestination.length < 2) return null;
+    
+    const searchLower = debouncedDestination.toLowerCase();
+    
+    // Check database destinations for city match
+    const dbCityMatch = filteredDestinations.find((d: any) => 
+      !d.isProperty && d.name?.toLowerCase().startsWith(searchLower)
+    );
+    if (dbCityMatch) return dbCityMatch.name;
+    
+    // Check Google city predictions
+    const googleCityMatch = googleCityPredictions.find(p => {
+      const cityName = p.structured_formatting?.main_text?.toLowerCase() || p.description.split(",")[0].toLowerCase();
+      return cityName.startsWith(searchLower);
+    });
+    if (googleCityMatch) {
+      return googleCityMatch.structured_formatting?.main_text || googleCityMatch.description.split(",")[0];
+    }
+    
+    return null;
+  }, [debouncedDestination, filteredDestinations, googleCityPredictions]);
+  
+  // Update matchedCity state when detected city changes
+  useEffect(() => {
+    setMatchedCity(detectedCity);
+  }, [detectedCity]);
+  
+  // Fetch top hotels for the matched city
+  const { data: cityTopHotels = [], isLoading: isLoadingCityHotels } = useQuery({
+    queryKey: ['city-top-hotels', matchedCity],
+    queryFn: async () => {
+      if (!matchedCity) return [];
+      const res = await fetch(`/api/cities/${encodeURIComponent(matchedCity)}/top-hotels?limit=5`);
+      if (!res.ok) return [];
+      return res.json();
+    },
+    staleTime: 60000,
+    enabled: !!matchedCity,
+  });
+
+  // Group destinations into sections for Swiggy-style dropdown
+  const groupedSuggestions = useMemo(() => {
     // Separate database destinations and properties
     const dbDestinations = filteredDestinations.filter((d: any) => !d.isProperty);
     const dbProperties = filteredDestinations.filter((d: any) => d.isProperty);
@@ -260,28 +304,39 @@ export function SearchBar({
         isProperty: false,
       }));
 
-    // Add hotels/lodging from Google Places (only if not already in our DB properties)
-    const dbPropertyNames = new Set(dbProperties.map((p: any) => p.name.toLowerCase()));
-    const googleHotels = googleHotelPredictions
-      .filter(p => !dbPropertyNames.has(p.structured_formatting?.main_text?.toLowerCase() || ""))
-      .slice(0, 3) // Limit to top 3 Google hotels since we have our own
-      .map(p => ({
-        id: `google-hotel-${p.place_id}`,
-        name: p.structured_formatting?.main_text || p.description.split(",")[0],
-        state: p.structured_formatting?.secondary_text || "",
-        isGoogle: true,
-        isHotel: true,
-        isProperty: false,
-      }));
-
-    // Combine: DB properties first (hotels from our system), then destinations, then Google cities, then Google hotels
-    return [
-      ...dbProperties.map((d: any) => ({ ...d, isHotel: true })),
+    // Combine all city matches
+    const allCities = [
       ...dbDestinations.map((d: any) => ({ ...d, isHotel: false, isProperty: false })),
       ...googleCities,
-      ...googleHotels,
-    ];
-  }, [filteredDestinations, googleCityPredictions, googleHotelPredictions]);
+    ].slice(0, 5); // Limit to 5 city suggestions
+    
+    // Top hotels in matched city (from our database)
+    const topHotelsInCity = cityTopHotels.map((h: any) => ({
+      ...h,
+      isHotel: true,
+      isProperty: true,
+      propertyId: h.id,
+    }));
+    
+    // Other matching properties (not in the matched city's top hotels)
+    const topHotelIds = new Set(cityTopHotels.map((h: any) => h.id));
+    const otherProperties = dbProperties
+      .filter((p: any) => !topHotelIds.has(p.propertyId || p.id))
+      .map((d: any) => ({ ...d, isHotel: true }));
+
+    return {
+      cities: allCities,
+      topHotelsInCity,
+      otherProperties,
+      matchedCity,
+    };
+  }, [filteredDestinations, googleCityPredictions, cityTopHotels, matchedCity]);
+  
+  // Legacy combinedDestinations for backward compatibility
+  const combinedDestinations = useMemo(() => {
+    const { cities, topHotelsInCity, otherProperties } = groupedSuggestions;
+    return [...cities, ...topHotelsInCity, ...otherProperties];
+  }, [groupedSuggestions]);
 
   // Close suggestions when clicking outside
   useEffect(() => {
@@ -377,38 +432,110 @@ export function SearchBar({
           <Search className="h-5 w-5" />
         </Button>
         
-        {/* Suggestions dropdown - positioned absolutely relative to outer container */}
-        {showSuggestions && combinedDestinations.length > 0 && (
-          <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md shadow-2xl max-h-60 overflow-y-auto" style={{ zIndex: 9999 }}>
-            {(isLoading || isGoogleLoading) && (
+        {/* Swiggy-style grouped suggestions dropdown */}
+        {showSuggestions && (groupedSuggestions.cities.length > 0 || groupedSuggestions.topHotelsInCity.length > 0) && (
+          <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-2xl max-h-[400px] overflow-y-auto" style={{ zIndex: 9999 }}>
+            {(isLoading || isGoogleLoading || isLoadingCityHotels) && (
               <div className="px-4 py-2 text-sm text-muted-foreground flex items-center gap-2">
                 <Loader2 className="h-4 w-4 animate-spin" />
                 Searching destinations & hotels...
               </div>
             )}
-            {combinedDestinations.map((dest: any) => (
-              <button
-                key={dest.id}
-                onClick={() => handleSelectDestination(dest)}
-                className="w-full text-left px-4 py-3 hover:bg-gray-100 dark:hover:bg-gray-700 text-sm transition-colors border-b border-gray-100 dark:border-gray-700 last:border-b-0 text-gray-900 dark:text-white"
-                data-testid={`suggestion-destination-compact-${dest.id}`}
-              >
-                {dest.isHotel ? (
-                  <Building2 className="inline h-4 w-4 mr-2 text-primary" />
-                ) : (
-                  <MapPin className="inline h-4 w-4 mr-2 text-gray-500 dark:text-gray-400" />
-                )}
-                <span className="font-medium">{dest.name}</span>
-                {dest.state && (
-                  <span className="text-gray-500 dark:text-gray-400 ml-2 text-xs">
-                    {dest.state}{dest.isGoogle && !dest.isHotel ? '' : dest.isHotel ? '' : `, ${dest.country || 'India'}`}
-                  </span>
-                )}
-                {dest.isHotel && (
-                  <span className="ml-2 text-xs text-primary font-medium">Hotel</span>
-                )}
-              </button>
-            ))}
+            
+            {/* City Matches Section */}
+            {groupedSuggestions.cities.length > 0 && (
+              <div>
+                <div className="px-4 py-2 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide bg-gray-50 dark:bg-gray-900/50">
+                  Destinations
+                </div>
+                {groupedSuggestions.cities.map((dest: any) => (
+                  <button
+                    key={dest.id}
+                    onClick={() => handleSelectDestination(dest)}
+                    className="w-full text-left px-4 py-3 hover:bg-gray-100 dark:hover:bg-gray-700 text-sm transition-colors border-b border-gray-100 dark:border-gray-700 last:border-b-0 text-gray-900 dark:text-white flex items-center gap-2"
+                    data-testid={`suggestion-city-compact-${dest.id}`}
+                  >
+                    <MapPin className="h-4 w-4 text-primary flex-shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <span className="font-medium">{dest.name}</span>
+                      {dest.state && (
+                        <span className="text-gray-500 dark:text-gray-400 ml-1 text-xs">, {dest.state}</span>
+                      )}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+            
+            {/* Top Hotels in City Section */}
+            {groupedSuggestions.topHotelsInCity.length > 0 && groupedSuggestions.matchedCity && (
+              <div>
+                <div className="px-4 py-2 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide bg-gray-50 dark:bg-gray-900/50 flex items-center justify-between">
+                  <span>Top Hotels in {groupedSuggestions.matchedCity}</span>
+                </div>
+                {groupedSuggestions.topHotelsInCity.map((hotel: any) => (
+                  <button
+                    key={hotel.id}
+                    onClick={() => handleSelectDestination(hotel)}
+                    className="w-full text-left px-4 py-3 hover:bg-gray-100 dark:hover:bg-gray-700 text-sm transition-colors border-b border-gray-100 dark:border-gray-700 last:border-b-0 text-gray-900 dark:text-white flex items-center gap-3"
+                    data-testid={`suggestion-hotel-compact-${hotel.id}`}
+                  >
+                    <Building2 className="h-4 w-4 text-primary flex-shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium truncate">{hotel.name}</span>
+                        {hotel.rating && (
+                          <span className="flex items-center gap-0.5 text-xs text-amber-600 dark:text-amber-400 flex-shrink-0">
+                            <Star className="h-3 w-3 fill-current" />
+                            {hotel.rating}
+                          </span>
+                        )}
+                      </div>
+                      <span className="text-xs text-gray-500 dark:text-gray-400">Hotel</span>
+                    </div>
+                    <ChevronRight className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                  </button>
+                ))}
+                {/* View all hotels CTA */}
+                <button
+                  onClick={() => {
+                    setDestination(groupedSuggestions.matchedCity || '');
+                    setShowSuggestions(false);
+                    handleSearch();
+                  }}
+                  className="w-full text-left px-4 py-3 hover:bg-primary/5 text-sm transition-colors text-primary font-medium flex items-center justify-between"
+                  data-testid="view-all-hotels-cta"
+                >
+                  <span>View all hotels in {groupedSuggestions.matchedCity}</span>
+                  <ChevronRight className="h-4 w-4" />
+                </button>
+              </div>
+            )}
+            
+            {/* Other matching properties */}
+            {groupedSuggestions.otherProperties.length > 0 && (
+              <div>
+                <div className="px-4 py-2 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide bg-gray-50 dark:bg-gray-900/50">
+                  Matching Hotels
+                </div>
+                {groupedSuggestions.otherProperties.slice(0, 3).map((dest: any) => (
+                  <button
+                    key={dest.id || dest.propertyId}
+                    onClick={() => handleSelectDestination(dest)}
+                    className="w-full text-left px-4 py-3 hover:bg-gray-100 dark:hover:bg-gray-700 text-sm transition-colors border-b border-gray-100 dark:border-gray-700 last:border-b-0 text-gray-900 dark:text-white flex items-center gap-3"
+                    data-testid={`suggestion-property-compact-${dest.id || dest.propertyId}`}
+                  >
+                    <Building2 className="h-4 w-4 text-primary flex-shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <span className="font-medium truncate">{dest.name}</span>
+                      {dest.city && (
+                        <span className="text-xs text-gray-500 dark:text-gray-400 block">{dest.city}</span>
+                      )}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -626,38 +753,110 @@ export function SearchBar({
         </Button>
       </div>
       
-      {/* Suggestions dropdown - positioned absolutely relative to outer container */}
-      {showSuggestions && combinedDestinations.length > 0 && (
-        <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md shadow-2xl max-h-60 overflow-y-auto" style={{ zIndex: 9999 }}>
-          {(isLoading || isGoogleLoading) && (
+      {/* Swiggy-style grouped suggestions dropdown */}
+      {showSuggestions && (groupedSuggestions.cities.length > 0 || groupedSuggestions.topHotelsInCity.length > 0 || groupedSuggestions.otherProperties.length > 0) && (
+        <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-2xl max-h-[420px] overflow-y-auto" style={{ zIndex: 9999 }}>
+          {(isLoading || isGoogleLoading || isLoadingCityHotels) && (
             <div className="px-4 py-2 text-sm text-muted-foreground flex items-center gap-2">
               <Loader2 className="h-4 w-4 animate-spin" />
               Searching destinations & hotels...
             </div>
           )}
-          {combinedDestinations.map((dest: any) => (
-            <button
-              key={dest.id}
-              onClick={() => handleSelectDestination(dest)}
-              className="w-full text-left px-4 py-3 hover:bg-gray-100 dark:hover:bg-gray-700 text-sm transition-colors border-b border-gray-100 dark:border-gray-700 last:border-b-0 text-gray-900 dark:text-white"
-              data-testid={`suggestion-destination-${dest.id}`}
-            >
-              {dest.isHotel ? (
-                <Building2 className="inline h-4 w-4 mr-2 text-primary" />
-              ) : (
-                <MapPin className="inline h-4 w-4 mr-2 text-gray-500 dark:text-gray-400" />
-              )}
-              <span className="font-medium">{dest.name}</span>
-              {dest.state && (
-                <span className="text-gray-500 dark:text-gray-400 ml-2 text-xs">
-                  {dest.state}{dest.isGoogle && !dest.isHotel ? '' : dest.isHotel ? '' : `, ${dest.country || 'India'}`}
-                </span>
-              )}
-              {dest.isHotel && (
-                <span className="ml-2 text-xs text-primary font-medium">Hotel</span>
-              )}
-            </button>
-          ))}
+          
+          {/* City Matches Section */}
+          {groupedSuggestions.cities.length > 0 && (
+            <div>
+              <div className="px-4 py-2 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide bg-gray-50 dark:bg-gray-900/50">
+                Destinations
+              </div>
+              {groupedSuggestions.cities.map((dest: any) => (
+                <button
+                  key={dest.id}
+                  onClick={() => handleSelectDestination(dest)}
+                  className="w-full text-left px-4 py-3 hover:bg-gray-100 dark:hover:bg-gray-700 text-sm transition-colors border-b border-gray-100 dark:border-gray-700 last:border-b-0 text-gray-900 dark:text-white flex items-center gap-3"
+                  data-testid={`suggestion-city-${dest.id}`}
+                >
+                  <MapPin className="h-5 w-5 text-primary flex-shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <span className="font-medium">{dest.name}</span>
+                    {dest.state && (
+                      <span className="text-gray-500 dark:text-gray-400 ml-1 text-xs">, {dest.state}</span>
+                    )}
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
+          
+          {/* Top Hotels in City Section */}
+          {groupedSuggestions.topHotelsInCity.length > 0 && groupedSuggestions.matchedCity && (
+            <div>
+              <div className="px-4 py-2 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide bg-gray-50 dark:bg-gray-900/50">
+                Top Hotels in {groupedSuggestions.matchedCity}
+              </div>
+              {groupedSuggestions.topHotelsInCity.map((hotel: any) => (
+                <button
+                  key={hotel.id}
+                  onClick={() => handleSelectDestination(hotel)}
+                  className="w-full text-left px-4 py-3 hover:bg-gray-100 dark:hover:bg-gray-700 text-sm transition-colors border-b border-gray-100 dark:border-gray-700 text-gray-900 dark:text-white flex items-center gap-3"
+                  data-testid={`suggestion-hotel-${hotel.id}`}
+                >
+                  <Building2 className="h-5 w-5 text-primary flex-shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-medium">{hotel.name}</span>
+                      {hotel.rating && (
+                        <span className="flex items-center gap-0.5 text-xs bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 px-1.5 py-0.5 rounded">
+                          <Star className="h-3 w-3 fill-current" />
+                          {hotel.rating}
+                        </span>
+                      )}
+                    </div>
+                    <span className="text-xs text-gray-500 dark:text-gray-400">Hotel in {groupedSuggestions.matchedCity}</span>
+                  </div>
+                  <ChevronRight className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                </button>
+              ))}
+              {/* View all hotels CTA */}
+              <button
+                onClick={() => {
+                  setDestination(groupedSuggestions.matchedCity || '');
+                  setShowSuggestions(false);
+                  handleSearch();
+                }}
+                className="w-full text-left px-4 py-3 hover:bg-primary/5 text-sm transition-colors text-primary font-medium flex items-center justify-between border-b border-gray-100 dark:border-gray-700"
+                data-testid="view-all-hotels-cta-full"
+              >
+                <span>View all hotels in {groupedSuggestions.matchedCity}</span>
+                <ChevronRight className="h-4 w-4" />
+              </button>
+            </div>
+          )}
+          
+          {/* Other matching properties */}
+          {groupedSuggestions.otherProperties.length > 0 && (
+            <div>
+              <div className="px-4 py-2 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide bg-gray-50 dark:bg-gray-900/50">
+                Matching Hotels
+              </div>
+              {groupedSuggestions.otherProperties.slice(0, 5).map((dest: any) => (
+                <button
+                  key={dest.id || dest.propertyId}
+                  onClick={() => handleSelectDestination(dest)}
+                  className="w-full text-left px-4 py-3 hover:bg-gray-100 dark:hover:bg-gray-700 text-sm transition-colors border-b border-gray-100 dark:border-gray-700 last:border-b-0 text-gray-900 dark:text-white flex items-center gap-3"
+                  data-testid={`suggestion-property-${dest.id || dest.propertyId}`}
+                >
+                  <Building2 className="h-5 w-5 text-primary flex-shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <span className="font-medium">{dest.name}</span>
+                    {dest.city && (
+                      <span className="text-xs text-gray-500 dark:text-gray-400 block">{dest.city}, {dest.state || 'India'}</span>
+                    )}
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>
