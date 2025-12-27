@@ -124,6 +124,7 @@ export interface IStorage {
   updateRoom(id: string, room: Partial<InsertRoom>): Promise<Room | undefined>;
   deleteRoom(id: string): Promise<void>;
   getRoomType(id: string): Promise<RoomType | undefined>;
+  getRoomTypes(propertyId: string): Promise<RoomType[]>;
   
   // Room Option operations (meal plans, amenity packages)
   getRoomOptions(roomTypeId: string): Promise<RoomOption[]>;
@@ -390,8 +391,12 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getRoomType(id: string): Promise<RoomType | undefined> {
-    const [room] = await db.select().from(rooms).where(eq(rooms.id, id));
-    return room as RoomType | undefined;
+    const [room] = await db.select().from(roomTypes).where(eq(roomTypes.id, id));
+    return room;
+  }
+
+  async getRoomTypes(propertyId: string): Promise<RoomType[]> {
+    return await db.select().from(roomTypes).where(eq(roomTypes.propertyId, propertyId));
   }
 
   // Room Option operations

@@ -2756,23 +2756,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Check-out must be after check-in" });
       }
 
-      // If room type is selected, only check bookings for that specific room type
-      // This allows different room types to be booked on overlapping dates
-      const bookedDates = await storage.getPropertyBookedDates(
-        validatedData.propertyId,
-        checkIn,
-        checkOut,
-        validatedData.roomTypeId || null
-      );
-
-      if (bookedDates.length > 0) {
+      // Check if property has room types - if so, require roomTypeId selection
+      const propertyRoomTypes = await storage.getRoomTypes(validatedData.propertyId);
+      if (propertyRoomTypes.length > 0 && !validatedData.roomTypeId) {
         return res.status(400).json({ 
-          message: "Selected dates are not available. Please choose different dates." 
+          message: "Please select a room type for this property" 
         });
       }
 
-      // Note: Blocking overrides (hold, sold_out, maintenance) are now handled in the per-date 
-      // inventory check below, which provides more specific date-based messaging
+      // NOTE: The per-date inventory validation below handles availability correctly by:
+      // 1. Counting only ACTIVE bookings (confirmed, customer_confirmed, checked_in)
+      // 2. Comparing against totalRooms to allow multiple bookings until capacity is reached
+      // 3. Checking blocking overrides (hold, sold_out, maintenance) per date
 
       // Validate room inventory availability per-date (if room type selected)
       if (validatedData.roomTypeId) {
@@ -2912,9 +2907,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
         }
       } else {
-        // No room type selected - still check for blocking overrides (property-wide)
+        // No room type selected - property without room types (simple property like villa/apartment)
+        // Check for blocking overrides AND existing active bookings (single-unit properties)
         const overrides = await storage.getAvailabilityOverrides(validatedData.propertyId);
         const propertyWideOverrides = overrides.filter((o: any) => !o.roomTypeId);
+        
+        // For simple properties, check for overlapping ACTIVE bookings (single unit capacity)
+        const ACTIVE_BOOKING_STATUSES = ['confirmed', 'customer_confirmed', 'checked_in'];
+        const allBookings = await storage.getBookingsByProperty(validatedData.propertyId);
+        const overlappingActiveBookings = allBookings.filter((booking: any) => {
+          if (!ACTIVE_BOOKING_STATUSES.includes(booking.status)) return false;
+          const bookingStart = new Date(booking.checkIn);
+          const bookingEnd = new Date(booking.checkOut);
+          // Check for overlap: booking.checkIn < checkOut AND booking.checkOut > checkIn
+          return bookingStart < checkOut && bookingEnd > checkIn;
+        });
+        
+        if (overlappingActiveBookings.length > 0) {
+          return res.status(400).json({ 
+            message: "This property is already booked for the selected dates. Please choose different dates." 
+          });
+        }
         
         const dateToCheck = new Date(checkIn);
         while (dateToCheck < checkOut) {
