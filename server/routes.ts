@@ -4420,6 +4420,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
         broadcastToUser(guest.id, notification);
       }
       
+      // STATE-DRIVEN EMAILS: Send appropriate emails based on new status
+      if (guest?.email) {
+        const checkInFormatted = new Date(booking.checkIn).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+        const checkOutFormatted = new Date(booking.checkOut).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+        
+        const bookingEmailData = {
+          bookingCode: booking.bookingCode || booking.id.slice(0, 8).toUpperCase(),
+          propertyName: property.title,
+          checkIn: checkInFormatted,
+          checkOut: checkOutFormatted,
+          guests: booking.guests || 1,
+          rooms: booking.rooms || 1,
+          totalPrice: booking.totalPrice?.toString() || '0',
+        };
+        
+        if (status === "confirmed") {
+          // STATE: OWNER_ACCEPTED - Email guest that owner accepted, needs confirmation
+          sendBookingOwnerAcceptedEmail(
+            guest.email,
+            guest.firstName || '',
+            bookingEmailData,
+            responseMessage
+          ).catch(console.error);
+        } else if (status === "rejected") {
+          // STATE: DECLINED - Email guest that booking was declined
+          sendBookingDeclinedEmail(
+            guest.email,
+            guest.firstName || '',
+            bookingEmailData,
+            'rejected',
+            responseMessage
+          ).catch(console.error);
+        }
+      }
+      
       res.json(updated);
     } catch (error) {
       console.error("Error updating booking status:", error);
