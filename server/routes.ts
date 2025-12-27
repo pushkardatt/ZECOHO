@@ -3300,6 +3300,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Create notification for owner about customer confirmation
       const property = await storage.getProperty(booking.propertyId);
+      const guest = await storage.getUser(userId);
+      
       if (property) {
         try {
           // Find or create conversation to notify the owner
@@ -3320,6 +3322,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
         } catch (msgError) {
           console.error("Error sending confirmation notification:", msgError);
           // Don't fail the request if messaging fails
+        }
+        
+        // STATE: CUSTOMER_CONFIRMED - Send confirmation emails to both guest and owner
+        const checkInFormatted = new Date(booking.checkIn).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+        const checkOutFormatted = new Date(booking.checkOut).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+        
+        const bookingEmailData = {
+          bookingCode: booking.bookingCode || booking.id.slice(0, 8).toUpperCase(),
+          propertyName: property.title,
+          checkIn: checkInFormatted,
+          checkOut: checkOutFormatted,
+          guests: booking.guests || 1,
+          rooms: booking.rooms || 1,
+          totalPrice: booking.totalPrice?.toString() || '0',
+          guestName: guest?.firstName && guest?.lastName 
+            ? `${guest.firstName} ${guest.lastName}` 
+            : guest?.email || 'Guest',
+          guestEmail: guest?.email || '',
+        };
+        
+        // Email to guest: "Booking Confirmed"
+        if (guest?.email) {
+          sendBookingConfirmedGuestEmail(
+            guest.email,
+            guest.firstName || '',
+            bookingEmailData
+          ).catch(console.error);
+        }
+        
+        // Email to owner: "Guest Confirmed"
+        const owner = await storage.getUser(property.ownerId);
+        if (owner?.email) {
+          sendBookingConfirmedOwnerEmail(
+            owner.email,
+            owner.firstName || '',
+            bookingEmailData
+          ).catch(console.error);
         }
       }
       
