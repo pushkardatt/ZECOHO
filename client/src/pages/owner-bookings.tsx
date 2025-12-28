@@ -31,6 +31,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { format } from "date-fns";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   CalendarDays,
   Users,
@@ -112,6 +113,7 @@ export default function OwnerBookings() {
   const [bookingToAccept, setBookingToAccept] = useState<Booking | null>(null);
   const [noShowDialogOpen, setNoShowDialogOpen] = useState(false);
   const [bookingToMarkNoShow, setBookingToMarkNoShow] = useState<Booking | null>(null);
+  const [noShowReason, setNoShowReason] = useState("");
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -260,16 +262,17 @@ export default function OwnerBookings() {
   });
 
   const noShowMutation = useMutation({
-    mutationFn: async (id: string) => {
-      return apiRequest("PATCH", `/api/owner/bookings/${id}/no-show`);
+    mutationFn: async ({ id, reason }: { id: string; reason?: string }) => {
+      return apiRequest("PATCH", `/api/owner/bookings/${id}/no-show`, { reason });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/owner/bookings"] });
       setNoShowDialogOpen(false);
       setBookingToMarkNoShow(null);
+      setNoShowReason("");
       toast({
         title: "Booking Marked as No-Show",
-        description: "The guest has been notified that they did not check in.",
+        description: "The booking has been marked as no-show. The guest has been notified and the room inventory has been released.",
       });
     },
     onError: (error: any) => {
@@ -372,24 +375,64 @@ export default function OwnerBookings() {
     return <Badge variant={config.variant}>{config.label}</Badge>;
   };
 
-  // Helper to check if no-show can be marked (guest-confirmed, past check-in time 12 PM)
+  // Helper to check if no-show can be marked (guest-confirmed, past check-in time + 2 hour grace period)
+  const NO_SHOW_GRACE_PERIOD_HOURS = 2;
+  
+  const getNoShowAvailableAt = (booking: Booking): Date => {
+    const checkInDateTime = new Date(booking.checkIn);
+    checkInDateTime.setHours(12, 0, 0, 0); // Standard hotel check-in at 12 PM
+    return new Date(checkInDateTime.getTime() + NO_SHOW_GRACE_PERIOD_HOURS * 60 * 60 * 1000);
+  };
+  
   const canMarkNoShow = (booking: Booking) => {
     if (booking.status !== "customer_confirmed") return false;
     const now = new Date();
-    const checkInDate = new Date(booking.checkIn);
-    // Set check-in cutoff to 12 PM (noon) on the check-in date
-    checkInDate.setHours(12, 0, 0, 0);
-    return now > checkInDate; // Past 12 PM on check-in date
+    const noShowAvailableAt = getNoShowAvailableAt(booking);
+    
+    // Check if we're past the check-in date entirely
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const checkInDateOnly = new Date(booking.checkIn);
+    checkInDateOnly.setHours(0, 0, 0, 0);
+    const isPastCheckInDate = today > checkInDateOnly;
+    
+    // Allow no-show if: current time >= check-in + grace period, OR current date > check-in date
+    return now >= noShowAvailableAt || isPastCheckInDate;
+  };
+  
+  // Check if no-show button should be shown (for guest-confirmed bookings on/after check-in date)
+  const shouldShowNoShowButton = (booking: Booking) => {
+    if (booking.status !== "customer_confirmed") return false;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const checkInDateOnly = new Date(booking.checkIn);
+    checkInDateOnly.setHours(0, 0, 0, 0);
+    return today >= checkInDateOnly; // Show button on check-in day or later
+  };
+  
+  const getNoShowTooltipMessage = (booking: Booking): string => {
+    const noShowAvailableAt = getNoShowAvailableAt(booking);
+    const timeFormatted = noShowAvailableAt.toLocaleTimeString('en-IN', { 
+      hour: 'numeric', 
+      minute: '2-digit', 
+      hour12: true 
+    });
+    const dateFormatted = noShowAvailableAt.toLocaleDateString('en-IN', { 
+      day: 'numeric', 
+      month: 'short' 
+    });
+    return `Available after ${timeFormatted} on ${dateFormatted}`;
   };
 
   const openNoShowDialog = (booking: Booking) => {
     setBookingToMarkNoShow(booking);
+    setNoShowReason("");
     setNoShowDialogOpen(true);
   };
 
   const confirmNoShow = () => {
     if (!bookingToMarkNoShow) return;
-    noShowMutation.mutate(bookingToMarkNoShow.id);
+    noShowMutation.mutate({ id: bookingToMarkNoShow.id, reason: noShowReason || undefined });
   };
 
   // Helper to check if check-in is allowed (today >= check-in date)
@@ -697,24 +740,48 @@ export default function OwnerBookings() {
                   Call Guest
                 </Button>
               )}
-              {canMarkNoShow(booking) && (
-                <Button
-                  size="sm"
-                  variant="destructive"
-                  onClick={() => openNoShowDialog(booking)}
-                  disabled={noShowMutation.isPending}
-                  data-testid={`mark-no-show-${booking.id}`}
-                >
-                  <AlertTriangle className="h-4 w-4 mr-1" />
-                  Mark No-Show
-                </Button>
+              {shouldShowNoShowButton(booking) && (
+                canMarkNoShow(booking) ? (
+                  <Button
+                    size="sm"
+                    variant="destructive"
+                    onClick={() => openNoShowDialog(booking)}
+                    disabled={noShowMutation.isPending}
+                    data-testid={`mark-no-show-${booking.id}`}
+                  >
+                    <AlertTriangle className="h-4 w-4 mr-1" />
+                    Mark No-Show
+                  </Button>
+                ) : (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span className="inline-block">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled
+                          data-testid={`mark-no-show-disabled-${booking.id}`}
+                        >
+                          <Clock className="h-4 w-4 mr-1" />
+                          No-Show
+                        </Button>
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent side="top">
+                      <p>{getNoShowTooltipMessage(booking)}</p>
+                    </TooltipContent>
+                  </Tooltip>
+                )
               )}
             </div>
-            {canMarkNoShow(booking) && (
+            {shouldShowNoShowButton(booking) && (
               <div className="flex items-start gap-2 p-2 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-md">
                 <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
                 <p className="text-xs text-amber-700 dark:text-amber-300">
-                  Guest was expected to check in by 12 PM on {format(new Date(booking.checkIn), "dd MMM")} but has not arrived. If the guest did not show up, you can mark this booking as a no-show.
+                  {canMarkNoShow(booking) 
+                    ? `Guest was expected to check in by 2:00 PM on ${format(new Date(booking.checkIn), "dd MMM")} but has not arrived. If the guest did not show up, you can mark this booking as a no-show.`
+                    : `No-show can be marked after ${getNoShowTooltipMessage(booking).replace('Available after ', '')}. Please wait for the grace period to pass.`
+                  }
                 </p>
               </div>
             )}
@@ -1096,7 +1163,12 @@ export default function OwnerBookings() {
       </Dialog>
 
       {/* No-Show Confirmation Dialog */}
-      <Dialog open={noShowDialogOpen} onOpenChange={setNoShowDialogOpen}>
+      <Dialog open={noShowDialogOpen} onOpenChange={(open) => {
+        setNoShowDialogOpen(open);
+        if (!open) {
+          setNoShowReason("");
+        }
+      }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Mark Booking as No-Show</DialogTitle>
@@ -1104,7 +1176,7 @@ export default function OwnerBookings() {
               Confirm that the guest did not check in for this booking.
             </DialogDescription>
           </DialogHeader>
-          <div className="py-4 space-y-3">
+          <div className="py-4 space-y-4">
             {bookingToMarkNoShow && (
               <div className="p-3 bg-muted rounded-md space-y-2 text-sm">
                 <p><strong>Guest:</strong> {bookingToMarkNoShow.guest?.name}</p>
@@ -1113,6 +1185,18 @@ export default function OwnerBookings() {
                 <p><strong>Amount:</strong> {formatCurrency(bookingToMarkNoShow.totalPrice)}</p>
               </div>
             )}
+            <div className="space-y-2">
+              <Label htmlFor="no-show-reason">Reason (optional)</Label>
+              <Textarea
+                id="no-show-reason"
+                placeholder="e.g., Guest did not arrive, could not be reached by phone..."
+                value={noShowReason}
+                onChange={(e) => setNoShowReason(e.target.value)}
+                className="resize-none"
+                rows={2}
+                data-testid="input-no-show-reason"
+              />
+            </div>
             <div className="space-y-2 text-sm">
               <div className="flex items-start gap-2">
                 <AlertTriangle className="h-4 w-4 text-destructive flex-shrink-0 mt-0.5" />
@@ -1123,6 +1207,10 @@ export default function OwnerBookings() {
                 <span>The guest will be notified via email</span>
               </div>
               <div className="flex items-start gap-2">
+                <CheckCircle className="h-4 w-4 text-green-500 flex-shrink-0 mt-0.5" />
+                <span>Room inventory will be released for new bookings</span>
+              </div>
+              <div className="flex items-start gap-2">
                 <AlertCircle className="h-4 w-4 text-amber-500 flex-shrink-0 mt-0.5" />
                 <span className="text-amber-700 dark:text-amber-300">This action cannot be undone by you</span>
               </div>
@@ -1131,7 +1219,10 @@ export default function OwnerBookings() {
           <DialogFooter>
             <Button 
               variant="outline" 
-              onClick={() => setNoShowDialogOpen(false)}
+              onClick={() => {
+                setNoShowDialogOpen(false);
+                setNoShowReason("");
+              }}
               data-testid="btn-cancel-no-show"
             >
               Cancel
