@@ -158,7 +158,7 @@ export interface IStorage {
   updateBookingStatus(id: string, status: "pending" | "confirmed" | "customer_confirmed" | "rejected" | "cancelled" | "checked_in" | "checked_out" | "completed" | "no_show", responseMessage?: string): Promise<Booking | undefined>;
   markCheckedIn(bookingId: string, userId: string): Promise<Booking | undefined>;
   markCheckedOut(bookingId: string, userId: string, isEarlyCheckout?: boolean): Promise<Booking | undefined>;
-  markNoShow(bookingId: string, userId: string, markedBy: "owner" | "admin"): Promise<Booking | undefined>;
+  markNoShow(bookingId: string, userId: string, markedBy: "owner" | "admin", reason?: string): Promise<Booking | undefined>;
   adminUnmarkNoShow(bookingId: string, userId: string): Promise<Booking | undefined>;
   deleteBooking(id: string): Promise<void>;
 
@@ -655,7 +655,7 @@ export class DatabaseStorage implements IStorage {
     return updated;
   }
 
-  async markNoShow(bookingId: string, userId: string, markedBy: "owner" | "admin"): Promise<Booking | undefined> {
+  async markNoShow(bookingId: string, userId: string, markedBy: "owner" | "admin", reason?: string): Promise<Booking | undefined> {
     const now = new Date();
     const [updated] = await db
       .update(bookings)
@@ -665,6 +665,7 @@ export class DatabaseStorage implements IStorage {
         noShowMarkedAt: now,
         noShowMarkedBy: markedBy,
         noShowMarkedByUserId: userId,
+        noShowReason: reason || null,
         updatedAt: now,
       })
       .where(eq(bookings.id, bookingId))

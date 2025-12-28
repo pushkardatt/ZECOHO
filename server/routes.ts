@@ -4224,11 +4224,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Admin: Mark booking as no-show
+  // Admin: Mark booking as no-show (with time-based validation)
   app.patch("/api/admin/bookings/:id/no-show", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
+      const { reason } = req.body;
       
       if (!user || !userHasRole(user, "admin")) {
         return res.status(403).json({ message: "Only admins can mark no-show" });
@@ -4239,22 +4240,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Booking not found" });
       }
 
+      // Prevent no-show if already checked-in, cancelled, or already marked no-show
+      const blockedStatuses = ["checked_in", "checked_out", "completed", "cancelled", "no_show", "rejected"];
+      if (blockedStatuses.includes(booking.status)) {
+        return res.status(400).json({ 
+          message: "Cannot mark no-show for this booking status",
+          code: "INVALID_STATUS"
+        });
+      }
+
       // Allow admin to mark no-show from customer_confirmed status
       if (booking.status !== "customer_confirmed") {
         return res.status(400).json({ message: "Can only mark no-show for guest-confirmed bookings" });
       }
 
-      // Verify check-in date has passed
+      // Time-based validation with 2-hour grace period
+      const NO_SHOW_GRACE_PERIOD_HOURS = 2;
+      const now = new Date();
+      const checkInDateTime = new Date(booking.checkIn);
+      checkInDateTime.setHours(12, 0, 0, 0);
+      const noShowAvailableAt = new Date(checkInDateTime.getTime() + NO_SHOW_GRACE_PERIOD_HOURS * 60 * 60 * 1000);
+      
       const today = new Date();
       today.setHours(0, 0, 0, 0);
-      const checkInDate = new Date(booking.checkIn);
-      checkInDate.setHours(0, 0, 0, 0);
+      const checkInDateOnly = new Date(booking.checkIn);
+      checkInDateOnly.setHours(0, 0, 0, 0);
+      const isPastCheckInDate = today > checkInDateOnly;
       
-      if (today <= checkInDate) {
-        return res.status(400).json({ message: "Cannot mark no-show before the check-in date has passed" });
+      if (now < noShowAvailableAt && !isPastCheckInDate) {
+        return res.status(400).json({ 
+          message: "Cannot mark no-show before the grace period has passed",
+          code: "TOO_EARLY",
+          noShowAvailableAt: noShowAvailableAt.toISOString()
+        });
       }
 
-      const updated = await storage.markNoShow(req.params.id, userId, "admin");
+      const updated = await storage.markNoShow(req.params.id, userId, "admin", reason);
       
       // Send emails to both guest and owner
       const property = await storage.getProperty(booking.propertyId);
@@ -5014,11 +5035,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Mark booking as no-show (owner only)
-  // Can only mark as no-show if: status is customer_confirmed, current date > check-in date, not checked in
+  // Time-based validation: allow after check-in datetime + 2 hour grace period, or if current date > check-in date
   app.patch("/api/owner/bookings/:id/no-show", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
+      const { reason } = req.body;
       
       if (!user || !userHasRole(user, "owner")) {
         return res.status(403).json({ message: "Only owners can mark no-show" });
@@ -5035,22 +5057,65 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Not authorized to update this booking" });
       }
 
+      // Prevent no-show if already checked-in, cancelled, or already marked no-show
+      const blockedStatuses = ["checked_in", "checked_out", "completed", "cancelled", "no_show", "rejected"];
+      if (blockedStatuses.includes(booking.status)) {
+        const statusMessages: Record<string, string> = {
+          checked_in: "Cannot mark no-show for a guest who has already checked in",
+          checked_out: "Cannot mark no-show for a completed stay",
+          completed: "Cannot mark no-show for a completed booking",
+          cancelled: "Cannot mark no-show for a cancelled booking",
+          no_show: "This booking is already marked as no-show",
+          rejected: "Cannot mark no-show for a rejected booking",
+        };
+        return res.status(400).json({ 
+          message: statusMessages[booking.status] || "Cannot mark no-show for this booking status",
+          code: "INVALID_STATUS"
+        });
+      }
+
       // Only allow no-show from customer_confirmed status
       if (booking.status !== "customer_confirmed") {
         return res.status(400).json({ message: "Can only mark no-show for guest-confirmed bookings" });
       }
 
-      // Verify check-in date has passed (current date > check-in date)
+      // Time-based validation with 2-hour grace period
+      const NO_SHOW_GRACE_PERIOD_HOURS = 2;
+      const now = new Date();
+      const checkInDateTime = new Date(booking.checkIn);
+      
+      // Set check-in time to 12:00 PM (noon) on check-in date (standard hotel check-in)
+      checkInDateTime.setHours(12, 0, 0, 0);
+      
+      // Calculate when no-show becomes available (check-in time + grace period)
+      const noShowAvailableAt = new Date(checkInDateTime.getTime() + NO_SHOW_GRACE_PERIOD_HOURS * 60 * 60 * 1000);
+      
+      // Also check if we're past the check-in date entirely
       const today = new Date();
       today.setHours(0, 0, 0, 0);
-      const checkInDate = new Date(booking.checkIn);
-      checkInDate.setHours(0, 0, 0, 0);
+      const checkInDateOnly = new Date(booking.checkIn);
+      checkInDateOnly.setHours(0, 0, 0, 0);
+      const isPastCheckInDate = today > checkInDateOnly;
       
-      if (today <= checkInDate) {
-        return res.status(400).json({ message: "Cannot mark no-show before the check-in date has passed" });
+      // Allow no-show if: current time >= check-in + grace period, OR current date > check-in date
+      if (now < noShowAvailableAt && !isPastCheckInDate) {
+        const availableTimeFormatted = noShowAvailableAt.toLocaleTimeString('en-IN', { 
+          hour: 'numeric', 
+          minute: '2-digit', 
+          hour12: true 
+        });
+        const availableDateFormatted = noShowAvailableAt.toLocaleDateString('en-IN', { 
+          day: 'numeric', 
+          month: 'short' 
+        });
+        return res.status(400).json({ 
+          message: `No-show can only be marked after ${availableTimeFormatted} on ${availableDateFormatted}`,
+          code: "TOO_EARLY",
+          noShowAvailableAt: noShowAvailableAt.toISOString()
+        });
       }
 
-      const updated = await storage.markNoShow(req.params.id, userId, "owner");
+      const updated = await storage.markNoShow(req.params.id, userId, "owner", reason);
       
       // Notify guest via WebSocket
       const guest = await storage.getUser(booking.guestId);

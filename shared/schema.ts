@@ -318,6 +318,7 @@ export const bookings = pgTable("bookings", {
   noShowMarkedAt: timestamp("no_show_marked_at"),
   noShowMarkedBy: noShowMarkedByEnum("no_show_marked_by"),
   noShowMarkedByUserId: varchar("no_show_marked_by_user_id").references(() => users.id),
+  noShowReason: text("no_show_reason"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
