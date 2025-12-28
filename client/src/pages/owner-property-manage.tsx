@@ -78,7 +78,7 @@ export default function OwnerPropertyManage() {
       <OwnerLayout>
         <div className="text-center py-12">
           <h2 className="text-xl font-semibold">Property not found</h2>
-          <Link href="/owner/my-property">
+          <Link href="/owner/properties">
             <Button variant="outline" className="mt-4">
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back to Properties
@@ -94,7 +94,7 @@ export default function OwnerPropertyManage() {
       <div className="space-y-6" data-testid="owner-property-manage">
         <div className="flex items-center justify-between gap-4 flex-wrap">
           <div className="flex items-center gap-4">
-            <Link href="/owner/my-property">
+            <Link href="/owner/properties">
               <Button variant="ghost" size="icon" data-testid="back-to-properties">
                 <ArrowLeft className="h-4 w-4" />
               </Button>

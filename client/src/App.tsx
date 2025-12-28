@@ -71,6 +71,10 @@ function Router() {
       <Route path="/owner/settings" component={OwnerSettings} />
       <Route path="/owner/kyc" component={OwnerKyc} />
       <Route path="/owner/choose-mode" component={ChooseListingMode} />
+      <Route path="/owner/:rest*">{() => {
+        window.location.href = "/owner/dashboard";
+        return null;
+      }}</Route>
       <Route path="/wishlist" component={Wishlist} />
       <Route path="/search-history" component={SearchHistoryPage} />
       <Route path="/messages" component={Messages} />
