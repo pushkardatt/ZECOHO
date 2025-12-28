@@ -2314,12 +2314,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
           dateToCheck.setDate(dateToCheck.getDate() + 1);
         }
         
+        // Calculate low stock threshold: min(5, 20% of totalRooms)
+        const lowStockThreshold = Math.min(5, Math.ceil(totalRoomsDefault * 0.2));
+        const isSoldOut = minAvailableRooms === 0;
+        const isLowStock = !isSoldOut && minAvailableRooms <= lowStockThreshold;
+        
         return {
           roomTypeId: roomType.id,
           roomTypeName: roomType.name,
           totalRooms: totalRoomsDefault,
           bookedRooms: maxBookedRooms,
           availableRooms: minAvailableRooms,
+          lowestAvailabilityInRange: minAvailableRooms,
+          isSoldOut,
+          isLowStock,
           hasSoldOutOverride,
           hasMaintenanceOverride,
           hasHoldOverride,

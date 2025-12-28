@@ -1728,17 +1728,31 @@ export default function PropertyDetails() {
                     <div>
                       <label className="text-sm font-semibold block mb-2">Select Room Type</label>
                       <div className="space-y-3">
-                        {roomTypes.filter((rt: any) => rt.isActive).map((roomType: any) => (
+                        {roomTypes.filter((rt: any) => rt.isActive).map((roomType: any) => {
+                          // Get dynamic inventory for this room type from real-time API data
+                          const inventory = roomInventory.find((ri: any) => ri.roomTypeId === roomType.id);
+                          // Use dynamic availability when dates are selected, otherwise show total
+                          const displayAvailable = (checkIn && checkOut && inventory) 
+                            ? inventory.availableRooms 
+                            : roomType.totalRooms;
+                          const isSoldOut = inventory?.isSoldOut || false;
+                          const isLowStockItem = inventory?.isLowStock || false;
+                          
+                          return (
                           <div
                             key={roomType.id}
-                            className={`p-3 rounded-lg border cursor-pointer transition-all ${
-                              selectedRoomTypeId === roomType.id
-                                ? "border-primary bg-primary/5"
-                                : "border-border hover-elevate"
+                            className={`p-3 rounded-lg border transition-all ${
+                              isSoldOut 
+                                ? "border-border opacity-60 cursor-not-allowed bg-muted/50"
+                                : selectedRoomTypeId === roomType.id
+                                  ? "border-primary bg-primary/5 cursor-pointer"
+                                  : "border-border hover-elevate cursor-pointer"
                             }`}
                             onClick={() => {
-                              setSelectedRoomTypeId(roomType.id);
-                              setSelectedMealOptionId(null);
+                              if (!isSoldOut) {
+                                setSelectedRoomTypeId(roomType.id);
+                                setSelectedMealOptionId(null);
+                              }
                             }}
                             data-testid={`card-room-type-${roomType.id}`}
                           >
@@ -1746,8 +1760,14 @@ export default function PropertyDetails() {
                               <div className="flex-1">
                                 <div className="flex items-center gap-2">
                                   <h4 className="font-medium">{roomType.name}</h4>
-                                  {selectedRoomTypeId === roomType.id && (
+                                  {selectedRoomTypeId === roomType.id && !isSoldOut && (
                                     <Badge variant="secondary" className="text-xs">Selected</Badge>
+                                  )}
+                                  {isSoldOut && (
+                                    <Badge variant="destructive" className="text-xs">Sold Out</Badge>
+                                  )}
+                                  {isLowStockItem && !isSoldOut && (
+                                    <Badge variant="outline" className="text-xs border-amber-500 text-amber-600">Low Stock</Badge>
                                   )}
                                 </div>
                                 {roomType.description && (
@@ -1758,14 +1778,16 @@ export default function PropertyDetails() {
                                     <Users className="h-3.5 w-3.5" />
                                     Up to {roomType.maxGuests} guests
                                   </span>
-                                  <span className="flex items-center gap-1">
+                                  <span className={`flex items-center gap-1 ${isSoldOut ? 'text-destructive' : isLowStockItem ? 'text-amber-600' : ''}`}>
                                     <Bed className="h-3.5 w-3.5" />
-                                    {roomType.totalRooms} available
+                                    {isSoldOut 
+                                      ? "Sold out for selected dates" 
+                                      : `${displayAvailable} available${checkIn && checkOut ? ' for your dates' : ''}`}
                                   </span>
                                 </div>
                               </div>
                               <div className="text-right">
-                                <div className="font-semibold">₹{Number(roomType.basePrice).toLocaleString('en-IN')}</div>
+                                <div className={`font-semibold ${isSoldOut ? 'line-through text-muted-foreground' : ''}`}>₹{Number(roomType.basePrice).toLocaleString('en-IN')}</div>
                                 <div className="text-xs text-muted-foreground">per night</div>
                               </div>
                             </div>
