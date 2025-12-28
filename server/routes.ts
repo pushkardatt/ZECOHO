@@ -4793,8 +4793,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Not authorized to update this booking" });
       }
 
-      // Only allow check-in from confirmed status
-      if (booking.status !== "confirmed") {
+      // Only allow check-in from confirmed or customer_confirmed status
+      if (booking.status !== "confirmed" && booking.status !== "customer_confirmed") {
         return res.status(400).json({ message: "Can only check-in confirmed bookings" });
       }
 
