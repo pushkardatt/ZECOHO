@@ -1,0 +1,128 @@
+@replit
+
+CONTEXT:
+On the Select Room page, room availability and scarcity messaging
+are currently incorrect.
+
+ISSUES:
+1. Room type cards show TOTAL room count instead of ACTIVE available rooms
+   for the selected check-in/check-out dates.
+2. The header message:
+   "Limited availability for selected dates"
+   and
+   "Only X rooms available on some dates"
+   is static and not calculated from real inventory.
+
+GOAL:
+Make room availability and scarcity messaging fully dynamic,
+date-aware, and inventory-accurate.
+
+--------------------------------------------------
+INVENTORY LOGIC (AUTHORITATIVE SOURCE OF TRUTH)
+--------------------------------------------------
+
+For a given booking request:
+
+- Use selected check-in date
+- Use selected check-out date
+- Use selected room type
+
+Active availability MUST be calculated as:
+
+activeAvailableRooms =
+MIN(
+  totalRoomsForRoomType
+  - confirmedBookingsForDate
+  - pendingBookingsForDate
+)
+
+across ALL dates in the selected date range.
+
+Never show total room count directly to the user.
+
+--------------------------------------------------
+ROOM TYPE CARD FIX
+--------------------------------------------------
+
+1. On the "Select Room" page:
+
+Replace:
+"20 available"
+
+With:
+"{activeAvailableRooms} available"
+
+2. If activeAvailableRooms === 0:
+- Disable "Select room" CTA
+- Show label: "Sold out for selected dates"
+
+--------------------------------------------------
+LIMITED AVAILABILITY BANNER FIX
+--------------------------------------------------
+
+3. The banner:
+"Limited availability for selected dates"
+
+Should appear ONLY IF:
+activeAvailableRooms <= LOW_STOCK_THRESHOLD
+
+Where:
+LOW_STOCK_THRESHOLD = min(5, 20% of totalRooms)
+
+4. Banner subtext should be computed dynamically as:
+
+"Only {lowestAvailableRoomsAcrossDateRange} rooms left for your dates.
+Book now to secure your stay."
+
+If availability is healthy:
+- Do NOT show this banner at all
+
+--------------------------------------------------
+MULTI-DATE SAFETY
+--------------------------------------------------
+
+5. Availability must be calculated PER DATE in the range:
+- If ANY date in the range is sold out → room is not bookable
+- If ANY date has low stock → show scarcity banner
+
+--------------------------------------------------
+API / BACKEND CHANGES
+--------------------------------------------------
+
+6. Update availability API to return:
+
+{
+  roomTypeId,
+  totalRooms,
+  activeAvailableRooms,
+  lowestAvailabilityInRange,
+  isSoldOut,
+  isLowStock
+}
+
+Frontend must consume ONLY this API data.
+
+--------------------------------------------------
+UI CONSISTENCY RULES
+--------------------------------------------------
+
+7. Ensure the same availability numbers are used for:
+- Room cards
+- Scarcity banner
+- Booking validation
+- Reservation submission
+
+No duplicated logic.
+
+--------------------------------------------------
+SUCCESS CRITERIA
+--------------------------------------------------
+
+- Room count reflects REAL availability
+- Scarcity banner matches actual inventory
+- Users cannot book unavailable rooms
+- No overbooking possible
+- Messaging matches reality
+
+Do NOT change pricing logic.
+Do NOT expose internal inventory numbers.
