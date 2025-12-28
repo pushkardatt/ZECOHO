@@ -308,6 +308,11 @@ export const bookings = pgTable("bookings", {
   parentBookingId: varchar("parent_booking_id"),
   // Booking creation tracking - immutable after creation
   bookingCreatedAt: timestamp("booking_created_at").defaultNow(),
+  // No-show tracking
+  noShow: boolean("no_show").default(false),
+  noShowMarkedAt: timestamp("no_show_marked_at"),
+  noShowMarkedBy: noShowMarkedByEnum("no_show_marked_by"),
+  noShowMarkedByUserId: varchar("no_show_marked_by_user_id").references(() => users.id),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
