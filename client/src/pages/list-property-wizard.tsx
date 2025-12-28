@@ -32,7 +32,7 @@ import {
 } from "@/components/PropertyImageUploader";
 import { RoomTypeBuilder, type WizardRoomType } from "@/components/RoomTypeBuilder";
 import { KycDocumentUploader, defaultKycDocuments, type KycDocuments } from "@/components/KycDocumentUploader";
-import { PropertyLocationPicker } from "@/components/PropertyLocationPicker";
+import { PropertyLocationPicker, type AddressData } from "@/components/PropertyLocationPicker";
 import { Loader2, Building2, User, Users, MapPin, FileText, Home, CheckCircle, ArrowRight, ArrowLeft, XCircle, Clock, AlertTriangle, IdCard, Shield, Flame, Camera, Zap, FileCheck } from "lucide-react";
 import { INDIAN_STATES, INDIAN_CITIES } from "@/data/locations";
 import type { KycSectionId, KycRejectionDetails } from "@shared/schema";
@@ -2071,10 +2071,21 @@ export default function ListPropertyWizard() {
                     <PropertyLocationPicker
                       latitude={propertyLatitude}
                       longitude={propertyLongitude}
-                      onLocationChange={(lat, lng, source) => {
+                      onLocationChange={(lat, lng, source, addressData) => {
                         setPropertyLatitude(lat);
                         setPropertyLongitude(lng);
                         setGeoSource(source || null);
+                        if (addressData) {
+                          if (addressData.streetAddress) form.setValue("propStreetAddress", addressData.streetAddress);
+                          if (addressData.locality) form.setValue("propLocality", addressData.locality);
+                          if (addressData.city) form.setValue("propCity", addressData.city);
+                          if (addressData.district) form.setValue("propDistrict", addressData.district);
+                          if (addressData.state) form.setValue("propState", addressData.state);
+                          if (addressData.pincode) form.setValue("propPincode", addressData.pincode);
+                          if (addressData.fullAddress) {
+                            setPropertyAddress(prev => ({ ...prev, fullAddress: addressData.fullAddress }));
+                          }
+                        }
                       }}
                     />
                     {(!propertyLatitude || !propertyLongitude) && (
@@ -2625,10 +2636,21 @@ export default function ListPropertyWizard() {
                     <PropertyLocationPicker
                       latitude={propertyLatitude}
                       longitude={propertyLongitude}
-                      onLocationChange={(lat, lng, source) => {
+                      onLocationChange={(lat, lng, source, addressData) => {
                         setPropertyLatitude(lat);
                         setPropertyLongitude(lng);
                         setGeoSource(source);
+                        if (addressData) {
+                          if (addressData.streetAddress) form.setValue("propStreetAddress", addressData.streetAddress);
+                          if (addressData.locality) form.setValue("propLocality", addressData.locality);
+                          if (addressData.city) form.setValue("propCity", addressData.city);
+                          if (addressData.district) form.setValue("propDistrict", addressData.district);
+                          if (addressData.state) form.setValue("propState", addressData.state);
+                          if (addressData.pincode) form.setValue("propPincode", addressData.pincode);
+                          if (addressData.fullAddress) {
+                            setPropertyAddress(prev => ({ ...prev, fullAddress: addressData.fullAddress }));
+                          }
+                        }
                       }}
                     />
                   </CardContent>

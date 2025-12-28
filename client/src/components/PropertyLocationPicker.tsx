@@ -2,13 +2,30 @@ import { useRef, useEffect, useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { MapPin, Navigation, Loader2, Search, AlertCircle } from "lucide-react";
+import { MapPin, Navigation, Loader2, Search, AlertCircle, CheckCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+
+export interface AddressData {
+  fullAddress: string;
+  streetAddress: string;
+  locality: string;
+  city: string;
+  district: string;
+  state: string;
+  country: string;
+  pincode: string;
+}
 
 interface PropertyLocationPickerProps {
   latitude: number | null;
   longitude: number | null;
-  onLocationChange: (lat: number, lng: number, source: "manual_pin" | "current_location") => void;
+  onLocationChange: (
+    lat: number, 
+    lng: number, 
+    source: "manual_pin" | "current_location",
+    addressData?: AddressData
+  ) => void;
+  initialAddress?: Partial<AddressData>;
   disabled?: boolean;
 }
 
@@ -16,22 +33,118 @@ export function PropertyLocationPicker({
   latitude,
   longitude,
   onLocationChange,
+  initialAddress,
   disabled = false,
 }: PropertyLocationPickerProps) {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const [mapLoaded, setMapLoaded] = useState(false);
   const [isLoadingLocation, setIsLoadingLocation] = useState(false);
+  const [isReverseGeocoding, setIsReverseGeocoding] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [locationError, setLocationError] = useState<string | null>(null);
+  const [addressData, setAddressData] = useState<AddressData | null>(null);
   const mapInstanceRef = useRef<any>(null);
   const markerRef = useRef<any>(null);
   const autocompleteRef = useRef<any>(null);
   const initCalledRef = useRef(false);
+  const geocoderRef = useRef<any>(null);
+  const geocodeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const lastGeocodedRef = useRef<string | null>(null);
   const { toast } = useToast();
 
   const defaultLat = 20.5937;
   const defaultLng = 78.9629;
+
+  const parseAddressComponents = useCallback((results: any[]): AddressData => {
+    const data: AddressData = {
+      fullAddress: "",
+      streetAddress: "",
+      locality: "",
+      city: "",
+      district: "",
+      state: "",
+      country: "",
+      pincode: "",
+    };
+
+    if (results && results.length > 0) {
+      data.fullAddress = results[0].formatted_address || "";
+      
+      const components = results[0].address_components || [];
+      const streetParts: string[] = [];
+      
+      for (const component of components) {
+        const types = component.types || [];
+        
+        if (types.includes("street_number")) {
+          streetParts.unshift(component.long_name);
+        }
+        if (types.includes("route")) {
+          streetParts.push(component.long_name);
+        }
+        if (types.includes("sublocality_level_1") || types.includes("sublocality")) {
+          data.locality = component.long_name;
+        }
+        if (types.includes("locality")) {
+          data.city = component.long_name;
+        }
+        if (types.includes("administrative_area_level_3")) {
+          data.district = component.long_name;
+        }
+        if (types.includes("administrative_area_level_1")) {
+          data.state = component.long_name;
+        }
+        if (types.includes("country")) {
+          data.country = component.long_name;
+        }
+        if (types.includes("postal_code")) {
+          data.pincode = component.long_name;
+        }
+      }
+      
+      data.streetAddress = streetParts.join(" ");
+    }
+
+    return data;
+  }, []);
+
+  const reverseGeocode = useCallback((lat: number, lng: number, source: "manual_pin" | "current_location") => {
+    const cacheKey = `${lat.toFixed(6)},${lng.toFixed(6)}`;
+    
+    if (lastGeocodedRef.current === cacheKey) {
+      return;
+    }
+
+    if (geocodeTimeoutRef.current) {
+      clearTimeout(geocodeTimeoutRef.current);
+    }
+
+    geocodeTimeoutRef.current = setTimeout(() => {
+      if (!geocoderRef.current || !(window as any).google?.maps) {
+        onLocationChange(lat, lng, source);
+        return;
+      }
+
+      setIsReverseGeocoding(true);
+      
+      geocoderRef.current.geocode(
+        { location: { lat, lng } },
+        (results: any[], status: string) => {
+          setIsReverseGeocoding(false);
+          
+          if (status === "OK" && results && results.length > 0) {
+            const parsedAddress = parseAddressComponents(results);
+            setAddressData(parsedAddress);
+            lastGeocodedRef.current = cacheKey;
+            onLocationChange(lat, lng, source, parsedAddress);
+          } else {
+            onLocationChange(lat, lng, source);
+          }
+        }
+      );
+    }, 300);
+  }, [onLocationChange, parseAddressComponents]);
 
   const updateMarkerPosition = useCallback((lat: number, lng: number) => {
     if (markerRef.current && mapInstanceRef.current) {
@@ -48,6 +161,8 @@ export function PropertyLocationPicker({
       if (!mapContainerRef.current || !(window as any).google?.maps || initCalledRef.current) return;
 
       initCalledRef.current = true;
+
+      geocoderRef.current = new (window as any).google.maps.Geocoder();
 
       const initialLat = latitude || defaultLat;
       const initialLng = longitude || defaultLng;
@@ -97,7 +212,7 @@ export function PropertyLocationPicker({
       marker.addListener("dragend", () => {
         const newPosition = marker.getPosition();
         if (newPosition) {
-          onLocationChange(newPosition.lat(), newPosition.lng(), "manual_pin");
+          reverseGeocode(newPosition.lat(), newPosition.lng(), "manual_pin");
         }
       });
 
@@ -106,13 +221,13 @@ export function PropertyLocationPicker({
         const clickedLat = e.latLng.lat();
         const clickedLng = e.latLng.lng();
         marker.setPosition(e.latLng);
-        onLocationChange(clickedLat, clickedLng, "manual_pin");
+        reverseGeocode(clickedLat, clickedLng, "manual_pin");
       });
 
       if (searchInputRef.current) {
         const autocomplete = new (window as any).google.maps.places.Autocomplete(searchInputRef.current, {
           componentRestrictions: { country: "in" },
-          fields: ["geometry", "formatted_address"],
+          fields: ["geometry", "formatted_address", "address_components"],
         });
 
         autocomplete.addListener("place_changed", () => {
@@ -123,8 +238,15 @@ export function PropertyLocationPicker({
             map.setCenter({ lat, lng });
             map.setZoom(15);
             marker.setPosition({ lat, lng });
-            onLocationChange(lat, lng, "manual_pin");
+            
+            const parsedAddress = parseAddressComponents([{
+              formatted_address: place.formatted_address,
+              address_components: place.address_components
+            }]);
+            setAddressData(parsedAddress);
             setSearchQuery(place.formatted_address || "");
+            lastGeocodedRef.current = `${lat.toFixed(6)},${lng.toFixed(6)}`;
+            onLocationChange(lat, lng, "manual_pin", parsedAddress);
           }
         });
 
@@ -172,14 +294,32 @@ export function PropertyLocationPicker({
         } catch (e) {
         }
       }
+      if (geocodeTimeoutRef.current) {
+        clearTimeout(geocodeTimeoutRef.current);
+      }
     };
-  }, [disabled, onLocationChange]);
+  }, [disabled, onLocationChange, reverseGeocode, parseAddressComponents]);
 
   useEffect(() => {
     if (latitude && longitude && mapLoaded) {
       updateMarkerPosition(latitude, longitude);
     }
   }, [latitude, longitude, mapLoaded, updateMarkerPosition]);
+
+  useEffect(() => {
+    if (initialAddress && !addressData) {
+      setAddressData({
+        fullAddress: initialAddress.fullAddress || "",
+        streetAddress: initialAddress.streetAddress || "",
+        locality: initialAddress.locality || "",
+        city: initialAddress.city || "",
+        district: initialAddress.district || "",
+        state: initialAddress.state || "",
+        country: initialAddress.country || "",
+        pincode: initialAddress.pincode || "",
+      });
+    }
+  }, [initialAddress, addressData]);
 
   const handleUseCurrentLocation = () => {
     if (!navigator.geolocation) {
@@ -207,8 +347,8 @@ export function PropertyLocationPicker({
           markerRef.current.setPosition(newPosition);
         }
         
-        onLocationChange(lat, lng, "current_location");
         setIsLoadingLocation(false);
+        reverseGeocode(lat, lng, "current_location");
         
         toast({
           title: "Location Set",
@@ -296,6 +436,12 @@ export function PropertyLocationPicker({
             </div>
           </div>
         )}
+        {isReverseGeocoding && (
+          <div className="absolute top-3 left-3 bg-background/90 backdrop-blur-sm px-3 py-1.5 rounded-md flex items-center gap-2 shadow-sm border">
+            <Loader2 className="h-3 w-3 animate-spin text-primary" />
+            <span className="text-xs text-muted-foreground">Getting address...</span>
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-2 gap-4">
@@ -312,6 +458,59 @@ export function PropertyLocationPicker({
           </div>
         </div>
       </div>
+
+      {addressData && (latitude && longitude) && (
+        <div className="space-y-3 p-4 bg-muted/50 rounded-lg border" data-testid="address-details">
+          <div className="flex items-center gap-2">
+            <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400" />
+            <Label className="text-sm font-medium">Address Details</Label>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+            {addressData.fullAddress && (
+              <div className="md:col-span-2">
+                <span className="text-xs text-muted-foreground">Full Address</span>
+                <p className="mt-0.5" data-testid="text-full-address">{addressData.fullAddress}</p>
+              </div>
+            )}
+            {addressData.locality && (
+              <div>
+                <span className="text-xs text-muted-foreground">Locality / Area</span>
+                <p className="mt-0.5" data-testid="text-locality">{addressData.locality}</p>
+              </div>
+            )}
+            {addressData.city && (
+              <div>
+                <span className="text-xs text-muted-foreground">City</span>
+                <p className="mt-0.5" data-testid="text-city">{addressData.city}</p>
+              </div>
+            )}
+            {addressData.district && (
+              <div>
+                <span className="text-xs text-muted-foreground">District</span>
+                <p className="mt-0.5" data-testid="text-district">{addressData.district}</p>
+              </div>
+            )}
+            {addressData.state && (
+              <div>
+                <span className="text-xs text-muted-foreground">State</span>
+                <p className="mt-0.5" data-testid="text-state">{addressData.state}</p>
+              </div>
+            )}
+            {addressData.pincode && (
+              <div>
+                <span className="text-xs text-muted-foreground">Pincode</span>
+                <p className="mt-0.5" data-testid="text-pincode">{addressData.pincode}</p>
+              </div>
+            )}
+            {addressData.country && (
+              <div>
+                <span className="text-xs text-muted-foreground">Country</span>
+                <p className="mt-0.5" data-testid="text-country">{addressData.country}</p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {!latitude || !longitude ? (
         <div className="flex items-center gap-2 p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg">

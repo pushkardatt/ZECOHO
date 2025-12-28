@@ -1,0 +1,135 @@
+Update the ZECOHO owner onboarding and property display to fully enforce and fix geo-location capture and usage across the platform. Implement the following changes:
+
+1️⃣ Enforce mandatory location capture during owner onboarding
+
+Make property location required before allowing the owner to proceed past the “Property Location” step.
+
+Block submission if latitude, longitude, or address is missing.
+
+Show a clear inline validation error:
+“Property location is required to list your property.”
+
+2️⃣ Add “Use my current location” (GPS)
+
+Add a “Use my current location” button using browser geolocation.
+
+On success:
+
+Automatically set latitude & longitude.
+
+Reverse-geocode to populate:
+
+Full address
+
+Area / locality
+
+City
+
+State
+
+Country
+
+Pincode
+
+On failure:
+
+Show a clear error explaining location permission is required.
+
+3️⃣ Enable manual map selection (pin drop)
+
+Allow owners to click anywhere on the map to drop or move a pin.
+
+When pin is moved:
+
+Update latitude & longitude.
+
+Reverse-geocode and update address fields automatically.
+
+Keep the pin draggable so owners can fine-tune location.
+
+4️⃣ Keep address fields + map fully synced
+
+Any change in:
+
+Address input → updates map pin
+
+Map pin movement → updates address fields
+
+Do not allow mismatched address and coordinates.
+
+Store both human-readable address and lat/lng in the database.
+
+5️⃣ Persist location correctly in database
+
+For every property, store:
+
+latitude
+
+longitude
+
+full_address
+
+area
+
+city
+
+state
+
+country
+
+pincode
+
+location_source (gps | manual)
+
+Reject saves if lat/lng are null.
+
+6️⃣ Fix guest-side property display
+
+On the property details page (guest view):
+
+Show the full address (not just city).
+
+Render the map centered using stored latitude & longitude.
+
+Show a marker at the exact property location.
+
+Ensure map loads even if address text fails (lat/lng is source of truth).
+
+7️⃣ Add owner warnings for missing location (backward compatibility)
+
+For existing properties missing valid lat/lng:
+
+Show a warning badge in Owner Dashboard:
+“Location required – update to make property visible.”
+
+Prevent booking visibility until location is fixed.
+
+8️⃣ UX & reliability improvements
+
+Show a loading state while reverse-geocoding.
+
+Prevent rapid map clicks from firing multiple geocode calls.
+
+Cache last successful geocode per session to reduce API calls.
+
+9️⃣ Do NOT change any existing booking, pricing, or inventory logic
+
+This update must be isolated strictly to:
+
+Owner onboarding
+
+Property location storage
+
+Guest property display
+
+✅ Expected outcome
+
+Owners cannot list a property without a precise location.
+
+Owners can use GPS or manual pin drop.
+
+Address + map are always in sync.
+
+Guests see accurate map + full address.
+
+No more “city-only” or broken maps.
