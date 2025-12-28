@@ -28,6 +28,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useKycGuard } from "@/hooks/useKycGuard";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useBookingUpdates } from "@/hooks/useBookingUpdates";
 import { format } from "date-fns";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -100,6 +101,9 @@ export default function OwnerBookings() {
   const { user, isLoading: authLoading, isAuthenticated } = useAuth();
   const [, setLocation] = useLocation();
   const [activeTab, setActiveTab] = useState("all");
+  
+  // Subscribe to real-time booking updates via WebSocket with polling fallback
+  useBookingUpdates({ userId: user?.id });
   const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
   const [selectedRejectionReason, setSelectedRejectionReason] = useState("");
