@@ -400,17 +400,41 @@ export default function PropertyDetails() {
       const roomsForChildren = children > 0 ? Math.ceil(children / maxChildrenPerRoom) : 0;
       const neededRooms = Math.max(roomsForAdults, roomsForChildren, 1);
       
-      // Determine max available rooms
+      // Determine max available rooms - use real-time inventory when available, NEVER exceed it
+      // Only fall back to totalRooms when no real-time data exists (no dates selected)
       const maxAvailable = selectedRoomType 
-        ? (availableRoomsForType || selectedRoomType.totalRooms || 10)
+        ? (selectedRoomInventory 
+            ? selectedRoomInventory.availableRooms // Use real-time inventory (could be 0)
+            : selectedRoomType.totalRooms || 10)   // Fall back only when no dates selected
         : 10; // Default max when no room type selected
       
       // Only auto-adjust if needed rooms is different and within available limit
+      // Clamp to available rooms to prevent overbooking - allow 0 if sold out
       if (neededRooms !== rooms && neededRooms >= 1) {
-        setRooms(Math.min(neededRooms, maxAvailable));
+        const clampedRooms = Math.min(neededRooms, maxAvailable);
+        // If maxAvailable is 0, set rooms to 0 to prevent overbooking
+        setRooms(maxAvailable === 0 ? 0 : Math.max(1, clampedRooms));
       }
     }
-  }, [adults, children, selectedRoomType, availableRoomsForType, property?.maxGuests]);
+  }, [adults, children, selectedRoomType, selectedRoomInventory, availableRoomsForType, property?.maxGuests]);
+  
+  // Clear room type selection if it becomes sold out - DON'T auto-clear, just prevent booking
+  // This prevents UX confusion where user's selection keeps disappearing
+  
+  // Check if booking is possible - comprehensive check for all blocking conditions
+  const isBookingDisabled = useMemo(() => {
+    // No room type selected
+    if (!selectedRoomTypeId) return false; // Let the other check handle this
+    // If room type is selected but inventory shows sold out
+    if (selectedRoomInventory?.isSoldOut) return true;
+    // If available rooms is 0 for selected type
+    if (availableRoomsForType === 0) return true;
+    // If rooms is 0 (shouldn't happen normally but guard against it)
+    if (rooms === 0) return true;
+    // If requested rooms exceeds available
+    if (hasInsufficientRooms) return true;
+    return false;
+  }, [selectedRoomTypeId, selectedRoomInventory, availableRoomsForType, rooms, hasInsufficientRooms]);
 
   const isWishlisted = wishlists.some((w: any) => w.propertyId === propertyId);
 
@@ -2017,10 +2041,10 @@ export default function PropertyDetails() {
                   className="w-full" 
                   size="lg" 
                   onClick={handleBooking}
-                  disabled={bookingMutation.isPending || !checkIn || !checkOut || !selectedRoomTypeId || hasDateOverlap || hasBlockedDateOverlap || hasInsufficientRooms}
+                  disabled={bookingMutation.isPending || !checkIn || !checkOut || !selectedRoomTypeId || hasDateOverlap || hasBlockedDateOverlap || isBookingDisabled}
                   data-testid="button-reserve"
                 >
-                  {bookingMutation.isPending ? "Processing..." : !selectedRoomTypeId ? "Select Room Type" : "Reserve"}
+                  {bookingMutation.isPending ? "Processing..." : !selectedRoomTypeId ? "Select Room Type" : isBookingDisabled ? "Not Available" : "Reserve"}
                 </Button>
                 
                 <div className="text-center mt-2 space-y-1">
