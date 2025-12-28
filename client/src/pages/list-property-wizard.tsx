@@ -32,6 +32,7 @@ import {
 } from "@/components/PropertyImageUploader";
 import { RoomTypeBuilder, type WizardRoomType } from "@/components/RoomTypeBuilder";
 import { KycDocumentUploader, defaultKycDocuments, type KycDocuments } from "@/components/KycDocumentUploader";
+import { PropertyLocationPicker } from "@/components/PropertyLocationPicker";
 import { Loader2, Building2, User, Users, MapPin, FileText, Home, CheckCircle, ArrowRight, ArrowLeft, XCircle, Clock, AlertTriangle, IdCard, Shield, Flame, Camera, Zap, FileCheck } from "lucide-react";
 import { INDIAN_STATES, INDIAN_CITIES } from "@/data/locations";
 import type { KycSectionId, KycRejectionDetails } from "@shared/schema";
@@ -188,11 +189,11 @@ export default function ListPropertyWizard() {
   const canSkipKycSteps = isKycVerified || isKycPending;
   
   // For verified/pending users, we skip steps 1 and 2 (KYC steps)
-  // Steps for verified/pending users: 3 (property info) -> 4 (photos) -> 5 (review)
-  // Steps for new/rejected users: 1 (personal) -> 2 (business/docs) -> 3 (property) -> 4 (photos) -> 5 (review)
+  // Steps for verified/pending users: 3 (property info) -> 4 (location) -> 5 (amenities) -> 6 (photos)
+  // Steps for new/rejected users: 1 (personal) -> 2 (business/docs) -> 3 (property) -> 4 (location) -> 5 (amenities) -> 6 (photos)
   const kycStepsCount = canSkipKycSteps ? 0 : 2;
-  // totalSteps is always 5 (the last step number), regardless of whether KYC steps are skipped
-  const totalSteps = 5;
+  // totalSteps is always 6 (the last step number), regardless of whether KYC steps are skipped
+  const totalSteps = 6;
   const firstStep = canSkipKycSteps ? 3 : 1;
   
   const [step, setStep] = useState(firstStep);
@@ -275,6 +276,11 @@ export default function ListPropertyWizard() {
   const [categorizedImages, setCategorizedImages] = useState<CategorizedPropertyImages>(defaultCategorizedImages);
   const [propertyAddress, setPropertyAddress] = useState<AddressDetails>({ fullAddress: "" });
   const [wizardRoomTypes, setWizardRoomTypes] = useState<WizardRoomType[]>([]);
+  
+  // Geo-tagging state (mandatory for property location)
+  const [propertyLatitude, setPropertyLatitude] = useState<number | null>(null);
+  const [propertyLongitude, setPropertyLongitude] = useState<number | null>(null);
+  const [geoSource, setGeoSource] = useState<"manual_pin" | "current_location" | null>(null);
 
   const form = useForm<CombinedFormData>({
     resolver: zodResolver(combinedSchema),
@@ -918,8 +924,10 @@ export default function ListPropertyWizard() {
           propDistrict: data.propDistrict,
           propState: data.propState,
           propPincode: data.propPincode,
-          latitude: propertyAddress.latitude,
-          longitude: propertyAddress.longitude,
+          latitude: propertyLatitude,
+          longitude: propertyLongitude,
+          geoVerified: !!(propertyLatitude && propertyLongitude),
+          geoSource: geoSource,
           pricePerNight: basePrice,
           singleOccupancyPrice: data.singleOccupancyPrice || null,
           doubleOccupancyPrice: data.doubleOccupancyPrice || null,
@@ -1091,7 +1099,18 @@ export default function ListPropertyWizard() {
           return;
         }
       } else if (step === 4) {
-        // Step 4 is now only for amenities which are optional - no required fields
+        // Step 4 is Property Location - requires latitude and longitude
+        if (!propertyLatitude || !propertyLongitude) {
+          toast({
+            title: "Property Location Required",
+            description: "Please set the exact location of your property to continue.",
+            variant: "destructive",
+          });
+          return;
+        }
+        fieldsToValidate = [];
+      } else if (step === 5) {
+        // Step 5 is Amenities - optional, no required fields
         fieldsToValidate = [];
       }
     }
@@ -1143,7 +1162,19 @@ export default function ListPropertyWizard() {
           return;
         }
       } else if (s === 4) {
-        // Step 4 is now only for amenities which are optional - no required fields
+        // Step 4 is Property Location - requires latitude and longitude
+        if (!propertyLatitude || !propertyLongitude) {
+          setStep(s);
+          toast({
+            title: "Property Location Required",
+            description: "Please set the exact location of your property to continue.",
+            variant: "destructive",
+          });
+          return;
+        }
+        fieldsToValidate = [];
+      } else if (s === 5) {
+        // Step 5 is Amenities - optional, no required fields
         fieldsToValidate = [];
       }
       
@@ -1169,6 +1200,7 @@ export default function ListPropertyWizard() {
     { title: "Personal Information", icon: User },
     { title: "Business & KYC Documents", icon: FileText },
     { title: "Property Details & Room Types", icon: Home },
+    { title: "Property Location", icon: MapPin },
     { title: "Amenities & Extras", icon: Building2 },
     { title: "Photos & Submit", icon: CheckCircle },
   ];
@@ -2531,8 +2563,36 @@ export default function ListPropertyWizard() {
               </div>
             )}
 
-            {/* Step 4: Amenities & Additional Options */}
+            {/* Step 4: Property Location (Mandatory Geo-tagging) */}
             {step === 4 && (
+              <div className="space-y-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <MapPin className="h-5 w-5" />
+                      Property Location
+                    </CardTitle>
+                    <CardDescription>
+                      Set the exact location of your property. This is required for your listing to be visible to guests.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <PropertyLocationPicker
+                      latitude={propertyLatitude}
+                      longitude={propertyLongitude}
+                      onLocationChange={(lat, lng, source) => {
+                        setPropertyLatitude(lat);
+                        setPropertyLongitude(lng);
+                        setGeoSource(source);
+                      }}
+                    />
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+
+            {/* Step 5: Amenities & Additional Options */}
+            {step === 5 && (
               <div className="space-y-6">
                 {/* Occupancy-Based Pricing Card - Optional */}
                 <Card>
@@ -2813,8 +2873,8 @@ export default function ListPropertyWizard() {
               </div>
             )}
 
-            {/* Step 5: Photos & Submit */}
-            {step === 5 && (
+            {/* Step 6: Photos & Submit */}
+            {step === 6 && (
               <div className="space-y-6">
                 {/* Photo Category Progress Summary */}
                 <Card className="border-primary/20 bg-primary/5">

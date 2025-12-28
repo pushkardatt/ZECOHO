@@ -173,6 +173,8 @@ export const properties = pgTable("properties", {
   propPincode: varchar("prop_pincode", { length: 10 }),
   latitude: decimal("latitude", { precision: 10, scale: 7 }),
   longitude: decimal("longitude", { precision: 10, scale: 7 }),
+  geoVerified: boolean("geo_verified").notNull().default(false),
+  geoSource: geoSourceEnum("geo_source"),
   images: text("images").array().notNull().default(sql`ARRAY[]::text[]`),
   categorizedImages: jsonb("categorized_images"),
   videos: text("videos").array().notNull().default(sql`ARRAY[]::text[]`),
