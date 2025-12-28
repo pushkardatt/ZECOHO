@@ -1937,14 +1937,14 @@ export default function PropertyDetails() {
                   </div>
                 )}
 
-                {/* Limited availability info label - shown when dates have partial availability */}
-                {partialAvailabilityInfo && !hasDateOverlap && !hasBlockedDateOverlap && (
+                {/* Limited availability info label - shown when selected room type has low stock */}
+                {selectedRoomTypeId && selectedRoomInventory?.isLowStock && !selectedRoomInventory?.isSoldOut && !hasDateOverlap && !hasBlockedDateOverlap && (
                   <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg" data-testid="limited-availability-info">
                     <p className="text-sm text-blue-800 dark:text-blue-200 font-medium">
                       Limited availability for selected dates
                     </p>
                     <p className="text-xs text-blue-600 dark:text-blue-300 mt-1">
-                      Only {partialAvailabilityInfo.minAvailable} room{partialAvailabilityInfo.minAvailable !== 1 ? 's' : ''} available on some dates. Book now to secure your stay!
+                      Only {selectedRoomInventory.availableRooms} room{selectedRoomInventory.availableRooms !== 1 ? 's' : ''} available for this room type. Book now to secure your stay!
                     </p>
                   </div>
                 )}
