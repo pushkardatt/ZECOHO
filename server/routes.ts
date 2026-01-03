@@ -3281,13 +3281,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
         sendBookingRequestToOwnerEmail(
           owner.email,
           owner.firstName || '',
-          property.title,
-          bookingEmailData.guestName,
-          guest?.email || '',
-          checkInFormatted,
-          checkOutFormatted,
-          validatedData.guests || 1,
-          totalPrice.toString()
+          {
+            propertyName: property.title,
+            guestName: bookingEmailData.guestName || 'Guest',
+            guestEmail: guest?.email || '',
+            bookingCode: booking.bookingCode || booking.id.slice(0, 8).toUpperCase(),
+            checkIn: checkInFormatted,
+            checkOut: checkOutFormatted,
+            guests: validatedData.guests || 1,
+            rooms: roomsCount,
+            totalPrice: totalPrice.toString(),
+            bookingCreatedAt: bookingCreatedAtFormatted,
+            roomTypeName,
+            maxOccupancy: validatedData.roomTypeId ? (await storage.getRoomType(validatedData.roomTypeId))?.maxGuests || undefined : undefined,
+            roomBasePrice,
+            roomOriginalPrice,
+            mealOptionName,
+            mealOptionPrice,
+            paymentType: 'pay_at_hotel',
+          }
         ).catch(console.error);
       }
       
@@ -4824,16 +4836,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       if (property && guest?.email) {
         const checkInFormatted = new Date(booking.checkIn).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+        const checkOutFormatted = new Date(booking.checkOut).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
         sendBookingNoShowEmail(
           guest.email,
           guest.firstName || '',
           {
             bookingCode: booking.bookingCode || booking.id.slice(0, 8).toUpperCase(),
-            propertyTitle: property.title,
+            propertyName: property.title,
+            propertyId: property.id,
             checkIn: checkInFormatted,
+            checkOut: checkOutFormatted,
             guests: booking.guests,
             rooms: booking.rooms || 1,
             totalPrice: booking.totalPrice,
+            bookingCreatedAt: booking.bookingCreatedAt ? new Date(booking.bookingCreatedAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : undefined,
+            paymentType: 'pay_at_hotel',
           },
           'guest'
         ).catch(console.error);
@@ -5900,19 +5917,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Send no-show emails
       if (guest?.email) {
         const checkInFormatted = new Date(booking.checkIn).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
-        const bookingEmailData = {
+        const checkOutFormatted = new Date(booking.checkOut).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+        const noShowEmailData = {
           bookingCode: booking.bookingCode || booking.id.slice(0, 8).toUpperCase(),
-          propertyTitle: property.title,
+          propertyName: property.title,
+          propertyId: property.id,
           checkIn: checkInFormatted,
+          checkOut: checkOutFormatted,
           guests: booking.guests,
           rooms: booking.rooms || 1,
           totalPrice: booking.totalPrice,
-          bookedOn: booking.bookingCreatedAt ? new Date(booking.bookingCreatedAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : undefined,
+          bookingCreatedAt: booking.bookingCreatedAt ? new Date(booking.bookingCreatedAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : undefined,
+          paymentType: 'pay_at_hotel',
         };
         sendBookingNoShowEmail(
           guest.email,
           guest.firstName || '',
-          bookingEmailData,
+          noShowEmailData,
           'guest'
         ).catch(console.error);
       }
@@ -5921,20 +5942,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const owner = await storage.getUser(property.ownerId);
       if (owner?.email) {
         const checkInFormatted = new Date(booking.checkIn).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
-        const bookingEmailData = {
+        const checkOutFormatted = new Date(booking.checkOut).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+        const noShowEmailData = {
           bookingCode: booking.bookingCode || booking.id.slice(0, 8).toUpperCase(),
-          propertyTitle: property.title,
+          propertyName: property.title,
+          propertyId: property.id,
           checkIn: checkInFormatted,
+          checkOut: checkOutFormatted,
           guests: booking.guests,
           rooms: booking.rooms || 1,
           totalPrice: booking.totalPrice,
           guestName: guest ? `${guest.firstName || ''} ${guest.lastName || ''}`.trim() : 'Guest',
-          bookedOn: booking.bookingCreatedAt ? new Date(booking.bookingCreatedAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : undefined,
+          bookingCreatedAt: booking.bookingCreatedAt ? new Date(booking.bookingCreatedAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : undefined,
+          paymentType: 'pay_at_hotel',
         };
         sendBookingNoShowEmail(
           owner.email,
           owner.firstName || '',
-          bookingEmailData,
+          noShowEmailData,
           'owner'
         ).catch(console.error);
       }
