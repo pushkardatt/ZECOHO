@@ -34,6 +34,7 @@ import {
   ChevronDown,
   ChevronUp,
   MapPin,
+  RefreshCw,
 } from "lucide-react";
 import { PropertyLocationPicker, type AddressData } from "@/components/PropertyLocationPicker";
 import { PropertyMap } from "@/components/PropertyMap";
@@ -620,7 +621,9 @@ function AvailabilitySection({
 function StatusSection({ property }: { property: Property }) {
   const { toast } = useToast();
   const [showDeactivationDialog, setShowDeactivationDialog] = useState(false);
+  const [showReactivationDialog, setShowReactivationDialog] = useState(false);
   const [deactivationReason, setDeactivationReason] = useState("");
+  const [reactivationReason, setReactivationReason] = useState("");
   const [deactivationRequestType, setDeactivationRequestType] = useState<"deactivate" | "delete">("deactivate");
 
   // Check if there's a pending deactivation request
@@ -687,13 +690,38 @@ function StatusSection({ property }: { property: Property }) {
       queryClient.invalidateQueries({ queryKey: ["/api/properties", property.id, "deactivation-request"] });
       toast({
         title: "Request Cancelled",
-        description: "Your deactivation request has been cancelled.",
+        description: "Your request has been cancelled.",
       });
     },
     onError: () => {
       toast({
         title: "Error",
-        description: "Failed to cancel deactivation request.",
+        description: "Failed to cancel request.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const submitReactivationRequestMutation = useMutation({
+    mutationFn: async () => {
+      return apiRequest("POST", `/api/properties/${property.id}/deactivation-request`, {
+        reason: reactivationReason,
+        requestType: "reactivate",
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/properties", property.id, "deactivation-request"] });
+      setShowReactivationDialog(false);
+      setReactivationReason("");
+      toast({
+        title: "Request Submitted",
+        description: "Your reactivation request has been submitted. An admin will review it shortly.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to submit reactivation request.",
         variant: "destructive",
       });
     },
@@ -786,9 +814,11 @@ function StatusSection({ property }: { property: Property }) {
                     <div className="flex-1">
                       {pendingRequest ? (
                         <>
-                          <h4 className="font-medium">Deactivation Request Pending</h4>
+                          <h4 className="font-medium">
+                            {pendingRequest.requestType === "reactivate" ? "Reactivation" : "Deactivation"} Request Pending
+                          </h4>
                           <p className="text-sm text-muted-foreground mb-2">
-                            Your request to {pendingRequest.requestType === "delete" ? "delete" : "deactivate"} this property is awaiting admin approval.
+                            Your request to {pendingRequest.requestType === "delete" ? "delete" : pendingRequest.requestType === "reactivate" ? "reactivate" : "deactivate"} this property is awaiting admin approval.
                           </p>
                           <p className="text-xs text-muted-foreground mb-3">
                             Submitted: {new Date(pendingRequest.createdAt).toLocaleDateString()}
@@ -815,6 +845,51 @@ function StatusSection({ property }: { property: Property }) {
                             data-testid="request-deactivation-property"
                           >
                             Request Deactivation
+                          </Button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {property.status === "deactivated" && (
+              <Card className="border-green-200 bg-green-50/50 dark:bg-green-950/20">
+                <CardContent className="pt-6">
+                  <div className="flex items-start gap-3">
+                    <RefreshCw className="h-5 w-5 text-green-600 mt-0.5" />
+                    <div className="flex-1">
+                      {pendingRequest && pendingRequest.requestType === "reactivate" ? (
+                        <>
+                          <h4 className="font-medium">Reactivation Request Pending</h4>
+                          <p className="text-sm text-muted-foreground mb-2">
+                            Your request to reactivate this property is awaiting admin approval.
+                          </p>
+                          <p className="text-xs text-muted-foreground mb-3">
+                            Submitted: {new Date(pendingRequest.createdAt).toLocaleDateString()}
+                          </p>
+                          <Button 
+                            variant="outline"
+                            onClick={() => cancelDeactivationRequestMutation.mutate()}
+                            disabled={cancelDeactivationRequestMutation.isPending}
+                            data-testid="cancel-reactivation-request"
+                          >
+                            Cancel Request
+                          </Button>
+                        </>
+                      ) : (
+                        <>
+                          <h4 className="font-medium">Request Reactivation</h4>
+                          <p className="text-sm text-muted-foreground mb-3">
+                            Your property is currently deactivated. Submit a request to reactivate it and start accepting bookings again.
+                          </p>
+                          <Button 
+                            onClick={() => setShowReactivationDialog(true)}
+                            disabled={isLoadingRequest}
+                            data-testid="request-reactivation-property"
+                          >
+                            Request Reactivation
                           </Button>
                         </>
                       )}
@@ -870,6 +945,41 @@ function StatusSection({ property }: { property: Property }) {
               data-testid="submit-deactivation-request"
             >
               {submitDeactivationRequestMutation.isPending ? "Submitting..." : "Submit Request"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showReactivationDialog} onOpenChange={setShowReactivationDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Request Property Reactivation</DialogTitle>
+            <DialogDescription>
+              Please provide details about why you want to reactivate this property. An admin will review your request.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Reason (minimum 10 characters)</label>
+              <Textarea
+                placeholder="Please explain why you want to reactivate this property..."
+                value={reactivationReason}
+                onChange={(e) => setReactivationReason(e.target.value)}
+                rows={4}
+                data-testid="input-reactivation-reason"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowReactivationDialog(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={() => submitReactivationRequestMutation.mutate()}
+              disabled={reactivationReason.trim().length < 10 || submitReactivationRequestMutation.isPending}
+              data-testid="submit-reactivation-request"
+            >
+              {submitReactivationRequestMutation.isPending ? "Submitting..." : "Submit Request"}
             </Button>
           </DialogFooter>
         </DialogContent>

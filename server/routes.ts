@@ -5010,6 +5010,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Process based on request type
       if (request.requestType === "delete") {
         await storage.deleteProperty(request.propertyId);
+      } else if (request.requestType === "reactivate") {
+        // Reactivate - set status to published (or pending if needs review)
+        await storage.updateProperty(request.propertyId, { status: "published" });
       } else {
         await storage.updateProperty(request.propertyId, { status: "deactivated" });
       }
@@ -5019,15 +5022,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Send email notification to owner
       if (owner?.email) {
-        const action = request.requestType === "delete" ? "deleted" : "deactivated";
+        let action: string;
+        if (request.requestType === "delete") {
+          action = "deleted";
+        } else if (request.requestType === "reactivate") {
+          action = "reactivated";
+        } else {
+          action = "deactivated";
+        }
         sendPropertyStatusEmail(owner.email, owner.firstName || '', property.title, action).catch(console.error);
       }
 
-      res.json({ 
-        message: request.requestType === "delete" 
-          ? "Property deleted successfully" 
-          : "Property deactivated successfully" 
-      });
+      let message: string;
+      if (request.requestType === "delete") {
+        message = "Property deleted successfully";
+      } else if (request.requestType === "reactivate") {
+        message = "Property reactivated successfully";
+      } else {
+        message = "Property deactivated successfully";
+      }
+
+      res.json({ message });
     } catch (error) {
       console.error("Error approving deactivation request:", error);
       res.status(500).json({ message: "Failed to approve deactivation request" });
