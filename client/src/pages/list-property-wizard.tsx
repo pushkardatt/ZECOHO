@@ -147,6 +147,11 @@ const combinedSchema = z.object({
   beds: z.coerce.number().optional(),
   bathrooms: z.coerce.number().optional(),
   policies: z.string().optional(),
+  // Guest Policies
+  localIdAllowed: z.boolean().optional(),
+  hourlyBookingAllowed: z.boolean().optional(),
+  foreignGuestsAllowed: z.boolean().optional(),
+  coupleFriendly: z.boolean().optional(),
 });
 
 type CombinedFormData = z.infer<typeof combinedSchema>;
@@ -326,6 +331,10 @@ export default function ListPropertyWizard() {
       beds: 1,
       bathrooms: 1,
       policies: "",
+      localIdAllowed: true,
+      hourlyBookingAllowed: false,
+      foreignGuestsAllowed: true,
+      coupleFriendly: true,
     },
   });
 
@@ -940,6 +949,10 @@ export default function ListPropertyWizard() {
           beds: data.beds || 1,
           bathrooms: data.bathrooms || 1,
           policies: data.policies,
+          localIdAllowed: data.localIdAllowed ?? true,
+          hourlyBookingAllowed: data.hourlyBookingAllowed ?? false,
+          foreignGuestsAllowed: data.foreignGuestsAllowed ?? true,
+          coupleFriendly: data.coupleFriendly ?? true,
           images: allImages,
           categorizedImages: categorizedImages,
           videos: videos,
@@ -2607,6 +2620,110 @@ export default function ListPropertyWizard() {
                       </FormItem>
                     )}
                   />
+                </CardContent>
+              </Card>
+
+              {/* Guest Policies */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Users className="h-5 w-5" />
+                    Guest Policies
+                  </CardTitle>
+                  <CardDescription>
+                    Define who can book your property and booking options
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="coupleFriendly"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                          <div className="space-y-0.5">
+                            <FormLabel className="text-base">Couple Friendly</FormLabel>
+                            <p className="text-sm text-muted-foreground">
+                              Allow unmarried couples to check in
+                            </p>
+                          </div>
+                          <FormControl>
+                            <Checkbox
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                              data-testid="checkbox-couple-friendly"
+                            />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+                    
+                    <FormField
+                      control={form.control}
+                      name="localIdAllowed"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                          <div className="space-y-0.5">
+                            <FormLabel className="text-base">Local ID Allowed</FormLabel>
+                            <p className="text-sm text-muted-foreground">
+                              Accept guests with local ID proof
+                            </p>
+                          </div>
+                          <FormControl>
+                            <Checkbox
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                              data-testid="checkbox-local-id"
+                            />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+                    
+                    <FormField
+                      control={form.control}
+                      name="foreignGuestsAllowed"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                          <div className="space-y-0.5">
+                            <FormLabel className="text-base">Foreign Guests Allowed</FormLabel>
+                            <p className="text-sm text-muted-foreground">
+                              Accept international guests with passport
+                            </p>
+                          </div>
+                          <FormControl>
+                            <Checkbox
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                              data-testid="checkbox-foreign-guests"
+                            />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+                    
+                    <FormField
+                      control={form.control}
+                      name="hourlyBookingAllowed"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                          <div className="space-y-0.5">
+                            <FormLabel className="text-base">Hourly Booking</FormLabel>
+                            <p className="text-sm text-muted-foreground">
+                              Allow guests to book by the hour
+                            </p>
+                          </div>
+                          <FormControl>
+                            <Checkbox
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                              data-testid="checkbox-hourly-booking"
+                            />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+                  </div>
                 </CardContent>
               </Card>
 
