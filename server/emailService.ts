@@ -771,6 +771,7 @@ export async function sendBookingRequestToOwnerEmail(
 interface BookingEmailData {
   bookingCode: string;
   propertyName: string;
+  propertyId: string;
   checkIn: string;
   checkOut: string;
   guests: number;
@@ -779,6 +780,18 @@ interface BookingEmailData {
   guestName?: string;
   guestEmail?: string;
   bookingCreatedAt?: string;
+  // Extended property details
+  propertyAddress?: string;
+  propertyCity?: string;
+  propertyState?: string;
+  propertyPincode?: string;
+  latitude?: string;
+  longitude?: string;
+  // Room details
+  roomTypeName?: string;
+  roomTypeDescription?: string;
+  // Payment type
+  paymentType?: string; // 'pay_at_hotel' | 'advance' | 'token'
 }
 
 // CREATED STATE: Email to Guest - "Reservation Requested"
