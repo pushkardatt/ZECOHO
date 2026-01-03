@@ -3194,6 +3194,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let roomTypeDescription: string | undefined;
       let roomBasePrice: string | undefined;
       let roomOriginalPrice: string | undefined;
+      let mealOptionName: string | undefined;
+      let mealOptionPrice: string | undefined;
       if (validatedData.roomTypeId) {
         const roomTypeForEmail = await storage.getRoomType(validatedData.roomTypeId);
         if (roomTypeForEmail) {
@@ -3204,6 +3206,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
           if (roomTypeForEmail.originalPrice && parseFloat(roomTypeForEmail.originalPrice) > parseFloat(roomTypeForEmail.basePrice)) {
             roomOriginalPrice = roomTypeForEmail.originalPrice;
           }
+        }
+      }
+      // Get meal option details for email (per-person pricing)
+      if (validatedData.roomOptionId) {
+        const mealOptionForEmail = await storage.getRoomOption(validatedData.roomOptionId);
+        if (mealOptionForEmail) {
+          mealOptionName = mealOptionForEmail.name;
+          mealOptionPrice = mealOptionForEmail.priceAdjustment;
         }
       }
       
@@ -3246,6 +3256,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         roomOriginalPrice,
         // Payment type - default to pay_at_hotel
         paymentType: 'pay_at_hotel',
+        // Meal option details (per-person pricing)
+        mealOptionName,
+        mealOptionPrice,
       };
       
       // Email to guest: "Reservation Requested"
@@ -3713,6 +3726,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         let roomTypeDescription: string | undefined;
         let roomBasePrice: string | undefined;
         let roomOriginalPrice: string | undefined;
+        let mealOptionName: string | undefined;
+        let mealOptionPrice: string | undefined;
         if (booking.roomTypeId) {
           const roomTypeForEmail = await storage.getRoomType(booking.roomTypeId);
           if (roomTypeForEmail) {
@@ -3722,6 +3737,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
             if (roomTypeForEmail.originalPrice && parseFloat(roomTypeForEmail.originalPrice) > parseFloat(roomTypeForEmail.basePrice)) {
               roomOriginalPrice = roomTypeForEmail.originalPrice;
             }
+          }
+        }
+        // Get meal option details for email (per-person pricing)
+        if (booking.roomOptionId) {
+          const mealOptionForEmail = await storage.getRoomOption(booking.roomOptionId);
+          if (mealOptionForEmail) {
+            mealOptionName = mealOptionForEmail.name;
+            mealOptionPrice = mealOptionForEmail.priceAdjustment;
           }
         }
         
@@ -3764,6 +3787,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           roomOriginalPrice,
           // Payment type
           paymentType: 'pay_at_hotel',
+          // Meal option details (per-person pricing)
+          mealOptionName,
+          mealOptionPrice,
         };
         
         // Email to guest: "Booking Confirmed"
@@ -5530,6 +5556,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         let roomTypeDescription: string | undefined;
         let roomBasePrice: string | undefined;
         let roomOriginalPrice: string | undefined;
+        let mealOptionName: string | undefined;
+        let mealOptionPrice: string | undefined;
         if (booking.roomTypeId) {
           const roomTypeForEmail = await storage.getRoomType(booking.roomTypeId);
           if (roomTypeForEmail) {
@@ -5539,6 +5567,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
             if (roomTypeForEmail.originalPrice && parseFloat(roomTypeForEmail.originalPrice) > parseFloat(roomTypeForEmail.basePrice)) {
               roomOriginalPrice = roomTypeForEmail.originalPrice;
             }
+          }
+        }
+        // Get meal option details for email (per-person pricing)
+        if (booking.roomOptionId) {
+          const mealOptionForEmail = await storage.getRoomOption(booking.roomOptionId);
+          if (mealOptionForEmail) {
+            mealOptionName = mealOptionForEmail.name;
+            mealOptionPrice = mealOptionForEmail.priceAdjustment;
           }
         }
         
@@ -5577,6 +5613,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           roomOriginalPrice,
           // Payment type
           paymentType: 'pay_at_hotel',
+          // Meal option details (per-person pricing)
+          mealOptionName,
+          mealOptionPrice,
         };
         
         if (status === "confirmed") {

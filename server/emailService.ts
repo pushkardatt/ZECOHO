@@ -795,6 +795,9 @@ interface BookingEmailData {
   roomOriginalPrice?: string; // Strike-off price per night (optional)
   // Payment type
   paymentType?: string; // 'pay_at_hotel' | 'advance' | 'token'
+  // Meal option details (per-person pricing)
+  mealOptionName?: string;
+  mealOptionPrice?: string; // Price per person per night
 }
 
 // Helper function to generate property details section for emails
@@ -820,6 +823,12 @@ function generatePropertyDetailsSection(data: BookingEmailData): string {
     }
     roomLine += '</p>';
     detailsHtml += roomLine;
+  }
+  
+  // Meal option with per-person pricing
+  if (data.mealOptionName && data.mealOptionPrice && parseFloat(data.mealOptionPrice) > 0) {
+    const mealPrice = Number(data.mealOptionPrice).toLocaleString('en-IN');
+    detailsHtml += `<p style="color: #6b7280; margin: 0 0 8px 0;"><strong>Meal Plan:</strong> ${data.mealOptionName} — ₹${mealPrice}/person/night</p>`;
   }
   
   // Full address with city, state, pincode
