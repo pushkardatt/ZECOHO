@@ -1843,8 +1843,20 @@ export default function PropertyDetails() {
                                 </div>
                               </div>
                               <div className="text-right">
-                                <div className={`font-semibold ${isSoldOut ? 'line-through text-muted-foreground' : ''}`}>₹{Number(roomType.basePrice).toLocaleString('en-IN')}</div>
+                                {roomType.originalPrice && parseFloat(roomType.originalPrice) > parseFloat(roomType.basePrice) && (
+                                  <div className="text-sm text-muted-foreground line-through">
+                                    ₹{Number(roomType.originalPrice).toLocaleString('en-IN')}
+                                  </div>
+                                )}
+                                <div className={`font-semibold ${isSoldOut ? 'line-through text-muted-foreground' : roomType.originalPrice && parseFloat(roomType.originalPrice) > parseFloat(roomType.basePrice) ? 'text-green-600 dark:text-green-400' : ''}`}>
+                                  ₹{Number(roomType.basePrice).toLocaleString('en-IN')}
+                                </div>
                                 <div className="text-xs text-muted-foreground">per night</div>
+                                {roomType.originalPrice && parseFloat(roomType.originalPrice) > parseFloat(roomType.basePrice) && (
+                                  <Badge variant="secondary" className="mt-1 text-xs bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300">
+                                    {Math.round((1 - parseFloat(roomType.basePrice) / parseFloat(roomType.originalPrice)) * 100)}% OFF
+                                  </Badge>
+                                )}
                               </div>
                             </div>
                             
@@ -1984,6 +1996,7 @@ export default function PropertyDetails() {
                 {nights > 0 && totalPrice > 0 && !hasDateOverlap && !hasBlockedDateOverlap && (() => {
                   const guestsPerRoom = Math.ceil(guests / rooms);
                   let effectivePrice = Number(property.pricePerNight);
+                  let originalPrice: number | null = null;
                   let occupancyLabel = "";
                   let roomTypeName = "";
                   let mealOptionName = "";
@@ -1995,6 +2008,11 @@ export default function PropertyDetails() {
                     if (selectedRoomType) {
                       effectivePrice = Number(selectedRoomType.basePrice);
                       roomTypeName = selectedRoomType.name;
+                      
+                      // Check for original price (strikethrough)
+                      if (selectedRoomType.originalPrice && parseFloat(selectedRoomType.originalPrice) > parseFloat(selectedRoomType.basePrice)) {
+                        originalPrice = Number(selectedRoomType.originalPrice);
+                      }
                       
                       if (selectedMealOptionId && selectedRoomType.mealOptions) {
                         const selectedMealOption = selectedRoomType.mealOptions.find((opt: any) => opt.id === selectedMealOptionId);
@@ -2028,16 +2046,40 @@ export default function PropertyDetails() {
                   const mealSubtotal = nights * mealOptionPrice * rooms;
                   const subtotal = roomSubtotal + mealSubtotal;
                   
+                  // Calculate savings from original price
+                  const originalSubtotal = originalPrice ? nights * originalPrice * rooms : 0;
+                  const priceSavings = originalPrice ? originalSubtotal - roomSubtotal : 0;
+                  
                   return (
                     <div className="mb-6 p-4 bg-muted rounded-lg space-y-2">
-                      {/* Room pricing */}
+                      {/* Room pricing with strikethrough if discount */}
+                      {originalPrice && (
+                        <div className="flex justify-between text-sm">
+                          <span className="text-muted-foreground line-through">
+                            {roomTypeName && <span className="font-medium">{roomTypeName}: </span>}
+                            ₹{originalPrice.toLocaleString('en-IN')} × {nights} {nights === 1 ? 'night' : 'nights'} × {rooms} {rooms === 1 ? 'room' : 'rooms'}
+                          </span>
+                          <span className="text-muted-foreground line-through">₹{originalSubtotal.toLocaleString('en-IN')}</span>
+                        </div>
+                      )}
                       <div className="flex justify-between text-sm">
                         <span className="text-muted-foreground">
                           {roomTypeName && <span className="font-medium">{roomTypeName}: </span>}
-                          ₹{effectivePrice.toLocaleString('en-IN')} × {nights} {nights === 1 ? 'night' : 'nights'} × {rooms} {rooms === 1 ? 'room' : 'rooms'}
+                          <span className={originalPrice ? 'text-green-600 dark:text-green-400' : ''}>
+                            ₹{effectivePrice.toLocaleString('en-IN')}
+                          </span>
+                          {' × '}{nights} {nights === 1 ? 'night' : 'nights'} × {rooms} {rooms === 1 ? 'room' : 'rooms'}
                         </span>
                         <span className="font-semibold">₹{roomSubtotal.toLocaleString('en-IN')}</span>
                       </div>
+                      
+                      {/* Discount savings line */}
+                      {priceSavings > 0 && (
+                        <div className="flex justify-between text-sm text-green-600 dark:text-green-400">
+                          <span>Discount savings</span>
+                          <span>-₹{priceSavings.toLocaleString('en-IN')}</span>
+                        </div>
+                      )}
                       
                       {/* Meal option pricing */}
                       {mealOptionPrice > 0 && (

@@ -790,6 +790,9 @@ interface BookingEmailData {
   // Room details
   roomTypeName?: string;
   roomTypeDescription?: string;
+  // Pricing details for strikethrough display
+  roomBasePrice?: string; // Selling/discounted price per night
+  roomOriginalPrice?: string; // Strike-off price per night (optional)
   // Payment type
   paymentType?: string; // 'pay_at_hotel' | 'advance' | 'token'
 }
@@ -798,9 +801,25 @@ interface BookingEmailData {
 function generatePropertyDetailsSection(data: BookingEmailData): string {
   let detailsHtml = '';
   
-  // Room type
+  // Room type with pricing
   if (data.roomTypeName) {
-    detailsHtml += `<p style="color: #6b7280; margin: 0 0 8px 0;"><strong>Room Type:</strong> ${data.roomTypeName}</p>`;
+    let roomLine = `<p style="color: #6b7280; margin: 0 0 8px 0;"><strong>Room Type:</strong> ${data.roomTypeName}`;
+    
+    // Add pricing info if available
+    if (data.roomBasePrice) {
+      const basePrice = Number(data.roomBasePrice).toLocaleString('en-IN');
+      const hasDiscount = data.roomOriginalPrice && parseFloat(data.roomOriginalPrice) > parseFloat(data.roomBasePrice);
+      
+      if (hasDiscount) {
+        const originalPrice = Number(data.roomOriginalPrice).toLocaleString('en-IN');
+        const discountPercent = Math.round((1 - parseFloat(data.roomBasePrice) / parseFloat(data.roomOriginalPrice!)) * 100);
+        roomLine += ` — <span style="text-decoration: line-through; color: #9ca3af;">₹${originalPrice}</span> <strong style="color: #10b981;">₹${basePrice}/night</strong> <span style="background: #d1fae5; color: #065f46; padding: 2px 6px; border-radius: 4px; font-size: 12px;">${discountPercent}% OFF</span>`;
+      } else {
+        roomLine += ` — ₹${basePrice}/night`;
+      }
+    }
+    roomLine += '</p>';
+    detailsHtml += roomLine;
   }
   
   // Full address with city, state, pincode

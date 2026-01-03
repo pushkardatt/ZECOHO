@@ -1096,12 +1096,13 @@ function RoomsSection({
   const [newRoomCapacity, setNewRoomCapacity] = useState("2");
   const [newRoomCount, setNewRoomCount] = useState("1");
   const [newRoomPrice, setNewRoomPrice] = useState("");
+  const [newRoomOriginalPrice, setNewRoomOriginalPrice] = useState("");
   const [newSingleOccupancyBase, setNewSingleOccupancyBase] = useState("1");
   const [newDoubleOccupancyAdjustment, setNewDoubleOccupancyAdjustment] = useState("");
   const [newTripleOccupancyAdjustment, setNewTripleOccupancyAdjustment] = useState("");
 
   const createRoomMutation = useMutation({
-    mutationFn: async (data: { name: string; description?: string; maxGuests: number; totalRooms: number; basePrice: string; singleOccupancyBase?: number; doubleOccupancyAdjustment?: number; tripleOccupancyAdjustment?: number }) => {
+    mutationFn: async (data: { name: string; description?: string; maxGuests: number; totalRooms: number; basePrice: string; originalPrice?: string | null; singleOccupancyBase?: number; doubleOccupancyAdjustment?: number; tripleOccupancyAdjustment?: number }) => {
       return apiRequest("POST", `/api/properties/${propertyId}/rooms`, data);
     },
     onSuccess: () => {
@@ -1169,6 +1170,7 @@ function RoomsSection({
     setNewRoomCapacity("2");
     setNewRoomCount("1");
     setNewRoomPrice("");
+    setNewRoomOriginalPrice("");
     setNewSingleOccupancyBase("1");
     setNewDoubleOccupancyAdjustment("");
     setNewTripleOccupancyAdjustment("");
@@ -1186,7 +1188,19 @@ function RoomsSection({
     if (!newRoomPrice) {
       toast({
         title: "Price Required",
-        description: "Please enter a base price.",
+        description: "Please enter a selling price.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Validate original price > selling price if original price is set
+    const sellingPrice = parseFloat(newRoomPrice);
+    const originalPrice = newRoomOriginalPrice ? parseFloat(newRoomOriginalPrice) : null;
+    if (originalPrice !== null && originalPrice <= sellingPrice) {
+      toast({
+        title: "Invalid Price",
+        description: "Strike-off price must be higher than selling price to show discount.",
         variant: "destructive",
       });
       return;
@@ -1202,6 +1216,7 @@ function RoomsSection({
       maxGuests: parseInt(newRoomCapacity),
       totalRooms: parseInt(newRoomCount),
       basePrice: newRoomPrice,
+      originalPrice: newRoomOriginalPrice || null,
       singleOccupancyBase: singleOccupancyBase,
       doubleOccupancyAdjustment: doubleAdj,
       tripleOccupancyAdjustment: tripleAdj,
@@ -1257,17 +1272,37 @@ function RoomsSection({
                       data-testid="input-new-room-name"
                     />
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="roomPrice">Base Price per Night (₹) *</Label>
-                    <Input
-                      id="roomPrice"
-                      type="number"
-                      min="100"
-                      value={newRoomPrice}
-                      onChange={(e) => setNewRoomPrice(e.target.value)}
-                      placeholder="e.g., 2500"
-                      data-testid="input-new-room-price"
-                    />
+                  <div className="grid gap-4 grid-cols-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="roomOriginalPrice" className="flex items-center gap-2">
+                        Strike-off Price (₹)
+                        <Badge variant="secondary" className="text-xs">Optional</Badge>
+                      </Label>
+                      <Input
+                        id="roomOriginalPrice"
+                        type="number"
+                        min="0"
+                        value={newRoomOriginalPrice}
+                        onChange={(e) => setNewRoomOriginalPrice(e.target.value)}
+                        placeholder="e.g., 3500"
+                        data-testid="input-new-room-original-price"
+                      />
+                      <p className="text-xs text-muted-foreground">Shown crossed out</p>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="roomPrice">Selling Price (₹) *</Label>
+                      <Input
+                        id="roomPrice"
+                        type="number"
+                        min="100"
+                        value={newRoomPrice}
+                        onChange={(e) => setNewRoomPrice(e.target.value)}
+                        placeholder="e.g., 2500"
+                        className="border-primary"
+                        data-testid="input-new-room-price"
+                      />
+                      <p className="text-xs text-muted-foreground">Discounted price guests pay</p>
+                    </div>
                   </div>
                 </div>
                 <div className="space-y-2">
@@ -1445,11 +1480,13 @@ function RoomTypeCard({
   isSaving: boolean;
   isDeleting: boolean;
 }) {
+  const { toast } = useToast();
   const [editName, setEditName] = useState(room.name);
   const [editDescription, setEditDescription] = useState(room.description || "");
   const [editMaxGuests, setEditMaxGuests] = useState(String(room.maxGuests));
   const [editTotalRooms, setEditTotalRooms] = useState(String(room.totalRooms || 1));
   const [editPrice, setEditPrice] = useState(room.basePrice || "");
+  const [editOriginalPrice, setEditOriginalPrice] = useState(room.originalPrice || "");
   const [editActive, setEditActive] = useState(room.isActive ?? true);
   const [editSingleOccupancyBase, setEditSingleOccupancyBase] = useState(String(room.singleOccupancyBase || 1));
   const [editDoubleOccupancy, setEditDoubleOccupancy] = useState(room.doubleOccupancyAdjustment || "");
@@ -1461,12 +1498,25 @@ function RoomTypeCard({
   });
 
   const handleSave = () => {
+    // Validate original price > selling price if original price is set
+    const sellingPrice = parseFloat(editPrice);
+    const originalPrice = editOriginalPrice ? parseFloat(editOriginalPrice) : null;
+    if (originalPrice !== null && originalPrice <= sellingPrice) {
+      toast({
+        title: "Invalid Price",
+        description: "Strike-off price must be higher than selling price to show discount.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     onSave({
       name: editName,
       description: editDescription || null,
       maxGuests: parseInt(editMaxGuests),
       totalRooms: parseInt(editTotalRooms),
       basePrice: editPrice,
+      originalPrice: editOriginalPrice || null,
       isActive: editActive,
       singleOccupancyBase: parseInt(editSingleOccupancyBase) || 1,
       doubleOccupancyAdjustment: editDoubleOccupancy || null,
@@ -1481,6 +1531,7 @@ function RoomTypeCard({
     setEditMaxGuests(String(room.maxGuests));
     setEditTotalRooms(String(room.totalRooms || 1));
     setEditPrice(room.basePrice || "");
+    setEditOriginalPrice(room.originalPrice || "");
     setEditActive(room.isActive ?? true);
     setEditSingleOccupancyBase(String(room.singleOccupancyBase || 1));
     setEditDoubleOccupancy(room.doubleOccupancyAdjustment || "");
@@ -1510,7 +1561,12 @@ function RoomTypeCard({
                 <Badge variant="secondary">{room.maxGuests} guests</Badge>
                 <Badge variant="outline">{room.totalRooms || 1} rooms</Badge>
                 {room.basePrice && (
-                  <Badge variant="default">₹{room.basePrice}/night</Badge>
+                  <Badge variant="default" className="gap-1">
+                    {room.originalPrice && parseFloat(room.originalPrice) > parseFloat(room.basePrice) && (
+                      <span className="line-through opacity-70">₹{room.originalPrice}</span>
+                    )}
+                    <span>₹{room.basePrice}/night</span>
+                  </Badge>
                 )}
                 <Badge variant="outline" className="gap-1">
                   <Utensils className="h-3 w-3" />
@@ -1569,7 +1625,7 @@ function RoomTypeCard({
                 data-testid={`edit-room-description-${room.id}`}
               />
             </div>
-            <div className="grid gap-4 md:grid-cols-4">
+            <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
                 <Label>Max Guests</Label>
                 <Input
@@ -1590,26 +1646,56 @@ function RoomTypeCard({
                   data-testid={`edit-room-count-${room.id}`}
                 />
               </div>
-              <div className="space-y-2">
-                <Label>Base Price per Night (₹)</Label>
-                <Input
-                  type="number"
-                  value={editPrice}
-                  onChange={(e) => setEditPrice(e.target.value)}
-                  data-testid={`edit-room-price-${room.id}`}
-                />
+            </div>
+            
+            <div className="border rounded-lg p-4 space-y-4 bg-primary/5">
+              <div className="flex items-center gap-2">
+                <Label className="text-sm font-medium">Pricing</Label>
+                <Badge variant="secondary" className="text-xs">Discount Display</Badge>
               </div>
-              <div className="space-y-2">
-                <Label>Active</Label>
-                <div className="flex items-center gap-2 pt-2">
-                  <Switch
-                    checked={editActive}
-                    onCheckedChange={setEditActive}
-                    data-testid={`edit-room-active-${room.id}`}
+              <p className="text-xs text-muted-foreground">
+                Set a strike-off price higher than selling price to show discount to guests. Leave strike-off empty for regular pricing.
+              </p>
+              <div className="grid gap-4 md:grid-cols-3">
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-2">
+                    Strike-off Price (₹)
+                    <Badge variant="secondary" className="text-xs">Optional</Badge>
+                  </Label>
+                  <Input
+                    type="number"
+                    min="0"
+                    value={editOriginalPrice}
+                    onChange={(e) => setEditOriginalPrice(e.target.value)}
+                    placeholder="e.g., 3500"
+                    data-testid={`edit-room-original-price-${room.id}`}
                   />
-                  <span className="text-sm text-muted-foreground">
-                    {editActive ? "Accepting bookings" : "Not accepting bookings"}
-                  </span>
+                  <p className="text-xs text-muted-foreground">Shown crossed out</p>
+                </div>
+                <div className="space-y-2">
+                  <Label>Selling Price (₹) *</Label>
+                  <Input
+                    type="number"
+                    min="100"
+                    value={editPrice}
+                    onChange={(e) => setEditPrice(e.target.value)}
+                    className="border-primary"
+                    data-testid={`edit-room-price-${room.id}`}
+                  />
+                  <p className="text-xs text-muted-foreground">Discounted price guests pay</p>
+                </div>
+                <div className="space-y-2">
+                  <Label>Active</Label>
+                  <div className="flex items-center gap-2 pt-2">
+                    <Switch
+                      checked={editActive}
+                      onCheckedChange={setEditActive}
+                      data-testid={`edit-room-active-${room.id}`}
+                    />
+                    <span className="text-sm text-muted-foreground">
+                      {editActive ? "Accepting bookings" : "Not accepting bookings"}
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>

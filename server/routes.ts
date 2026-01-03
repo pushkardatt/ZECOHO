@@ -3079,11 +3079,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get room type details for email
       let roomTypeName: string | undefined;
       let roomTypeDescription: string | undefined;
+      let roomBasePrice: string | undefined;
+      let roomOriginalPrice: string | undefined;
       if (validatedData.roomTypeId) {
         const roomTypeForEmail = await storage.getRoomType(validatedData.roomTypeId);
         if (roomTypeForEmail) {
           roomTypeName = roomTypeForEmail.name;
           roomTypeDescription = roomTypeForEmail.description || undefined;
+          roomBasePrice = roomTypeForEmail.basePrice;
+          // Only include original price if it's greater than base price (discount scenario)
+          if (roomTypeForEmail.originalPrice && parseFloat(roomTypeForEmail.originalPrice) > parseFloat(roomTypeForEmail.basePrice)) {
+            roomOriginalPrice = roomTypeForEmail.originalPrice;
+          }
         }
       }
       
@@ -3121,6 +3128,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Room details
         roomTypeName,
         roomTypeDescription,
+        // Pricing details for strikethrough display
+        roomBasePrice,
+        roomOriginalPrice,
         // Payment type - default to pay_at_hotel
         paymentType: 'pay_at_hotel',
       };
@@ -3588,11 +3598,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Get room type details for email
         let roomTypeName: string | undefined;
         let roomTypeDescription: string | undefined;
+        let roomBasePrice: string | undefined;
+        let roomOriginalPrice: string | undefined;
         if (booking.roomTypeId) {
           const roomTypeForEmail = await storage.getRoomType(booking.roomTypeId);
           if (roomTypeForEmail) {
             roomTypeName = roomTypeForEmail.name;
             roomTypeDescription = roomTypeForEmail.description || undefined;
+            roomBasePrice = roomTypeForEmail.basePrice;
+            if (roomTypeForEmail.originalPrice && parseFloat(roomTypeForEmail.originalPrice) > parseFloat(roomTypeForEmail.basePrice)) {
+              roomOriginalPrice = roomTypeForEmail.originalPrice;
+            }
           }
         }
         
@@ -3630,6 +3646,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Room details
           roomTypeName,
           roomTypeDescription,
+          // Pricing details for strikethrough display
+          roomBasePrice,
+          roomOriginalPrice,
           // Payment type
           paymentType: 'pay_at_hotel',
         };
@@ -3743,11 +3762,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get room type details for email
       let roomTypeName: string | undefined;
       let roomTypeDescription: string | undefined;
+      let roomBasePrice: string | undefined;
+      let roomOriginalPrice: string | undefined;
       if (booking.roomTypeId) {
         const roomTypeForEmail = await storage.getRoomType(booking.roomTypeId);
         if (roomTypeForEmail) {
           roomTypeName = roomTypeForEmail.name;
           roomTypeDescription = roomTypeForEmail.description || undefined;
+          roomBasePrice = roomTypeForEmail.basePrice;
+          if (roomTypeForEmail.originalPrice && parseFloat(roomTypeForEmail.originalPrice) > parseFloat(roomTypeForEmail.basePrice)) {
+            roomOriginalPrice = roomTypeForEmail.originalPrice;
+          }
         }
       }
       
@@ -3785,6 +3810,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
             // Room details
             roomTypeName,
             roomTypeDescription,
+            // Pricing details for strikethrough display
+            roomBasePrice,
+            roomOriginalPrice,
             // Payment type
             paymentType: 'pay_at_hotel',
           },
@@ -3821,6 +3849,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
             // Room details
             roomTypeName,
             roomTypeDescription,
+            // Pricing details for strikethrough display
+            roomBasePrice,
+            roomOriginalPrice,
             // Payment type
             paymentType: 'pay_at_hotel',
           }
@@ -5384,11 +5415,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Get room type details for email
         let roomTypeName: string | undefined;
         let roomTypeDescription: string | undefined;
+        let roomBasePrice: string | undefined;
+        let roomOriginalPrice: string | undefined;
         if (booking.roomTypeId) {
           const roomTypeForEmail = await storage.getRoomType(booking.roomTypeId);
           if (roomTypeForEmail) {
             roomTypeName = roomTypeForEmail.name;
             roomTypeDescription = roomTypeForEmail.description || undefined;
+            roomBasePrice = roomTypeForEmail.basePrice;
+            if (roomTypeForEmail.originalPrice && parseFloat(roomTypeForEmail.originalPrice) > parseFloat(roomTypeForEmail.basePrice)) {
+              roomOriginalPrice = roomTypeForEmail.originalPrice;
+            }
           }
         }
         
@@ -5422,6 +5459,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Room details
           roomTypeName,
           roomTypeDescription,
+          // Pricing details for strikethrough display
+          roomBasePrice,
+          roomOriginalPrice,
           // Payment type
           paymentType: 'pay_at_hotel',
         };
