@@ -426,6 +426,8 @@ function RoomTypeCard({
   const [editName, setEditName] = useState(room.name);
   const [editDescription, setEditDescription] = useState(room.description || "");
   const [editPrice, setEditPrice] = useState(String(room.basePrice));
+  const [editOriginalPrice, setEditOriginalPrice] = useState(room.originalPrice !== undefined ? String(room.originalPrice) : "");
+  const [editShowStrikeOff, setEditShowStrikeOff] = useState(room.originalPrice !== undefined && room.originalPrice > room.basePrice);
   const [editMaxGuests, setEditMaxGuests] = useState(String(room.maxGuests));
   const [editTotalRooms, setEditTotalRooms] = useState(String(room.totalRooms));
   const [editSingleOccupancyBase, setEditSingleOccupancyBase] = useState(String(room.singleOccupancyBase || 1));
@@ -434,6 +436,7 @@ function RoomTypeCard({
 
   const handleSave = () => {
     const price = parseFloat(editPrice);
+    const originalPrice = editShowStrikeOff && editOriginalPrice ? parseFloat(editOriginalPrice) : undefined;
     const maxGuests = parseInt(editMaxGuests);
     const totalRooms = parseInt(editTotalRooms);
     const singleOccupancyBase = parseInt(editSingleOccupancyBase) || 1;
@@ -443,11 +446,14 @@ function RoomTypeCard({
     if (isNaN(price) || price < 100) return;
     if (isNaN(maxGuests) || maxGuests < 1) return;
     if (isNaN(totalRooms) || totalRooms < 1) return;
+    // Validate original price must be greater than selling price
+    if (originalPrice !== undefined && originalPrice <= price) return;
     
     onUpdate({
       name: editName,
       description: editDescription || undefined,
       basePrice: price,
+      originalPrice: editShowStrikeOff ? originalPrice : undefined,
       maxGuests: maxGuests,
       totalRooms: totalRooms,
       singleOccupancyBase: singleOccupancyBase,
@@ -460,6 +466,8 @@ function RoomTypeCard({
     setEditName(room.name);
     setEditDescription(room.description || "");
     setEditPrice(String(room.basePrice));
+    setEditOriginalPrice(room.originalPrice !== undefined ? String(room.originalPrice) : "");
+    setEditShowStrikeOff(room.originalPrice !== undefined && room.originalPrice > room.basePrice);
     setEditMaxGuests(String(room.maxGuests));
     setEditTotalRooms(String(room.totalRooms));
     setEditSingleOccupancyBase(String(room.singleOccupancyBase || 1));
@@ -490,7 +498,17 @@ function RoomTypeCard({
               <>
                 <Badge variant="secondary" className="text-xs">{room.maxGuests} guests</Badge>
                 <Badge variant="outline" className="text-xs">{room.totalRooms} rooms</Badge>
-                <Badge className="text-xs">₹{room.basePrice}/night</Badge>
+                {room.originalPrice && room.originalPrice > room.basePrice ? (
+                  <div className="flex items-center gap-1.5">
+                    <Badge variant="outline" className="text-xs line-through text-muted-foreground">₹{room.originalPrice}</Badge>
+                    <Badge className="text-xs">₹{room.basePrice}/night</Badge>
+                    <Badge variant="secondary" className="text-xs bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
+                      {Math.round((1 - room.basePrice / room.originalPrice) * 100)}% off
+                    </Badge>
+                  </div>
+                ) : (
+                  <Badge className="text-xs">₹{room.basePrice}/night</Badge>
+                )}
                 <Badge variant="secondary" className="text-xs">
                   <UtensilsCrossed className="h-3 w-3 mr-1" />
                   {room.mealOptions.length} meal plans
@@ -540,7 +558,7 @@ function RoomTypeCard({
             </div>
             <div className="grid gap-3 md:grid-cols-3">
               <div className="space-y-1">
-                <Label className="text-xs">Base Price (₹)</Label>
+                <Label className="text-xs">Selling Price (₹)</Label>
                 <Input
                   type="number"
                   min="100"
@@ -569,6 +587,45 @@ function RoomTypeCard({
                   data-testid={`edit-room-total-rooms-${room.id}`}
                 />
               </div>
+            </div>
+            
+            {/* Strike-off Price Section */}
+            <div className="border rounded-lg p-3 space-y-3 bg-emerald-50/50 dark:bg-emerald-950/20">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Tag className="h-4 w-4 text-emerald-600" />
+                  <Label className="text-xs font-medium">Show Discount (Strike-off Price)</Label>
+                  <Badge variant="secondary" className="text-xs">Optional</Badge>
+                </div>
+                <Switch
+                  checked={editShowStrikeOff}
+                  onCheckedChange={setEditShowStrikeOff}
+                  data-testid={`switch-strike-off-edit-${room.id}`}
+                />
+              </div>
+              {editShowStrikeOff && (
+                <div className="space-y-2">
+                  <Label className="text-xs">Original Price (₹)</Label>
+                  <Input
+                    type="number"
+                    min="100"
+                    value={editOriginalPrice}
+                    onChange={(e) => setEditOriginalPrice(e.target.value)}
+                    placeholder="e.g., 3500"
+                    data-testid={`edit-room-original-price-${room.id}`}
+                  />
+                  {editOriginalPrice && editPrice && parseFloat(editOriginalPrice) <= parseFloat(editPrice) && (
+                    <p className="text-xs text-destructive">Original price must be higher than selling price</p>
+                  )}
+                  {editOriginalPrice && editPrice && parseFloat(editOriginalPrice) > parseFloat(editPrice) && (
+                    <p className="text-xs text-emerald-600">
+                      Customers see: <span className="line-through">₹{Number(editOriginalPrice).toLocaleString('en-IN')}</span>{" "}
+                      <span className="font-semibold">₹{Number(editPrice).toLocaleString('en-IN')}</span>{" "}
+                      ({Math.round((1 - parseFloat(editPrice) / parseFloat(editOriginalPrice)) * 100)}% off)
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
             
             <div className="border rounded-lg p-3 space-y-3 bg-muted/20">
