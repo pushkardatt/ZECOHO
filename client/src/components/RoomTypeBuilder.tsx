@@ -5,7 +5,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Trash2, Edit, Bed, UtensilsCrossed, ChevronDown, ChevronUp, Save, X } from "lucide-react";
+import { Plus, Trash2, Edit, Bed, UtensilsCrossed, ChevronDown, ChevronUp, Save, X, Tag } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 export interface WizardRoomType {
@@ -13,6 +14,7 @@ export interface WizardRoomType {
   name: string;
   description?: string;
   basePrice: number;
+  originalPrice?: number; // Strike-off price (if set and > basePrice, shows discount)
   singleOccupancyBase?: number; // Number of guests included in base price (default 1)
   doubleOccupancyAdjustment?: number; // Extra charge for 2 guests
   tripleOccupancyAdjustment?: number; // Extra charge for 3+ guests
@@ -51,6 +53,8 @@ export function RoomTypeBuilder({ value, onChange, propertyType }: RoomTypeBuild
   const [newRoomName, setNewRoomName] = useState("");
   const [newRoomDescription, setNewRoomDescription] = useState("");
   const [newRoomPrice, setNewRoomPrice] = useState("");
+  const [newRoomOriginalPrice, setNewRoomOriginalPrice] = useState("");
+  const [showStrikeOffPrice, setShowStrikeOffPrice] = useState(false);
   const [newRoomMaxGuests, setNewRoomMaxGuests] = useState("2");
   const [newRoomTotalRooms, setNewRoomTotalRooms] = useState("1");
   const [newSingleOccupancyBase, setNewSingleOccupancyBase] = useState("1");
@@ -61,6 +65,8 @@ export function RoomTypeBuilder({ value, onChange, propertyType }: RoomTypeBuild
     setNewRoomName("");
     setNewRoomDescription("");
     setNewRoomPrice("");
+    setNewRoomOriginalPrice("");
+    setShowStrikeOffPrice(false);
     setNewRoomMaxGuests("2");
     setNewRoomTotalRooms("1");
     setNewSingleOccupancyBase("1");
@@ -70,6 +76,7 @@ export function RoomTypeBuilder({ value, onChange, propertyType }: RoomTypeBuild
 
   const handleAddRoom = () => {
     const price = parseFloat(newRoomPrice);
+    const originalPrice = showStrikeOffPrice && newRoomOriginalPrice ? parseFloat(newRoomOriginalPrice) : undefined;
     const maxGuests = parseInt(newRoomMaxGuests);
     const totalRooms = parseInt(newRoomTotalRooms);
     const singleOccupancyBase = parseInt(newSingleOccupancyBase) || 1;
@@ -79,12 +86,15 @@ export function RoomTypeBuilder({ value, onChange, propertyType }: RoomTypeBuild
     if (!newRoomName || !newRoomPrice || isNaN(price) || price < 100) return;
     if (isNaN(maxGuests) || maxGuests < 1) return;
     if (isNaN(totalRooms) || totalRooms < 1) return;
+    // Validate original price must be greater than selling price
+    if (originalPrice !== undefined && originalPrice <= price) return;
 
     const newRoom: WizardRoomType = {
       id: generateId(),
       name: newRoomName,
       description: newRoomDescription || undefined,
       basePrice: price,
+      originalPrice: originalPrice,
       singleOccupancyBase: singleOccupancyBase,
       doubleOccupancyAdjustment: doubleAdj,
       tripleOccupancyAdjustment: tripleAdj,
@@ -192,7 +202,7 @@ export function RoomTypeBuilder({ value, onChange, propertyType }: RoomTypeBuild
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Base Price per Night (₹) *</Label>
+                  <Label>Selling Price per Night (₹) *</Label>
                   <Input
                     type="number"
                     min="100"
@@ -203,6 +213,46 @@ export function RoomTypeBuilder({ value, onChange, propertyType }: RoomTypeBuild
                   />
                 </div>
               </div>
+              
+              {/* Strike-off Price Section */}
+              <div className="border rounded-lg p-4 space-y-3 bg-emerald-50/50 dark:bg-emerald-950/20">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Tag className="h-4 w-4 text-emerald-600" />
+                    <Label className="text-sm font-medium">Show Discount (Strike-off Price)</Label>
+                    <Badge variant="secondary" className="text-xs">Optional</Badge>
+                  </div>
+                  <Switch
+                    checked={showStrikeOffPrice}
+                    onCheckedChange={setShowStrikeOffPrice}
+                    data-testid="switch-strike-off-price"
+                  />
+                </div>
+                {showStrikeOffPrice && (
+                  <div className="space-y-2">
+                    <Label className="text-xs">Original Price (₹) - will be shown struck through</Label>
+                    <Input
+                      type="number"
+                      min="100"
+                      value={newRoomOriginalPrice}
+                      onChange={(e) => setNewRoomOriginalPrice(e.target.value)}
+                      placeholder="e.g., 3500"
+                      data-testid="input-new-room-original-price"
+                    />
+                    {newRoomOriginalPrice && newRoomPrice && parseFloat(newRoomOriginalPrice) <= parseFloat(newRoomPrice) && (
+                      <p className="text-xs text-destructive">Original price must be higher than selling price</p>
+                    )}
+                    {newRoomOriginalPrice && newRoomPrice && parseFloat(newRoomOriginalPrice) > parseFloat(newRoomPrice) && (
+                      <p className="text-xs text-emerald-600">
+                        Customers will see: <span className="line-through">₹{Number(newRoomOriginalPrice).toLocaleString('en-IN')}</span>{" "}
+                        <span className="font-semibold">₹{Number(newRoomPrice).toLocaleString('en-IN')}</span>{" "}
+                        ({Math.round((1 - parseFloat(newRoomPrice) / parseFloat(newRoomOriginalPrice)) * 100)}% off)
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+              
               <div className="space-y-2">
                 <Label>Description</Label>
                 <Textarea
