@@ -44,6 +44,13 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { format } from "date-fns";
 import { usePropertyUpdates } from "@/hooks/usePropertyUpdates";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -78,6 +85,18 @@ interface OwnerStats {
     totalRevenue: number;
   };
   alerts: { type: string; message: string; link: string }[];
+}
+
+interface MonthlySummary {
+  year: number;
+  month: number;
+  confirmed: number;
+  completed: number;
+  cancelled: number;
+  rejected: number;
+  noShow: number;
+  pending: number;
+  totalRevenue: number;
 }
 
 interface RoomUtilization {
@@ -275,9 +294,28 @@ function RoomUtilizationCard({ propertyId }: { propertyId: string }) {
 export default function OwnerDashboard() {
   const { user } = useAuth();
   const { toast } = useToast();
+  
+  // Month selection state for monthly summary (defaults to current month)
+  const now = new Date();
+  const [selectedYear, setSelectedYear] = useState(now.getFullYear());
+  const [selectedMonth, setSelectedMonth] = useState(now.getMonth() + 1); // 1-indexed
+  
   const { data: stats, isLoading } = useQuery<OwnerStats>({
     queryKey: ["/api/owner/stats"],
     refetchInterval: 30000, // Refresh every 30 seconds for real-time updates
+  });
+
+  // Separate query for monthly summary with month selection
+  const { data: monthlySummary, isLoading: isLoadingMonthlySummary } = useQuery<MonthlySummary>({
+    queryKey: ["/api/owner/monthly-summary", selectedYear, selectedMonth],
+    queryFn: async () => {
+      const response = await fetch(`/api/owner/monthly-summary?year=${selectedYear}&month=${selectedMonth}`, {
+        credentials: "include",
+      });
+      if (!response.ok) throw new Error("Failed to fetch monthly summary");
+      return response.json();
+    },
+    refetchInterval: 30000,
   });
 
   // Real-time property status updates via WebSocket
@@ -535,14 +573,52 @@ export default function OwnerDashboard() {
 
         {/* Monthly Booking Summary */}
         <Card data-testid="card-monthly-summary">
-          <CardHeader>
+          <CardHeader className="flex flex-row items-center justify-between gap-2 flex-wrap">
             <CardTitle className="flex items-center gap-2">
               <ClipboardList className="h-5 w-5" />
               Monthly Booking Summary
             </CardTitle>
+            <div className="flex items-center gap-2">
+              <Select
+                value={`${selectedYear}-${selectedMonth}`}
+                onValueChange={(value) => {
+                  const [year, month] = value.split('-').map(Number);
+                  setSelectedYear(year);
+                  setSelectedMonth(month);
+                }}
+              >
+                <SelectTrigger className="w-[160px]" data-testid="select-month">
+                  <SelectValue placeholder="Select month" />
+                </SelectTrigger>
+                <SelectContent>
+                  {(() => {
+                    const months = [];
+                    const currentYear = now.getFullYear();
+                    const currentMonth = now.getMonth() + 1;
+                    // Show current month and 11 previous months
+                    for (let i = 0; i < 12; i++) {
+                      let m = currentMonth - i;
+                      let y = currentYear;
+                      if (m <= 0) {
+                        m += 12;
+                        y -= 1;
+                      }
+                      const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 
+                                          'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                      months.push(
+                        <SelectItem key={`${y}-${m}`} value={`${y}-${m}`}>
+                          {monthNames[m - 1]} {y}
+                        </SelectItem>
+                      );
+                    }
+                    return months;
+                  })()}
+                </SelectContent>
+              </Select>
+            </div>
           </CardHeader>
           <CardContent>
-            {isLoading ? (
+            {isLoadingMonthlySummary ? (
               <div className="grid gap-3 md:grid-cols-3 lg:grid-cols-6">
                 {[1, 2, 3, 4, 5, 6].map(i => <Skeleton key={i} className="h-16" />)}
               </div>
@@ -550,37 +626,37 @@ export default function OwnerDashboard() {
               <div className="grid gap-3 md:grid-cols-3 lg:grid-cols-6">
                 <div className="p-3 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800">
                   <div className="text-lg font-bold text-green-700 dark:text-green-300" data-testid="monthly-confirmed">
-                    {stats?.monthlySummary?.confirmed || 0}
+                    {monthlySummary?.confirmed || 0}
                   </div>
                   <p className="text-xs text-green-600 dark:text-green-400">Confirmed</p>
                 </div>
                 <div className="p-3 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
                   <div className="text-lg font-bold text-blue-700 dark:text-blue-300" data-testid="monthly-completed">
-                    {stats?.monthlySummary?.completed || 0}
+                    {monthlySummary?.completed || 0}
                   </div>
                   <p className="text-xs text-blue-600 dark:text-blue-400">Completed</p>
                 </div>
                 <div className="p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
                   <div className="text-lg font-bold text-amber-700 dark:text-amber-300" data-testid="monthly-pending">
-                    {stats?.monthlySummary?.pending || 0}
+                    {monthlySummary?.pending || 0}
                   </div>
                   <p className="text-xs text-amber-600 dark:text-amber-400">Pending</p>
                 </div>
                 <div className="p-3 rounded-lg bg-gray-50 dark:bg-gray-900/20 border border-gray-200 dark:border-gray-700">
                   <div className="text-lg font-bold text-gray-700 dark:text-gray-300" data-testid="monthly-cancelled">
-                    {stats?.monthlySummary?.cancelled || 0}
+                    {monthlySummary?.cancelled || 0}
                   </div>
                   <p className="text-xs text-gray-600 dark:text-gray-400">Cancelled</p>
                 </div>
                 <div className="p-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800">
                   <div className="text-lg font-bold text-red-700 dark:text-red-300" data-testid="monthly-noshow">
-                    {(stats?.monthlySummary?.noShow || 0) + (stats?.monthlySummary?.rejected || 0)}
+                    {(monthlySummary?.noShow || 0) + (monthlySummary?.rejected || 0)}
                   </div>
                   <p className="text-xs text-red-600 dark:text-red-400">No-show/Rejected</p>
                 </div>
                 <div className="p-3 rounded-lg bg-primary/10 border border-primary/20">
                   <div className="text-lg font-bold text-primary" data-testid="monthly-revenue">
-                    {formatCurrency(stats?.monthlySummary?.totalRevenue || 0)}
+                    {formatCurrency(monthlySummary?.totalRevenue || 0)}
                   </div>
                   <p className="text-xs text-primary/70">Total Revenue</p>
                 </div>

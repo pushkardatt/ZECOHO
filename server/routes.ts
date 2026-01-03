@@ -5643,6 +5643,135 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get monthly booking summary with month selection
+  app.get("/api/owner/monthly-summary", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || !userHasRole(user, "owner")) {
+        return res.status(403).json({ message: "Only owners can access monthly summary" });
+      }
+
+      // Get year and month from query params (default to current month)
+      const DEFAULT_TIMEZONE = 'Asia/Kolkata';
+      const now = new Date();
+      const nowInIST = new Date(now.toLocaleString('en-US', { timeZone: DEFAULT_TIMEZONE }));
+      
+      const year = parseInt(req.query.year as string) || nowInIST.getFullYear();
+      const month = parseInt(req.query.month as string) || nowInIST.getMonth() + 1; // 1-indexed
+      
+      // Get all properties for this owner
+      const properties = await storage.getOwnerProperties(userId);
+      
+      if (properties.length === 0) {
+        return res.json({
+          year,
+          month,
+          confirmed: 0,
+          completed: 0,
+          cancelled: 0,
+          rejected: 0,
+          noShow: 0,
+          pending: 0,
+          totalRevenue: 0,
+        });
+      }
+
+      // Get all bookings for owner's properties
+      const propertyIds = properties.map(p => p.id);
+      const allBookings = await storage.getBookingsForProperties(propertyIds);
+
+      // Calculate month boundaries (IST timezone-safe)
+      const startOfMonthStr = `${year}-${String(month).padStart(2, '0')}-01`;
+      const lastDayOfMonth = new Date(year, month, 0).getDate();
+      const endOfMonthStr = `${year}-${String(month).padStart(2, '0')}-${String(lastDayOfMonth).padStart(2, '0')}`;
+
+      // Helper function to get timezone-safe date string (YYYY-MM-DD)
+      const getLocalDateString = (date: Date, timezone: string): string => {
+        try {
+          return date.toLocaleDateString('en-CA', { timeZone: timezone });
+        } catch {
+          return date.toLocaleDateString('en-CA', { timeZone: DEFAULT_TIMEZONE });
+        }
+      };
+
+      // Monthly summary breakdown
+      const monthlySummary = {
+        confirmed: 0,
+        completed: 0,
+        cancelled: 0,
+        rejected: 0,
+        noShow: 0,
+        pending: 0,
+        totalRevenue: 0,
+      };
+
+      for (const booking of allBookings) {
+        // Use check-in date for determining which month the booking belongs to
+        // This is more intuitive for owners - "bookings in January" = stays happening in January
+        const checkInDateStr = getLocalDateString(new Date(booking.checkIn), DEFAULT_TIMEZONE);
+        const checkOutDateStr = getLocalDateString(new Date(booking.checkOut), DEFAULT_TIMEZONE);
+        
+        // Check if booking overlaps with the selected month
+        // A booking is in this month if: checkIn <= endOfMonth AND checkOut >= startOfMonth
+        const isInMonth = checkInDateStr <= endOfMonthStr && checkOutDateStr >= startOfMonthStr;
+        
+        if (!isInMonth) continue;
+        
+        const price = parseFloat(booking.totalPrice as string) || 0;
+        
+        // Categorize by status
+        switch (booking.status) {
+          case "confirmed":
+          case "customer_confirmed":
+          case "checked_in":
+            // Confirmed = owner accepted (includes ongoing stays)
+            monthlySummary.confirmed++;
+            break;
+          case "completed":
+          case "checked_out":
+            // Completed = guest finished their stay
+            monthlySummary.completed++;
+            break;
+          case "cancelled":
+            monthlySummary.cancelled++;
+            break;
+          case "rejected":
+            monthlySummary.rejected++;
+            break;
+          case "no_show":
+            monthlySummary.noShow++;
+            break;
+          case "pending":
+            monthlySummary.pending++;
+            break;
+        }
+        
+        // Also count as completed if checked_out_at is set (regardless of status)
+        if ((booking as any).checkedOutAt && booking.status !== "completed" && booking.status !== "checked_out") {
+          // Already counted above if status is completed/checked_out, so only count if different status
+          // This handles edge case where checked_out_at is set but status wasn't updated
+        }
+        
+        // Total revenue: sum totalPrice for completed/checked_in bookings only (confirmed revenue)
+        if (booking.status === "completed" || booking.status === "checked_out" || 
+            booking.status === "checked_in") {
+          monthlySummary.totalRevenue += price;
+        }
+      }
+
+      res.json({
+        year,
+        month,
+        ...monthlySummary,
+      });
+    } catch (error) {
+      console.error("Error fetching monthly summary:", error);
+      res.status(500).json({ message: "Failed to fetch monthly summary" });
+    }
+  });
+
   // Get room utilization for owner's property
   app.get("/api/owner/properties/:propertyId/utilization", isAuthenticated, async (req: any, res) => {
     try {
