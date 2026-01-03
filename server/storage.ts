@@ -1610,7 +1610,7 @@ export class DatabaseStorage implements IStorage {
     propertyId: string, 
     ownerId: string, 
     reason: string, 
-    requestType: "deactivate" | "delete" = "deactivate"
+    requestType: "deactivate" | "delete" | "reactivate" = "deactivate"
   ): Promise<PropertyDeactivationRequest> {
     const [created] = await db
       .insert(propertyDeactivationRequests)

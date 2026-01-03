@@ -105,6 +105,24 @@ export function SearchBar({
     setGuests(adults + children);
   }, [adults, children]);
   
+  // OTA-style auto-calculation: Calculate minimum required rooms based on guest count
+  // Uses same logic as Booking Page for platform-wide consistency
+  const calculateMinRooms = useCallback((adultCount: number, childCount: number) => {
+    const maxAdultsPerRoom = 2;
+    const maxChildrenPerRoom = 2;
+    const roomsForAdults = Math.ceil(adultCount / maxAdultsPerRoom);
+    const roomsForChildren = childCount > 0 ? Math.ceil(childCount / maxChildrenPerRoom) : 0;
+    return Math.max(roomsForAdults, roomsForChildren, 1);
+  }, []);
+  
+  // Auto-adjust rooms when guest count changes (bi-directional sync)
+  useEffect(() => {
+    const minRequired = calculateMinRooms(adults, children);
+    if (rooms < minRequired) {
+      setRooms(Math.min(minRequired, 5)); // Cap at max 5 rooms for search
+    }
+  }, [adults, children, calculateMinRooms, rooms]);
+  
   // Load saved guest preferences from localStorage on mount (only if no initial values provided)
   useEffect(() => {
     if (typeof window !== 'undefined' && initialAdults === 2 && initialChildren === 0 && initialRooms === 1) {
@@ -717,13 +735,13 @@ export function SearchBar({
                   <div className="flex items-center justify-between border-t pt-4">
                     <div>
                       <div className="font-medium text-gray-900">Rooms</div>
-                      <div className="text-xs text-gray-500">Number of rooms</div>
+                      <div className="text-xs text-gray-500">Min {calculateMinRooms(adults, children)} for {adults + children} guest{adults + children !== 1 ? 's' : ''}</div>
                     </div>
                     <div className="flex items-center gap-3">
                       <button
                         type="button"
-                        onClick={() => setRooms(Math.max(1, rooms - 1))}
-                        disabled={rooms <= 1}
+                        onClick={() => setRooms(Math.max(calculateMinRooms(adults, children), rooms - 1))}
+                        disabled={rooms <= calculateMinRooms(adults, children)}
                         className="w-8 h-8 rounded-full border border-gray-300 flex items-center justify-center hover:border-gray-400 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                         data-testid="button-rooms-minus"
                       >
