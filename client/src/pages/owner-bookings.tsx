@@ -183,6 +183,7 @@ export default function OwnerBookings() {
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["/api/owner/bookings"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/owner/stats"] });
       const message = variables.status === "confirmed" 
         ? "Booking confirmed! The guest has been notified."
         : variables.status === "rejected"
@@ -212,6 +213,7 @@ export default function OwnerBookings() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/owner/bookings"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/owner/stats"] });
       toast({
         title: "Guest Checked In",
         description: "The guest has been successfully checked in.",
@@ -232,6 +234,7 @@ export default function OwnerBookings() {
     },
     onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ["/api/owner/bookings"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/owner/stats"] });
       setEarlyCheckoutDialogOpen(false);
       setEarlyCheckoutBooking(null);
       const isEarly = data?.isEarlyCheckout;
@@ -265,6 +268,7 @@ export default function OwnerBookings() {
     },
     onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ["/api/owner/bookings"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/owner/stats"] });
       setExtendStayDialogOpen(false);
       setExtendStayBooking(null);
       setExtendDate(undefined);
@@ -288,6 +292,7 @@ export default function OwnerBookings() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/owner/bookings"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/owner/stats"] });
       setNoShowDialogOpen(false);
       setBookingToMarkNoShow(null);
       setNoShowReason("");

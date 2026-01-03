@@ -672,6 +672,7 @@ export default function PropertyDetails() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/owner/bookings"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/owner/stats"] });
       queryClient.invalidateQueries({ queryKey: ["/api/bookings"] });
       queryClient.invalidateQueries({ queryKey: ["/api/conversations"] });
       

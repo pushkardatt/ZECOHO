@@ -5437,46 +5437,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Get today string in property's timezone for comparison
         const propertyTodayStr = getLocalDateString(now, propertyTimezone);
         
-        // Count pending requests (awaiting owner response) - from bookings table
+        // Count pending requests: status = 'pending' (excludes cancelled/rejected by definition)
         if (booking.status === "pending") {
           pendingRequests++;
         }
         
-        // Count ongoing stays (checked_in status only) - from bookings table
+        // Count ongoing stays: status = 'checked_in' (no checkOutTime means still in property)
+        // Note: checked_in status implies guest is still in property; checked_out/completed means they left
         if (booking.status === "checked_in") {
           ongoingStays++;
         }
         
-        // Count today's check-ins: customer_confirmed bookings where check-in date is today (in property timezone)
-        if (booking.status === "customer_confirmed" && checkInDateStr === propertyTodayStr) {
+        // Count today's check-ins: check_in_date = today, status = 'confirmed' OR 'customer_confirmed'
+        // These are guests expected to arrive today (owner-confirmed or guest-confirmed, not cancelled/no_show)
+        if ((booking.status === "confirmed" || booking.status === "customer_confirmed") && 
+            checkInDateStr === propertyTodayStr) {
           todaysCheckIns++;
         }
         
-        // Count today's check-outs: checked_in bookings where check-out date is today (in property timezone)
+        // Count today's check-outs: check_out_date = today, status = 'checked_in'
+        // These are guests who should depart today
         if (booking.status === "checked_in" && checkOutDateStr === propertyTodayStr) {
           todaysCheckOuts++;
         }
         
-        // Calculate property-specific month boundaries
+        // Calculate property-specific month boundaries based on createdAt
         const [propYear, propMonth] = propertyTodayStr.split('-').map(Number);
         const propStartOfMonthStr = `${propYear}-${String(propMonth).padStart(2, '0')}-01`;
         const propLastDayOfMonth = new Date(propYear, propMonth, 0).getDate();
         const propEndOfMonthStr = `${propYear}-${String(propMonth).padStart(2, '0')}-${String(propLastDayOfMonth).padStart(2, '0')}`;
         
-        // Monthly summary: bookings with check-in in current month (in property timezone)
-        if (checkInDateStr >= propStartOfMonthStr && checkInDateStr <= propEndOfMonthStr) {
+        // Monthly summary: based on booking.createdAt month (when the booking was made)
+        if (createdAtStr >= propStartOfMonthStr && createdAtStr <= propEndOfMonthStr) {
           const price = parseFloat(booking.totalPrice as string) || 0;
           switch (booking.status) {
             case "confirmed":
             case "customer_confirmed":
             case "checked_in":
+              // Confirmed = owner accepted (includes ongoing stays)
               monthlySummary.confirmed++;
-              monthlySummary.totalRevenue += price;
               break;
             case "completed":
             case "checked_out":
+              // Completed = guest finished their stay
               monthlySummary.completed++;
-              monthlySummary.totalRevenue += price;
               break;
             case "cancelled":
               monthlySummary.cancelled++;
@@ -5490,6 +5494,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
             case "pending":
               monthlySummary.pending++;
               break;
+          }
+          
+          // Total revenue: sum totalPrice for completed/checked_in bookings only (confirmed revenue)
+          // Excludes cancelled, no_show, rejected, and pending bookings
+          if (booking.status === "completed" || booking.status === "checked_out" || 
+              booking.status === "checked_in") {
+            monthlySummary.totalRevenue += price;
           }
         }
         

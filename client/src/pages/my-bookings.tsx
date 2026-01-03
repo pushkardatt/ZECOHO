@@ -173,6 +173,7 @@ export default function MyBookings() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/bookings"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/owner/stats"] });
       toast({
         title: "Booking Confirmed!",
         description: "The hotel has been notified. Your room is now secured.",
@@ -194,6 +195,7 @@ export default function MyBookings() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/bookings"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/owner/stats"] });
       toast({
         title: "Booking Cancelled",
         description: "Your booking has been cancelled. The property owner has been notified.",
