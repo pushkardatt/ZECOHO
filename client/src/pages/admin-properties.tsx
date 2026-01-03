@@ -182,7 +182,11 @@ export default function AdminProperties() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/deactivation-requests"] });
       queryClient.invalidateQueries({ queryKey: ["/api/admin/properties"] });
-      toast({ title: "Success", description: "Deactivation request approved" });
+      const requestType = selectedDeactivationRequest?.requestType;
+      const description = requestType === "reactivate" ? "Property reactivated successfully" :
+                          requestType === "delete" ? "Property deleted successfully" :
+                          "Property deactivated successfully";
+      toast({ title: "Success", description });
       setDeactivationDialogOpen(false);
       setSelectedDeactivationRequest(null);
       setDeactivationAdminNotes("");
@@ -430,7 +434,7 @@ export default function AdminProperties() {
               Draft ({draftProperties.length})
             </TabsTrigger>
             <TabsTrigger value="deactivation-requests" data-testid="tab-deactivation-requests">
-              Deactivation Requests ({deactivationRequests.length})
+              Property Requests ({deactivationRequests.length})
             </TabsTrigger>
           </TabsList>
 
@@ -504,19 +508,33 @@ export default function AdminProperties() {
               </div>
             ) : deactivationRequests.length === 0 ? (
               <div className="text-center py-12">
-                <p className="text-muted-foreground">No pending deactivation requests</p>
+                <p className="text-muted-foreground">No pending property requests</p>
               </div>
             ) : (
               <div className="space-y-4">
                 {deactivationRequests.map((request) => (
-                  <Card key={request.id} className="border-amber-200 bg-amber-50/50 dark:bg-amber-950/20">
+                  <Card 
+                    key={request.id} 
+                    className={request.requestType === "reactivate" 
+                      ? "border-green-200 bg-green-50/50 dark:bg-green-950/20"
+                      : "border-amber-200 bg-amber-50/50 dark:bg-amber-950/20"
+                    }
+                  >
                     <CardContent className="p-6">
                       <div className="flex items-start justify-between gap-4">
                         <div className="flex-1">
                           <div className="flex items-center gap-2 mb-2">
                             <h3 className="font-semibold text-lg">{request.property?.title}</h3>
-                            <Badge variant={request.requestType === "delete" ? "destructive" : "secondary"}>
-                              {request.requestType === "delete" ? "Delete Request" : "Deactivation Request"}
+                            <Badge 
+                              variant={
+                                request.requestType === "delete" ? "destructive" : 
+                                request.requestType === "reactivate" ? "default" : 
+                                "secondary"
+                              }
+                            >
+                              {request.requestType === "delete" ? "Delete Request" : 
+                               request.requestType === "reactivate" ? "Reactivation Request" :
+                               "Deactivation Request"}
                             </Badge>
                           </div>
                           <p className="text-sm text-muted-foreground mb-2">
@@ -583,18 +601,24 @@ export default function AdminProperties() {
               {deactivationAction === "approve" ? (
                 <>
                   <CheckCircle className="h-5 w-5 text-green-600" />
-                  Approve {selectedDeactivationRequest?.requestType === "delete" ? "Deletion" : "Deactivation"} Request
+                  Approve {selectedDeactivationRequest?.requestType === "delete" ? "Deletion" : 
+                           selectedDeactivationRequest?.requestType === "reactivate" ? "Reactivation" : 
+                           "Deactivation"} Request
                 </>
               ) : (
                 <>
                   <XCircle className="h-5 w-5 text-red-600" />
-                  Reject {selectedDeactivationRequest?.requestType === "delete" ? "Deletion" : "Deactivation"} Request
+                  Reject {selectedDeactivationRequest?.requestType === "delete" ? "Deletion" : 
+                          selectedDeactivationRequest?.requestType === "reactivate" ? "Reactivation" : 
+                          "Deactivation"} Request
                 </>
               )}
             </DialogTitle>
             <DialogDescription>
               {deactivationAction === "approve" 
-                ? `This will ${selectedDeactivationRequest?.requestType === "delete" ? "permanently delete" : "deactivate"} "${selectedDeactivationRequest?.property?.title}".`
+                ? `This will ${selectedDeactivationRequest?.requestType === "delete" ? "permanently delete" : 
+                              selectedDeactivationRequest?.requestType === "reactivate" ? "reactivate and publish" : 
+                              "deactivate"} "${selectedDeactivationRequest?.property?.title}".`
                 : "Please provide a reason for rejecting this request."}
             </DialogDescription>
           </DialogHeader>
@@ -631,7 +655,7 @@ export default function AdminProperties() {
             </Button>
             {deactivationAction === "approve" ? (
               <Button
-                variant="destructive"
+                variant={selectedDeactivationRequest?.requestType === "reactivate" ? "default" : "destructive"}
                 onClick={() => {
                   if (selectedDeactivationRequest) {
                     approveDeactivationMutation.mutate({
@@ -643,7 +667,10 @@ export default function AdminProperties() {
                 disabled={approveDeactivationMutation.isPending}
                 data-testid="button-confirm-approve-deactivation"
               >
-                {approveDeactivationMutation.isPending ? "Processing..." : `Approve ${selectedDeactivationRequest?.requestType === "delete" ? "Deletion" : "Deactivation"}`}
+                {approveDeactivationMutation.isPending ? "Processing..." : 
+                 `Approve ${selectedDeactivationRequest?.requestType === "delete" ? "Deletion" : 
+                           selectedDeactivationRequest?.requestType === "reactivate" ? "Reactivation" : 
+                           "Deactivation"}`}
               </Button>
             ) : (
               <Button

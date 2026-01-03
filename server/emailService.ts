@@ -393,7 +393,7 @@ export async function sendPropertyStatusEmail(
   email: string, 
   firstName: string, 
   propertyName: string, 
-  status: 'paused' | 'resumed' | 'deactivated' | 'deleted'
+  status: 'paused' | 'resumed' | 'deactivated' | 'deleted' | 'reactivated'
 ): Promise<boolean> {
   try {
     console.log(`Sending property ${status} notification to:`, email);
@@ -431,6 +431,14 @@ export async function sendPropertyStatusEmail(
         color: '#dc2626',
         bgColor: '#fef2f2',
         icon: '&#128465;'
+      },
+      reactivated: {
+        subject: `Property Reactivated - ${propertyName}`,
+        heading: 'Property Reactivated Successfully!',
+        message: `Great news! Your property "${propertyName}" has been reactivated and is now live on ZECOHO. Travelers can find and book your property again.`,
+        color: '#10b981',
+        bgColor: '#ecfdf5',
+        icon: '&#10003;'
       }
     };
     

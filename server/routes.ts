@@ -5022,7 +5022,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Send email notification to owner
       if (owner?.email) {
-        let action: string;
+        let action: 'paused' | 'resumed' | 'deactivated' | 'deleted' | 'reactivated';
         if (request.requestType === "delete") {
           action = "deleted";
         } else if (request.requestType === "reactivate") {
