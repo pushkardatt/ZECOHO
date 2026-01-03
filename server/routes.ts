@@ -2328,12 +2328,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Please provide a reason (at least 10 characters)" });
       }
 
-      const actualRequestType = requestType === "delete" ? "delete" : "deactivate";
+      // Validate and normalize request type - support deactivate, delete, and reactivate
+      const validRequestTypes = ["deactivate", "delete", "reactivate"];
+      const actualRequestType = validRequestTypes.includes(requestType) ? requestType : "deactivate";
       const request = await storage.createDeactivationRequest(
         req.params.id, 
         userId, 
         reason.trim(),
-        actualRequestType
+        actualRequestType as "deactivate" | "delete" | "reactivate"
       );
       
       // Send email notification to all admins
