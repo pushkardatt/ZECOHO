@@ -244,7 +244,7 @@ export function PropertyCard({ property, onWishlistToggle, searchParams }: Prope
                 <div className="flex flex-wrap items-center justify-between gap-1 text-xs">
                   <div className="flex items-center gap-2">
                     <span className="font-semibold text-emerald-700 dark:text-emerald-400">
-                      Zecoho ₹{zecohoPrice.toLocaleString('en-IN')}
+                      ZECOHO ₹{zecohoPrice.toLocaleString('en-IN')}
                     </span>
                     <span className="text-muted-foreground">|</span>
                     <span className="text-muted-foreground line-through">

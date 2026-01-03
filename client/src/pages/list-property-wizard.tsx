@@ -1269,7 +1269,7 @@ export default function ListPropertyWizard() {
       <div className="min-h-screen flex items-center justify-center bg-muted/30">
         <Card className="w-full max-w-md mx-4">
           <CardHeader className="text-center">
-            <CardTitle className="text-2xl">List Your Property on Zecoho (Free)</CardTitle>
+            <CardTitle className="text-2xl">List Your Property on ZECOHO (Free)</CardTitle>
             <p className="text-muted-foreground mt-2">
               Login or create an account to continue
             </p>

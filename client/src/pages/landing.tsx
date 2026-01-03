@@ -163,7 +163,7 @@ export default function Landing() {
               onClick={() => setLocation("/login?returnTo=/list-property")}
               data-testid="link-owner-cta-hero"
             >
-              Own a hotel or homestay? Get listed on Zecoho →
+              Own a hotel or homestay? Get listed on ZECOHO →
             </span>
           </div>
         </div>
@@ -330,13 +330,13 @@ export default function Landing() {
         </div>
       </div>
 
-      {/* Why Zecoho Beats OTAs - Clean, Minimal Design */}
+      {/* Why ZECOHO Beats OTAs - Clean, Minimal Design */}
       <div className="py-20 px-4 md:px-6 bg-background">
         <div className="container mx-auto max-w-5xl">
           {/* Section Header */}
           <div className="text-center mb-16">
             <h2 className="text-3xl md:text-4xl font-bold mb-4" data-testid="text-why-choose-heading">
-              Why Zecoho Beats OTAs
+              Why ZECOHO Beats OTAs
             </h2>
             <p className="text-muted-foreground max-w-xl mx-auto">
               Transparent pricing. Direct access. Zero hidden fees.
@@ -397,12 +397,12 @@ export default function Landing() {
         </div>
       </div>
 
-      {/* Zecoho vs OTAs - Detailed Comparison Table */}
+      {/* ZECOHO vs OTAs - Detailed Comparison Table */}
       <div className="py-16 px-4 md:px-6 bg-muted/30">
         <div className="container mx-auto max-w-4xl">
           <div className="text-center mb-12">
             <h2 className="text-2xl md:text-3xl font-bold mb-3">
-              Zecoho vs OTAs — Who Actually Saves You Money?
+              ZECOHO vs OTAs — Who Actually Saves You Money?
             </h2>
             <p className="text-muted-foreground">
               A side-by-side comparison of what you get
@@ -417,7 +417,7 @@ export default function Landing() {
                   <tr className="border-b bg-muted/50">
                     <th className="text-left p-4 font-semibold">Feature</th>
                     <th className="text-center p-4">
-                      <span className="font-bold text-lg text-primary">Zecoho</span>
+                      <span className="font-bold text-lg text-primary">ZECOHO</span>
                     </th>
                     <th className="text-center p-4">
                       <span className="font-semibold text-muted-foreground">OTAs (MMT, GoIbibo, etc.)</span>
@@ -558,7 +558,7 @@ export default function Landing() {
           </div>
           <h2 className="text-3xl md:text-4xl font-bold mb-4">Own a Property?</h2>
           <p className="text-lg text-white/80 mb-8">
-            List your property on Zecoho — pay 0% commission.
+            List your property on ZECOHO — pay 0% commission.
           </p>
           <Button 
             size="lg"
