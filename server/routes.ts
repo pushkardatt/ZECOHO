@@ -2217,14 +2217,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Deactivate property listing (owner only)
-  app.patch("/api/properties/:id/deactivate", isAuthenticated, async (req: any, res) => {
+  // ===============================
+  // PROPERTY DEACTIVATION REQUEST ROUTES
+  // Owners submit requests, only admins can deactivate/delete
+  // ===============================
+
+  // Owner submits a deactivation request
+  app.post("/api/properties/:id/deactivation-request", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
       
       if (!user || !userHasRole(user, "owner")) {
-        return res.status(403).json({ message: "Only owners can deactivate properties" });
+        return res.status(403).json({ message: "Only owners can request property deactivation" });
       }
 
       const property = await storage.getProperty(req.params.id);
@@ -2234,24 +2239,98 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       if (property.ownerId !== userId) {
-        return res.status(403).json({ message: "Not authorized to deactivate this property" });
+        return res.status(403).json({ message: "Not authorized to request deactivation for this property" });
       }
 
       if (property.status === "deactivated") {
         return res.status(400).json({ message: "Property is already deactivated" });
       }
 
-      const updatedProperty = await storage.updateProperty(req.params.id, { status: "deactivated" });
+      // Check if there's already a pending request
+      const existingRequest = await storage.getDeactivationRequestByProperty(req.params.id);
+      if (existingRequest) {
+        return res.status(400).json({ message: "A deactivation request is already pending for this property" });
+      }
+
+      const { reason, requestType } = req.body;
       
-      // Send email notification to owner
-      if (user.email) {
-        sendPropertyStatusEmail(user.email, user.firstName || '', property.title, 'deactivated').catch(console.error);
+      if (!reason || reason.trim().length < 10) {
+        return res.status(400).json({ message: "Please provide a reason (at least 10 characters)" });
+      }
+
+      const request = await storage.createDeactivationRequest(
+        req.params.id, 
+        userId, 
+        reason.trim(),
+        requestType === "delete" ? "delete" : "deactivate"
+      );
+      
+      res.json(request);
+    } catch (error) {
+      console.error("Error creating deactivation request:", error);
+      res.status(500).json({ message: "Failed to submit deactivation request" });
+    }
+  });
+
+  // Owner gets their deactivation request for a property
+  app.get("/api/properties/:id/deactivation-request", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user) {
+        return res.status(401).json({ message: "User not found" });
+      }
+
+      const property = await storage.getProperty(req.params.id);
+      
+      if (!property) {
+        return res.status(404).json({ message: "Property not found" });
       }
       
-      res.json(updatedProperty);
+      // Only owner or admin can view
+      if (property.ownerId !== userId && user.userRole !== "admin") {
+        return res.status(403).json({ message: "Not authorized" });
+      }
+
+      const request = await storage.getDeactivationRequestByProperty(req.params.id);
+      res.json(request || null);
     } catch (error) {
-      console.error("Error deactivating property:", error);
-      res.status(500).json({ message: "Failed to deactivate property" });
+      console.error("Error fetching deactivation request:", error);
+      res.status(500).json({ message: "Failed to fetch deactivation request" });
+    }
+  });
+
+  // Owner cancels their pending deactivation request
+  app.delete("/api/properties/:id/deactivation-request", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || !userHasRole(user, "owner")) {
+        return res.status(403).json({ message: "Only owners can cancel deactivation requests" });
+      }
+
+      const property = await storage.getProperty(req.params.id);
+      
+      if (!property) {
+        return res.status(404).json({ message: "Property not found" });
+      }
+      
+      if (property.ownerId !== userId) {
+        return res.status(403).json({ message: "Not authorized" });
+      }
+
+      const request = await storage.getDeactivationRequestByProperty(req.params.id);
+      if (!request) {
+        return res.status(404).json({ message: "No pending deactivation request found" });
+      }
+
+      await storage.cancelDeactivationRequest(request.id);
+      res.json({ message: "Deactivation request cancelled" });
+    } catch (error) {
+      console.error("Error cancelling deactivation request:", error);
+      res.status(500).json({ message: "Failed to cancel deactivation request" });
     }
   });
 
@@ -4774,6 +4853,150 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error deleting property:", error);
       res.status(500).json({ message: "Failed to delete property" });
+    }
+  });
+
+  // ===============================
+  // ADMIN DEACTIVATION REQUEST MANAGEMENT
+  // ===============================
+
+  // Admin: Get all pending deactivation requests
+  app.get("/api/admin/deactivation-requests", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || !userHasRole(user, "admin")) {
+        return res.status(403).json({ message: "Only admins can view deactivation requests" });
+      }
+
+      const requests = await storage.getAllPendingDeactivationRequests();
+      res.json(requests);
+    } catch (error) {
+      console.error("Error fetching deactivation requests:", error);
+      res.status(500).json({ message: "Failed to fetch deactivation requests" });
+    }
+  });
+
+  // Admin: Approve deactivation request (actually deactivate or delete the property)
+  app.patch("/api/admin/deactivation-requests/:id/approve", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || !userHasRole(user, "admin")) {
+        return res.status(403).json({ message: "Only admins can approve deactivation requests" });
+      }
+
+      const request = await storage.getDeactivationRequest(req.params.id);
+      if (!request) {
+        return res.status(404).json({ message: "Deactivation request not found" });
+      }
+
+      if (request.status !== "pending") {
+        return res.status(400).json({ message: "Request has already been processed" });
+      }
+
+      const property = await storage.getProperty(request.propertyId);
+      if (!property) {
+        return res.status(404).json({ message: "Property not found" });
+      }
+
+      const owner = await storage.getUser(request.ownerId);
+      const { adminNotes } = req.body;
+
+      // Process based on request type
+      if (request.requestType === "delete") {
+        await storage.deleteProperty(request.propertyId);
+      } else {
+        await storage.updateProperty(request.propertyId, { status: "deactivated" });
+      }
+
+      // Update the request status
+      await storage.processDeactivationRequest(req.params.id, userId, "approved", adminNotes);
+
+      // Send email notification to owner
+      if (owner?.email) {
+        const action = request.requestType === "delete" ? "deleted" : "deactivated";
+        sendPropertyStatusEmail(owner.email, owner.firstName || '', property.title, action).catch(console.error);
+      }
+
+      res.json({ 
+        message: request.requestType === "delete" 
+          ? "Property deleted successfully" 
+          : "Property deactivated successfully" 
+      });
+    } catch (error) {
+      console.error("Error approving deactivation request:", error);
+      res.status(500).json({ message: "Failed to approve deactivation request" });
+    }
+  });
+
+  // Admin: Reject deactivation request (property remains active)
+  app.patch("/api/admin/deactivation-requests/:id/reject", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || !userHasRole(user, "admin")) {
+        return res.status(403).json({ message: "Only admins can reject deactivation requests" });
+      }
+
+      const request = await storage.getDeactivationRequest(req.params.id);
+      if (!request) {
+        return res.status(404).json({ message: "Deactivation request not found" });
+      }
+
+      if (request.status !== "pending") {
+        return res.status(400).json({ message: "Request has already been processed" });
+      }
+
+      const { adminNotes } = req.body;
+      if (!adminNotes || adminNotes.trim() === "") {
+        return res.status(400).json({ message: "Please provide a reason for rejection" });
+      }
+
+      await storage.processDeactivationRequest(req.params.id, userId, "rejected", adminNotes);
+
+      res.json({ message: "Deactivation request rejected" });
+    } catch (error) {
+      console.error("Error rejecting deactivation request:", error);
+      res.status(500).json({ message: "Failed to reject deactivation request" });
+    }
+  });
+
+  // Admin: Direct deactivate property (admin-only, no request needed)
+  app.patch("/api/admin/properties/:id/deactivate", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || !userHasRole(user, "admin")) {
+        return res.status(403).json({ message: "Only admins can deactivate properties" });
+      }
+
+      const property = await storage.getProperty(req.params.id);
+      
+      if (!property) {
+        return res.status(404).json({ message: "Property not found" });
+      }
+
+      if (property.status === "deactivated") {
+        return res.status(400).json({ message: "Property is already deactivated" });
+      }
+
+      const updatedProperty = await storage.updateProperty(req.params.id, { status: "deactivated" });
+      
+      // Send email notification to owner
+      const owner = await storage.getUser(property.ownerId);
+      if (owner?.email) {
+        sendPropertyStatusEmail(owner.email, owner.firstName || '', property.title, 'deactivated').catch(console.error);
+      }
+      
+      res.json(updatedProperty);
+    } catch (error) {
+      console.error("Error deactivating property:", error);
+      res.status(500).json({ message: "Failed to deactivate property" });
     }
   });
 
