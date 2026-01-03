@@ -771,9 +771,9 @@ export async function sendBookingRequestToOwnerEmail(
 interface BookingEmailData {
   bookingCode: string;
   propertyName: string;
-  propertyId: string;
+  propertyId?: string;
   checkIn: string;
-  checkOut: string;
+  checkOut?: string;
   guests: number;
   rooms: number;
   totalPrice: string;
@@ -792,6 +792,44 @@ interface BookingEmailData {
   roomTypeDescription?: string;
   // Payment type
   paymentType?: string; // 'pay_at_hotel' | 'advance' | 'token'
+}
+
+// Helper function to generate property details section for emails
+function generatePropertyDetailsSection(data: BookingEmailData): string {
+  let detailsHtml = '';
+  
+  // Room type
+  if (data.roomTypeName) {
+    detailsHtml += `<p style="color: #6b7280; margin: 0 0 8px 0;"><strong>Room Type:</strong> ${data.roomTypeName}</p>`;
+  }
+  
+  // Full address with city, state, pincode
+  const addressParts = [];
+  if (data.propertyAddress) addressParts.push(data.propertyAddress);
+  if (data.propertyCity) addressParts.push(data.propertyCity);
+  if (data.propertyState) addressParts.push(data.propertyState);
+  if (data.propertyPincode) addressParts.push(data.propertyPincode);
+  
+  if (addressParts.length > 0) {
+    detailsHtml += `<p style="color: #6b7280; margin: 0 0 8px 0;"><strong>Address:</strong> ${addressParts.join(', ')}</p>`;
+  }
+  
+  // Map link if coordinates available
+  if (data.latitude && data.longitude) {
+    const mapUrl = `https://www.google.com/maps?q=${data.latitude},${data.longitude}`;
+    detailsHtml += `<p style="color: #6b7280; margin: 0 0 8px 0;"><strong>Directions:</strong> <a href="${mapUrl}" style="color: #10b981; text-decoration: underline;">View on Google Maps</a></p>`;
+  }
+  
+  // Payment type
+  if (data.paymentType) {
+    const paymentLabel = data.paymentType === 'pay_at_hotel' ? 'Pay at Hotel' 
+      : data.paymentType === 'advance' ? 'Advance Payment' 
+      : data.paymentType === 'token' ? 'Token Payment' 
+      : data.paymentType;
+    detailsHtml += `<p style="color: #6b7280; margin: 0 0 8px 0;"><strong>Payment:</strong> ${paymentLabel}</p>`;
+  }
+  
+  return detailsHtml;
 }
 
 // CREATED STATE: Email to Guest - "Reservation Requested"

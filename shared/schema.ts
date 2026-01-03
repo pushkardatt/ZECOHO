@@ -235,6 +235,8 @@ export const roomTypes = pgTable("room_types", {
   name: varchar("name", { length: 255 }).notNull(),
   description: text("description"),
   basePrice: decimal("base_price", { precision: 10, scale: 2 }).notNull(),
+  // Original price for strikethrough display (optional - if set and > basePrice, shows discount)
+  originalPrice: decimal("original_price", { precision: 10, scale: 2 }),
   // Occupancy-based pricing adjustments (nullable - if not set, basePrice applies to all occupancy levels)
   singleOccupancyBase: integer("single_occupancy_base").default(1), // Number of guests included in base price
   doubleOccupancyAdjustment: decimal("double_occupancy_adjustment", { precision: 10, scale: 2 }), // Extra charge per night for 2 guests
@@ -255,6 +257,8 @@ export const roomOptions = pgTable("room_options", {
   roomTypeId: varchar("room_type_id").notNull().references(() => roomTypes.id, { onDelete: "cascade" }),
   name: varchar("name", { length: 255 }).notNull(),
   priceAdjustment: decimal("price_adjustment", { precision: 10, scale: 2 }).notNull().default("0"),
+  // Original price adjustment for strikethrough display (optional)
+  originalPriceAdjustment: decimal("original_price_adjustment", { precision: 10, scale: 2 }),
   refundable: boolean("refundable").notNull().default(true),
   inclusions: text("inclusions"),
   isActive: boolean("is_active").notNull().default(true),
@@ -733,6 +737,7 @@ export const insertRoomTypeSchema = createInsertSchema(roomTypes).omit({
   updatedAt: true,
 }).extend({
   basePrice: z.union([z.string(), z.number()]).pipe(z.coerce.number().min(100)).transform(v => String(v)),
+  originalPrice: z.union([z.string(), z.number()]).pipe(z.coerce.number().min(0)).transform(v => String(v)).nullable().optional(),
   maxGuests: z.coerce.number().int().min(1).optional(),
   totalRooms: z.coerce.number().int().min(1).optional(),
   singleOccupancyBase: z.coerce.number().int().min(1).optional(),
@@ -746,6 +751,7 @@ export const insertRoomOptionSchema = createInsertSchema(roomOptions).omit({
   updatedAt: true,
 }).extend({
   priceAdjustment: z.string().or(z.number()).transform(v => String(v)),
+  originalPriceAdjustment: z.union([z.string(), z.number()]).pipe(z.coerce.number().min(0)).transform(v => String(v)).nullable().optional(),
 });
 
 export const insertWishlistSchema = createInsertSchema(wishlists).omit({
