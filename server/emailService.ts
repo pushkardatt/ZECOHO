@@ -669,22 +669,83 @@ export async function sendPropertyLiveEmail(email: string, firstName: string, pr
 export async function sendBookingRequestToOwnerEmail(
   ownerEmail: string,
   ownerFirstName: string,
-  propertyName: string,
-  guestName: string,
-  guestEmail: string,
-  checkIn: string,
-  checkOut: string,
-  guests: number,
-  totalPrice: string
+  data: {
+    propertyName: string;
+    guestName: string;
+    guestEmail: string;
+    bookingCode: string;
+    checkIn: string;
+    checkOut: string;
+    guests: number;
+    rooms: number;
+    totalPrice: string;
+    bookingCreatedAt?: string;
+    // Property details
+    roomTypeName?: string;
+    maxOccupancy?: number;
+    roomBasePrice?: string;
+    roomOriginalPrice?: string;
+    mealOptionName?: string;
+    mealOptionPrice?: string;
+    paymentType?: string;
+  }
 ): Promise<boolean> {
   try {
     console.log('Sending booking request notification to owner:', ownerEmail);
     const { client, fromEmail } = await getResendClient();
     
-    const { data, error } = await client.emails.send({
+    // Build property details section
+    let propertyDetailsHtml = '';
+    
+    // Room type with pricing and max occupancy
+    if (data.roomTypeName) {
+      let roomLine = `<p style="color: #6b7280; margin: 0 0 8px 0;"><strong>Room Type:</strong> ${data.roomTypeName}`;
+      if (data.maxOccupancy) {
+        roomLine += ` (Max ${data.maxOccupancy} guests)`;
+      }
+      if (data.roomBasePrice) {
+        const basePrice = Number(data.roomBasePrice).toLocaleString('en-IN');
+        const hasDiscount = data.roomOriginalPrice && parseFloat(data.roomOriginalPrice) > parseFloat(data.roomBasePrice);
+        if (hasDiscount) {
+          const originalPrice = Number(data.roomOriginalPrice).toLocaleString('en-IN');
+          const discountPercent = Math.round((1 - parseFloat(data.roomBasePrice) / parseFloat(data.roomOriginalPrice!)) * 100);
+          roomLine += ` — <span style="text-decoration: line-through; color: #9ca3af;">₹${originalPrice}</span> <strong style="color: #10b981;">₹${basePrice}/night</strong> <span style="background: #d1fae5; color: #065f46; padding: 2px 6px; border-radius: 4px; font-size: 12px;">${discountPercent}% OFF</span>`;
+        } else {
+          roomLine += ` — ₹${basePrice}/night`;
+        }
+      }
+      roomLine += '</p>';
+      propertyDetailsHtml += roomLine;
+    }
+    
+    // Meal option
+    if (data.mealOptionName) {
+      if (data.mealOptionPrice && parseFloat(data.mealOptionPrice) > 0) {
+        const mealPrice = Number(data.mealOptionPrice).toLocaleString('en-IN');
+        propertyDetailsHtml += `<p style="color: #6b7280; margin: 0 0 8px 0;"><strong>Meal Plan:</strong> ${data.mealOptionName} — ₹${mealPrice}/person/night</p>`;
+      } else {
+        propertyDetailsHtml += `<p style="color: #6b7280; margin: 0 0 8px 0;"><strong>Meal Plan:</strong> ${data.mealOptionName}</p>`;
+      }
+    }
+    
+    // Rooms booked
+    if (data.rooms) {
+      propertyDetailsHtml += `<p style="color: #6b7280; margin: 0 0 8px 0;"><strong>Rooms Booked:</strong> ${data.rooms}</p>`;
+    }
+    
+    // Payment type
+    if (data.paymentType) {
+      const paymentLabel = data.paymentType === 'pay_at_hotel' ? 'Pay at Hotel' 
+        : data.paymentType === 'advance' ? 'Advance Payment' 
+        : data.paymentType === 'token' ? 'Token Payment' 
+        : data.paymentType;
+      propertyDetailsHtml += `<p style="color: #6b7280; margin: 0 0 8px 0;"><strong>Payment Mode:</strong> ${paymentLabel}</p>`;
+    }
+    
+    const { data: responseData, error } = await client.emails.send({
       from: fromEmail || 'ZECOHO <noreply@zecoho.com>',
       to: [ownerEmail],
-      subject: `New Booking Request - ${propertyName}`,
+      subject: `New Booking Request - ${data.propertyName} (${data.bookingCode})`,
       html: `
         <!DOCTYPE html>
         <html>
@@ -696,7 +757,7 @@ export async function sendBookingRequestToOwnerEmail(
           <div style="max-width: 480px; margin: 40px auto; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
             <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); padding: 32px; text-align: center;">
               <h1 style="color: white; margin: 0; font-size: 28px; font-weight: 700;">ZECOHO</h1>
-              <p style="color: rgba(255,255,255,0.9); margin: 8px 0 0 0; font-size: 14px;">Your Journey, Our Passion</p>
+              <p style="color: rgba(255,255,255,0.9); margin: 8px 0 0 0; font-size: 14px;">Property Owner Portal</p>
             </div>
             
             <div style="padding: 32px;">
@@ -711,29 +772,45 @@ export async function sendBookingRequestToOwnerEmail(
                 Hi ${ownerFirstName || 'Property Owner'},
               </p>
               <p style="color: #6b7280; margin: 0 0 24px 0; line-height: 1.5;">
-                You have received a new booking request for <strong>"${propertyName}"</strong>. Please review the details below.
+                You have received a new booking request for <strong>"${data.propertyName}"</strong>. Please review the details below.
               </p>
               
               <div style="background: #f3f4f6; border-radius: 8px; padding: 16px; margin-bottom: 16px;">
+                <p style="color: #1f2937; margin: 0 0 4px 0; font-weight: 600;">Booking Reference</p>
+                <p style="color: #10b981; margin: 0; font-size: 20px; font-weight: 700; letter-spacing: 1px;">${data.bookingCode}</p>
+              </div>
+              
+              <div style="background: #f3f4f6; border-radius: 8px; padding: 16px; margin-bottom: 16px;">
                 <p style="color: #1f2937; margin: 0 0 12px 0; font-weight: 600;">Guest Information:</p>
-                <p style="color: #6b7280; margin: 0 0 8px 0;"><strong>Name:</strong> ${guestName}</p>
-                <p style="color: #6b7280; margin: 0;"><strong>Email:</strong> ${guestEmail}</p>
+                <p style="color: #6b7280; margin: 0 0 8px 0;"><strong>Name:</strong> ${data.guestName}</p>
+                <p style="color: #6b7280; margin: 0;"><strong>Email:</strong> ${data.guestEmail}</p>
               </div>
               
-              <div style="background: #ecfdf5; border-radius: 8px; padding: 16px; margin-bottom: 24px; border-left: 4px solid #10b981;">
-                <p style="color: #065f46; margin: 0 0 12px 0; font-weight: 600;">Booking Details:</p>
-                <p style="color: #047857; margin: 0 0 8px 0;"><strong>Check-in:</strong> ${checkIn}</p>
-                <p style="color: #047857; margin: 0 0 8px 0;"><strong>Check-out:</strong> ${checkOut}</p>
-                <p style="color: #047857; margin: 0 0 8px 0;"><strong>Number of Guests:</strong> ${guests}</p>
-                <p style="color: #065f46; margin: 0; font-weight: 600; font-size: 18px;">Total Amount: Rs. ${totalPrice}</p>
+              <div style="background: #f3f4f6; border-radius: 8px; padding: 16px; margin-bottom: 16px;">
+                <p style="color: #1f2937; margin: 0 0 12px 0; font-weight: 600;">Booking Details:</p>
+                <p style="color: #6b7280; margin: 0 0 8px 0;"><strong>Check-in:</strong> ${data.checkIn}</p>
+                <p style="color: #6b7280; margin: 0 0 8px 0;"><strong>Check-out:</strong> ${data.checkOut}</p>
+                <p style="color: #6b7280; margin: 0 0 8px 0;"><strong>Guests:</strong> ${data.guests}</p>
+                ${data.bookingCreatedAt ? `<p style="color: #6b7280; margin: 0 0 8px 0;"><strong>Booked On:</strong> ${data.bookingCreatedAt}</p>` : ''}
+                <p style="color: #1f2937; margin: 0; font-weight: 600; font-size: 18px;">Total: Rs. ${data.totalPrice}</p>
               </div>
               
-              <p style="color: #6b7280; margin: 0 0 24px 0; line-height: 1.5; font-size: 14px;">
-                A message has also been sent to your chat inbox. Please respond to the guest promptly.
-              </p>
+              ${propertyDetailsHtml ? `
+              <div style="background: #ecfdf5; border-radius: 8px; padding: 16px; margin-bottom: 24px;">
+                <p style="color: #065f46; margin: 0 0 12px 0; font-weight: 600;">Room & Booking Details:</p>
+                ${propertyDetailsHtml}
+              </div>
+              ` : ''}
+              
+              <div style="background: #fef3c7; border-radius: 8px; padding: 16px; margin-bottom: 24px; border-left: 4px solid #f59e0b;">
+                <p style="color: #92400e; margin: 0; font-weight: 500;">Action Required</p>
+                <p style="color: #a16207; margin: 8px 0 0 0; font-size: 14px;">
+                  Please review and respond to this booking request promptly. The guest is waiting for your confirmation.
+                </p>
+              </div>
               
               <div style="text-align: center;">
-                <a href="${getAppBaseUrl()}/owner/bookings" style="display: inline-block; background: #10b981; color: white; text-decoration: none; padding: 12px 32px; border-radius: 8px; font-weight: 600;">
+                <a href="${getAppBaseUrl()}/owner/bookings?bookingRef=${data.bookingCode}" style="display: inline-block; background: #10b981; color: white; text-decoration: none; padding: 12px 32px; border-radius: 8px; font-weight: 600;">
                   View Booking Requests
                 </a>
               </div>
@@ -756,7 +833,7 @@ export async function sendBookingRequestToOwnerEmail(
       return false;
     }
 
-    console.log('Booking request email sent to owner successfully:', data?.id);
+    console.log('Booking request email sent to owner successfully:', responseData?.id);
     return true;
   } catch (error: any) {
     console.error('Failed to send booking request email to owner:', error?.message || error);
@@ -780,16 +857,20 @@ interface BookingEmailData {
   guestName?: string;
   guestEmail?: string;
   bookingCreatedAt?: string;
+  // Booking status
+  bookingStatus?: string; // 'pending', 'owner_accepted', 'confirmed', 'cancelled', 'rejected', 'no_show', 'completed'
   // Extended property details
   propertyAddress?: string;
   propertyCity?: string;
   propertyState?: string;
   propertyPincode?: string;
+  propertyContactNumber?: string;
   latitude?: string;
   longitude?: string;
   // Room details
   roomTypeName?: string;
   roomTypeDescription?: string;
+  maxOccupancy?: number;
   // Pricing details for strikethrough display
   roomBasePrice?: string; // Selling/discounted price per night
   roomOriginalPrice?: string; // Strike-off price per night (optional)
@@ -801,12 +882,17 @@ interface BookingEmailData {
 }
 
 // Helper function to generate property details section for emails
-function generatePropertyDetailsSection(data: BookingEmailData): string {
+function generatePropertyDetailsSection(data: BookingEmailData, options?: { showStatus?: boolean }): string {
   let detailsHtml = '';
   
-  // Room type with pricing
+  // Room type with pricing and max occupancy
   if (data.roomTypeName) {
     let roomLine = `<p style="color: #6b7280; margin: 0 0 8px 0;"><strong>Room Type:</strong> ${data.roomTypeName}`;
+    
+    // Add max occupancy if available
+    if (data.maxOccupancy) {
+      roomLine += ` (Max ${data.maxOccupancy} guests)`;
+    }
     
     // Add pricing info if available
     if (data.roomBasePrice) {
@@ -826,9 +912,18 @@ function generatePropertyDetailsSection(data: BookingEmailData): string {
   }
   
   // Meal option with per-person pricing
-  if (data.mealOptionName && data.mealOptionPrice && parseFloat(data.mealOptionPrice) > 0) {
-    const mealPrice = Number(data.mealOptionPrice).toLocaleString('en-IN');
-    detailsHtml += `<p style="color: #6b7280; margin: 0 0 8px 0;"><strong>Meal Plan:</strong> ${data.mealOptionName} — ₹${mealPrice}/person/night</p>`;
+  if (data.mealOptionName) {
+    if (data.mealOptionPrice && parseFloat(data.mealOptionPrice) > 0) {
+      const mealPrice = Number(data.mealOptionPrice).toLocaleString('en-IN');
+      detailsHtml += `<p style="color: #6b7280; margin: 0 0 8px 0;"><strong>Meal Plan:</strong> ${data.mealOptionName} — ₹${mealPrice}/person/night</p>`;
+    } else {
+      detailsHtml += `<p style="color: #6b7280; margin: 0 0 8px 0;"><strong>Meal Plan:</strong> ${data.mealOptionName}</p>`;
+    }
+  }
+  
+  // Number of rooms
+  if (data.rooms) {
+    detailsHtml += `<p style="color: #6b7280; margin: 0 0 8px 0;"><strong>Rooms Booked:</strong> ${data.rooms}</p>`;
   }
   
   // Full address with city, state, pincode
@@ -840,6 +935,11 @@ function generatePropertyDetailsSection(data: BookingEmailData): string {
   
   if (addressParts.length > 0) {
     detailsHtml += `<p style="color: #6b7280; margin: 0 0 8px 0;"><strong>Address:</strong> ${addressParts.join(', ')}</p>`;
+  }
+  
+  // Property contact number
+  if (data.propertyContactNumber) {
+    detailsHtml += `<p style="color: #6b7280; margin: 0 0 8px 0;"><strong>Contact:</strong> <a href="tel:${data.propertyContactNumber}" style="color: #10b981; text-decoration: none;">${data.propertyContactNumber}</a></p>`;
   }
   
   // Map link if coordinates available
@@ -854,7 +954,22 @@ function generatePropertyDetailsSection(data: BookingEmailData): string {
       : data.paymentType === 'advance' ? 'Advance Payment' 
       : data.paymentType === 'token' ? 'Token Payment' 
       : data.paymentType;
-    detailsHtml += `<p style="color: #6b7280; margin: 0 0 8px 0;"><strong>Payment:</strong> ${paymentLabel}</p>`;
+    detailsHtml += `<p style="color: #6b7280; margin: 0 0 8px 0;"><strong>Payment Mode:</strong> ${paymentLabel}</p>`;
+  }
+  
+  // Booking status if requested
+  if (options?.showStatus && data.bookingStatus) {
+    const statusLabels: Record<string, { label: string; color: string }> = {
+      'pending': { label: 'Pending', color: '#f59e0b' },
+      'owner_accepted': { label: 'Awaiting Confirmation', color: '#3b82f6' },
+      'confirmed': { label: 'Confirmed', color: '#10b981' },
+      'cancelled': { label: 'Cancelled', color: '#dc2626' },
+      'rejected': { label: 'Rejected', color: '#dc2626' },
+      'no_show': { label: 'No Show', color: '#6b7280' },
+      'completed': { label: 'Completed', color: '#10b981' }
+    };
+    const status = statusLabels[data.bookingStatus] || { label: data.bookingStatus, color: '#6b7280' };
+    detailsHtml += `<p style="color: #6b7280; margin: 0 0 8px 0;"><strong>Status:</strong> <span style="color: ${status.color}; font-weight: 600;">${status.label}</span></p>`;
   }
   
   return detailsHtml;
@@ -908,14 +1023,19 @@ export async function sendBookingCreatedGuestEmail(
                 <p style="color: #10b981; margin: 0; font-size: 20px; font-weight: 700; letter-spacing: 1px;">${data.bookingCode}</p>
               </div>
               
-              <div style="background: #f3f4f6; border-radius: 8px; padding: 16px; margin-bottom: 24px;">
+              <div style="background: #f3f4f6; border-radius: 8px; padding: 16px; margin-bottom: 16px;">
                 <p style="color: #1f2937; margin: 0 0 12px 0; font-weight: 600;">Booking Details:</p>
                 <p style="color: #6b7280; margin: 0 0 8px 0;"><strong>Property:</strong> ${data.propertyName}</p>
                 <p style="color: #6b7280; margin: 0 0 8px 0;"><strong>Check-in:</strong> ${data.checkIn}</p>
                 <p style="color: #6b7280; margin: 0 0 8px 0;"><strong>Check-out:</strong> ${data.checkOut}</p>
-                <p style="color: #6b7280; margin: 0 0 8px 0;"><strong>Guests:</strong> ${data.guests} | <strong>Rooms:</strong> ${data.rooms}</p>
+                <p style="color: #6b7280; margin: 0 0 8px 0;"><strong>Guests:</strong> ${data.guests}</p>
                 ${data.bookingCreatedAt ? `<p style="color: #6b7280; margin: 0 0 8px 0;"><strong>Booked On:</strong> ${data.bookingCreatedAt}</p>` : ''}
                 <p style="color: #1f2937; margin: 0; font-weight: 600; font-size: 18px;">Total: Rs. ${data.totalPrice}</p>
+              </div>
+              
+              <div style="background: #ecfdf5; border-radius: 8px; padding: 16px; margin-bottom: 24px;">
+                <p style="color: #065f46; margin: 0 0 12px 0; font-weight: 600;">Property & Room Details:</p>
+                ${generatePropertyDetailsSection(data, { showStatus: true })}
               </div>
               
               <div style="background: #fef3c7; border-radius: 8px; padding: 16px; margin-bottom: 24px; border-left: 4px solid #f59e0b;">
@@ -1018,14 +1138,19 @@ export async function sendBookingOwnerAcceptedEmail(
                 <p style="color: #10b981; margin: 0; font-size: 20px; font-weight: 700; letter-spacing: 1px;">${data.bookingCode}</p>
               </div>
               
-              <div style="background: #f3f4f6; border-radius: 8px; padding: 16px; margin-bottom: 24px;">
+              <div style="background: #f3f4f6; border-radius: 8px; padding: 16px; margin-bottom: 16px;">
                 <p style="color: #1f2937; margin: 0 0 12px 0; font-weight: 600;">Booking Details:</p>
                 <p style="color: #6b7280; margin: 0 0 8px 0;"><strong>Property:</strong> ${data.propertyName}</p>
                 <p style="color: #6b7280; margin: 0 0 8px 0;"><strong>Check-in:</strong> ${data.checkIn}</p>
                 <p style="color: #6b7280; margin: 0 0 8px 0;"><strong>Check-out:</strong> ${data.checkOut}</p>
-                <p style="color: #6b7280; margin: 0 0 8px 0;"><strong>Guests:</strong> ${data.guests} | <strong>Rooms:</strong> ${data.rooms}</p>
+                <p style="color: #6b7280; margin: 0 0 8px 0;"><strong>Guests:</strong> ${data.guests}</p>
                 ${data.bookingCreatedAt ? `<p style="color: #6b7280; margin: 0 0 8px 0;"><strong>Booked On:</strong> ${data.bookingCreatedAt}</p>` : ''}
                 <p style="color: #1f2937; margin: 0; font-weight: 600; font-size: 18px;">Total: Rs. ${data.totalPrice}</p>
+              </div>
+              
+              <div style="background: #ecfdf5; border-radius: 8px; padding: 16px; margin-bottom: 24px;">
+                <p style="color: #065f46; margin: 0 0 12px 0; font-weight: 600;">Property & Room Details:</p>
+                ${generatePropertyDetailsSection(data, { showStatus: true })}
               </div>
               
               <div style="background: #fef3c7; border-radius: 8px; padding: 16px; margin-bottom: 24px; border-left: 4px solid #f59e0b;">
@@ -1115,17 +1240,22 @@ export async function sendBookingConfirmedGuestEmail(
                 <p style="color: #047857; margin: 0; font-size: 24px; font-weight: 700; letter-spacing: 2px;">${data.bookingCode}</p>
               </div>
               
-              <div style="background: #f3f4f6; border-radius: 8px; padding: 16px; margin-bottom: 24px;">
+              <div style="background: #f3f4f6; border-radius: 8px; padding: 16px; margin-bottom: 16px;">
                 <p style="color: #1f2937; margin: 0 0 12px 0; font-weight: 600;">Booking Details:</p>
                 <p style="color: #6b7280; margin: 0 0 8px 0;"><strong>Property:</strong> ${data.propertyName}</p>
                 <p style="color: #6b7280; margin: 0 0 8px 0;"><strong>Check-in:</strong> ${data.checkIn}</p>
                 <p style="color: #6b7280; margin: 0 0 8px 0;"><strong>Check-out:</strong> ${data.checkOut}</p>
-                <p style="color: #6b7280; margin: 0 0 8px 0;"><strong>Guests:</strong> ${data.guests} | <strong>Rooms:</strong> ${data.rooms}</p>
+                <p style="color: #6b7280; margin: 0 0 8px 0;"><strong>Guests:</strong> ${data.guests}</p>
                 ${data.bookingCreatedAt ? `<p style="color: #6b7280; margin: 0 0 8px 0;"><strong>Booked On:</strong> ${data.bookingCreatedAt}</p>` : ''}
                 <p style="color: #1f2937; margin: 0; font-weight: 600; font-size: 18px;">Total: Rs. ${data.totalPrice}</p>
               </div>
               
-              <div style="background: #ecfdf5; border-radius: 8px; padding: 16px; margin-bottom: 24px; border-left: 4px solid #10b981;">
+              <div style="background: #ecfdf5; border-radius: 8px; padding: 16px; margin-bottom: 24px;">
+                <p style="color: #065f46; margin: 0 0 12px 0; font-weight: 600;">Property & Room Details:</p>
+                ${generatePropertyDetailsSection(data, { showStatus: true })}
+              </div>
+              
+              <div style="background: #f0fdf4; border-radius: 8px; padding: 16px; margin-bottom: 24px; border-left: 4px solid #10b981;">
                 <p style="color: #065f46; margin: 0; font-weight: 500;">What's Next?</p>
                 <ul style="color: #047857; margin: 8px 0 0 0; padding-left: 20px; font-size: 14px; line-height: 1.6;">
                   <li>Save your confirmation code</li>
@@ -1220,13 +1350,18 @@ export async function sendBookingConfirmedOwnerEmail(
                 <p style="color: #6b7280; margin: 0;"><strong>Email:</strong> ${data.guestEmail || 'N/A'}</p>
               </div>
               
-              <div style="background: #f3f4f6; border-radius: 8px; padding: 16px; margin-bottom: 24px;">
+              <div style="background: #f3f4f6; border-radius: 8px; padding: 16px; margin-bottom: 16px;">
                 <p style="color: #1f2937; margin: 0 0 12px 0; font-weight: 600;">Booking Details:</p>
                 <p style="color: #6b7280; margin: 0 0 8px 0;"><strong>Check-in:</strong> ${data.checkIn}</p>
                 <p style="color: #6b7280; margin: 0 0 8px 0;"><strong>Check-out:</strong> ${data.checkOut}</p>
-                <p style="color: #6b7280; margin: 0 0 8px 0;"><strong>Guests:</strong> ${data.guests} | <strong>Rooms:</strong> ${data.rooms}</p>
+                <p style="color: #6b7280; margin: 0 0 8px 0;"><strong>Guests:</strong> ${data.guests}</p>
                 ${data.bookingCreatedAt ? `<p style="color: #6b7280; margin: 0 0 8px 0;"><strong>Booked On:</strong> ${data.bookingCreatedAt}</p>` : ''}
                 <p style="color: #1f2937; margin: 0; font-weight: 600; font-size: 18px;">Total: Rs. ${data.totalPrice}</p>
+              </div>
+              
+              <div style="background: #ecfdf5; border-radius: 8px; padding: 16px; margin-bottom: 24px;">
+                <p style="color: #065f46; margin: 0 0 12px 0; font-weight: 600;">Room & Booking Details:</p>
+                ${generatePropertyDetailsSection(data, { showStatus: true })}
               </div>
               
               <div style="text-align: center;">
@@ -1344,11 +1479,18 @@ export async function sendBookingDeclinedEmail(
               
               ${messageSection}
               
-              <div style="background: #f3f4f6; border-radius: 8px; padding: 16px; margin-bottom: 24px;">
+              <div style="background: #f3f4f6; border-radius: 8px; padding: 16px; margin-bottom: 16px;">
                 <p style="color: #1f2937; margin: 0 0 12px 0; font-weight: 600;">Original Request:</p>
                 <p style="color: #6b7280; margin: 0 0 8px 0;"><strong>Property:</strong> ${data.propertyName}</p>
                 <p style="color: #6b7280; margin: 0 0 8px 0;"><strong>Dates:</strong> ${data.checkIn} - ${data.checkOut}</p>
-                <p style="color: #6b7280; margin: 0;"><strong>Reference:</strong> ${data.bookingCode}</p>
+                <p style="color: #6b7280; margin: 0 0 8px 0;"><strong>Guests:</strong> ${data.guests}</p>
+                <p style="color: #6b7280; margin: 0 0 8px 0;"><strong>Reference:</strong> ${data.bookingCode}</p>
+                <p style="color: #1f2937; margin: 0; font-weight: 600;">Amount: Rs. ${data.totalPrice}</p>
+              </div>
+              
+              <div style="background: #f9fafb; border-radius: 8px; padding: 16px; margin-bottom: 24px;">
+                <p style="color: #374151; margin: 0 0 12px 0; font-weight: 600;">Booking Details:</p>
+                ${generatePropertyDetailsSection(data, { showStatus: true })}
               </div>
               
               <div style="background: #ecfdf5; border-radius: 8px; padding: 16px; margin-bottom: 24px; border-left: 4px solid #10b981;">
@@ -1394,16 +1536,7 @@ export async function sendBookingDeclinedEmail(
 export async function sendBookingNoShowEmail(
   recipientEmail: string,
   recipientFirstName: string,
-  data: {
-    bookingCode: string;
-    propertyTitle: string;
-    checkIn: string;
-    guests: number;
-    rooms: number;
-    totalPrice: string;
-    guestName?: string;
-    bookedOn?: string;
-  },
+  data: BookingEmailData & { guestName?: string },
   recipientType: 'guest' | 'owner'
 ): Promise<boolean> {
   try {
@@ -1412,15 +1545,18 @@ export async function sendBookingNoShowEmail(
     
     const isGuest = recipientType === 'guest';
     const subject = isGuest 
-      ? `Booking Marked as No-Show - ${data.propertyTitle}`
-      : `Guest No-Show Recorded - ${data.propertyTitle}`;
+      ? `Booking Marked as No-Show - ${data.propertyName}`
+      : `Guest No-Show Recorded - ${data.propertyName}`;
     
     const heading = isGuest ? 'Booking Closed - No Show' : 'Guest No-Show Recorded';
     const mainMessage = isGuest
       ? 'Your booking has been marked as a no-show because you did not check in on the scheduled date.'
       : `The guest (${data.guestName || 'Guest'}) did not check in for their booking. The booking has been marked as a no-show.`;
     
-    const { error, data: emailData } = await client.emails.send({
+    // Set booking status for the helper function
+    const emailData = { ...data, bookingStatus: 'no_show' };
+    
+    const { error, data: responseData } = await client.emails.send({
       from: fromEmail || 'ZECOHO <noreply@zecoho.com>',
       to: [recipientEmail],
       subject: subject,
@@ -1453,21 +1589,27 @@ export async function sendBookingNoShowEmail(
                 ${mainMessage}
               </p>
               
-              <div style="background: #fef2f2; border-radius: 8px; padding: 16px; margin-bottom: 24px; border-left: 4px solid #dc2626;">
+              <div style="background: #fef2f2; border-radius: 8px; padding: 16px; margin-bottom: 16px; border-left: 4px solid #dc2626;">
                 <p style="color: #991b1b; margin: 0; font-weight: 500;">Status: No-Show</p>
                 <p style="color: #dc2626; margin: 8px 0 0 0; font-size: 14px;">
                   Guest did not check in on the scheduled date. This booking is now closed.
                 </p>
               </div>
               
-              <div style="background: #f3f4f6; border-radius: 8px; padding: 16px; margin-bottom: 24px;">
+              <div style="background: #f3f4f6; border-radius: 8px; padding: 16px; margin-bottom: 16px;">
                 <p style="color: #1f2937; margin: 0 0 12px 0; font-weight: 600;">Booking Details:</p>
                 <p style="color: #6b7280; margin: 0 0 8px 0;"><strong>Reference:</strong> ${data.bookingCode}</p>
-                <p style="color: #6b7280; margin: 0 0 8px 0;"><strong>Property:</strong> ${data.propertyTitle}</p>
+                <p style="color: #6b7280; margin: 0 0 8px 0;"><strong>Property:</strong> ${data.propertyName}</p>
                 <p style="color: #6b7280; margin: 0 0 8px 0;"><strong>Check-in Date:</strong> ${data.checkIn}</p>
-                <p style="color: #6b7280; margin: 0 0 8px 0;"><strong>Rooms:</strong> ${data.rooms} | <strong>Guests:</strong> ${data.guests}</p>
+                ${data.checkOut ? `<p style="color: #6b7280; margin: 0 0 8px 0;"><strong>Check-out Date:</strong> ${data.checkOut}</p>` : ''}
+                <p style="color: #6b7280; margin: 0 0 8px 0;"><strong>Guests:</strong> ${data.guests}</p>
                 <p style="color: #6b7280; margin: 0 0 8px 0;"><strong>Total Amount:</strong> Rs. ${data.totalPrice}</p>
-                ${data.bookedOn ? `<p style="color: #6b7280; margin: 0;"><strong>Booked On:</strong> ${data.bookedOn}</p>` : ''}
+                ${data.bookingCreatedAt ? `<p style="color: #6b7280; margin: 0;"><strong>Booked On:</strong> ${data.bookingCreatedAt}</p>` : ''}
+              </div>
+              
+              <div style="background: #ecfdf5; border-radius: 8px; padding: 16px; margin-bottom: 24px;">
+                <p style="color: #065f46; margin: 0 0 12px 0; font-weight: 600;">Property & Room Details:</p>
+                ${generatePropertyDetailsSection(emailData, { showStatus: true })}
               </div>
               
               ${isGuest ? `
@@ -1510,7 +1652,7 @@ export async function sendBookingNoShowEmail(
       return false;
     }
 
-    console.log(`[BOOKING:NO_SHOW] ${recipientType} email sent successfully:`, emailData?.id);
+    console.log(`[BOOKING:NO_SHOW] ${recipientType} email sent successfully:`, responseData?.id);
     return true;
   } catch (error: any) {
     console.error(`[BOOKING:NO_SHOW] Exception sending ${recipientType} email:`, error?.message || error);
@@ -1522,39 +1664,16 @@ export async function sendBookingNoShowEmail(
 export async function sendBookingCancelledOwnerEmail(
   ownerEmail: string,
   ownerFirstName: string,
-  data: {
-    bookingCode: string;
-    propertyName: string;
-    propertyId?: string;
-    checkIn: string;
-    checkOut: string;
-    totalPrice: string;
-    guests: number;
-    rooms: number;
-    guestName: string;
-    cancellationReason: string;
-    // Extended property details
-    propertyAddress?: string;
-    propertyCity?: string;
-    propertyState?: string;
-    propertyPincode?: string;
-    latitude?: string;
-    longitude?: string;
-    // Room details
-    roomTypeName?: string;
-    roomTypeDescription?: string;
-    // Pricing details for strikethrough display
-    roomBasePrice?: string;
-    roomOriginalPrice?: string;
-    // Payment type
-    paymentType?: string;
-  }
+  data: BookingEmailData & { guestName: string; cancellationReason: string }
 ): Promise<boolean> {
   try {
     console.log('[BOOKING:CANCELLED] Sending cancellation email to owner:', ownerEmail);
     const { client, fromEmail } = await getResendClient();
     
-    const { error, data: emailData } = await client.emails.send({
+    // Set booking status for the helper function
+    const emailData = { ...data, bookingStatus: 'cancelled' };
+    
+    const { error, data: responseData } = await client.emails.send({
       from: fromEmail || 'ZECOHO <noreply@zecoho.com>',
       to: [ownerEmail],
       subject: `Booking Cancelled by Guest - ${data.propertyName}`,
@@ -1587,14 +1706,19 @@ export async function sendBookingCancelledOwnerEmail(
                 A guest has cancelled their booking at your property. The room inventory has been automatically released.
               </p>
               
-              <div style="background: #f3f4f6; border-radius: 8px; padding: 16px; margin-bottom: 24px;">
+              <div style="background: #f3f4f6; border-radius: 8px; padding: 16px; margin-bottom: 16px;">
                 <p style="color: #1f2937; margin: 0 0 12px 0; font-weight: 600;">Cancelled Booking Details:</p>
                 <p style="color: #6b7280; margin: 0 0 8px 0;"><strong>Reference:</strong> ${data.bookingCode}</p>
                 <p style="color: #6b7280; margin: 0 0 8px 0;"><strong>Property:</strong> ${data.propertyName}</p>
                 <p style="color: #6b7280; margin: 0 0 8px 0;"><strong>Guest:</strong> ${data.guestName}</p>
                 <p style="color: #6b7280; margin: 0 0 8px 0;"><strong>Dates:</strong> ${data.checkIn} - ${data.checkOut}</p>
-                <p style="color: #6b7280; margin: 0 0 8px 0;"><strong>Guests:</strong> ${data.guests} | <strong>Rooms:</strong> ${data.rooms}</p>
+                <p style="color: #6b7280; margin: 0 0 8px 0;"><strong>Guests:</strong> ${data.guests}</p>
                 <p style="color: #6b7280; margin: 0;"><strong>Amount:</strong> ₹${Number(data.totalPrice).toLocaleString('en-IN')}</p>
+              </div>
+              
+              <div style="background: #ecfdf5; border-radius: 8px; padding: 16px; margin-bottom: 16px;">
+                <p style="color: #065f46; margin: 0 0 12px 0; font-weight: 600;">Room & Booking Details:</p>
+                ${generatePropertyDetailsSection(emailData, { showStatus: true })}
               </div>
               
               <div style="background: #fef2f2; border-radius: 8px; padding: 16px; margin-bottom: 24px; border-left: 4px solid #dc2626;">
@@ -1633,7 +1757,7 @@ export async function sendBookingCancelledOwnerEmail(
       return false;
     }
 
-    console.log('[BOOKING:CANCELLED] Owner email sent successfully:', emailData?.id);
+    console.log('[BOOKING:CANCELLED] Owner email sent successfully:', responseData?.id);
     return true;
   } catch (error: any) {
     console.error('[BOOKING:CANCELLED] Exception sending owner email:', error?.message || error);

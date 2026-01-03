@@ -1,0 +1,88 @@
+@Replit please update all booking-related email templates across ZECOHO to include complete property and room details. This is currently missing and must be fixed.
+
+=================================
+SCOPE
+=================================
+
+Apply changes to ALL booking emails sent to:
+- Guest
+- Property Owner
+
+This includes:
+- Booking request created
+- Owner accepted booking
+- Guest confirmed booking
+- Booking confirmed
+- Check-in / Check-out notifications
+- No-show / Cancelled notifications
+
+=================================
+MANDATORY DETAILS TO INCLUDE
+=================================
+
+Every booking email MUST include the following sections clearly:
+
+---------------------------------
+PROPERTY DETAILS
+---------------------------------
+- Property Name
+- Full Property Address (street, locality, city, state)
+- Property Contact Number
+- Property Location link (Google Maps URL using lat/long)
+
+---------------------------------
+ROOM DETAILS (CRITICAL – CURRENTLY MISSING)
+---------------------------------
+- Room Type (e.g. Deluxe, Premium, Family)
+- Room Description (if available)
+- Max Occupancy
+- Number of Rooms Booked
+- Meal Plan / Room Option (Room only / Breakfast / etc.)
+
+---------------------------------
+BOOKING DETAILS
+---------------------------------
+- Booking ID
+- Booking Date (created_at)
+- Check-in Date
+- Check-out Date
+- Number of Nights
+- Guest Count (Adults / Children)
+- Booking Status (Pending / Confirmed / Checked-in / Completed)
+
+---------------------------------
+PRICE DETAILS
+---------------------------------
+- Price per night
+- Total Amount
+- Token / Pay@Hotel amount (if applicable)
+- Payment Mode (Pay at Hotel / Advance Paid)
+
+=================================
+EMAIL UX REQUIREMENTS
+=================================
+
+- Use clear section headers
+- Use ZECOHO branding (ZECOHO.COM in uppercase)
+- Ensure consistency between guest and owner emails
+- Ensure room type is NEVER empty if booking exists
+
+=================================
+BACKEND REQUIREMENTS
+=================================
+
+- Fetch room_type from booking → room_id → room_types table
+- Fail email sending if room_type is missing (log error)
+- Do NOT hardcode room names
+
+=================================
+DO NOT CHANGE
+=================================
+
+- Booking flow
+- Payment logic
+- Inventory logic
+
+Only enhance email data completeness and correctness.
+
+This fix is critical for booking clarity and owner operations.
