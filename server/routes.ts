@@ -1723,7 +1723,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Properties routes
   app.get("/api/properties", async (req, res) => {
     try {
-      const { destination, propertyType, minPrice, maxPrice, minGuests, search } = req.query;
+      const { destination, propertyType, minPrice, maxPrice, minGuests, search,
+        localIdAllowed, hourlyBookingAllowed, foreignGuestsAllowed, coupleFriendly } = req.query;
       
       const filters: any = {};
       // Use 'search' for property name + destination search, fallback to 'destination' for legacy
@@ -1733,6 +1734,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (minPrice) filters.minPrice = Number(minPrice);
       if (maxPrice) filters.maxPrice = Number(maxPrice);
       if (minGuests) filters.minGuests = Number(minGuests);
+      
+      // Guest policy filters (only filter when 'true', as these are positive filters)
+      if (localIdAllowed === 'true') filters.localIdAllowed = true;
+      if (hourlyBookingAllowed === 'true') filters.hourlyBookingAllowed = true;
+      if (foreignGuestsAllowed === 'true') filters.foreignGuestsAllowed = true;
+      if (coupleFriendly === 'true') filters.coupleFriendly = true;
       
       const properties = await storage.getProperties(filters);
       

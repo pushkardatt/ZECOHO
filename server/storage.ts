@@ -112,6 +112,10 @@ export interface IStorage {
     maxPrice?: number;
     minGuests?: number;
     ownerId?: string;
+    localIdAllowed?: boolean;
+    hourlyBookingAllowed?: boolean;
+    foreignGuestsAllowed?: boolean;
+    coupleFriendly?: boolean;
   }): Promise<Property[]>;
   getProperty(id: string): Promise<Property | undefined>;
   createProperty(property: InsertProperty): Promise<Property>;
@@ -339,6 +343,20 @@ export class DatabaseStorage implements IStorage {
     }
     if (filters?.ownerId) {
       conditions.push(eq(properties.ownerId, filters.ownerId));
+    }
+    
+    // Guest policy filters
+    if (filters?.localIdAllowed !== undefined) {
+      conditions.push(eq(properties.localIdAllowed, filters.localIdAllowed));
+    }
+    if (filters?.hourlyBookingAllowed !== undefined) {
+      conditions.push(eq(properties.hourlyBookingAllowed, filters.hourlyBookingAllowed));
+    }
+    if (filters?.foreignGuestsAllowed !== undefined) {
+      conditions.push(eq(properties.foreignGuestsAllowed, filters.foreignGuestsAllowed));
+    }
+    if (filters?.coupleFriendly !== undefined) {
+      conditions.push(eq(properties.coupleFriendly, filters.coupleFriendly));
     }
 
     if (conditions.length > 0) {
