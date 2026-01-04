@@ -57,6 +57,39 @@ export const otpCodes = pgTable(
 export type OtpCode = typeof otpCodes.$inferSelect;
 export type InsertOtpCode = typeof otpCodes.$inferInsert;
 
+// Policy type enum
+export const policyTypeEnum = pgEnum("policy_type", ["terms", "privacy"]);
+
+// Policy status enum
+export const policyStatusEnum = pgEnum("policy_status", ["draft", "published", "archived"]);
+
+// Policies table for Terms & Conditions and Privacy Policy
+export const policies = pgTable(
+  "policies",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    type: policyTypeEnum("type").notNull(),
+    version: integer("version").notNull().default(1),
+    title: varchar("title", { length: 255 }).notNull(),
+    content: text("content").notNull(),
+    status: policyStatusEnum("status").notNull().default("draft"),
+    publishedAt: timestamp("published_at"),
+    createdBy: varchar("created_by").notNull(),
+    createdAt: timestamp("created_at").defaultNow(),
+    updatedAt: timestamp("updated_at").defaultNow(),
+  },
+  (table) => [
+    index("IDX_policy_type").on(table.type),
+    index("IDX_policy_status").on(table.status),
+    uniqueIndex("IDX_policy_type_version").on(table.type, table.version),
+  ],
+);
+
+export type Policy = typeof policies.$inferSelect;
+export type InsertPolicy = typeof policies.$inferInsert;
+export const insertPolicySchema = createInsertSchema(policies).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertPolicyData = z.infer<typeof insertPolicySchema>;
+
 // User roles enum
 export const userRoleEnum = pgEnum("user_role", ["guest", "owner", "admin"]);
 
@@ -157,8 +190,10 @@ export const users = pgTable("users", {
   hasSeenOwnerModal: boolean("has_seen_owner_modal").notNull().default(false),
   termsAccepted: boolean("terms_accepted").notNull().default(false),
   termsAcceptedAt: timestamp("terms_accepted_at"),
+  termsAcceptedVersion: integer("terms_accepted_version"),
   privacyAccepted: boolean("privacy_accepted").notNull().default(false),
   privacyAcceptedAt: timestamp("privacy_accepted_at"),
+  privacyAcceptedVersion: integer("privacy_accepted_version"),
   consentCommunication: boolean("consent_communication").notNull().default(false),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
