@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { UserPlus, ArrowLeft, Loader2, Shield, Eye, EyeOff, Mail } from "lucide-react";
@@ -23,6 +24,9 @@ export default function Register() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [termsAccepted, setTermsAccepted] = useState(false);
+  const [privacyAccepted, setPrivacyAccepted] = useState(false);
+  const [consentCommunication, setConsentCommunication] = useState(false);
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
   const [countdown, setCountdown] = useState(0);
   const otpRefs = useRef<(HTMLInputElement | null)[]>([]);
@@ -35,7 +39,7 @@ export default function Register() {
   }, [countdown]);
 
   const registerMutation = useMutation({
-    mutationFn: async (data: { firstName: string; lastName: string; email: string; password: string }) => {
+    mutationFn: async (data: { firstName: string; lastName: string; email: string; password: string; termsAccepted: boolean; privacyAccepted: boolean; consentCommunication: boolean }) => {
       const response = await apiRequest("POST", "/api/auth/register", data);
       return response.json();
     },
@@ -131,7 +135,33 @@ export default function Register() {
       return;
     }
 
-    registerMutation.mutate({ firstName: firstName.trim(), lastName: lastName.trim(), email: email.trim(), password });
+    if (!termsAccepted) {
+      toast({
+        title: "Terms Required",
+        description: "Please accept the Terms & Conditions to continue",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!privacyAccepted) {
+      toast({
+        title: "Privacy Policy Required",
+        description: "Please accept the Privacy Policy to continue",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    registerMutation.mutate({ 
+      firstName: firstName.trim(), 
+      lastName: lastName.trim(), 
+      email: email.trim(), 
+      password,
+      termsAccepted,
+      privacyAccepted,
+      consentCommunication
+    });
   };
 
   const handleOtpChange = (index: number, value: string) => {
@@ -286,10 +316,75 @@ export default function Register() {
                 </div>
               </div>
 
+              <div className="space-y-3 pt-2">
+                <div className="flex items-start gap-3">
+                  <Checkbox
+                    id="terms"
+                    checked={termsAccepted}
+                    onCheckedChange={(checked) => setTermsAccepted(checked === true)}
+                    data-testid="checkbox-terms"
+                  />
+                  <label 
+                    htmlFor="terms" 
+                    className="text-sm leading-tight cursor-pointer"
+                  >
+                    I agree to the{" "}
+                    <Link 
+                      href="/terms" 
+                      className="text-primary hover:underline font-medium"
+                      target="_blank"
+                      data-testid="link-terms"
+                    >
+                      Terms & Conditions
+                    </Link>
+                    <span className="text-destructive ml-1">*</span>
+                  </label>
+                </div>
+
+                <div className="flex items-start gap-3">
+                  <Checkbox
+                    id="privacy"
+                    checked={privacyAccepted}
+                    onCheckedChange={(checked) => setPrivacyAccepted(checked === true)}
+                    data-testid="checkbox-privacy"
+                  />
+                  <label 
+                    htmlFor="privacy" 
+                    className="text-sm leading-tight cursor-pointer"
+                  >
+                    I agree to the{" "}
+                    <Link 
+                      href="/privacy" 
+                      className="text-primary hover:underline font-medium"
+                      target="_blank"
+                      data-testid="link-privacy"
+                    >
+                      Privacy Policy
+                    </Link>
+                    <span className="text-destructive ml-1">*</span>
+                  </label>
+                </div>
+
+                <div className="flex items-start gap-3">
+                  <Checkbox
+                    id="communication"
+                    checked={consentCommunication}
+                    onCheckedChange={(checked) => setConsentCommunication(checked === true)}
+                    data-testid="checkbox-communication"
+                  />
+                  <label 
+                    htmlFor="communication" 
+                    className="text-sm leading-tight cursor-pointer text-muted-foreground"
+                  >
+                    I would like to receive promotional emails, offers, and updates from ZECOHO (optional)
+                  </label>
+                </div>
+              </div>
+
               <Button 
                 type="submit" 
                 className="w-full" 
-                disabled={registerMutation.isPending}
+                disabled={registerMutation.isPending || !termsAccepted || !privacyAccepted}
                 data-testid="button-register"
               >
                 {registerMutation.isPending ? (
