@@ -43,7 +43,7 @@ const contactSettingsSchema = z.object({
 type ContactSettingsFormData = z.infer<typeof contactSettingsSchema>;
 
 export default function AdminContactSettings() {
-  const { user } = useAuth();
+  const { user, isLoading: isAuthLoading } = useAuth();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
 
@@ -91,7 +91,23 @@ export default function AdminContactSettings() {
     },
   });
 
-  if (user?.userRole !== "admin") {
+  // Show loading while checking auth
+  if (isAuthLoading) {
+    return (
+      <div className="min-h-screen bg-background">
+        <div className="container mx-auto px-4 py-8 max-w-4xl">
+          <Skeleton className="h-10 w-64 mb-8" />
+          <div className="space-y-6">
+            {[1, 2, 3].map((i) => (
+              <Skeleton key={i} className="h-64 w-full" />
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user || user.userRole !== "admin") {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
