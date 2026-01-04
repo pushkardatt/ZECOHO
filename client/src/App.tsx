@@ -3,7 +3,7 @@ import { useEffect } from "react";
 import { Switch, Route, useLocation } from "wouter";
 // Note: useEffect is still used by ScrollToTop component
 import { queryClient } from "./lib/queryClient";
-import { QueryClientProvider } from "@tanstack/react-query";
+import { QueryClientProvider, useQuery } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useAuth } from "@/hooks/useAuth";
@@ -35,6 +35,7 @@ import AdminDestinations from "@/pages/admin-destinations";
 import AdminProperties from "@/pages/admin-properties";
 import AdminKYC from "@/pages/admin-kyc";
 import AdminAccess from "@/pages/admin-access";
+import AdminPolicies from "@/pages/admin-policies";
 import KYC from "@/pages/kyc";
 import ListPropertyWizard from "@/pages/list-property-wizard";
 import DevAdminLogin from "@/pages/dev-admin-login";
@@ -86,6 +87,7 @@ function Router() {
       <Route path="/admin/destinations" component={AdminDestinations} />
       <Route path="/admin/properties" component={AdminProperties} />
       <Route path="/admin/kyc" component={AdminKYC} />
+      <Route path="/admin/policies" component={AdminPolicies} />
       <Route path="/login" component={Login} />
       <Route path="/register" component={Register} />
       <Route path="/forgot-password" component={ForgotPassword} />
@@ -113,11 +115,33 @@ function AppContent() {
   const { user, isAuthenticated, isLoading } = useAuth();
   const [location] = useLocation();
 
+  // Fetch current policy versions to check if user needs to re-consent
+  const { data: policyVersions } = useQuery<{ termsVersion: number | null; privacyVersion: number | null }>({
+    queryKey: ["/api/policies/versions/current"],
+    enabled: isAuthenticated && !!user,
+    staleTime: 60000,
+  });
+
   // Always show header on all pages including landing page
   const showHeader = true;
   
   // Check if user needs to accept consent (authenticated but hasn't accepted terms/privacy)
-  const needsConsent = !!(isAuthenticated && user && (!user.termsAccepted || !user.privacyAccepted));
+  const hasNeverAccepted = !!(isAuthenticated && user && (!user.termsAccepted || !user.privacyAccepted));
+  
+  // Check if user needs to re-consent due to policy version update
+  const needsVersionUpdate = !!(
+    isAuthenticated && 
+    user && 
+    user.termsAccepted && 
+    user.privacyAccepted &&
+    policyVersions &&
+    (
+      (policyVersions.termsVersion !== null && (user.termsAcceptedVersion || 0) < policyVersions.termsVersion) ||
+      (policyVersions.privacyVersion !== null && (user.privacyAcceptedVersion || 0) < policyVersions.privacyVersion)
+    )
+  );
+  
+  const needsConsent = hasNeverAccepted || needsVersionUpdate;
   
   // Don't show consent modal on terms/privacy pages so users can read them
   const isConsentPage = location === "/terms" || location === "/privacy";
@@ -136,6 +160,7 @@ function AppContent() {
         <ConsentModal 
           open={showConsentModal} 
           userName={user?.firstName || undefined}
+          isVersionUpdate={needsVersionUpdate && !hasNeverAccepted}
         />
       </div>
     </KycRouteGuard>

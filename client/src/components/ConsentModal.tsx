@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -7,25 +7,29 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { Link } from "wouter";
-import { Shield, FileText, Mail } from "lucide-react";
+import { Shield, FileText, Mail, AlertCircle } from "lucide-react";
 
 interface ConsentModalProps {
   open: boolean;
   userName?: string;
+  isVersionUpdate?: boolean;
 }
 
-export function ConsentModal({ open, userName }: ConsentModalProps) {
+export function ConsentModal({ open, userName, isVersionUpdate = false }: ConsentModalProps) {
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [privacyAccepted, setPrivacyAccepted] = useState(false);
   const [communicationConsent, setCommunicationConsent] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
+  const { data: policyVersions } = useQuery<{ termsVersion: number | null; privacyVersion: number | null }>({
+    queryKey: ["/api/policies/versions/current"],
+    enabled: open,
+  });
+
   const consentMutation = useMutation({
     mutationFn: async () => {
-      const response = await apiRequest("POST", "/api/auth/consent", {
-        termsAccepted: true,
-        privacyAccepted: true,
+      const response = await apiRequest("POST", "/api/auth/consent-v2", {
         consentCommunication: communicationConsent,
       });
       return response.json();
@@ -33,8 +37,10 @@ export function ConsentModal({ open, userName }: ConsentModalProps) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
       toast({
-        title: "Welcome to ZECOHO!",
-        description: "Your preferences have been saved.",
+        title: isVersionUpdate ? "Policies Accepted" : "Welcome to ZECOHO!",
+        description: isVersionUpdate 
+          ? "Thank you for reviewing and accepting the updated policies."
+          : "Your preferences have been saved.",
       });
     },
     onError: (error: Error) => {
@@ -69,13 +75,33 @@ export function ConsentModal({ open, userName }: ConsentModalProps) {
       >
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-xl" data-testid="text-consent-title">
-            <Shield className="h-5 w-5 text-primary" />
-            Welcome{userName ? `, ${userName}` : ""}!
+            {isVersionUpdate ? (
+              <>
+                <AlertCircle className="h-5 w-5 text-amber-500" />
+                Policy Update
+              </>
+            ) : (
+              <>
+                <Shield className="h-5 w-5 text-primary" />
+                Welcome{userName ? `, ${userName}` : ""}!
+              </>
+            )}
           </DialogTitle>
           <DialogDescription>
-            Before you start exploring, please review and accept our policies.
+            {isVersionUpdate 
+              ? "We've updated our policies. Please review and accept them to continue using ZECOHO."
+              : "Before you start exploring, please review and accept our policies."
+            }
           </DialogDescription>
         </DialogHeader>
+
+        {isVersionUpdate && (
+          <div className="bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-lg p-3 text-sm">
+            <p className="text-amber-800 dark:text-amber-200">
+              Our policies have been updated. Please take a moment to review the changes before continuing.
+            </p>
+          </div>
+        )}
 
         <div className="space-y-6 py-4">
           <div className="flex items-start space-x-3 p-4 border rounded-lg bg-muted/30">
@@ -99,6 +125,9 @@ export function ConsentModal({ open, userName }: ConsentModalProps) {
                 <Link href="/terms" className="text-primary hover:underline" data-testid="link-terms">
                   Terms & Conditions
                 </Link>
+                {policyVersions?.termsVersion && (
+                  <span className="ml-1">(Version {policyVersions.termsVersion})</span>
+                )}
                 {" "}governing the use of ZECOHO platform.
               </p>
             </div>
@@ -125,6 +154,9 @@ export function ConsentModal({ open, userName }: ConsentModalProps) {
                 <Link href="/privacy" className="text-primary hover:underline" data-testid="link-privacy">
                   Privacy Policy
                 </Link>
+                {policyVersions?.privacyVersion && (
+                  <span className="ml-1">(Version {policyVersions.privacyVersion})</span>
+                )}
                 {" "}explaining how we collect, use, and protect your data.
               </p>
             </div>
@@ -159,7 +191,12 @@ export function ConsentModal({ open, userName }: ConsentModalProps) {
             className="w-full"
             data-testid="button-accept-consent"
           >
-            {consentMutation.isPending ? "Saving..." : "Continue to ZECOHO"}
+            {consentMutation.isPending 
+              ? "Saving..." 
+              : isVersionUpdate 
+                ? "Accept & Continue" 
+                : "Continue to ZECOHO"
+            }
           </Button>
           {!canSubmit && (
             <p className="text-xs text-center text-muted-foreground">
