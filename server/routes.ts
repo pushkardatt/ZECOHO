@@ -5205,6 +5205,229 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ===============================
+  // ADMIN POLICY MANAGEMENT
+  // ===============================
+
+  // Public: Get published policy by type (for Terms/Privacy pages)
+  app.get("/api/policies/:type", async (req: any, res) => {
+    try {
+      const { type } = req.params;
+      if (type !== "terms" && type !== "privacy") {
+        return res.status(400).json({ message: "Invalid policy type" });
+      }
+
+      const policy = await storage.getPublishedPolicy(type);
+      if (!policy) {
+        return res.status(404).json({ message: "Policy not found" });
+      }
+
+      res.json(policy);
+    } catch (error) {
+      console.error("Error fetching policy:", error);
+      res.status(500).json({ message: "Failed to fetch policy" });
+    }
+  });
+
+  // Public: Get current policy versions (for consent checking)
+  app.get("/api/policies/versions/current", async (req: any, res) => {
+    try {
+      const termsPolicy = await storage.getPublishedPolicy("terms");
+      const privacyPolicy = await storage.getPublishedPolicy("privacy");
+
+      res.json({
+        termsVersion: termsPolicy?.version || null,
+        privacyVersion: privacyPolicy?.version || null,
+      });
+    } catch (error) {
+      console.error("Error fetching policy versions:", error);
+      res.status(500).json({ message: "Failed to fetch policy versions" });
+    }
+  });
+
+  // Admin: Get all policies
+  app.get("/api/admin/policies", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || !userHasRole(user, "admin")) {
+        return res.status(403).json({ message: "Only admins can view all policies" });
+      }
+
+      const allPolicies = await storage.getAllPolicies();
+      res.json(allPolicies);
+    } catch (error) {
+      console.error("Error fetching policies:", error);
+      res.status(500).json({ message: "Failed to fetch policies" });
+    }
+  });
+
+  // Admin: Get a single policy by ID
+  app.get("/api/admin/policies/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || !userHasRole(user, "admin")) {
+        return res.status(403).json({ message: "Only admins can view policy details" });
+      }
+
+      const policy = await storage.getPolicy(req.params.id);
+      if (!policy) {
+        return res.status(404).json({ message: "Policy not found" });
+      }
+
+      res.json(policy);
+    } catch (error) {
+      console.error("Error fetching policy:", error);
+      res.status(500).json({ message: "Failed to fetch policy" });
+    }
+  });
+
+  // Admin: Create a new policy version
+  app.post("/api/admin/policies", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || !userHasRole(user, "admin")) {
+        return res.status(403).json({ message: "Only admins can create policies" });
+      }
+
+      const { type, title, content } = req.body;
+      
+      if (!type || !title || !content) {
+        return res.status(400).json({ message: "Type, title, and content are required" });
+      }
+
+      if (type !== "terms" && type !== "privacy") {
+        return res.status(400).json({ message: "Invalid policy type" });
+      }
+
+      // Get the next version number
+      const latestVersion = await storage.getLatestPolicyVersion(type);
+      const newVersion = latestVersion + 1;
+
+      const policy = await storage.createPolicy({
+        type,
+        version: newVersion,
+        title,
+        content,
+        status: "draft",
+        createdBy: userId,
+      });
+
+      res.status(201).json(policy);
+    } catch (error) {
+      console.error("Error creating policy:", error);
+      res.status(500).json({ message: "Failed to create policy" });
+    }
+  });
+
+  // Admin: Update policy content (only drafts can be updated)
+  app.patch("/api/admin/policies/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || !userHasRole(user, "admin")) {
+        return res.status(403).json({ message: "Only admins can update policies" });
+      }
+
+      const policy = await storage.getPolicy(req.params.id);
+      if (!policy) {
+        return res.status(404).json({ message: "Policy not found" });
+      }
+
+      if (policy.status !== "draft") {
+        return res.status(400).json({ message: "Only draft policies can be edited. Create a new version instead." });
+      }
+
+      const { title, content } = req.body;
+      const updates: { title?: string; content?: string } = {};
+      
+      if (title) updates.title = title;
+      if (content) updates.content = content;
+
+      const updatedPolicy = await storage.updatePolicy(req.params.id, updates);
+      res.json(updatedPolicy);
+    } catch (error) {
+      console.error("Error updating policy:", error);
+      res.status(500).json({ message: "Failed to update policy" });
+    }
+  });
+
+  // Admin: Publish a policy (archives any existing published version of same type)
+  app.post("/api/admin/policies/:id/publish", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || !userHasRole(user, "admin")) {
+        return res.status(403).json({ message: "Only admins can publish policies" });
+      }
+
+      const policy = await storage.getPolicy(req.params.id);
+      if (!policy) {
+        return res.status(404).json({ message: "Policy not found" });
+      }
+
+      if (policy.status === "published") {
+        return res.status(400).json({ message: "Policy is already published" });
+      }
+
+      if (policy.status === "archived") {
+        return res.status(400).json({ message: "Cannot publish an archived policy. Create a new version instead." });
+      }
+
+      const publishedPolicy = await storage.publishPolicy(req.params.id);
+      
+      res.json({ 
+        message: `Policy published successfully. All users will be required to accept the new ${policy.type === 'terms' ? 'Terms & Conditions' : 'Privacy Policy'} version ${policy.version}.`,
+        policy: publishedPolicy 
+      });
+    } catch (error) {
+      console.error("Error publishing policy:", error);
+      res.status(500).json({ message: "Failed to publish policy" });
+    }
+  });
+
+  // Updated consent endpoint to handle policy versions
+  app.post("/api/auth/consent-v2", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { consentCommunication } = req.body;
+
+      // Get current published policy versions
+      const termsPolicy = await storage.getPublishedPolicy("terms");
+      const privacyPolicy = await storage.getPublishedPolicy("privacy");
+
+      if (!termsPolicy || !privacyPolicy) {
+        return res.status(400).json({ message: "Cannot accept policies. Published policies not available." });
+      }
+
+      const updatedUser = await storage.updateUserPolicyConsent(
+        userId,
+        termsPolicy.version,
+        privacyPolicy.version,
+        consentCommunication
+      );
+
+      if (!updatedUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      res.json({ 
+        message: "Consent recorded successfully",
+        user: updatedUser 
+      });
+    } catch (error) {
+      console.error("Error recording consent:", error);
+      res.status(500).json({ message: "Failed to record consent" });
+    }
+  });
+
   // Admin: Mark booking as no-show (with time-based validation)
   app.patch("/api/admin/bookings/:id/no-show", isAuthenticated, async (req: any, res) => {
     try {

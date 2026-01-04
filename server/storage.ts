@@ -19,6 +19,7 @@ import {
   otpCodes,
   availabilityOverrides,
   propertyDeactivationRequests,
+  policies,
   type User,
   type UpsertUser,
   type Property,
@@ -55,6 +56,8 @@ import {
   type AvailabilityOverride,
   type InsertAvailabilityOverride,
   type PropertyDeactivationRequest,
+  type Policy,
+  type InsertPolicy,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, gte, lte, lt, gt, inArray, sql, or, not, desc, count } from "drizzle-orm";
@@ -263,6 +266,18 @@ export interface IStorage {
   processDeactivationRequest(id: string, adminId: string, status: "approved" | "rejected", adminNotes?: string): Promise<PropertyDeactivationRequest | undefined>;
   cancelDeactivationRequest(id: string): Promise<void>;
   fixMisclassifiedReactivationRequests(): Promise<number>;
+
+  // Policy operations
+  getAllPolicies(): Promise<Policy[]>;
+  getPolicy(id: string): Promise<Policy | undefined>;
+  getPolicyByTypeAndVersion(type: "terms" | "privacy", version: number): Promise<Policy | undefined>;
+  getPublishedPolicy(type: "terms" | "privacy"): Promise<Policy | undefined>;
+  getLatestPolicyVersion(type: "terms" | "privacy"): Promise<number>;
+  createPolicy(policy: Omit<InsertPolicy, "id" | "createdAt" | "updatedAt">): Promise<Policy>;
+  updatePolicy(id: string, updates: Partial<Pick<Policy, "title" | "content">>): Promise<Policy | undefined>;
+  publishPolicy(id: string): Promise<Policy | undefined>;
+  archivePolicy(id: string): Promise<Policy | undefined>;
+  updateUserPolicyConsent(userId: string, termsVersion: number, privacyVersion: number, consentCommunication?: boolean): Promise<User | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1734,6 +1749,120 @@ export class DatabaseStorage implements IStorage {
       .where(inArray(propertyDeactivationRequests.id, requestIds));
 
     return misclassifiedRequests.length;
+  }
+
+  // Policy operations
+  async getAllPolicies(): Promise<Policy[]> {
+    return await db
+      .select()
+      .from(policies)
+      .orderBy(desc(policies.type), desc(policies.version));
+  }
+
+  async getPolicy(id: string): Promise<Policy | undefined> {
+    const [policy] = await db.select().from(policies).where(eq(policies.id, id));
+    return policy;
+  }
+
+  async getPolicyByTypeAndVersion(type: "terms" | "privacy", version: number): Promise<Policy | undefined> {
+    const [policy] = await db
+      .select()
+      .from(policies)
+      .where(and(eq(policies.type, type), eq(policies.version, version)));
+    return policy;
+  }
+
+  async getPublishedPolicy(type: "terms" | "privacy"): Promise<Policy | undefined> {
+    const [policy] = await db
+      .select()
+      .from(policies)
+      .where(and(eq(policies.type, type), eq(policies.status, "published")))
+      .orderBy(desc(policies.version))
+      .limit(1);
+    return policy;
+  }
+
+  async getLatestPolicyVersion(type: "terms" | "privacy"): Promise<number> {
+    const [result] = await db
+      .select({ maxVersion: sql<number>`COALESCE(MAX(${policies.version}), 0)` })
+      .from(policies)
+      .where(eq(policies.type, type));
+    return result?.maxVersion ?? 0;
+  }
+
+  async createPolicy(policy: Omit<InsertPolicy, "id" | "createdAt" | "updatedAt">): Promise<Policy> {
+    const [created] = await db
+      .insert(policies)
+      .values(policy)
+      .returning();
+    return created;
+  }
+
+  async updatePolicy(id: string, updates: Partial<Pick<Policy, "title" | "content">>): Promise<Policy | undefined> {
+    const [updated] = await db
+      .update(policies)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(policies.id, id))
+      .returning();
+    return updated;
+  }
+
+  async publishPolicy(id: string): Promise<Policy | undefined> {
+    // First, get the policy to be published
+    const policy = await this.getPolicy(id);
+    if (!policy) return undefined;
+
+    // Archive any existing published policy of the same type
+    await db
+      .update(policies)
+      .set({ status: "archived", updatedAt: new Date() })
+      .where(and(eq(policies.type, policy.type), eq(policies.status, "published")));
+
+    // Publish the new policy
+    const [updated] = await db
+      .update(policies)
+      .set({ status: "published", publishedAt: new Date(), updatedAt: new Date() })
+      .where(eq(policies.id, id))
+      .returning();
+    return updated;
+  }
+
+  async archivePolicy(id: string): Promise<Policy | undefined> {
+    const [updated] = await db
+      .update(policies)
+      .set({ status: "archived", updatedAt: new Date() })
+      .where(eq(policies.id, id))
+      .returning();
+    return updated;
+  }
+
+  async updateUserPolicyConsent(
+    userId: string, 
+    termsVersion: number, 
+    privacyVersion: number, 
+    consentCommunication?: boolean
+  ): Promise<User | undefined> {
+    const now = new Date();
+    const updateData: any = {
+      termsAccepted: true,
+      termsAcceptedAt: now,
+      termsAcceptedVersion: termsVersion,
+      privacyAccepted: true,
+      privacyAcceptedAt: now,
+      privacyAcceptedVersion: privacyVersion,
+      updatedAt: now,
+    };
+    
+    if (consentCommunication !== undefined) {
+      updateData.consentCommunication = consentCommunication;
+    }
+
+    const [user] = await db
+      .update(users)
+      .set(updateData)
+      .where(eq(users.id, userId))
+      .returning();
+    return user;
   }
 }
 
