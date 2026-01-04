@@ -5428,6 +5428,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Public: Get contact settings for Contact Us page
+  app.get("/api/contact-settings", async (req, res) => {
+    try {
+      let settings = await storage.getContactSettings();
+      
+      // If no settings exist, create default settings
+      if (!settings) {
+        settings = await storage.upsertContactSettings({});
+      }
+      
+      res.json(settings);
+    } catch (error) {
+      console.error("Error getting contact settings:", error);
+      res.status(500).json({ message: "Failed to get contact settings" });
+    }
+  });
+
+  // Admin: Update contact settings
+  app.patch("/api/admin/contact-settings", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || !userHasRole(user, "admin")) {
+        return res.status(403).json({ message: "Only admins can update contact settings" });
+      }
+
+      const updatedSettings = await storage.upsertContactSettings({
+        ...req.body,
+        updatedBy: userId,
+      });
+      
+      res.json({ 
+        message: "Contact settings updated successfully",
+        settings: updatedSettings 
+      });
+    } catch (error) {
+      console.error("Error updating contact settings:", error);
+      res.status(500).json({ message: "Failed to update contact settings" });
+    }
+  });
+
   // Admin: Mark booking as no-show (with time-based validation)
   app.patch("/api/admin/bookings/:id/no-show", isAuthenticated, async (req: any, res) => {
     try {
