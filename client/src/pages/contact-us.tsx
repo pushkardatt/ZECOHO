@@ -4,8 +4,6 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 import type { ContactSettings } from "@shared/schema";
-import { Header } from "@/components/Header";
-import { Footer } from "@/components/Footer";
 
 export default function ContactUs() {
   const { data: settings, isLoading } = useQuery<ContactSettings>({
@@ -14,20 +12,16 @@ export default function ContactUs() {
 
   if (isLoading) {
     return (
-      <>
-        <Header />
-        <div className="min-h-screen bg-background">
-          <div className="container mx-auto px-4 py-8 max-w-5xl">
-            <Skeleton className="h-10 w-64 mb-8" />
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {[1, 2, 3, 4, 5, 6].map((i) => (
-                <Skeleton key={i} className="h-48 w-full" />
-              ))}
-            </div>
+      <div className="min-h-screen bg-background">
+        <div className="container mx-auto px-4 py-8 max-w-5xl">
+          <Skeleton className="h-10 w-64 mb-8" />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {[1, 2, 3, 4, 5, 6].map((i) => (
+              <Skeleton key={i} className="h-48 w-full" />
+            ))}
           </div>
         </div>
-        <Footer />
-      </>
+      </div>
     );
   }
 
@@ -39,12 +33,10 @@ export default function ContactUs() {
   const hasRegisteredOffice = settings?.registeredOfficeName || settings?.registeredOfficeAddress;
 
   return (
-    <>
-      <Header />
-      <div className="min-h-screen bg-background">
-        <div className="container mx-auto px-4 py-8 max-w-5xl">
-          <div className="text-center mb-12">
-            <h1 className="text-4xl font-bold mb-4" data-testid="text-page-title">Contact Us</h1>
+    <div className="min-h-screen bg-background">
+      <div className="container mx-auto px-4 py-8 max-w-5xl">
+        <div className="text-center mb-12">
+          <h1 className="text-4xl font-bold mb-4" data-testid="text-page-title">Contact Us</h1>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
               Have a question or need assistance? We're here to help. 
               Reach out to us through any of the channels below.
@@ -335,17 +327,15 @@ export default function ContactUs() {
             )}
           </div>
 
-          {!hasCustomerSupport && !hasOwnerSupport && !hasGrievanceOfficer && 
-           !hasPrivacyContact && !hasBusinessContact && !hasRegisteredOffice && (
-            <div className="text-center py-16">
-              <p className="text-muted-foreground">
-                Contact information is being set up. Please check back later.
-              </p>
-            </div>
-          )}
-        </div>
+        {!hasCustomerSupport && !hasOwnerSupport && !hasGrievanceOfficer && 
+         !hasPrivacyContact && !hasBusinessContact && !hasRegisteredOffice && (
+          <div className="text-center py-16">
+            <p className="text-muted-foreground">
+              Contact information is being set up. Please check back later.
+            </p>
+          </div>
+        )}
       </div>
-      <Footer />
-    </>
+    </div>
   );
 }
