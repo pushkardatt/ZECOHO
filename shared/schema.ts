@@ -155,6 +155,11 @@ export const users = pgTable("users", {
   kycVerifiedAt: timestamp("kyc_verified_at"),
   listingMode: listingModeEnum("listing_mode").notNull().default("not_selected"),
   hasSeenOwnerModal: boolean("has_seen_owner_modal").notNull().default(false),
+  termsAccepted: boolean("terms_accepted").notNull().default(false),
+  termsAcceptedAt: timestamp("terms_accepted_at"),
+  privacyAccepted: boolean("privacy_accepted").notNull().default(false),
+  privacyAcceptedAt: timestamp("privacy_accepted_at"),
+  consentCommunication: boolean("consent_communication").notNull().default(false),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
