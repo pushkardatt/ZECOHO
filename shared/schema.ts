@@ -118,6 +118,34 @@ export type InsertOwnerAgreement = typeof ownerAgreements.$inferInsert;
 export const insertOwnerAgreementSchema = createInsertSchema(ownerAgreements).omit({ id: true, createdAt: true, updatedAt: true });
 export type InsertOwnerAgreementData = z.infer<typeof insertOwnerAgreementSchema>;
 
+// About Us status enum
+export const aboutUsStatusEnum = pgEnum("about_us_status", ["draft", "published", "archived"]);
+
+// About Us table for admin-editable About Us page content
+export const aboutUs = pgTable(
+  "about_us",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    version: integer("version").notNull().default(1),
+    title: varchar("title", { length: 255 }).notNull(),
+    content: text("content").notNull(),
+    status: aboutUsStatusEnum("status").notNull().default("draft"),
+    publishedAt: timestamp("published_at"),
+    createdBy: varchar("created_by").notNull(),
+    createdAt: timestamp("created_at").defaultNow(),
+    updatedAt: timestamp("updated_at").defaultNow(),
+  },
+  (table) => [
+    index("IDX_about_us_status").on(table.status),
+    uniqueIndex("IDX_about_us_version").on(table.version),
+  ],
+);
+
+export type AboutUs = typeof aboutUs.$inferSelect;
+export type InsertAboutUs = typeof aboutUs.$inferInsert;
+export const insertAboutUsSchema = createInsertSchema(aboutUs).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertAboutUsData = z.infer<typeof insertAboutUsSchema>;
+
 // Contact settings table for admin-editable contact information
 export const contactSettings = pgTable(
   "contact_settings",

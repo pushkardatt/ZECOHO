@@ -21,6 +21,7 @@ import {
   propertyDeactivationRequests,
   policies,
   ownerAgreements,
+  aboutUs,
   contactSettings,
   type User,
   type UpsertUser,
@@ -62,6 +63,8 @@ import {
   type InsertPolicy,
   type OwnerAgreement,
   type InsertOwnerAgreement,
+  type AboutUs,
+  type InsertAboutUs,
   type ContactSettings,
   type InsertContactSettings,
 } from "@shared/schema";
@@ -296,6 +299,17 @@ export interface IStorage {
   publishOwnerAgreement(id: string): Promise<OwnerAgreement | undefined>;
   archiveOwnerAgreement(id: string): Promise<OwnerAgreement | undefined>;
   updateUserOwnerAgreementConsent(userId: string, version: number): Promise<User | undefined>;
+
+  // About Us operations
+  getAllAboutUs(): Promise<AboutUs[]>;
+  getAboutUs(id: string): Promise<AboutUs | undefined>;
+  getAboutUsByVersion(version: number): Promise<AboutUs | undefined>;
+  getPublishedAboutUs(): Promise<AboutUs | undefined>;
+  getLatestAboutUsVersion(): Promise<number>;
+  createAboutUs(about: Omit<InsertAboutUs, "id" | "createdAt" | "updatedAt">): Promise<AboutUs>;
+  updateAboutUs(id: string, updates: Partial<Pick<AboutUs, "title" | "content">>): Promise<AboutUs | undefined>;
+  publishAboutUs(id: string): Promise<AboutUs | undefined>;
+  archiveAboutUs(id: string): Promise<AboutUs | undefined>;
 
   // Contact Settings operations
   getContactSettings(): Promise<ContactSettings | undefined>;
@@ -2006,6 +2020,89 @@ export class DatabaseStorage implements IStorage {
       .where(eq(users.ownerAgreementAccepted, true))
       .orderBy(desc(users.ownerAgreementAcceptedAt));
     return acceptances;
+  }
+
+  // About Us operations
+  async getAllAboutUs(): Promise<AboutUs[]> {
+    return await db
+      .select()
+      .from(aboutUs)
+      .orderBy(desc(aboutUs.version));
+  }
+
+  async getAboutUs(id: string): Promise<AboutUs | undefined> {
+    const [about] = await db
+      .select()
+      .from(aboutUs)
+      .where(eq(aboutUs.id, id));
+    return about;
+  }
+
+  async getAboutUsByVersion(version: number): Promise<AboutUs | undefined> {
+    const [about] = await db
+      .select()
+      .from(aboutUs)
+      .where(eq(aboutUs.version, version));
+    return about;
+  }
+
+  async getPublishedAboutUs(): Promise<AboutUs | undefined> {
+    const [about] = await db
+      .select()
+      .from(aboutUs)
+      .where(eq(aboutUs.status, "published"))
+      .orderBy(desc(aboutUs.version))
+      .limit(1);
+    return about;
+  }
+
+  async getLatestAboutUsVersion(): Promise<number> {
+    const [result] = await db
+      .select({ maxVersion: sql<number>`COALESCE(MAX(${aboutUs.version}), 0)` })
+      .from(aboutUs);
+    return result?.maxVersion || 0;
+  }
+
+  async createAboutUs(about: Omit<InsertAboutUs, "id" | "createdAt" | "updatedAt">): Promise<AboutUs> {
+    const [created] = await db
+      .insert(aboutUs)
+      .values(about)
+      .returning();
+    return created;
+  }
+
+  async updateAboutUs(id: string, updates: Partial<Pick<AboutUs, "title" | "content">>): Promise<AboutUs | undefined> {
+    const [updated] = await db
+      .update(aboutUs)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(aboutUs.id, id))
+      .returning();
+    return updated;
+  }
+
+  async publishAboutUs(id: string): Promise<AboutUs | undefined> {
+    // Archive any currently published about us first
+    await db
+      .update(aboutUs)
+      .set({ status: "archived", updatedAt: new Date() })
+      .where(eq(aboutUs.status, "published"));
+
+    // Publish the new about us
+    const [updated] = await db
+      .update(aboutUs)
+      .set({ status: "published", publishedAt: new Date(), updatedAt: new Date() })
+      .where(eq(aboutUs.id, id))
+      .returning();
+    return updated;
+  }
+
+  async archiveAboutUs(id: string): Promise<AboutUs | undefined> {
+    const [updated] = await db
+      .update(aboutUs)
+      .set({ status: "archived", updatedAt: new Date() })
+      .where(eq(aboutUs.id, id))
+      .returning();
+    return updated;
   }
 
   // Contact Settings operations
