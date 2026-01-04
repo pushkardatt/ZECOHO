@@ -90,6 +90,34 @@ export type InsertPolicy = typeof policies.$inferInsert;
 export const insertPolicySchema = createInsertSchema(policies).omit({ id: true, createdAt: true, updatedAt: true });
 export type InsertPolicyData = z.infer<typeof insertPolicySchema>;
 
+// Owner Agreement status enum
+export const ownerAgreementStatusEnum = pgEnum("owner_agreement_status", ["draft", "published", "archived"]);
+
+// Owner Agreements table for Property Owner Agreement
+export const ownerAgreements = pgTable(
+  "owner_agreements",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    version: integer("version").notNull().default(1),
+    title: varchar("title", { length: 255 }).notNull(),
+    content: text("content").notNull(),
+    status: ownerAgreementStatusEnum("status").notNull().default("draft"),
+    publishedAt: timestamp("published_at"),
+    createdBy: varchar("created_by").notNull(),
+    createdAt: timestamp("created_at").defaultNow(),
+    updatedAt: timestamp("updated_at").defaultNow(),
+  },
+  (table) => [
+    index("IDX_owner_agreement_status").on(table.status),
+    uniqueIndex("IDX_owner_agreement_version").on(table.version),
+  ],
+);
+
+export type OwnerAgreement = typeof ownerAgreements.$inferSelect;
+export type InsertOwnerAgreement = typeof ownerAgreements.$inferInsert;
+export const insertOwnerAgreementSchema = createInsertSchema(ownerAgreements).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertOwnerAgreementData = z.infer<typeof insertOwnerAgreementSchema>;
+
 // Contact settings table for admin-editable contact information
 export const contactSettings = pgTable(
   "contact_settings",
@@ -237,6 +265,9 @@ export const users = pgTable("users", {
   privacyAccepted: boolean("privacy_accepted").notNull().default(false),
   privacyAcceptedAt: timestamp("privacy_accepted_at"),
   privacyAcceptedVersion: integer("privacy_accepted_version"),
+  ownerAgreementAccepted: boolean("owner_agreement_accepted").notNull().default(false),
+  ownerAgreementAcceptedAt: timestamp("owner_agreement_accepted_at"),
+  ownerAgreementAcceptedVersion: integer("owner_agreement_accepted_version"),
   consentCommunication: boolean("consent_communication").notNull().default(false),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),

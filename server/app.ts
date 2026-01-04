@@ -10,6 +10,7 @@ import express, {
 import { registerRoutes } from "./routes";
 import { seedAmenities } from "./seed-amenities";
 import { seedDestinations } from "./seed-destinations";
+import { seedOwnerAgreement } from "./seed-owner-agreement";
 
 export function log(message: string, source = "express") {
   const formattedTime = new Date().toLocaleTimeString("en-US", {
@@ -122,6 +123,7 @@ export default async function runApp(
         // Fire-and-forget seeding - don't await, don't chain .catch()
         seedAmenities();
         seedDestinations();
+        seedOwnerAgreement();
       }
     });
   });

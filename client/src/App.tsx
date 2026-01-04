@@ -36,8 +36,10 @@ import AdminProperties from "@/pages/admin-properties";
 import AdminKYC from "@/pages/admin-kyc";
 import AdminAccess from "@/pages/admin-access";
 import AdminPolicies from "@/pages/admin-policies";
+import AdminOwnerAgreements from "@/pages/admin-owner-agreements";
 import AdminContactSettings from "@/pages/admin-contact-settings";
 import ContactUs from "@/pages/contact-us";
+import OwnerAgreementPage from "@/pages/owner-agreement";
 import KYC from "@/pages/kyc";
 import ListPropertyWizard from "@/pages/list-property-wizard";
 import DevAdminLogin from "@/pages/dev-admin-login";
@@ -60,6 +62,7 @@ import WriteReview from "@/pages/write-review";
 import Terms from "@/pages/terms";
 import Privacy from "@/pages/privacy";
 import { ConsentModal } from "@/components/ConsentModal";
+import { OwnerAgreementConsentModal } from "@/components/OwnerAgreementConsentModal";
 
 function Router() {
   return (
@@ -90,8 +93,10 @@ function Router() {
       <Route path="/admin/properties" component={AdminProperties} />
       <Route path="/admin/kyc" component={AdminKYC} />
       <Route path="/admin/policies" component={AdminPolicies} />
+      <Route path="/admin/owner-agreements" component={AdminOwnerAgreements} />
       <Route path="/admin/contact-settings" component={AdminContactSettings} />
       <Route path="/contact" component={ContactUs} />
+      <Route path="/owner-agreement" component={OwnerAgreementPage} />
       <Route path="/login" component={Login} />
       <Route path="/register" component={Register} />
       <Route path="/forgot-password" component={ForgotPassword} />
@@ -126,6 +131,16 @@ function AppContent() {
     staleTime: 60000,
   });
 
+  // Fetch current owner agreement version
+  const isOwnerRoute = location.startsWith("/owner/") || location === "/list-property";
+  const isOwnerOrSwitching = user?.userRole === "owner" || user?.additionalRoles?.includes("owner") || isOwnerRoute;
+  
+  const { data: ownerAgreementVersion } = useQuery<{ version: number | null }>({
+    queryKey: ["/api/owner-agreement/version/current"],
+    enabled: isAuthenticated && !!user && isOwnerOrSwitching,
+    staleTime: 60000,
+  });
+
   // Always show header on all pages including landing page
   const showHeader = true;
   
@@ -151,6 +166,32 @@ function AppContent() {
   const isConsentPage = location === "/terms" || location === "/privacy";
   const showConsentModal = needsConsent && !isConsentPage;
 
+  // Check if owner needs to accept owner agreement
+  const ownerHasNeverAccepted = !!(
+    isAuthenticated && 
+    user && 
+    isOwnerRoute &&
+    ownerAgreementVersion?.version !== null &&
+    !user.ownerAgreementAccepted
+  );
+  
+  const ownerNeedsVersionUpdate = !!(
+    isAuthenticated && 
+    user && 
+    isOwnerRoute &&
+    user.ownerAgreementAccepted &&
+    ownerAgreementVersion?.version !== null &&
+    ownerAgreementVersion?.version !== undefined &&
+    (user.ownerAgreementAcceptedVersion || 0) < (ownerAgreementVersion?.version || 0)
+  );
+  
+  const needsOwnerAgreementConsent = ownerHasNeverAccepted || ownerNeedsVersionUpdate;
+  
+  // Don't show owner agreement modal on the agreement page so users can read it
+  const isOwnerAgreementPage = location === "/owner-agreement";
+  // Only show owner agreement modal if general consent is not needed (prioritize general consent first)
+  const showOwnerAgreementModal = needsOwnerAgreementConsent && !isOwnerAgreementPage && !showConsentModal;
+
   return (
     <KycRouteGuard>
       <div className="flex flex-col min-h-screen">
@@ -165,6 +206,11 @@ function AppContent() {
           open={showConsentModal} 
           userName={user?.firstName || undefined}
           isVersionUpdate={needsVersionUpdate && !hasNeverAccepted}
+        />
+        <OwnerAgreementConsentModal
+          open={showOwnerAgreementModal}
+          userName={user?.firstName || undefined}
+          isVersionUpdate={ownerNeedsVersionUpdate && !ownerHasNeverAccepted}
         />
       </div>
     </KycRouteGuard>

@@ -20,6 +20,7 @@ import {
   availabilityOverrides,
   propertyDeactivationRequests,
   policies,
+  ownerAgreements,
   contactSettings,
   type User,
   type UpsertUser,
@@ -59,6 +60,8 @@ import {
   type PropertyDeactivationRequest,
   type Policy,
   type InsertPolicy,
+  type OwnerAgreement,
+  type InsertOwnerAgreement,
   type ContactSettings,
   type InsertContactSettings,
 } from "@shared/schema";
@@ -281,6 +284,18 @@ export interface IStorage {
   publishPolicy(id: string): Promise<Policy | undefined>;
   archivePolicy(id: string): Promise<Policy | undefined>;
   updateUserPolicyConsent(userId: string, termsVersion: number, privacyVersion: number, consentCommunication?: boolean): Promise<User | undefined>;
+
+  // Owner Agreement operations
+  getAllOwnerAgreements(): Promise<OwnerAgreement[]>;
+  getOwnerAgreement(id: string): Promise<OwnerAgreement | undefined>;
+  getOwnerAgreementByVersion(version: number): Promise<OwnerAgreement | undefined>;
+  getPublishedOwnerAgreement(): Promise<OwnerAgreement | undefined>;
+  getLatestOwnerAgreementVersion(): Promise<number>;
+  createOwnerAgreement(agreement: Omit<InsertOwnerAgreement, "id" | "createdAt" | "updatedAt">): Promise<OwnerAgreement>;
+  updateOwnerAgreement(id: string, updates: Partial<Pick<OwnerAgreement, "title" | "content">>): Promise<OwnerAgreement | undefined>;
+  publishOwnerAgreement(id: string): Promise<OwnerAgreement | undefined>;
+  archiveOwnerAgreement(id: string): Promise<OwnerAgreement | undefined>;
+  updateUserOwnerAgreementConsent(userId: string, version: number): Promise<User | undefined>;
 
   // Contact Settings operations
   getContactSettings(): Promise<ContactSettings | undefined>;
@@ -1867,6 +1882,104 @@ export class DatabaseStorage implements IStorage {
     const [user] = await db
       .update(users)
       .set(updateData)
+      .where(eq(users.id, userId))
+      .returning();
+    return user;
+  }
+
+  // Owner Agreement operations
+  async getAllOwnerAgreements(): Promise<OwnerAgreement[]> {
+    return await db
+      .select()
+      .from(ownerAgreements)
+      .orderBy(desc(ownerAgreements.version));
+  }
+
+  async getOwnerAgreement(id: string): Promise<OwnerAgreement | undefined> {
+    const [agreement] = await db
+      .select()
+      .from(ownerAgreements)
+      .where(eq(ownerAgreements.id, id));
+    return agreement;
+  }
+
+  async getOwnerAgreementByVersion(version: number): Promise<OwnerAgreement | undefined> {
+    const [agreement] = await db
+      .select()
+      .from(ownerAgreements)
+      .where(eq(ownerAgreements.version, version));
+    return agreement;
+  }
+
+  async getPublishedOwnerAgreement(): Promise<OwnerAgreement | undefined> {
+    const [agreement] = await db
+      .select()
+      .from(ownerAgreements)
+      .where(eq(ownerAgreements.status, "published"))
+      .orderBy(desc(ownerAgreements.version))
+      .limit(1);
+    return agreement;
+  }
+
+  async getLatestOwnerAgreementVersion(): Promise<number> {
+    const [result] = await db
+      .select({ maxVersion: sql<number>`COALESCE(MAX(${ownerAgreements.version}), 0)` })
+      .from(ownerAgreements);
+    return result?.maxVersion || 0;
+  }
+
+  async createOwnerAgreement(agreement: Omit<InsertOwnerAgreement, "id" | "createdAt" | "updatedAt">): Promise<OwnerAgreement> {
+    const [created] = await db
+      .insert(ownerAgreements)
+      .values(agreement)
+      .returning();
+    return created;
+  }
+
+  async updateOwnerAgreement(id: string, updates: Partial<Pick<OwnerAgreement, "title" | "content">>): Promise<OwnerAgreement | undefined> {
+    const [updated] = await db
+      .update(ownerAgreements)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(ownerAgreements.id, id))
+      .returning();
+    return updated;
+  }
+
+  async publishOwnerAgreement(id: string): Promise<OwnerAgreement | undefined> {
+    // Archive any currently published agreement first
+    await db
+      .update(ownerAgreements)
+      .set({ status: "archived", updatedAt: new Date() })
+      .where(eq(ownerAgreements.status, "published"));
+
+    // Publish the new agreement
+    const [updated] = await db
+      .update(ownerAgreements)
+      .set({ status: "published", publishedAt: new Date(), updatedAt: new Date() })
+      .where(eq(ownerAgreements.id, id))
+      .returning();
+    return updated;
+  }
+
+  async archiveOwnerAgreement(id: string): Promise<OwnerAgreement | undefined> {
+    const [updated] = await db
+      .update(ownerAgreements)
+      .set({ status: "archived", updatedAt: new Date() })
+      .where(eq(ownerAgreements.id, id))
+      .returning();
+    return updated;
+  }
+
+  async updateUserOwnerAgreementConsent(userId: string, version: number): Promise<User | undefined> {
+    const now = new Date();
+    const [user] = await db
+      .update(users)
+      .set({
+        ownerAgreementAccepted: true,
+        ownerAgreementAcceptedAt: now,
+        ownerAgreementAcceptedVersion: version,
+        updatedAt: now,
+      })
       .where(eq(users.id, userId))
       .returning();
     return user;

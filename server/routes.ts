@@ -5470,6 +5470,208 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ===============================
+  // OWNER AGREEMENT MANAGEMENT
+  // ===============================
+
+  // Public: Get published owner agreement
+  app.get("/api/owner-agreement", async (req: any, res) => {
+    try {
+      const agreement = await storage.getPublishedOwnerAgreement();
+      if (!agreement) {
+        return res.status(404).json({ message: "Owner agreement not found" });
+      }
+      res.json(agreement);
+    } catch (error) {
+      console.error("Error fetching owner agreement:", error);
+      res.status(500).json({ message: "Failed to fetch owner agreement" });
+    }
+  });
+
+  // Public: Get current owner agreement version (for consent checking)
+  app.get("/api/owner-agreement/version/current", async (req: any, res) => {
+    try {
+      const agreement = await storage.getPublishedOwnerAgreement();
+      res.json({
+        version: agreement?.version || null,
+      });
+    } catch (error) {
+      console.error("Error fetching owner agreement version:", error);
+      res.status(500).json({ message: "Failed to fetch owner agreement version" });
+    }
+  });
+
+  // Admin: Get all owner agreements
+  app.get("/api/admin/owner-agreements", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || !userHasRole(user, "admin")) {
+        return res.status(403).json({ message: "Only admins can view all owner agreements" });
+      }
+
+      const allAgreements = await storage.getAllOwnerAgreements();
+      res.json(allAgreements);
+    } catch (error) {
+      console.error("Error fetching owner agreements:", error);
+      res.status(500).json({ message: "Failed to fetch owner agreements" });
+    }
+  });
+
+  // Admin: Get a single owner agreement by ID
+  app.get("/api/admin/owner-agreements/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || !userHasRole(user, "admin")) {
+        return res.status(403).json({ message: "Only admins can view agreement details" });
+      }
+
+      const agreement = await storage.getOwnerAgreement(req.params.id);
+      if (!agreement) {
+        return res.status(404).json({ message: "Owner agreement not found" });
+      }
+
+      res.json(agreement);
+    } catch (error) {
+      console.error("Error fetching owner agreement:", error);
+      res.status(500).json({ message: "Failed to fetch owner agreement" });
+    }
+  });
+
+  // Admin: Create a new owner agreement version
+  app.post("/api/admin/owner-agreements", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || !userHasRole(user, "admin")) {
+        return res.status(403).json({ message: "Only admins can create owner agreements" });
+      }
+
+      const { title, content } = req.body;
+      
+      if (!title || !content) {
+        return res.status(400).json({ message: "Title and content are required" });
+      }
+
+      // Get the next version number
+      const latestVersion = await storage.getLatestOwnerAgreementVersion();
+      const newVersion = latestVersion + 1;
+
+      const agreement = await storage.createOwnerAgreement({
+        version: newVersion,
+        title,
+        content,
+        status: "draft",
+        createdBy: userId,
+      });
+
+      res.status(201).json(agreement);
+    } catch (error) {
+      console.error("Error creating owner agreement:", error);
+      res.status(500).json({ message: "Failed to create owner agreement" });
+    }
+  });
+
+  // Admin: Update owner agreement content (only drafts can be updated)
+  app.patch("/api/admin/owner-agreements/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || !userHasRole(user, "admin")) {
+        return res.status(403).json({ message: "Only admins can update owner agreements" });
+      }
+
+      const agreement = await storage.getOwnerAgreement(req.params.id);
+      if (!agreement) {
+        return res.status(404).json({ message: "Owner agreement not found" });
+      }
+
+      if (agreement.status !== "draft") {
+        return res.status(400).json({ message: "Only draft agreements can be edited. Create a new version instead." });
+      }
+
+      const { title, content } = req.body;
+      const updates: { title?: string; content?: string } = {};
+      
+      if (title) updates.title = title;
+      if (content) updates.content = content;
+
+      const updatedAgreement = await storage.updateOwnerAgreement(req.params.id, updates);
+      res.json(updatedAgreement);
+    } catch (error) {
+      console.error("Error updating owner agreement:", error);
+      res.status(500).json({ message: "Failed to update owner agreement" });
+    }
+  });
+
+  // Admin: Publish an owner agreement (archives any existing published version)
+  app.post("/api/admin/owner-agreements/:id/publish", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || !userHasRole(user, "admin")) {
+        return res.status(403).json({ message: "Only admins can publish owner agreements" });
+      }
+
+      const agreement = await storage.getOwnerAgreement(req.params.id);
+      if (!agreement) {
+        return res.status(404).json({ message: "Owner agreement not found" });
+      }
+
+      if (agreement.status === "published") {
+        return res.status(400).json({ message: "Agreement is already published" });
+      }
+
+      if (agreement.status === "archived") {
+        return res.status(400).json({ message: "Cannot publish an archived agreement. Create a new version instead." });
+      }
+
+      const publishedAgreement = await storage.publishOwnerAgreement(req.params.id);
+      
+      res.json({ 
+        message: `Owner Agreement published successfully. All property owners will be required to accept version ${agreement.version}.`,
+        agreement: publishedAgreement 
+      });
+    } catch (error) {
+      console.error("Error publishing owner agreement:", error);
+      res.status(500).json({ message: "Failed to publish owner agreement" });
+    }
+  });
+
+  // Owner consent endpoint for accepting owner agreement
+  app.post("/api/auth/owner-agreement-consent", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+
+      // Get current published owner agreement version
+      const agreement = await storage.getPublishedOwnerAgreement();
+
+      if (!agreement) {
+        return res.status(400).json({ message: "Cannot accept agreement. Published owner agreement not available." });
+      }
+
+      const updatedUser = await storage.updateUserOwnerAgreementConsent(userId, agreement.version);
+
+      if (!updatedUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      res.json({ 
+        message: "Owner Agreement consent recorded successfully",
+        user: updatedUser 
+      });
+    } catch (error) {
+      console.error("Error recording owner agreement consent:", error);
+      res.status(500).json({ message: "Failed to record consent" });
+    }
+  });
+
   // Admin: Mark booking as no-show (with time-based validation)
   app.patch("/api/admin/bookings/:id/no-show", isAuthenticated, async (req: any, res) => {
     try {
