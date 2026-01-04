@@ -235,10 +235,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(403).json({ message: "Password registration is disabled in development mode. Use OIDC login instead." });
     }
     try {
-      const { firstName, lastName, email, password } = req.body;
+      const { firstName, lastName, email, password, termsAccepted, privacyAccepted, consentCommunication } = req.body;
       
       if (!firstName || !lastName || !email || !password) {
         return res.status(400).json({ message: "First name, last name, email, and password are required" });
+      }
+
+      // Validate consent - terms and privacy are required
+      if (termsAccepted !== true) {
+        return res.status(400).json({ message: "You must accept the Terms & Conditions to create an account" });
+      }
+      if (privacyAccepted !== true) {
+        return res.status(400).json({ message: "You must accept the Privacy Policy to create an account" });
       }
 
       // Validate email format
@@ -262,12 +270,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const saltRounds = 10;
       const passwordHash = await bcrypt.hash(password, saltRounds);
 
-      // Create user with unverified email
+      // Create user with unverified email and consent
       const user = await storage.createLocalUser({
         firstName,
         lastName,
         email,
         passwordHash,
+        termsAccepted: true,
+        privacyAccepted: true,
+        consentCommunication: consentCommunication === true,
       });
 
       // Generate and send OTP for email verification
