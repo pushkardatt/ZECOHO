@@ -6,6 +6,16 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 import { format } from "date-fns";
 import {
   CalendarDays,
@@ -75,11 +85,30 @@ interface Booking {
   } | null;
 }
 
+interface CancellationPreview {
+  canCancel: boolean;
+  policyType?: string;
+  freeCancellationHours?: number;
+  partialRefundPercent?: number;
+  hoursUntilCheckIn?: number;
+  totalPrice?: string;
+  refundPercentage?: number;
+  refundAmount?: string;
+  message: string;
+}
+
 export default function MyBookings() {
   const [activeTab, setActiveTab] = useState("all");
   const [location, setLocation] = useLocation();
   const { user, isAuthenticated, isLoading: authLoading } = useAuth();
   const [showNewBookingBanner, setShowNewBookingBanner] = useState(false);
+  
+  // Cancellation modal state
+  const [cancelModalOpen, setCancelModalOpen] = useState(false);
+  const [cancellingBooking, setCancellingBooking] = useState<Booking | null>(null);
+  const [cancellationReason, setCancellationReason] = useState("");
+  const [cancelPreview, setCancelPreview] = useState<CancellationPreview | null>(null);
+  const [loadingPreview, setLoadingPreview] = useState(false);
   
   // Subscribe to real-time booking updates via WebSocket with polling fallback
   useBookingUpdates({ userId: user?.id });
@@ -193,12 +222,23 @@ export default function MyBookings() {
     mutationFn: async ({ bookingId, reason }: { bookingId: string; reason?: string }) => {
       return await apiRequest("POST", `/api/bookings/${bookingId}/cancel`, { reason });
     },
-    onSuccess: () => {
+    onSuccess: (data: any) => {
+      setCancelModalOpen(false);
+      setCancellingBooking(null);
+      setCancellationReason("");
+      setCancelPreview(null);
       queryClient.invalidateQueries({ queryKey: ["/api/bookings"] });
       queryClient.invalidateQueries({ queryKey: ["/api/owner/stats"] });
+      
+      const refundMsg = data.refundPercentage === 100 
+        ? "Full refund will be processed."
+        : data.refundPercentage > 0 
+          ? `${data.refundPercentage}% refund (${formatCurrency(data.refundAmount || "0")}) will be processed.`
+          : "No refund applicable per cancellation policy.";
+      
       toast({
         title: "Booking Cancelled",
-        description: "Your booking has been cancelled. The property owner has been notified.",
+        description: `Your booking has been cancelled. ${refundMsg}`,
       });
     },
     onError: (error: any) => {
@@ -209,6 +249,34 @@ export default function MyBookings() {
       });
     },
   });
+
+  // Function to open cancel modal with refund preview
+  const openCancelModal = async (booking: Booking) => {
+    setCancellingBooking(booking);
+    setCancellationReason("");
+    setCancelPreview(null);
+    setCancelModalOpen(true);
+    setLoadingPreview(true);
+    
+    try {
+      const response = await fetch(`/api/bookings/${booking.id}/cancel-preview`, { credentials: 'include' });
+      const data = await response.json();
+      setCancelPreview(data);
+    } catch (error) {
+      setCancelPreview({ canCancel: false, message: "Unable to load cancellation details" });
+    } finally {
+      setLoadingPreview(false);
+    }
+  };
+
+  const handleConfirmCancel = () => {
+    if (cancellingBooking) {
+      cancelBookingMutation.mutate({ 
+        bookingId: cancellingBooking.id, 
+        reason: cancellationReason || "Cancelled by guest" 
+      });
+    }
+  };
 
   const getStatusBadge = (status: string) => {
     const statusConfig: Record<string, { variant: "default" | "secondary" | "destructive" | "outline"; label: string; icon: any }> = {
@@ -475,12 +543,11 @@ export default function MyBookings() {
                     size="sm"
                     variant="outline"
                     className="gap-2 text-red-600 border-red-200 hover:bg-red-50 dark:border-red-800 dark:hover:bg-red-950/30"
-                    onClick={() => cancelBookingMutation.mutate({ bookingId: booking.id, reason: "Cancelled by guest while pending" })}
-                    disabled={cancelBookingMutation.isPending}
+                    onClick={() => openCancelModal(booking)}
                     data-testid={`btn-cancel-pending-${booking.id}`}
                   >
                     <XCircle className="h-4 w-4" />
-                    {cancelBookingMutation.isPending ? "Cancelling..." : "Cancel Booking"}
+                    Cancel Booking
                   </Button>
                 </div>
               </div>
@@ -608,12 +675,11 @@ export default function MyBookings() {
                           size="lg"
                           variant="outline" 
                           className="flex-1 sm:flex-none text-red-600 border-red-200 hover:bg-red-50 dark:border-red-800 dark:hover:bg-red-950/30"
-                          onClick={() => cancelBookingMutation.mutate({ bookingId: booking.id, reason: "Cancelled by guest before confirming" })}
-                          disabled={cancelBookingMutation.isPending}
+                          onClick={() => openCancelModal(booking)}
                           data-testid={`btn-cancel-request-${booking.id}`}
                         >
                           <XCircle className="h-5 w-5 mr-1" />
-                          {cancelBookingMutation.isPending ? "Cancelling..." : "Cancel Request"}
+                          Cancel Request
                         </Button>
                       </div>
                       
@@ -697,12 +763,11 @@ export default function MyBookings() {
                     size="sm"
                     variant="outline"
                     className="gap-2 text-red-600 border-red-200 hover:bg-red-50 dark:border-red-800 dark:hover:bg-red-950/30"
-                    onClick={() => cancelBookingMutation.mutate({ bookingId: booking.id, reason: "Cancelled by guest" })}
-                    disabled={cancelBookingMutation.isPending}
+                    onClick={() => openCancelModal(booking)}
                     data-testid={`btn-cancel-confirmed-${booking.id}`}
                   >
                     <XCircle className="h-4 w-4" />
-                    {cancelBookingMutation.isPending ? "Cancelling..." : "Cancel Booking"}
+                    Cancel Booking
                   </Button>
                 </div>
                 
@@ -1021,6 +1086,140 @@ export default function MyBookings() {
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* Cancellation Confirmation Modal */}
+      <Dialog open={cancelModalOpen} onOpenChange={(open) => {
+        if (!open) {
+          setCancelModalOpen(false);
+          setCancellingBooking(null);
+          setCancellationReason("");
+          setCancelPreview(null);
+        }
+      }}>
+        <DialogContent className="sm:max-w-md" data-testid="cancel-booking-modal">
+          <DialogHeader>
+            <DialogTitle>Cancel Booking</DialogTitle>
+            <DialogDescription>
+              {cancellingBooking?.property?.title && (
+                <span className="font-medium text-foreground">{cancellingBooking.property.title}</span>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            {loadingPreview ? (
+              <div className="flex items-center justify-center py-6">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+              </div>
+            ) : cancelPreview ? (
+              <>
+                {/* Booking Details */}
+                {cancellingBooking && (
+                  <div className="p-3 bg-muted/50 rounded-lg text-sm space-y-1">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Check-in:</span>
+                      <span className="font-medium">{format(new Date(cancellingBooking.checkIn), "dd MMM yyyy")}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Check-out:</span>
+                      <span className="font-medium">{format(new Date(cancellingBooking.checkOut), "dd MMM yyyy")}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Total Price:</span>
+                      <span className="font-medium">{formatCurrency(cancellingBooking.totalPrice)}</span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Refund Information */}
+                <div className={`p-4 rounded-lg border ${
+                  cancelPreview.refundPercentage === 100 
+                    ? "bg-green-50 dark:bg-green-950/30 border-green-200 dark:border-green-800"
+                    : cancelPreview.refundPercentage && cancelPreview.refundPercentage > 0
+                      ? "bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800"
+                      : "bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-800"
+                }`}>
+                  <div className="flex items-center gap-2 mb-2">
+                    {cancelPreview.refundPercentage === 100 ? (
+                      <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400" />
+                    ) : cancelPreview.refundPercentage && cancelPreview.refundPercentage > 0 ? (
+                      <AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+                    ) : (
+                      <XCircle className="h-5 w-5 text-red-600 dark:text-red-400" />
+                    )}
+                    <span className="font-semibold text-foreground">
+                      {cancelPreview.refundPercentage === 100 
+                        ? "Full Refund"
+                        : cancelPreview.refundPercentage && cancelPreview.refundPercentage > 0
+                          ? `${cancelPreview.refundPercentage}% Partial Refund`
+                          : "No Refund"}
+                    </span>
+                  </div>
+                  
+                  {cancelPreview.refundAmount && Number(cancelPreview.refundAmount) > 0 && (
+                    <p className="text-lg font-bold text-foreground mb-1">
+                      {formatCurrency(cancelPreview.refundAmount)} refund
+                    </p>
+                  )}
+                  
+                  <p className="text-sm text-muted-foreground">{cancelPreview.message}</p>
+                  
+                  {cancelPreview.policyType && (
+                    <p className="text-xs text-muted-foreground mt-2">
+                      Policy: <span className="capitalize">{cancelPreview.policyType}</span>
+                      {cancelPreview.hoursUntilCheckIn !== undefined && (
+                        <span> • {cancelPreview.hoursUntilCheckIn} hours until check-in</span>
+                      )}
+                    </p>
+                  )}
+                </div>
+
+                {/* Cancellation Reason */}
+                <div className="space-y-2">
+                  <Label htmlFor="cancellation-reason">Reason for cancellation (optional)</Label>
+                  <Textarea
+                    id="cancellation-reason"
+                    placeholder="Let the property know why you're cancelling..."
+                    value={cancellationReason}
+                    onChange={(e) => setCancellationReason(e.target.value)}
+                    className="resize-none"
+                    rows={3}
+                    data-testid="input-cancellation-reason"
+                  />
+                </div>
+
+                {!cancelPreview.canCancel && (
+                  <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-md">
+                    <p className="text-sm text-destructive">{cancelPreview.message}</p>
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="text-center py-4 text-muted-foreground">
+                Unable to load cancellation details
+              </div>
+            )}
+          </div>
+
+          <DialogFooter className="flex flex-col sm:flex-row gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setCancelModalOpen(false)}
+              data-testid="btn-cancel-modal-close"
+            >
+              Keep Booking
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleConfirmCancel}
+              disabled={!cancelPreview?.canCancel || cancelBookingMutation.isPending}
+              data-testid="btn-confirm-cancel"
+            >
+              {cancelBookingMutation.isPending ? "Cancelling..." : "Confirm Cancellation"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

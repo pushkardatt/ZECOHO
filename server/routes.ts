@@ -4058,6 +4058,101 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Preview cancellation refund before actually cancelling
+  app.get("/api/bookings/:id/cancel-preview", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const bookingId = req.params.id;
+      
+      const booking = await storage.getBooking(bookingId);
+      if (!booking) {
+        return res.status(404).json({ message: "Booking not found" });
+      }
+      
+      // Only the guest can view cancellation preview
+      if (booking.guestId !== userId) {
+        return res.status(403).json({ message: "You can only view your own booking cancellation" });
+      }
+      
+      // Check if booking can be cancelled based on status
+      const cancellableStatuses = ["pending", "confirmed", "customer_confirmed"];
+      if (!cancellableStatuses.includes(booking.status)) {
+        return res.status(400).json({ 
+          canCancel: false,
+          message: `Cannot cancel a booking with status '${booking.status}'.`
+        });
+      }
+      
+      const property = await storage.getProperty(booking.propertyId);
+      if (!property) {
+        return res.status(404).json({ message: "Property not found" });
+      }
+      
+      const now = new Date();
+      const checkInDate = new Date(booking.checkIn);
+      const hoursUntilCheckIn = (checkInDate.getTime() - now.getTime()) / (1000 * 60 * 60);
+      
+      // Can't cancel after check-in
+      if (hoursUntilCheckIn < 0) {
+        return res.json({ 
+          canCancel: false,
+          message: "Cannot cancel after check-in date has passed."
+        });
+      }
+      
+      // Calculate refund preview using same logic as storage method
+      const totalPrice = parseFloat(booking.totalPrice);
+      const policyType = property.cancellationPolicyType || "flexible";
+      const freeCancellationHours = property.freeCancellationHours || 24;
+      const partialRefundPercent = property.partialRefundPercent || 50;
+      
+      let refundPercentage = 0;
+      
+      if (policyType === "flexible") {
+        if (hoursUntilCheckIn >= freeCancellationHours) {
+          refundPercentage = 100;
+        } else {
+          refundPercentage = partialRefundPercent;
+        }
+      } else if (policyType === "moderate") {
+        if (hoursUntilCheckIn >= freeCancellationHours) {
+          refundPercentage = 100;
+        } else if (hoursUntilCheckIn >= freeCancellationHours / 2) {
+          refundPercentage = partialRefundPercent;
+        } else {
+          refundPercentage = 0;
+        }
+      } else if (policyType === "strict") {
+        if (hoursUntilCheckIn >= freeCancellationHours * 2) {
+          refundPercentage = partialRefundPercent;
+        } else {
+          refundPercentage = 0;
+        }
+      }
+      
+      const refundAmount = ((totalPrice * refundPercentage) / 100).toFixed(2);
+      
+      res.json({
+        canCancel: true,
+        policyType,
+        freeCancellationHours,
+        partialRefundPercent,
+        hoursUntilCheckIn: Math.floor(hoursUntilCheckIn),
+        totalPrice: booking.totalPrice,
+        refundPercentage,
+        refundAmount,
+        message: refundPercentage === 100 
+          ? "Full refund available" 
+          : refundPercentage > 0 
+            ? `${refundPercentage}% refund available based on ${policyType} policy`
+            : "No refund available based on cancellation policy",
+      });
+    } catch (error) {
+      console.error("Error previewing cancellation:", error);
+      res.status(500).json({ message: "Failed to preview cancellation" });
+    }
+  });
+
   // Guest cancels their own booking
   app.post("/api/bookings/:id/cancel", isAuthenticated, async (req: any, res) => {
     try {
