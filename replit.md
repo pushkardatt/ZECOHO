@@ -41,6 +41,9 @@ The backend is built with **Express.js on Node.js**, featuring a **RESTful API**
 -   **How to Reach Section**: Property details page displays a dedicated "How to Reach" section showing nearest transport hubs (Metro Stations, Railway Stations, Bus Stops, Airports) with distance in kilometers and estimated travel time. Features "Get Directions" CTAs that open Google Maps with the property as destination. Transport data is fetched via Google Places API within a 25km radius and updates automatically when property location changes. Visible on both web and mobile views.
 -   **Versioned Policy Management**: Complete Terms & Conditions and Privacy Policy management system with admin panel at `/admin/policies`. Features include: draft/publish/archive workflow, version tracking, automatic archiving of previous versions when publishing new ones, dynamic content loading on Terms/Privacy pages with static fallback. Users must accept policies on first login, and when new policy versions are published, the consent modal automatically appears forcing re-acceptance before accessing the platform. Policy acceptance is tracked with timestamps and version numbers in the users table.
 
+## Pending Features
+-   **Payment Gateway Integration**: Stripe integration for booking payments is pending. When ready to implement, use the Stripe connector integration or manually configure with STRIPE_SECRET_KEY and STRIPE_PUBLISHABLE_KEY secrets.
+
 ## External Dependencies
 
 -   **Third-Party Services**:
