@@ -236,6 +236,12 @@ export const listingModeEnum = pgEnum("listing_mode", ["not_selected", "quick", 
 // Geo source enum - for tracking how property location was set
 export const geoSourceEnum = pgEnum("geo_source", ["manual_pin", "current_location"]);
 
+export const cancellationPolicyTypeEnum = pgEnum("cancellation_policy_type", [
+  "flexible",         // Free cancellation until X hours before check-in
+  "moderate",         // Partial refund if cancelled within X hours
+  "strict",           // No refund / non-refundable
+]);
+
 // User storage table - supports both Replit Auth and local registration
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -326,6 +332,10 @@ export const properties = pgTable("properties", {
   receptionNumber: varchar("reception_number", { length: 20 }),
   safetyFeatures: text("safety_features").array().default(sql`ARRAY[]::text[]`),
   cancellationPolicy: text("cancellation_policy"),
+  // Structured cancellation policy
+  cancellationPolicyType: cancellationPolicyTypeEnum("cancellation_policy_type").default("flexible"),
+  freeCancellationHours: integer("free_cancellation_hours").default(24), // Hours before check-in for free cancellation
+  partialRefundPercent: integer("partial_refund_percent").default(50), // Refund percentage for moderate policy
   // Guest policies
   localIdAllowed: boolean("local_id_allowed").notNull().default(true),
   hourlyBookingAllowed: boolean("hourly_booking_allowed").notNull().default(false),
