@@ -5690,6 +5690,190 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ===== ABOUT US ROUTES =====
+
+  // Public: Get published About Us content
+  app.get("/api/about-us", async (req: any, res) => {
+    try {
+      const aboutUs = await storage.getPublishedAboutUs();
+      if (!aboutUs) {
+        return res.status(404).json({ message: "About Us content not found" });
+      }
+      res.json(aboutUs);
+    } catch (error) {
+      console.error("Error fetching about us:", error);
+      res.status(500).json({ message: "Failed to fetch about us content" });
+    }
+  });
+
+  // Admin: Get all About Us versions
+  app.get("/api/admin/about-us", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || !userHasRole(user, "admin")) {
+        return res.status(403).json({ message: "Only admins can view all about us versions" });
+      }
+
+      const allAboutUs = await storage.getAllAboutUs();
+      res.json(allAboutUs);
+    } catch (error) {
+      console.error("Error fetching all about us:", error);
+      res.status(500).json({ message: "Failed to fetch about us versions" });
+    }
+  });
+
+  // Admin: Get specific About Us version
+  app.get("/api/admin/about-us/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || !userHasRole(user, "admin")) {
+        return res.status(403).json({ message: "Only admins can view about us details" });
+      }
+
+      const aboutUs = await storage.getAboutUs(req.params.id);
+      if (!aboutUs) {
+        return res.status(404).json({ message: "About Us not found" });
+      }
+      res.json(aboutUs);
+    } catch (error) {
+      console.error("Error fetching about us:", error);
+      res.status(500).json({ message: "Failed to fetch about us" });
+    }
+  });
+
+  // Admin: Create new About Us version
+  app.post("/api/admin/about-us", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || !userHasRole(user, "admin")) {
+        return res.status(403).json({ message: "Only admins can create about us content" });
+      }
+
+      const { title, content } = req.body;
+      
+      if (!title || !content) {
+        return res.status(400).json({ message: "Title and content are required" });
+      }
+
+      const latestVersion = await storage.getLatestAboutUsVersion();
+      const newVersion = latestVersion + 1;
+
+      const aboutUs = await storage.createAboutUs({
+        title,
+        content,
+        version: newVersion,
+        status: "draft",
+        createdBy: userId,
+      });
+
+      res.json({ message: "About Us created successfully", aboutUs });
+    } catch (error) {
+      console.error("Error creating about us:", error);
+      res.status(500).json({ message: "Failed to create about us" });
+    }
+  });
+
+  // Admin: Update About Us content (only drafts)
+  app.patch("/api/admin/about-us/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || !userHasRole(user, "admin")) {
+        return res.status(403).json({ message: "Only admins can update about us content" });
+      }
+
+      const aboutUs = await storage.getAboutUs(req.params.id);
+      if (!aboutUs) {
+        return res.status(404).json({ message: "About Us not found" });
+      }
+
+      if (aboutUs.status !== "draft") {
+        return res.status(400).json({ message: "Can only edit draft versions" });
+      }
+
+      const { title, content } = req.body;
+      const updated = await storage.updateAboutUs(req.params.id, { title, content });
+      
+      res.json({ message: "About Us updated successfully", aboutUs: updated });
+    } catch (error) {
+      console.error("Error updating about us:", error);
+      res.status(500).json({ message: "Failed to update about us" });
+    }
+  });
+
+  // Admin: Publish About Us
+  app.post("/api/admin/about-us/:id/publish", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || !userHasRole(user, "admin")) {
+        return res.status(403).json({ message: "Only admins can publish about us content" });
+      }
+
+      const aboutUs = await storage.getAboutUs(req.params.id);
+      if (!aboutUs) {
+        return res.status(404).json({ message: "About Us not found" });
+      }
+
+      if (aboutUs.status === "published") {
+        return res.status(400).json({ message: "About Us is already published" });
+      }
+
+      if (aboutUs.status === "archived") {
+        return res.status(400).json({ message: "Cannot publish archived content. Create a new version instead." });
+      }
+
+      const publishedAboutUs = await storage.publishAboutUs(req.params.id);
+      
+      res.json({ 
+        message: `About Us version ${aboutUs.version} published successfully.`,
+        aboutUs: publishedAboutUs 
+      });
+    } catch (error) {
+      console.error("Error publishing about us:", error);
+      res.status(500).json({ message: "Failed to publish about us" });
+    }
+  });
+
+  // Admin: Archive About Us
+  app.post("/api/admin/about-us/:id/archive", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || !userHasRole(user, "admin")) {
+        return res.status(403).json({ message: "Only admins can archive about us content" });
+      }
+
+      const aboutUs = await storage.getAboutUs(req.params.id);
+      if (!aboutUs) {
+        return res.status(404).json({ message: "About Us not found" });
+      }
+
+      if (aboutUs.status === "archived") {
+        return res.status(400).json({ message: "About Us is already archived" });
+      }
+
+      const archivedAboutUs = await storage.archiveAboutUs(req.params.id);
+      
+      res.json({ 
+        message: `About Us version ${aboutUs.version} archived.`,
+        aboutUs: archivedAboutUs 
+      });
+    } catch (error) {
+      console.error("Error archiving about us:", error);
+      res.status(500).json({ message: "Failed to archive about us" });
+    }
+  });
+
   // Admin: Mark booking as no-show (with time-based validation)
   app.patch("/api/admin/bookings/:id/no-show", isAuthenticated, async (req: any, res) => {
     try {
