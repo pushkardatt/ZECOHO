@@ -97,6 +97,22 @@ interface CancellationPreview {
   message: string;
 }
 
+// Booking timeline step type
+type TimelineStep = "requested" | "accepted" | "confirmed" | "checked_in" | "checked_out";
+
+// Helper to calculate cancellation deadline
+const getCancellationDeadline = (checkInDate: Date, freeCancellationHours: number = 24): Date => {
+  const deadline = new Date(checkInDate);
+  deadline.setHours(deadline.getHours() - freeCancellationHours);
+  return deadline;
+};
+
+// Helper to check if free cancellation is still available
+const canFreeCancellation = (checkInDate: Date, freeCancellationHours: number = 24): boolean => {
+  const deadline = getCancellationDeadline(checkInDate, freeCancellationHours);
+  return new Date() < deadline;
+};
+
 export default function MyBookings() {
   const [activeTab, setActiveTab] = useState("all");
   const [location, setLocation] = useLocation();
@@ -278,79 +294,154 @@ export default function MyBookings() {
     }
   };
 
-  const getStatusBadge = (status: string) => {
-    const statusConfig: Record<string, { variant: "default" | "secondary" | "destructive" | "outline"; label: string; icon: any }> = {
-      pending: { variant: "outline", label: "Awaiting Hotel Confirmation", icon: Clock },
-      confirmed: { variant: "default", label: "Accepted by Hotel", icon: CheckCircle },
-      customer_confirmed: { variant: "default", label: "Confirmed", icon: CheckCircle },
-      rejected: { variant: "destructive", label: "Declined", icon: XCircle },
-      checked_in: { variant: "default", label: "Checked In", icon: CheckCircle },
-      checked_out: { variant: "secondary", label: "Checked Out", icon: CheckCircle },
-      completed: { variant: "secondary", label: "Completed", icon: CheckCircle },
-      cancelled: { variant: "destructive", label: "Cancelled", icon: XCircle },
-      no_show: { variant: "destructive", label: "No-Show", icon: AlertTriangle },
+  // Enhanced status configuration with colors and explanations
+  const getStatusConfig = (status: string) => {
+    const configs: Record<string, { 
+      label: string; 
+      icon: any; 
+      explanation: string;
+      bgColor: string;
+      textColor: string;
+      borderColor: string;
+    }> = {
+      pending: { 
+        label: "Awaiting Confirmation", 
+        icon: Clock,
+        explanation: "The hotel is reviewing your request. Usually responds within 30 minutes.",
+        bgColor: "bg-amber-100 dark:bg-amber-900/50",
+        textColor: "text-amber-800 dark:text-amber-200",
+        borderColor: "border-amber-300 dark:border-amber-700"
+      },
+      confirmed: { 
+        label: "Hotel Accepted", 
+        icon: CheckCircle,
+        explanation: "Please confirm to secure your room. The hotel is holding this for you.",
+        bgColor: "bg-blue-100 dark:bg-blue-900/50",
+        textColor: "text-blue-800 dark:text-blue-200",
+        borderColor: "border-blue-300 dark:border-blue-700"
+      },
+      customer_confirmed: { 
+        label: "Confirmed", 
+        icon: CheckCircle,
+        explanation: "Your room is secured. Show this booking at check-in.",
+        bgColor: "bg-green-100 dark:bg-green-900/50",
+        textColor: "text-green-800 dark:text-green-200",
+        borderColor: "border-green-300 dark:border-green-700"
+      },
+      rejected: { 
+        label: "Declined", 
+        icon: XCircle,
+        explanation: "The hotel couldn't accommodate this request.",
+        bgColor: "bg-red-100 dark:bg-red-900/50",
+        textColor: "text-red-800 dark:text-red-200",
+        borderColor: "border-red-300 dark:border-red-700"
+      },
+      checked_in: { 
+        label: "Checked In", 
+        icon: Home,
+        explanation: "You're currently staying at this property. Enjoy!",
+        bgColor: "bg-emerald-100 dark:bg-emerald-900/50",
+        textColor: "text-emerald-800 dark:text-emerald-200",
+        borderColor: "border-emerald-300 dark:border-emerald-700"
+      },
+      checked_out: { 
+        label: "Checked Out", 
+        icon: CheckCircle,
+        explanation: "Your stay is complete. We hope you had a great time!",
+        bgColor: "bg-slate-100 dark:bg-slate-800/50",
+        textColor: "text-slate-700 dark:text-slate-300",
+        borderColor: "border-slate-300 dark:border-slate-600"
+      },
+      completed: { 
+        label: "Completed", 
+        icon: CheckCircle,
+        explanation: "Your stay is complete. Consider leaving a review!",
+        bgColor: "bg-slate-100 dark:bg-slate-800/50",
+        textColor: "text-slate-700 dark:text-slate-300",
+        borderColor: "border-slate-300 dark:border-slate-600"
+      },
+      cancelled: { 
+        label: "Cancelled", 
+        icon: XCircle,
+        explanation: "This booking was cancelled.",
+        bgColor: "bg-red-100 dark:bg-red-900/50",
+        textColor: "text-red-800 dark:text-red-200",
+        borderColor: "border-red-300 dark:border-red-700"
+      },
+      no_show: { 
+        label: "No-Show", 
+        icon: AlertTriangle,
+        explanation: "Check-in did not occur on the scheduled date.",
+        bgColor: "bg-orange-100 dark:bg-orange-900/50",
+        textColor: "text-orange-800 dark:text-orange-200",
+        borderColor: "border-orange-300 dark:border-orange-700"
+      },
     };
-    const config = statusConfig[status] || { variant: "secondary", label: status, icon: Clock };
+    return configs[status] || { 
+      label: status, 
+      icon: Clock,
+      explanation: "",
+      bgColor: "bg-muted",
+      textColor: "text-muted-foreground",
+      borderColor: "border-muted"
+    };
+  };
+
+  const getStatusBadge = (status: string, showExplanation: boolean = true) => {
+    const config = getStatusConfig(status);
     const Icon = config.icon;
     return (
-      <div className="flex flex-col items-end gap-1">
-        <Badge variant={config.variant} className="flex items-center gap-1">
-          <Icon className="h-3 w-3" />
-          {config.label}
-        </Badge>
-        {status === "confirmed" && (
-          <span className="text-xs text-muted-foreground">Please confirm to proceed</span>
+      <div className="flex flex-col items-end gap-1.5">
+        <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border ${config.bgColor} ${config.textColor} ${config.borderColor}`}>
+          <Icon className="h-4 w-4" />
+          <span className="font-semibold text-sm">{config.label}</span>
+        </div>
+        {showExplanation && config.explanation && (
+          <span className={`text-xs max-w-[200px] text-right ${config.textColor}`}>{config.explanation}</span>
         )}
       </div>
     );
   };
 
-  // Helper to check if a booking is currently ongoing (checked in and between check-in/check-out dates)
-  const isOngoingBooking = (booking: Booking): boolean => {
-    const now = new Date();
-    const checkInDate = new Date(booking.checkIn);
-    const checkOutDate = new Date(booking.checkOut);
-    
-    // Booking is ongoing if:
-    // 1. Status is checked_in, OR
-    // 2. Has checkInTime set and current date is between check-in and check-out
-    if (booking.status === "checked_in") return true;
-    if (booking.checkInTime && now >= checkInDate && now < checkOutDate) return true;
-    return false;
+  // Strict status mapping for tabs
+  // PENDING: Waiting for owner response (status = pending)
+  const isPendingBooking = (booking: Booking): boolean => {
+    return booking.status === "pending";
   };
 
-  // Helper to check if a booking is upcoming (confirmed but not yet checked in, check-in in future)
+  // ONGOING: Currently checked in
+  const isOngoingBooking = (booking: Booking): boolean => {
+    return booking.status === "checked_in";
+  };
+
+  // UPCOMING: Confirmed/accepted bookings with future check-in date (not pending, not checked in yet)
   const isUpcomingBooking = (booking: Booking): boolean => {
     const now = new Date();
     const checkInDate = new Date(booking.checkIn);
-    
-    // Upcoming = pending, confirmed, or customer_confirmed where check-in is in the future and not checked in
-    const upcomingStatuses = ["pending", "confirmed", "customer_confirmed"];
+    const upcomingStatuses = ["confirmed", "customer_confirmed"];
     return upcomingStatuses.includes(booking.status) && checkInDate > now;
   };
 
-  // Helper to check if a booking is past
+  // PAST: Completed, cancelled, rejected, checked_out, no_show
   const isPastBooking = (booking: Booking): boolean => {
-    const now = new Date();
-    const checkOutDate = new Date(booking.checkOut);
-    
-    // Past = check-out date has passed OR status is completed, cancelled, rejected, checked_out, or no_show
     const pastStatuses = ["completed", "cancelled", "rejected", "checked_out", "no_show"];
-    return pastStatuses.includes(booking.status) || checkOutDate < now;
+    return pastStatuses.includes(booking.status);
   };
 
   const filteredBookings = sortedBookings?.filter((booking) => {
     if (activeTab === "all") return true;
+    if (activeTab === "pending") return isPendingBooking(booking);
     if (activeTab === "upcoming") return isUpcomingBooking(booking);
     if (activeTab === "ongoing") return isOngoingBooking(booking);
-    if (activeTab === "past") return isPastBooking(booking) && !isOngoingBooking(booking);
+    if (activeTab === "past") return isPastBooking(booking);
     return true;
   });
 
   // Calculate counts for each tab
+  const pendingCount = sortedBookings?.filter(isPendingBooking).length || 0;
   const upcomingCount = sortedBookings?.filter(isUpcomingBooking).length || 0;
   const ongoingCount = sortedBookings?.filter(isOngoingBooking).length || 0;
-  const pastCount = sortedBookings?.filter(b => isPastBooking(b) && !isOngoingBooking(b)).length || 0;
+  const pastCount = sortedBookings?.filter(isPastBooking).length || 0;
 
   const renderBookingCard = (booking: Booking, index: number) => {
     // Highlight the newest booking when success banner is shown
@@ -477,6 +568,86 @@ export default function MyBookings() {
               </div>
             )}
 
+            {/* Payment Information - Always visible */}
+            <div className="flex items-center gap-2 p-3 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg" data-testid={`payment-info-${booking.id}`}>
+              <IndianRupee className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+              <div className="flex-1">
+                <p className="font-medium text-blue-900 dark:text-blue-100 text-sm">Pay at Hotel</p>
+                <p className="text-xs text-blue-700 dark:text-blue-300">
+                  {formatCurrency(booking.totalPrice)} to be paid directly at the property during check-in. No advance payment required.
+                </p>
+              </div>
+            </div>
+
+            {/* Booking Timeline */}
+            {(() => {
+              const steps: { key: TimelineStep; label: string; completed: boolean; active: boolean }[] = [
+                { 
+                  key: "requested", 
+                  label: "Requested", 
+                  completed: true, 
+                  active: booking.status === "pending" 
+                },
+                { 
+                  key: "accepted", 
+                  label: "Accepted", 
+                  completed: ["confirmed", "customer_confirmed", "checked_in", "checked_out", "completed"].includes(booking.status),
+                  active: booking.status === "confirmed"
+                },
+                { 
+                  key: "confirmed", 
+                  label: "Confirmed", 
+                  completed: ["customer_confirmed", "checked_in", "checked_out", "completed"].includes(booking.status),
+                  active: booking.status === "customer_confirmed"
+                },
+                { 
+                  key: "checked_in", 
+                  label: "Checked In", 
+                  completed: ["checked_in", "checked_out", "completed"].includes(booking.status),
+                  active: booking.status === "checked_in"
+                },
+                { 
+                  key: "checked_out", 
+                  label: "Completed", 
+                  completed: ["checked_out", "completed"].includes(booking.status),
+                  active: ["checked_out", "completed"].includes(booking.status)
+                },
+              ];
+              
+              // Don't show timeline for cancelled/rejected/no-show
+              if (["cancelled", "rejected", "no_show"].includes(booking.status)) {
+                return null;
+              }
+              
+              return (
+                <div className="py-2" data-testid={`booking-timeline-${booking.id}`}>
+                  <div className="flex items-center justify-between">
+                    {steps.map((step, idx) => (
+                      <div key={step.key} className="flex items-center flex-1">
+                        <div className="flex flex-col items-center">
+                          <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium ${
+                            step.completed 
+                              ? "bg-green-500 text-white" 
+                              : step.active 
+                                ? "bg-blue-500 text-white ring-2 ring-blue-300" 
+                                : "bg-muted text-muted-foreground"
+                          }`}>
+                            {step.completed ? <CheckCircle className="h-4 w-4" /> : idx + 1}
+                          </div>
+                          <span className={`text-[10px] mt-1 ${step.completed || step.active ? "text-foreground font-medium" : "text-muted-foreground"}`}>
+                            {step.label}
+                          </span>
+                        </div>
+                        {idx < steps.length - 1 && (
+                          <div className={`flex-1 h-0.5 mx-1 ${step.completed ? "bg-green-500" : "bg-muted"}`} />
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
+
             {booking.status === "pending" && (
               <div className="space-y-3">
                 {/* Booking Request Status Banner */}
@@ -487,51 +658,33 @@ export default function MyBookings() {
                     </div>
                     <div className="flex-1">
                       <h4 className="font-semibold text-amber-900 dark:text-amber-100 text-base">
-                        Booking Request Sent
+                        Waiting for Hotel Response
                       </h4>
                       <p className="text-amber-700 dark:text-amber-300 text-sm mt-1">
-                        Your booking request has been sent to the property owner. The property owner typically responds within 15–30 minutes.
+                        The hotel is reviewing your request. They typically respond within 15–30 minutes.
                       </p>
                       <p className="text-amber-600 dark:text-amber-400 text-xs mt-1">
-                        You'll be notified instantly once the owner responds.
+                        You'll receive a notification once they respond.
                       </p>
                     </div>
                   </div>
                 </div>
                 
-                {/* Next Steps Info */}
+                {/* What happens next */}
                 <div className="p-3 bg-muted/50 rounded-lg text-sm">
                   <p className="font-medium text-foreground mb-2 flex items-center gap-2">
                     <AlertCircle className="h-4 w-4 text-muted-foreground" />
-                    Next step: Wait for owner confirmation or message them for quick updates
+                    What happens next?
                   </p>
                   <ul className="text-muted-foreground space-y-1 text-xs pl-6">
-                    <li>• The hotel will review and confirm your booking</li>
-                    <li>• Once confirmed, you'll receive check-in details</li>
-                    <li>• Payment is settled directly at the hotel</li>
+                    <li>• The hotel will accept or decline your request</li>
+                    <li>• If accepted, you'll need to confirm to secure your room</li>
+                    <li>• Contact options will be available after confirmation</li>
                   </ul>
                 </div>
 
-                {/* Action Buttons */}
+                {/* Action Buttons - NO contact options for pending bookings */}
                 <div className="flex items-center gap-3 flex-wrap">
-                  <Link href="/messages">
-                    <Button size="sm" className="gap-2" data-testid={`btn-chat-owner-${booking.id}`}>
-                      <MessageSquare className="h-4 w-4" />
-                      Chat with Owner
-                    </Button>
-                  </Link>
-                  {booking.ownerContact?.phone && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="gap-2"
-                      onClick={() => window.location.href = `tel:${booking.ownerContact!.phone}`}
-                      data-testid={`btn-call-owner-${booking.id}`}
-                    >
-                      <Phone className="h-4 w-4" />
-                      Call Owner
-                    </Button>
-                  )}
                   {booking.property && (
                     <Link href={`/properties/${booking.property.id}`}>
                       <Button size="sm" variant="outline" data-testid={`btn-view-property-pending-${booking.id}`}>
@@ -547,7 +700,7 @@ export default function MyBookings() {
                     data-testid={`btn-cancel-pending-${booking.id}`}
                   >
                     <XCircle className="h-4 w-4" />
-                    Cancel Booking
+                    Withdraw Request
                   </Button>
                 </div>
               </div>
@@ -555,67 +708,60 @@ export default function MyBookings() {
 
             {booking.status === "rejected" && (
               <div className="space-y-4">
-                <div className="text-sm p-3 bg-destructive/10 border border-destructive/20 rounded-md">
-                  <p className="text-destructive font-medium">Booking was declined by the owner</p>
-                  {booking.ownerResponseMessage && (
-                    <p className="text-muted-foreground mt-1">{booking.ownerResponseMessage}</p>
-                  )}
+                <div className="text-sm p-4 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-lg">
+                  <div className="flex items-start gap-3">
+                    <XCircle className="h-5 w-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p className="font-medium text-red-800 dark:text-red-200">Request Declined</p>
+                      <p className="text-red-700 dark:text-red-300 text-sm mt-1">
+                        {booking.ownerResponseMessage || "The hotel was unable to accommodate this booking request."}
+                      </p>
+                    </div>
+                  </div>
                 </div>
                 <div className="flex items-center gap-3 flex-wrap">
-                  <Link href="/messages">
-                    <Button size="sm" variant="outline" className="gap-2" data-testid={`btn-chat-owner-rejected-${booking.id}`}>
-                      <MessageSquare className="h-4 w-4" />
-                      Contact Owner
+                  {booking.property && (
+                    <Link href={`/properties/${booking.property.id}`}>
+                      <Button size="sm" variant="outline" data-testid={`btn-view-property-rejected-${booking.id}`}>
+                        View Property
+                      </Button>
+                    </Link>
+                  )}
+                  <Link href="/">
+                    <Button size="sm" data-testid={`btn-find-alternative-${booking.id}`}>
+                      Find Alternative
                     </Button>
                   </Link>
-                  {booking.ownerContact?.phone && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="gap-2"
-                      onClick={() => window.location.href = `tel:${booking.ownerContact!.phone}`}
-                      data-testid={`btn-call-owner-rejected-${booking.id}`}
-                    >
-                      <Phone className="h-4 w-4" />
-                      Call Owner
-                    </Button>
-                  )}
                 </div>
               </div>
             )}
 
             {booking.status === "no_show" && (
               <div className="space-y-4">
-                <div className="text-sm p-3 bg-destructive/10 border border-destructive/20 rounded-md">
-                  <div className="flex items-start gap-2">
-                    <AlertTriangle className="h-4 w-4 text-destructive flex-shrink-0 mt-0.5" />
+                <div className="text-sm p-4 bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800 rounded-lg">
+                  <div className="flex items-start gap-3">
+                    <AlertTriangle className="h-5 w-5 text-orange-600 dark:text-orange-400 flex-shrink-0 mt-0.5" />
                     <div>
-                      <p className="text-destructive font-medium">Marked as No-Show</p>
-                      <p className="text-muted-foreground mt-1">
-                        This booking was marked as a no-show because check-in did not occur on the scheduled date ({format(new Date(booking.checkIn), "dd MMM yyyy")}).
+                      <p className="font-medium text-orange-800 dark:text-orange-200">Marked as No-Show</p>
+                      <p className="text-orange-700 dark:text-orange-300 text-sm mt-1">
+                        Check-in did not occur on {format(new Date(booking.checkIn), "dd MMM yyyy")}. If this is an error, please contact the property.
                       </p>
                     </div>
                   </div>
                 </div>
                 <div className="flex items-center gap-3 flex-wrap">
-                  <Link href="/messages">
-                    <Button size="sm" variant="outline" className="gap-2" data-testid={`btn-chat-owner-noshow-${booking.id}`}>
-                      <MessageSquare className="h-4 w-4" />
-                      Contact Owner
+                  {booking.property && (
+                    <Link href={`/properties/${booking.property.id}`}>
+                      <Button size="sm" variant="outline" data-testid={`btn-view-property-noshow-${booking.id}`}>
+                        View Property
+                      </Button>
+                    </Link>
+                  )}
+                  <Link href="/">
+                    <Button size="sm" data-testid={`btn-book-again-noshow-${booking.id}`}>
+                      Book Again
                     </Button>
                   </Link>
-                  {booking.ownerContact?.phone && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="gap-2"
-                      onClick={() => window.location.href = `tel:${booking.ownerContact!.phone}`}
-                      data-testid={`btn-call-owner-noshow-${booking.id}`}
-                    >
-                      <Phone className="h-4 w-4" />
-                      Call Owner
-                    </Button>
-                  )}
                 </div>
               </div>
             )}
@@ -658,6 +804,35 @@ export default function MyBookings() {
                           </div>
                         </div>
                       </div>
+
+                      {/* Inline Cancellation Policy Info for confirmed status */}
+                      {(() => {
+                        const checkInDate = new Date(booking.checkIn);
+                        const freeCancelDeadline = getCancellationDeadline(checkInDate, 24);
+                        const canFreeCancel = canFreeCancellation(checkInDate, 24);
+                        
+                        return (
+                          <div className={`mt-3 p-3 rounded-lg text-sm ${
+                            canFreeCancel 
+                              ? "bg-green-100/50 dark:bg-green-900/30" 
+                              : "bg-amber-100/50 dark:bg-amber-900/30"
+                          }`} data-testid={`cancellation-policy-confirmed-${booking.id}`}>
+                            <div className="flex items-center gap-2">
+                              {canFreeCancel ? (
+                                <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400" />
+                              ) : (
+                                <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                              )}
+                              <span className={canFreeCancel ? "text-green-800 dark:text-green-200" : "text-amber-800 dark:text-amber-200"}>
+                                {canFreeCancel 
+                                  ? `Free cancellation until ${format(freeCancelDeadline, "dd MMM, h:mm a")}`
+                                  : "Cancellation charges may apply"
+                                }
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      })()}
                       
                       {/* Confirmation Action Buttons - Fixed at bottom, always visible */}
                       <div className="mt-4 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
@@ -726,11 +901,52 @@ export default function MyBookings() {
                         Booking Confirmed!
                       </h4>
                       <p className="text-green-700 dark:text-green-300 text-sm mt-1">
-                        Your room is secured. The hotel has been notified. You'll receive check-in details closer to your arrival date.
+                        Your room is secured. Show this booking at check-in on {format(new Date(booking.checkIn), "dd MMM yyyy")}.
                       </p>
                     </div>
                   </div>
                 </div>
+
+                {/* Inline Cancellation Policy Info */}
+                {(() => {
+                  const checkInDate = new Date(booking.checkIn);
+                  const freeCancelDeadline = getCancellationDeadline(checkInDate, 24);
+                  const canFreeCancel = canFreeCancellation(checkInDate, 24);
+                  const now = new Date();
+                  
+                  return (
+                    <div className={`p-3 rounded-lg border text-sm ${
+                      canFreeCancel 
+                        ? "bg-green-50 dark:bg-green-950/30 border-green-200 dark:border-green-800" 
+                        : "bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800"
+                    }`} data-testid={`cancellation-policy-${booking.id}`}>
+                      <div className="flex items-start gap-2">
+                        {canFreeCancel ? (
+                          <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400 flex-shrink-0 mt-0.5" />
+                        ) : (
+                          <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+                        )}
+                        <div>
+                          {canFreeCancel ? (
+                            <>
+                              <p className="font-medium text-green-800 dark:text-green-200">Free cancellation available</p>
+                              <p className="text-green-700 dark:text-green-300 text-xs mt-0.5">
+                                Cancel for free until {format(freeCancelDeadline, "dd MMM yyyy, h:mm a")}
+                              </p>
+                            </>
+                          ) : (
+                            <>
+                              <p className="font-medium text-amber-800 dark:text-amber-200">Cancellation charges may apply</p>
+                              <p className="text-amber-700 dark:text-amber-300 text-xs mt-0.5">
+                                Free cancellation period has ended. Refund depends on property policy.
+                              </p>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
                 
                 {/* Action Buttons for Customer Confirmed - Chat and Call enabled */}
                 <div className="flex items-center gap-3 flex-wrap">
@@ -770,11 +986,6 @@ export default function MyBookings() {
                     Cancel Booking
                   </Button>
                 </div>
-                
-                {/* Cancellation Policy Info */}
-                <p className="text-xs text-muted-foreground">
-                  Cancellation is subject to the property's cancellation policy. Please review terms before cancelling.
-                </p>
               </div>
             )}
 
@@ -1049,13 +1260,16 @@ export default function MyBookings() {
         )}
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-4" data-testid="booking-tabs">
+          <TabsList className="grid w-full grid-cols-5" data-testid="booking-tabs">
             <TabsTrigger value="all" data-testid="tab-all">All</TabsTrigger>
+            <TabsTrigger value="pending" data-testid="tab-pending">
+              Pending {pendingCount > 0 && <Badge variant="outline" className="ml-1 h-5 px-1.5 text-xs bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300 border-amber-300">{pendingCount}</Badge>}
+            </TabsTrigger>
             <TabsTrigger value="upcoming" data-testid="tab-upcoming">
               Upcoming {upcomingCount > 0 && <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">{upcomingCount}</Badge>}
             </TabsTrigger>
             <TabsTrigger value="ongoing" data-testid="tab-ongoing">
-              Ongoing {ongoingCount > 0 && <Badge variant="default" className="ml-1 h-5 px-1.5 text-xs">{ongoingCount}</Badge>}
+              Ongoing {ongoingCount > 0 && <Badge variant="default" className="ml-1 h-5 px-1.5 text-xs bg-green-600">{ongoingCount}</Badge>}
             </TabsTrigger>
             <TabsTrigger value="past" data-testid="tab-past">Past</TabsTrigger>
           </TabsList>
@@ -1073,13 +1287,77 @@ export default function MyBookings() {
             ) : (
               <Card>
                 <CardContent className="flex flex-col items-center justify-center py-12">
-                  <CalendarDays className="h-12 w-12 text-muted-foreground mb-4" />
-                  <p className="text-muted-foreground mb-4">No bookings found</p>
-                  <Link href="/">
-                    <Button data-testid="btn-browse-properties">
-                      Browse Properties
-                    </Button>
-                  </Link>
+                  {/* Tab-specific empty states */}
+                  {activeTab === "all" && (
+                    <>
+                      <CalendarDays className="h-12 w-12 text-muted-foreground mb-4" />
+                      <h3 className="text-lg font-semibold mb-2">No bookings yet</h3>
+                      <p className="text-muted-foreground text-center mb-4 max-w-sm">
+                        Start exploring amazing properties and book your perfect stay.
+                      </p>
+                      <Link href="/">
+                        <Button data-testid="btn-browse-properties">
+                          Browse Properties
+                        </Button>
+                      </Link>
+                    </>
+                  )}
+                  {activeTab === "pending" && (
+                    <>
+                      <Clock className="h-12 w-12 text-amber-500 mb-4" />
+                      <h3 className="text-lg font-semibold mb-2">No pending requests</h3>
+                      <p className="text-muted-foreground text-center mb-4 max-w-sm">
+                        You don't have any booking requests waiting for hotel confirmation.
+                      </p>
+                      <Link href="/">
+                        <Button data-testid="btn-browse-properties-pending">
+                          Find a Place to Stay
+                        </Button>
+                      </Link>
+                    </>
+                  )}
+                  {activeTab === "upcoming" && (
+                    <>
+                      <CalendarDays className="h-12 w-12 text-blue-500 mb-4" />
+                      <h3 className="text-lg font-semibold mb-2">No upcoming stays</h3>
+                      <p className="text-muted-foreground text-center mb-4 max-w-sm">
+                        You don't have any confirmed bookings coming up. Time to plan your next trip!
+                      </p>
+                      <Link href="/">
+                        <Button data-testid="btn-browse-properties-upcoming">
+                          Plan Your Next Trip
+                        </Button>
+                      </Link>
+                    </>
+                  )}
+                  {activeTab === "ongoing" && (
+                    <>
+                      <Home className="h-12 w-12 text-green-500 mb-4" />
+                      <h3 className="text-lg font-semibold mb-2">Not currently staying anywhere</h3>
+                      <p className="text-muted-foreground text-center mb-4 max-w-sm">
+                        When you check in to a property, it will appear here for easy access.
+                      </p>
+                      {upcomingCount > 0 && (
+                        <Button variant="outline" onClick={() => setActiveTab("upcoming")} data-testid="btn-view-upcoming">
+                          View Upcoming Stays ({upcomingCount})
+                        </Button>
+                      )}
+                    </>
+                  )}
+                  {activeTab === "past" && (
+                    <>
+                      <CheckCircle className="h-12 w-12 text-slate-400 mb-4" />
+                      <h3 className="text-lg font-semibold mb-2">No past bookings</h3>
+                      <p className="text-muted-foreground text-center mb-4 max-w-sm">
+                        Your completed stays will appear here. Start your journey with ZECOHO!
+                      </p>
+                      <Link href="/">
+                        <Button data-testid="btn-browse-properties-past">
+                          Explore Destinations
+                        </Button>
+                      </Link>
+                    </>
+                  )}
                 </CardContent>
               </Card>
             )}
