@@ -364,6 +364,7 @@ export const properties = pgTable("properties", {
   cancellationPolicyType: cancellationPolicyTypeEnum("cancellation_policy_type").default("flexible"),
   freeCancellationHours: integer("free_cancellation_hours").default(24), // Hours before check-in for free cancellation
   partialRefundPercent: integer("partial_refund_percent").default(50), // Refund percentage for moderate policy
+  cancellationPolicyConfigured: boolean("cancellation_policy_configured").notNull().default(false), // True when owner explicitly saves policy
   // Guest policies
   localIdAllowed: boolean("local_id_allowed").notNull().default(true),
   hourlyBookingAllowed: boolean("hourly_booking_allowed").notNull().default(false),

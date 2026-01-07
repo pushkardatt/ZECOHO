@@ -35,6 +35,7 @@ import {
   ChevronUp,
   MapPin,
   RefreshCw,
+  FileX,
 } from "lucide-react";
 import { PropertyLocationPicker, type AddressData } from "@/components/PropertyLocationPicker";
 import { PropertyMap } from "@/components/PropertyMap";
@@ -119,7 +120,7 @@ export default function OwnerPropertyManage() {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid grid-cols-4 w-full max-w-2xl">
+          <TabsList className="grid grid-cols-5 w-full max-w-3xl">
             <TabsTrigger value="rooms" data-testid="tab-rooms">
               <Bed className="h-4 w-4 mr-2" />
               Rooms
@@ -131,6 +132,10 @@ export default function OwnerPropertyManage() {
             <TabsTrigger value="location" data-testid="tab-location">
               <MapPin className="h-4 w-4 mr-2" />
               Location
+            </TabsTrigger>
+            <TabsTrigger value="cancellation" data-testid="tab-cancellation">
+              <FileX className="h-4 w-4 mr-2" />
+              Cancellation
             </TabsTrigger>
             <TabsTrigger value="status" data-testid="tab-status">
               <Settings className="h-4 w-4 mr-2" />
@@ -157,6 +162,10 @@ export default function OwnerPropertyManage() {
 
           <TabsContent value="location" className="mt-6">
             <LocationSection property={property} />
+          </TabsContent>
+
+          <TabsContent value="cancellation" className="mt-6">
+            <CancellationSection property={property} />
           </TabsContent>
 
           <TabsContent value="status" className="mt-6">
@@ -793,9 +802,14 @@ function StatusSection({ property }: { property: Property }) {
                       <p className="text-sm text-muted-foreground mb-3">
                         Make your property visible again and start accepting new bookings.
                       </p>
+                      {!property.cancellationPolicyConfigured && (
+                        <p className="text-sm text-amber-600 mb-3">
+                          You must configure your cancellation policy in the Cancellation tab before resuming.
+                        </p>
+                      )}
                       <Button 
                         onClick={() => updateStatusMutation.mutate("resume")}
-                        disabled={updateStatusMutation.isPending}
+                        disabled={updateStatusMutation.isPending || !property.cancellationPolicyConfigured}
                         data-testid="resume-property"
                       >
                         Resume Property
@@ -986,6 +1000,33 @@ function StatusSection({ property }: { property: Property }) {
       </Dialog>
       
       <GuestPoliciesCard property={property} />
+    </div>
+  );
+}
+
+function CancellationSection({ property }: { property: Property }) {
+  // Check if cancellation policy has been explicitly configured by the owner
+  const isPolicyConfigured = property.cancellationPolicyConfigured === true;
+
+  return (
+    <div className="space-y-6">
+      {!isPolicyConfigured && (
+        <Card className="border-amber-500 bg-amber-50 dark:bg-amber-950/20">
+          <CardContent className="pt-6">
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="h-5 w-5 text-amber-600 mt-0.5" />
+              <div>
+                <h4 className="font-medium text-amber-800 dark:text-amber-200">Cancellation Policy Required</h4>
+                <p className="text-sm text-amber-700 dark:text-amber-300 mt-1">
+                  You must configure and save your cancellation policy before your property can go live. 
+                  Review the settings below and click "Save Cancellation Policy" to continue.
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+      
       <CancellationPolicyCard property={property} />
     </div>
   );
@@ -1008,6 +1049,7 @@ function CancellationPolicyCard({ property }: { property: Property }) {
       cancellationPolicyType: string;
       freeCancellationHours: number;
       partialRefundPercent: number;
+      cancellationPolicyConfigured: boolean;
     }) => {
       return apiRequest("PATCH", `/api/properties/${property.id}`, data);
     },
@@ -1054,6 +1096,7 @@ function CancellationPolicyCard({ property }: { property: Property }) {
       cancellationPolicyType: policyType,
       freeCancellationHours: hours,
       partialRefundPercent: percent,
+      cancellationPolicyConfigured: true,
     });
   };
 
