@@ -113,6 +113,35 @@ const canFreeCancellation = (checkInDate: Date, freeCancellationHours: number = 
   return new Date() < deadline;
 };
 
+// Statuses that allow contact visibility
+const CONTACT_VISIBLE_STATUSES = ["confirmed", "customer_confirmed", "checked_in", "completed"] as const;
+
+// Helper to check if contact should be visible for a booking status
+const isContactVisible = (status: Booking["status"]): boolean => {
+  return (CONTACT_VISIBLE_STATUSES as readonly string[]).includes(status);
+};
+
+// Helper to format phone for WhatsApp (remove spaces, add country code if needed)
+const formatPhoneForWhatsApp = (phone: string): string => {
+  let cleaned = phone.replace(/[\s\-\(\)]/g, "");
+  if (cleaned.startsWith("0")) {
+    cleaned = "91" + cleaned.substring(1);
+  } else if (!cleaned.startsWith("+") && !cleaned.startsWith("91")) {
+    cleaned = "91" + cleaned;
+  }
+  return cleaned.replace("+", "");
+};
+
+// Helper to generate WhatsApp URL with prefilled message
+const getWhatsAppUrl = (phone: string, bookingCode: string | null | undefined, checkIn: string): string => {
+  const formattedPhone = formatPhoneForWhatsApp(phone);
+  const checkInDate = format(new Date(checkIn), "dd MMM yyyy");
+  const message = encodeURIComponent(
+    `Hi, this is regarding my ZECOHO booking ${bookingCode || ""} for ${checkInDate}.`
+  );
+  return `https://wa.me/${formattedPhone}?text=${message}`;
+};
+
 export default function MyBookings() {
   const [activeTab, setActiveTab] = useState("all");
   const [location, setLocation] = useLocation();
@@ -291,6 +320,61 @@ export default function MyBookings() {
         bookingId: cancellingBooking.id, 
         reason: cancellationReason || "Cancelled by guest" 
       });
+    }
+  };
+
+  // Log contact interaction (call/whatsapp) for audit
+  const logContactInteraction = async (
+    bookingId: string,
+    actionType: "call" | "whatsapp",
+    targetPhone?: string,
+    propertyId?: string,
+    propertyName?: string
+  ) => {
+    try {
+      await apiRequest("POST", "/api/contact/log", {
+        bookingId,
+        actorRole: "guest",
+        actionType,
+        targetPhoneLast4: targetPhone?.slice(-4) || null,
+        metadata: {
+          page: "my-bookings",
+          propertyId,
+          propertyName,
+        },
+      });
+    } catch (error) {
+      // Silent fail - don't block the user action
+      console.error("Failed to log contact interaction:", error);
+    }
+  };
+
+  // Handle call button click with logging
+  const handleCallClick = (booking: Booking) => {
+    if (booking.ownerContact?.phone) {
+      logContactInteraction(
+        booking.id,
+        "call",
+        booking.ownerContact.phone,
+        booking.property?.id,
+        booking.property?.title
+      );
+      window.location.href = `tel:${booking.ownerContact.phone}`;
+    }
+  };
+
+  // Handle WhatsApp button click with logging
+  const handleWhatsAppClick = (booking: Booking) => {
+    if (booking.ownerContact?.phone) {
+      logContactInteraction(
+        booking.id,
+        "whatsapp",
+        booking.ownerContact.phone,
+        booking.property?.id,
+        booking.property?.title
+      );
+      const url = getWhatsAppUrl(booking.ownerContact.phone, booking.bookingCode, booking.checkIn);
+      window.open(url, "_blank");
     }
   };
 
@@ -703,6 +787,11 @@ export default function MyBookings() {
                     Withdraw Request
                   </Button>
                 </div>
+                
+                {/* Contact availability info */}
+                <p className="text-xs text-muted-foreground mt-3">
+                  Hotel contact details will be available after your booking is confirmed.
+                </p>
               </div>
             )}
 
@@ -860,7 +949,7 @@ export default function MyBookings() {
                       
                       {/* Contact Options */}
                       <div className="mt-3 pt-3 border-t border-green-200 dark:border-green-800">
-                        <p className="text-xs text-muted-foreground mb-2">Have questions?</p>
+                        <p className="text-xs text-muted-foreground mb-2">Contact Hotel</p>
                         <div className="flex items-center gap-2 flex-wrap">
                           <Link href="/messages">
                             <Button size="sm" variant="outline" className="gap-2" data-testid={`btn-chat-hotel-confirmed-${booking.id}`}>
@@ -869,16 +958,30 @@ export default function MyBookings() {
                             </Button>
                           </Link>
                           {booking.ownerContact?.phone && (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="gap-2"
-                              onClick={() => window.location.href = `tel:${booking.ownerContact!.phone}`}
-                              data-testid={`btn-call-hotel-confirmed-${booking.id}`}
-                            >
-                              <Phone className="h-4 w-4" />
-                              Call
-                            </Button>
+                            <>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="gap-2"
+                                onClick={() => handleCallClick(booking)}
+                                data-testid={`btn-call-hotel-confirmed-${booking.id}`}
+                              >
+                                <Phone className="h-4 w-4" />
+                                Call
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="gap-2 text-green-600 border-green-200 hover:bg-green-50 dark:border-green-700 dark:hover:bg-green-950/30"
+                                onClick={() => handleWhatsAppClick(booking)}
+                                data-testid={`btn-whatsapp-hotel-confirmed-${booking.id}`}
+                              >
+                                <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
+                                  <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+                                </svg>
+                                WhatsApp
+                              </Button>
+                            </>
                           )}
                         </div>
                       </div>
@@ -948,7 +1051,7 @@ export default function MyBookings() {
                   );
                 })()}
                 
-                {/* Action Buttons for Customer Confirmed - Chat and Call enabled */}
+                {/* Action Buttons for Customer Confirmed - Chat, Call, WhatsApp enabled */}
                 <div className="flex items-center gap-3 flex-wrap">
                   <Link href="/messages">
                     <Button size="sm" className="gap-2" data-testid={`btn-message-hotel-${booking.id}`}>
@@ -957,16 +1060,30 @@ export default function MyBookings() {
                     </Button>
                   </Link>
                   {booking.ownerContact?.phone && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="gap-2"
-                      onClick={() => window.location.href = `tel:${booking.ownerContact!.phone}`}
-                      data-testid={`btn-call-hotel-${booking.id}`}
-                    >
-                      <Phone className="h-4 w-4" />
-                      Call Hotel
-                    </Button>
+                    <>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="gap-2"
+                        onClick={() => handleCallClick(booking)}
+                        data-testid={`btn-call-hotel-${booking.id}`}
+                      >
+                        <Phone className="h-4 w-4" />
+                        Call Hotel
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="gap-2 text-green-600 border-green-200 hover:bg-green-50 dark:border-green-700 dark:hover:bg-green-950/30"
+                        onClick={() => handleWhatsAppClick(booking)}
+                        data-testid={`btn-whatsapp-hotel-${booking.id}`}
+                      >
+                        <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
+                          <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+                        </svg>
+                        WhatsApp
+                      </Button>
+                    </>
                   )}
                   {booking.property && (
                     <Link href={`/properties/${booking.property.id}`}>
@@ -1009,16 +1126,30 @@ export default function MyBookings() {
                     </Button>
                   </Link>
                   {booking.ownerContact?.phone && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="gap-2"
-                      onClick={() => window.location.href = `tel:${booking.ownerContact!.phone}`}
-                      data-testid={`btn-call-hotel-checked-in-${booking.id}`}
-                    >
-                      <Phone className="h-4 w-4" />
-                      Call Hotel
-                    </Button>
+                    <>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="gap-2"
+                        onClick={() => handleCallClick(booking)}
+                        data-testid={`btn-call-hotel-checked-in-${booking.id}`}
+                      >
+                        <Phone className="h-4 w-4" />
+                        Call Hotel
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="gap-2 text-green-600 border-green-200 hover:bg-green-50 dark:border-green-700 dark:hover:bg-green-950/30"
+                        onClick={() => handleWhatsAppClick(booking)}
+                        data-testid={`btn-whatsapp-hotel-checked-in-${booking.id}`}
+                      >
+                        <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
+                          <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+                        </svg>
+                        WhatsApp
+                      </Button>
+                    </>
                   )}
                 </div>
               </div>
@@ -1075,6 +1206,33 @@ export default function MyBookings() {
                       </Button>
                     </Link>
                   )}
+                  {/* Only show contact for completed status, not checked_out */}
+                  {booking.status === "completed" && booking.ownerContact?.phone && (
+                    <>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="gap-2"
+                        onClick={() => handleCallClick(booking)}
+                        data-testid={`btn-call-hotel-completed-${booking.id}`}
+                      >
+                        <Phone className="h-4 w-4" />
+                        Call
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="gap-2 text-green-600 border-green-200 hover:bg-green-50 dark:border-green-700 dark:hover:bg-green-950/30"
+                        onClick={() => handleWhatsAppClick(booking)}
+                        data-testid={`btn-whatsapp-hotel-completed-${booking.id}`}
+                      >
+                        <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
+                          <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+                        </svg>
+                        WhatsApp
+                      </Button>
+                    </>
+                  )}
                 </div>
               </div>
             )}
@@ -1091,33 +1249,28 @@ export default function MyBookings() {
               </div>
             )}
 
-            {/* Only show generic action buttons for statuses that don't have their own (currently only cancelled) */}
+            {/* Cancelled bookings - no contact options, just view property and find alternative */}
             {booking.status === "cancelled" && (
-              <div className="flex items-center gap-2 flex-wrap">
-                {booking.property && (
-                  <Link href={`/properties/${booking.property.id}`}>
-                    <Button size="sm" variant="outline" data-testid={`view-property-${booking.id}`}>
-                      View Property
+              <div className="space-y-3">
+                <div className="text-sm p-3 bg-gray-50 dark:bg-gray-900/30 border border-gray-200 dark:border-gray-800 rounded-md">
+                  <p className="text-muted-foreground">
+                    This booking has been cancelled. You can book this property again or find alternatives.
+                  </p>
+                </div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  {booking.property && (
+                    <Link href={`/properties/${booking.property.id}`}>
+                      <Button size="sm" variant="outline" data-testid={`view-property-${booking.id}`}>
+                        View Property
+                      </Button>
+                    </Link>
+                  )}
+                  <Link href="/">
+                    <Button size="sm" data-testid={`btn-find-alternative-cancelled-${booking.id}`}>
+                      Find Alternative
                     </Button>
                   </Link>
-                )}
-                <Link href="/messages">
-                  <Button size="sm" variant="ghost" data-testid={`message-owner-${booking.id}`}>
-                    <MessageSquare className="h-4 w-4 mr-1" />
-                    Message Owner
-                  </Button>
-                </Link>
-                {booking.ownerContact?.phone && (
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => window.location.href = `tel:${booking.ownerContact!.phone}`}
-                    data-testid={`btn-call-owner-generic-${booking.id}`}
-                  >
-                    <Phone className="h-4 w-4 mr-1" />
-                    Call Owner
-                  </Button>
-                )}
+                </div>
               </div>
             )}
           </CardContent>

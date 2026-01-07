@@ -5577,7 +5577,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const isGuest = booking.guestId === userId;
-      const isOwner = booking.property?.ownerId === userId || (actorRole === "owner" && userHasRole(user, "owner"));
+      
+      // Get property to check ownership
+      const property = booking.propertyId ? await storage.getProperty(booking.propertyId) : null;
+      const isOwner = (property?.ownerId === userId) || (actorRole === "owner" && userHasRole(user, "owner"));
       
       if (!isGuest && !isOwner) {
         return res.status(403).json({ message: "Not authorized to log contact for this booking" });
