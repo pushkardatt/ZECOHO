@@ -577,6 +577,37 @@ export const reviews = pgTable("reviews", {
   index("idx_property_rating").on(table.propertyId, table.rating),
 ]);
 
+// Contact interaction actor role enum
+export const contactActorRoleEnum = pgEnum("contact_actor_role", ["guest", "owner"]);
+
+// Contact interaction target role enum
+export const contactTargetRoleEnum = pgEnum("contact_target_role", ["guest", "owner"]);
+
+// Contact interaction action type enum
+export const contactActionTypeEnum = pgEnum("contact_action_type", ["call", "whatsapp"]);
+
+// Contact Interactions table - for logging call/WhatsApp clicks for audit and monetization
+export const contactInteractions = pgTable("contact_interactions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  bookingId: varchar("booking_id").notNull().references(() => bookings.id, { onDelete: "cascade" }),
+  actorUserId: varchar("actor_user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  actorRole: contactActorRoleEnum("actor_role").notNull(),
+  targetRole: contactTargetRoleEnum("target_role").notNull(),
+  actionType: contactActionTypeEnum("action_type").notNull(),
+  targetPhoneLast4: varchar("target_phone_last4", { length: 4 }),
+  metadata: jsonb("metadata").$type<{
+    userAgent?: string;
+    page?: string;
+    propertyId?: string;
+    propertyName?: string;
+  }>(),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("idx_contact_booking").on(table.bookingId),
+  index("idx_contact_actor").on(table.actorUserId),
+  index("idx_contact_created").on(table.createdAt),
+]);
+
 // Destinations table - Best places to visit in India
 export const destinations = pgTable("destinations", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -902,6 +933,9 @@ export type InsertKycApplication = typeof kycApplications.$inferInsert;
 export type PropertyDeactivationRequest = typeof propertyDeactivationRequests.$inferSelect;
 export type InsertPropertyDeactivationRequest = typeof propertyDeactivationRequests.$inferInsert;
 
+export type ContactInteraction = typeof contactInteractions.$inferSelect;
+export type InsertContactInteraction = typeof contactInteractions.$inferInsert;
+
 // Insert schemas
 export const insertPropertySchema = createInsertSchema(properties).omit({
   id: true,
@@ -1029,6 +1063,13 @@ export const insertDeactivationRequestSchema = createInsertSchema(propertyDeacti
 });
 
 export type DeactivationRequestFormData = z.infer<typeof insertDeactivationRequestSchema>;
+
+export const insertContactInteractionSchema = createInsertSchema(contactInteractions).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertContactInteractionData = z.infer<typeof insertContactInteractionSchema>;
 
 // KYC update schema - validates owner registration flow
 export const updateKYCSchema = z.object({

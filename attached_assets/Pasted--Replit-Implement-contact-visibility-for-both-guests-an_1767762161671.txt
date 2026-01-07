@@ -1,0 +1,66 @@
+@Replit
+
+Implement contact visibility for both guests and owners AFTER login and appropriate booking state. Also log every Call/WhatsApp click event in the database.
+
+========================
+1) CONTACT VISIBILITY RULES
+========================
+
+A) Guest side (My Bookings + Booking Details):
+- Show hotel contact (phone + WhatsApp) ONLY after booking reaches:
+  status IN ('confirmed', 'guest_confirmed', 'checked_in', 'completed')
+- For 'pending' or 'requested' show: “Contact details will be available after confirmation.”
+
+B) Owner side (Owner Bookings + Booking Details):
+- Show guest contact (phone + WhatsApp) ONLY after booking reaches:
+  status IN ('confirmed', 'guest_confirmed', 'checked_in', 'completed')
+- Hide guest contact for 'pending' (until owner accepts) to reduce spam.
+- If your flow uses “owner accepted but guest not confirmed”, still show contact ONLY when booking is confirmed/guest_confirmed.
+
+IMPORTANT:
+- Require user to be logged in to see any contact buttons.
+- Do not expose contact in public pages.
+
+========================
+2) UI IMPLEMENTATION
+========================
+
+A) Add a “Contact” section on booking cards or booking detail page:
+Guest view:
+- Call Hotel (button)
+- WhatsApp Hotel (button)
+
+Owner view:
+- Call Guest (button)
+- WhatsApp Guest (button)
+
+B) Buttons behavior:
+- Call button uses tel: link
+- WhatsApp button uses wa.me link with prefilled text including booking id
+
+Example WhatsApp message (guest -> hotel):
+“Hi, this is regarding my ZECOHO booking <BOOKING_ID> for <CHECKIN_DATE>.”
+
+Example WhatsApp message (owner -> guest):
+“Hi, this is <HOTEL_NAME>. Regarding your ZECOHO booking <BOOKING_ID>.”
+
+========================
+3) DATABASE LOGGING (AUDIT + FUTURE MONETIZATION)
+========================
+
+Create a table: contact_interactions
+
+Fields:
+- id (uuid)
+- booking_id (uuid, indexed)
+- actor_user_id (uuid, indexed)
+- actor_role (text: 'guest' | 'owner')
+- target_role (text: 'owner' | 'guest')
+- action_type (text: 'call' | 'whatsapp')
+- target_phone_last4 (text nullable)  // store last4 only for privacy
+- created_at (timestamp default now())
+- metadata (jsonb nullable)  // e.g. user_agent, page, property_id
+
+When user clicks Call/WhatsApp:
+- POST to /api/contact/log with booking_id, actor_role, action_type
+- Backend derives actor_user_id from session

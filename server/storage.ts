@@ -23,6 +23,7 @@ import {
   ownerAgreements,
   aboutUs,
   contactSettings,
+  contactInteractions,
   type User,
   type UpsertUser,
   type Property,
@@ -67,6 +68,8 @@ import {
   type InsertAboutUs,
   type ContactSettings,
   type InsertContactSettings,
+  type ContactInteraction,
+  type InsertContactInteraction,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, gte, lte, lt, gt, inArray, sql, or, not, desc, count } from "drizzle-orm";
@@ -314,6 +317,9 @@ export interface IStorage {
   // Contact Settings operations
   getContactSettings(): Promise<ContactSettings | undefined>;
   upsertContactSettings(settings: Partial<InsertContactSettings>): Promise<ContactSettings>;
+
+  // Contact Interaction logging
+  logContactInteraction(data: InsertContactInteraction): Promise<ContactInteraction>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -2188,6 +2194,15 @@ export class DatabaseStorage implements IStorage {
         .returning();
       return created;
     }
+  }
+
+  // Contact Interaction logging
+  async logContactInteraction(data: InsertContactInteraction): Promise<ContactInteraction> {
+    const [interaction] = await db
+      .insert(contactInteractions)
+      .values(data)
+      .returning();
+    return interaction;
   }
 }
 

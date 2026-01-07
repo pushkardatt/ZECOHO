@@ -5543,6 +5543,71 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ===============================
+  // CONTACT INTERACTION LOGGING
+  // ===============================
+
+  // Log contact interaction (call/whatsapp) for audit and monetization
+  app.post("/api/contact/log", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { bookingId, actorRole, actionType, targetPhoneLast4, metadata } = req.body;
+      
+      if (!bookingId || !actorRole || !actionType) {
+        return res.status(400).json({ message: "bookingId, actorRole, and actionType are required" });
+      }
+      
+      if (!["guest", "owner"].includes(actorRole)) {
+        return res.status(400).json({ message: "actorRole must be 'guest' or 'owner'" });
+      }
+      
+      if (!["call", "whatsapp"].includes(actionType)) {
+        return res.status(400).json({ message: "actionType must be 'call' or 'whatsapp'" });
+      }
+      
+      // Verify booking exists and user has access
+      const booking = await storage.getBooking(bookingId);
+      if (!booking) {
+        return res.status(404).json({ message: "Booking not found" });
+      }
+      
+      // Verify user is either guest or owner of this booking
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(401).json({ message: "User not found" });
+      }
+      
+      const isGuest = booking.guestId === userId;
+      const isOwner = booking.property?.ownerId === userId || (actorRole === "owner" && userHasRole(user, "owner"));
+      
+      if (!isGuest && !isOwner) {
+        return res.status(403).json({ message: "Not authorized to log contact for this booking" });
+      }
+      
+      // Determine target role based on actor role
+      const targetRole = actorRole === "guest" ? "owner" : "guest";
+      
+      // Log the interaction
+      const interaction = await storage.logContactInteraction({
+        bookingId,
+        actorUserId: userId,
+        actorRole,
+        targetRole,
+        actionType,
+        targetPhoneLast4: targetPhoneLast4 || null,
+        metadata: metadata || null,
+      });
+      
+      res.json({ 
+        message: "Contact interaction logged",
+        interaction 
+      });
+    } catch (error) {
+      console.error("Error logging contact interaction:", error);
+      res.status(500).json({ message: "Failed to log contact interaction" });
+    }
+  });
+
+  // ===============================
   // OWNER AGREEMENT MANAGEMENT
   // ===============================
 
