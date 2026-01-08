@@ -125,6 +125,10 @@ export default function OwnerPropertyManage() {
               <Bed className="h-4 w-4 mr-2" />
               Rooms
             </TabsTrigger>
+            <TabsTrigger value="cancellation" data-testid="tab-cancellation">
+              <FileX className="h-4 w-4 mr-2" />
+              Cancellation
+            </TabsTrigger>
             <TabsTrigger value="availability" data-testid="tab-availability">
               <CalendarIcon className="h-4 w-4 mr-2" />
               Availability
@@ -132,10 +136,6 @@ export default function OwnerPropertyManage() {
             <TabsTrigger value="location" data-testid="tab-location">
               <MapPin className="h-4 w-4 mr-2" />
               Location
-            </TabsTrigger>
-            <TabsTrigger value="cancellation" data-testid="tab-cancellation">
-              <FileX className="h-4 w-4 mr-2" />
-              Cancellation
             </TabsTrigger>
             <TabsTrigger value="status" data-testid="tab-status">
               <Settings className="h-4 w-4 mr-2" />
@@ -151,6 +151,10 @@ export default function OwnerPropertyManage() {
             />
           </TabsContent>
 
+          <TabsContent value="cancellation" className="mt-6">
+            <CancellationSection property={property} />
+          </TabsContent>
+
           <TabsContent value="availability" className="mt-6">
             <AvailabilitySection 
               propertyId={id!} 
@@ -162,10 +166,6 @@ export default function OwnerPropertyManage() {
 
           <TabsContent value="location" className="mt-6">
             <LocationSection property={property} />
-          </TabsContent>
-
-          <TabsContent value="cancellation" className="mt-6">
-            <CancellationSection property={property} />
           </TabsContent>
 
           <TabsContent value="status" className="mt-6">
