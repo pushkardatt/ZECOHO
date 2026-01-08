@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { Link } from "wouter";
-import { Shield, FileText, Mail, AlertCircle } from "lucide-react";
+import { Shield, Mail, AlertCircle } from "lucide-react";
 
 interface ConsentModalProps {
   open: boolean;
@@ -16,9 +16,7 @@ interface ConsentModalProps {
 }
 
 export function ConsentModal({ open, userName, isVersionUpdate = false }: ConsentModalProps) {
-  const [termsAccepted, setTermsAccepted] = useState(false);
-  const [privacyAccepted, setPrivacyAccepted] = useState(false);
-  const [communicationConsent, setCommunicationConsent] = useState(false);
+  const [allAccepted, setAllAccepted] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -30,7 +28,7 @@ export function ConsentModal({ open, userName, isVersionUpdate = false }: Consen
   const consentMutation = useMutation({
     mutationFn: async () => {
       const response = await apiRequest("POST", "/api/auth/consent-v2", {
-        consentCommunication: communicationConsent,
+        consentCommunication: true,
       });
       return response.json();
     },
@@ -53,10 +51,10 @@ export function ConsentModal({ open, userName, isVersionUpdate = false }: Consen
   });
 
   const handleSubmit = () => {
-    if (!termsAccepted || !privacyAccepted) {
+    if (!allAccepted) {
       toast({
         title: "Required",
-        description: "Please accept both Terms & Conditions and Privacy Policy to continue.",
+        description: "Please accept all policies and communications to continue.",
         variant: "destructive",
       });
       return;
@@ -64,7 +62,7 @@ export function ConsentModal({ open, userName, isVersionUpdate = false }: Consen
     consentMutation.mutate();
   };
 
-  const canSubmit = termsAccepted && privacyAccepted;
+  const canSubmit = allAccepted;
 
   return (
     <Dialog open={open}>
@@ -103,82 +101,54 @@ export function ConsentModal({ open, userName, isVersionUpdate = false }: Consen
           </div>
         )}
 
-        <div className="space-y-6 py-4">
+        <div className="space-y-4 py-4">
           <div className="flex items-start space-x-3 p-4 border rounded-lg bg-muted/30">
             <Checkbox
-              id="terms"
-              checked={termsAccepted}
-              onCheckedChange={(checked) => setTermsAccepted(checked === true)}
-              data-testid="checkbox-terms"
+              id="all-policies"
+              checked={allAccepted}
+              onCheckedChange={(checked) => setAllAccepted(checked === true)}
+              data-testid="checkbox-all-policies"
             />
-            <div className="space-y-1.5 leading-none">
+            <div className="space-y-2 leading-none">
               <Label
-                htmlFor="terms"
-                className="text-sm font-medium cursor-pointer flex items-center gap-2"
-              >
-                <FileText className="h-4 w-4 text-muted-foreground" />
-                I accept the Terms & Conditions
-                <span className="text-destructive">*</span>
-              </Label>
-              <p className="text-xs text-muted-foreground">
-                By checking this box, you agree to our{" "}
-                <Link href="/terms" className="text-primary hover:underline" data-testid="link-terms">
-                  Terms & Conditions
-                </Link>
-                {policyVersions?.termsVersion && (
-                  <span className="ml-1">(Version {policyVersions.termsVersion})</span>
-                )}
-                {" "}governing the use of ZECOHO platform.
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-start space-x-3 p-4 border rounded-lg bg-muted/30">
-            <Checkbox
-              id="privacy"
-              checked={privacyAccepted}
-              onCheckedChange={(checked) => setPrivacyAccepted(checked === true)}
-              data-testid="checkbox-privacy"
-            />
-            <div className="space-y-1.5 leading-none">
-              <Label
-                htmlFor="privacy"
+                htmlFor="all-policies"
                 className="text-sm font-medium cursor-pointer flex items-center gap-2"
               >
                 <Shield className="h-4 w-4 text-muted-foreground" />
-                I accept the Privacy Policy
+                I accept all policies and communications
                 <span className="text-destructive">*</span>
               </Label>
               <p className="text-xs text-muted-foreground">
-                By checking this box, you agree to our{" "}
-                <Link href="/privacy" className="text-primary hover:underline" data-testid="link-privacy">
-                  Privacy Policy
-                </Link>
-                {policyVersions?.privacyVersion && (
-                  <span className="ml-1">(Version {policyVersions.privacyVersion})</span>
-                )}
-                {" "}explaining how we collect, use, and protect your data.
+                By checking this box, you agree to:
               </p>
-            </div>
-          </div>
-
-          <div className="flex items-start space-x-3 p-4 border rounded-lg">
-            <Checkbox
-              id="communication"
-              checked={communicationConsent}
-              onCheckedChange={(checked) => setCommunicationConsent(checked === true)}
-              data-testid="checkbox-communication"
-            />
-            <div className="space-y-1.5 leading-none">
-              <Label
-                htmlFor="communication"
-                className="text-sm font-medium cursor-pointer flex items-center gap-2"
-              >
-                <Mail className="h-4 w-4 text-muted-foreground" />
-                Receive promotional updates (optional)
-              </Label>
-              <p className="text-xs text-muted-foreground">
-                Get notified about new features, exclusive offers, and travel tips. You can unsubscribe anytime.
+              <ul className="text-xs text-muted-foreground space-y-1.5 pl-4 list-disc">
+                <li>
+                  <Link href="/terms" className="text-primary hover:underline" data-testid="link-terms">
+                    Terms & Conditions
+                  </Link>
+                  {policyVersions?.termsVersion && (
+                    <span className="ml-1">(v{policyVersions.termsVersion})</span>
+                  )}
+                  {" "}- governing the use of ZECOHO platform
+                </li>
+                <li>
+                  <Link href="/privacy" className="text-primary hover:underline" data-testid="link-privacy">
+                    Privacy Policy
+                  </Link>
+                  {policyVersions?.privacyVersion && (
+                    <span className="ml-1">(v{policyVersions.privacyVersion})</span>
+                  )}
+                  {" "}- how we collect, use, and protect your data
+                </li>
+                <li>
+                  <span className="flex items-center gap-1">
+                    <Mail className="h-3 w-3" />
+                    Promotional communications - receive updates about new features, exclusive offers, and travel tips
+                  </span>
+                </li>
+              </ul>
+              <p className="text-xs text-muted-foreground pt-1">
+                You can unsubscribe from promotional emails anytime via account settings.
               </p>
             </div>
           </div>
@@ -200,7 +170,7 @@ export function ConsentModal({ open, userName, isVersionUpdate = false }: Consen
           </Button>
           {!canSubmit && (
             <p className="text-xs text-center text-muted-foreground">
-              Please accept both required policies to continue
+              Please accept all policies and communications to continue
             </p>
           )}
         </div>

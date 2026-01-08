@@ -24,9 +24,7 @@ export default function Register() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [termsAccepted, setTermsAccepted] = useState(false);
-  const [privacyAccepted, setPrivacyAccepted] = useState(false);
-  const [consentCommunication, setConsentCommunication] = useState(false);
+  const [allPoliciesAccepted, setAllPoliciesAccepted] = useState(false);
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
   const [countdown, setCountdown] = useState(0);
   const otpRefs = useRef<(HTMLInputElement | null)[]>([]);
@@ -135,19 +133,10 @@ export default function Register() {
       return;
     }
 
-    if (!termsAccepted) {
+    if (!allPoliciesAccepted) {
       toast({
-        title: "Terms Required",
-        description: "Please accept the Terms & Conditions to continue",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (!privacyAccepted) {
-      toast({
-        title: "Privacy Policy Required",
-        description: "Please accept the Privacy Policy to continue",
+        title: "Acceptance Required",
+        description: "Please accept all policies and communications to continue",
         variant: "destructive",
       });
       return;
@@ -158,9 +147,9 @@ export default function Register() {
       lastName: lastName.trim(), 
       email: email.trim(), 
       password,
-      termsAccepted,
-      privacyAccepted,
-      consentCommunication
+      termsAccepted: true,
+      privacyAccepted: true,
+      consentCommunication: true
     });
   };
 
@@ -317,74 +306,63 @@ export default function Register() {
               </div>
 
               <div className="space-y-3 pt-2">
-                <div className="flex items-start gap-3">
+                <div className="flex items-start gap-3 p-3 border rounded-lg bg-muted/30">
                   <Checkbox
-                    id="terms"
-                    checked={termsAccepted}
-                    onCheckedChange={(checked) => setTermsAccepted(checked === true)}
-                    data-testid="checkbox-terms"
+                    id="all-policies"
+                    checked={allPoliciesAccepted}
+                    onCheckedChange={(checked) => setAllPoliciesAccepted(checked === true)}
+                    className="mt-0.5"
+                    data-testid="checkbox-all-policies"
                   />
-                  <label 
-                    htmlFor="terms" 
-                    className="text-sm leading-tight cursor-pointer"
-                  >
-                    I agree to the{" "}
-                    <Link 
-                      href="/terms" 
-                      className="text-primary hover:underline font-medium"
-                      target="_blank"
-                      data-testid="link-terms"
+                  <div className="space-y-2">
+                    <label 
+                      htmlFor="all-policies" 
+                      className="text-sm font-medium leading-tight cursor-pointer flex items-center gap-1"
                     >
-                      Terms & Conditions
-                    </Link>
-                    <span className="text-destructive ml-1">*</span>
-                  </label>
-                </div>
-
-                <div className="flex items-start gap-3">
-                  <Checkbox
-                    id="privacy"
-                    checked={privacyAccepted}
-                    onCheckedChange={(checked) => setPrivacyAccepted(checked === true)}
-                    data-testid="checkbox-privacy"
-                  />
-                  <label 
-                    htmlFor="privacy" 
-                    className="text-sm leading-tight cursor-pointer"
-                  >
-                    I agree to the{" "}
-                    <Link 
-                      href="/privacy" 
-                      className="text-primary hover:underline font-medium"
-                      target="_blank"
-                      data-testid="link-privacy"
-                    >
-                      Privacy Policy
-                    </Link>
-                    <span className="text-destructive ml-1">*</span>
-                  </label>
-                </div>
-
-                <div className="flex items-start gap-3">
-                  <Checkbox
-                    id="communication"
-                    checked={consentCommunication}
-                    onCheckedChange={(checked) => setConsentCommunication(checked === true)}
-                    data-testid="checkbox-communication"
-                  />
-                  <label 
-                    htmlFor="communication" 
-                    className="text-sm leading-tight cursor-pointer text-muted-foreground"
-                  >
-                    I would like to receive promotional emails, offers, and updates from ZECOHO (optional)
-                  </label>
+                      I accept all policies and communications
+                      <span className="text-destructive">*</span>
+                    </label>
+                    <p className="text-xs text-muted-foreground">
+                      By checking this box, you agree to:
+                    </p>
+                    <ul className="text-xs text-muted-foreground space-y-1 pl-4 list-disc">
+                      <li>
+                        <Link 
+                          href="/terms" 
+                          className="text-primary hover:underline"
+                          target="_blank"
+                          data-testid="link-terms"
+                        >
+                          Terms & Conditions
+                        </Link>
+                        {" "}- governing the use of ZECOHO
+                      </li>
+                      <li>
+                        <Link 
+                          href="/privacy" 
+                          className="text-primary hover:underline"
+                          target="_blank"
+                          data-testid="link-privacy"
+                        >
+                          Privacy Policy
+                        </Link>
+                        {" "}- how we collect and protect your data
+                      </li>
+                      <li>
+                        Promotional communications - receive updates, offers, and travel tips
+                      </li>
+                    </ul>
+                    <p className="text-xs text-muted-foreground">
+                      You can unsubscribe from promotional emails anytime.
+                    </p>
+                  </div>
                 </div>
               </div>
 
               <Button 
                 type="submit" 
                 className="w-full" 
-                disabled={registerMutation.isPending || !termsAccepted || !privacyAccepted}
+                disabled={registerMutation.isPending || !allPoliciesAccepted}
                 data-testid="button-register"
               >
                 {registerMutation.isPending ? (
