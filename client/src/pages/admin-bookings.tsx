@@ -393,7 +393,7 @@ export default function AdminBookings() {
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-1">
-                          {booking.status !== "cancelled" && booking.status !== "completed" && (
+                          {booking.status !== "cancelled" && booking.status !== "completed" && booking.status !== "no_show" && (
                             <Button
                               data-testid={`button-cancel-booking-${booking.id}`}
                               variant="ghost"
