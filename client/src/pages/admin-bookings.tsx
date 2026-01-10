@@ -367,7 +367,7 @@ export default function AdminBookings() {
                           <Badge className={STATUS_COLORS[booking.status] || ""}>
                             {booking.status.replace("_", " ")}
                           </Badge>
-                          {(booking.status === "cancelled" || booking.status === "no_show") && booking.cancellationReason && (
+                          {booking.status === "cancelled" && booking.cancellationReason && (
                             <Tooltip>
                               <TooltipTrigger asChild>
                                 <Button variant="ghost" size="icon" className="h-5 w-5">
@@ -376,13 +376,31 @@ export default function AdminBookings() {
                               </TooltipTrigger>
                               <TooltipContent side="top" className="max-w-[300px]">
                                 <div className="text-sm">
-                                  <p className="font-medium mb-1">
-                                    {booking.status === "cancelled" ? "Cancellation" : "No-Show"} Reason:
-                                  </p>
+                                  <p className="font-medium mb-1">Cancellation Reason:</p>
                                   <p className="text-muted-foreground">{booking.cancellationReason}</p>
                                   {booking.cancelledBy && (
                                     <p className="text-xs mt-1 text-muted-foreground">
                                       By: {booking.cancelledBy}
+                                    </p>
+                                  )}
+                                </div>
+                              </TooltipContent>
+                            </Tooltip>
+                          )}
+                          {booking.status === "no_show" && booking.noShowReason && (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-5 w-5">
+                                  <Info className="h-3 w-3 text-muted-foreground" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent side="top" className="max-w-[300px]">
+                                <div className="text-sm">
+                                  <p className="font-medium mb-1">No-Show Reason:</p>
+                                  <p className="text-muted-foreground">{booking.noShowReason}</p>
+                                  {booking.noShowMarkedBy && (
+                                    <p className="text-xs mt-1 text-muted-foreground">
+                                      By: {booking.noShowMarkedBy}
                                     </p>
                                   )}
                                 </div>
