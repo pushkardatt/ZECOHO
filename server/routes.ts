@@ -761,41 +761,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Enable multi-role for specific admin user (adds owner role to existing admin)
-  app.post('/api/admin/enable-multi-role', isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.user.claims.sub;
-      const currentUser = await storage.getUser(userId);
-      
-      if (!currentUser) {
-        return res.status(404).json({ message: "User not found" });
-      }
-
-      // Only allow this for anita@zecoho.com (the founder/main admin) - case insensitive
-      if (currentUser.email?.toLowerCase() !== 'anita@zecoho.com') {
-        return res.status(403).json({ message: "This feature is only available for the platform administrator" });
-      }
-
-      // Update user to have both admin and owner roles
-      const [updatedUser] = await db
-        .update(users)
-        .set({ 
-          userRole: 'admin',
-          additionalRoles: ['owner']
-        })
-        .where(eq(users.id, userId))
-        .returning();
-
-      res.json({ 
-        message: "Multi-role enabled! You now have both admin and owner access.", 
-        user: updatedUser 
-      });
-    } catch (error) {
-      console.error("Error enabling multi-role:", error);
-      res.status(500).json({ message: "Failed to enable multi-role" });
-    }
-  });
-
   // Self-promotion to admin (only works if no admin exists)
   app.post('/api/promote-me-to-admin', isAuthenticated, async (req: any, res) => {
     try {

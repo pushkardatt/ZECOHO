@@ -54,7 +54,6 @@ type ChangePasswordFormData = z.infer<typeof changePasswordSchema>;
 export default function Profile() {
   const { toast } = useToast();
   const { user, isAuthenticated, isLoading: authLoading, isAdmin, isOwner } = useAuth();
-  const [isEnablingMultiRole, setIsEnablingMultiRole] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [passwordSet, setPasswordSet] = useState(false);
@@ -249,29 +248,6 @@ export default function Profile() {
     return (first + last).toUpperCase() || user.email?.[0]?.toUpperCase() || "U";
   };
 
-  const enableMultiRole = async () => {
-    setIsEnablingMultiRole(true);
-    try {
-      const response = await apiRequest("POST", "/api/admin/enable-multi-role", {});
-      toast({
-        title: "Success",
-        description: "Multi-role access enabled! You now have both Admin and Owner access. Refreshing...",
-      });
-      // Refresh the page to reflect new roles
-      setTimeout(() => {
-        window.location.reload();
-      }, 1500);
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to enable multi-role",
-        variant: "destructive",
-      });
-    } finally {
-      setIsEnablingMultiRole(false);
-    }
-  };
-
   const propertyTypes = [
     { value: "hotel", label: "Hotels" },
     { value: "villa", label: "Villas" },
@@ -347,34 +323,6 @@ export default function Profile() {
                     Account information is managed through your authentication provider
                   </p>
                 </div>
-
-                {/* Multi-role section for platform admin */}
-                {user?.email?.toLowerCase() === 'anita@zecoho.com' && (
-                  <div className="pt-4 border-t">
-                    {isAdmin && isOwner ? (
-                      <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4">
-                        <h4 className="font-medium text-green-800 dark:text-green-200 mb-2">Multi-Role Active</h4>
-                        <p className="text-sm text-green-700 dark:text-green-300">
-                          You have both Admin and Property Owner access. You can manage KYC applications, platform settings, and your own properties.
-                        </p>
-                      </div>
-                    ) : (
-                      <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
-                        <h4 className="font-medium text-amber-800 dark:text-amber-200 mb-2">Platform Administrator</h4>
-                        <p className="text-sm text-amber-700 dark:text-amber-300 mb-3">
-                          Enable multi-role access to get both Admin and Property Owner capabilities.
-                        </p>
-                        <Button 
-                          onClick={enableMultiRole}
-                          disabled={isEnablingMultiRole}
-                          data-testid="button-enable-multi-role"
-                        >
-                          {isEnablingMultiRole ? "Enabling..." : "Enable Admin + Owner Access"}
-                        </Button>
-                      </div>
-                    )}
-                  </div>
-                )}
               </CardContent>
             </Card>
 
