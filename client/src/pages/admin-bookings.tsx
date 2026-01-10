@@ -29,7 +29,12 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { CalendarDays, XCircle, LogIn, LogOut, AlertTriangle, Search, BookOpen, Clock, CheckCircle, Ban } from "lucide-react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { CalendarDays, XCircle, LogIn, LogOut, AlertTriangle, Search, BookOpen, Clock, CheckCircle, Ban, Info } from "lucide-react";
 import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
@@ -358,9 +363,33 @@ export default function AdminBookings() {
                       </TableCell>
                       <TableCell>{formatPrice(Number(booking.totalPrice))}</TableCell>
                       <TableCell>
-                        <Badge className={STATUS_COLORS[booking.status] || ""}>
-                          {booking.status.replace("_", " ")}
-                        </Badge>
+                        <div className="flex items-center gap-1">
+                          <Badge className={STATUS_COLORS[booking.status] || ""}>
+                            {booking.status.replace("_", " ")}
+                          </Badge>
+                          {(booking.status === "cancelled" || booking.status === "no_show") && booking.cancellationReason && (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-5 w-5">
+                                  <Info className="h-3 w-3 text-muted-foreground" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent side="top" className="max-w-[300px]">
+                                <div className="text-sm">
+                                  <p className="font-medium mb-1">
+                                    {booking.status === "cancelled" ? "Cancellation" : "No-Show"} Reason:
+                                  </p>
+                                  <p className="text-muted-foreground">{booking.cancellationReason}</p>
+                                  {booking.cancelledBy && (
+                                    <p className="text-xs mt-1 text-muted-foreground">
+                                      By: {booking.cancelledBy}
+                                    </p>
+                                  )}
+                                </div>
+                              </TooltipContent>
+                            </Tooltip>
+                          )}
+                        </div>
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-1">
