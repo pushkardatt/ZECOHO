@@ -63,6 +63,20 @@ export default function AdminBookings() {
   const [noShowDialogOpen, setNoShowDialogOpen] = useState(false);
   const [selectedBooking, setSelectedBooking] = useState<BookingWithDetails | null>(null);
   const [actionReason, setActionReason] = useState("");
+  const [selectedCancelReason, setSelectedCancelReason] = useState("");
+
+  const CANCELLATION_REASONS = [
+    { value: "guest_request", label: "Guest requested cancellation" },
+    { value: "payment_issue", label: "Payment issue" },
+    { value: "property_unavailable", label: "Property no longer available" },
+    { value: "overbooking", label: "Overbooking" },
+    { value: "maintenance", label: "Property under maintenance" },
+    { value: "policy_violation", label: "Policy violation by guest" },
+    { value: "fraudulent_booking", label: "Fraudulent booking" },
+    { value: "emergency", label: "Emergency situation" },
+    { value: "owner_request", label: "Property owner request" },
+    { value: "other", label: "Other (specify below)" },
+  ];
 
   const { data: bookings, isLoading: bookingsLoading } = useQuery<BookingWithDetails[]>({
     queryKey: ["/api/admin/bookings"],
@@ -474,7 +488,13 @@ export default function AdminBookings() {
         </CardContent>
       </Card>
 
-      <Dialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
+      <Dialog open={cancelDialogOpen} onOpenChange={(open) => {
+          setCancelDialogOpen(open);
+          if (!open) {
+            setSelectedCancelReason("");
+            setActionReason("");
+          }
+        }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Cancel Booking</DialogTitle>
@@ -483,16 +503,60 @@ export default function AdminBookings() {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
-            <div>
-              <Label htmlFor="cancel-reason">Reason for Cancellation (required)</Label>
-              <Textarea
-                id="cancel-reason"
-                data-testid="textarea-cancel-reason"
-                placeholder="Enter the reason for cancelling this booking..."
-                value={actionReason}
-                onChange={(e) => setActionReason(e.target.value)}
-              />
+            <div className="space-y-2">
+              <Label htmlFor="cancel-reason-select">Reason for Cancellation (required)</Label>
+              <Select
+                value={selectedCancelReason}
+                onValueChange={(value) => {
+                  setSelectedCancelReason(value);
+                  if (value !== "other") {
+                    const reason = CANCELLATION_REASONS.find(r => r.value === value);
+                    setActionReason(reason?.label || "");
+                  } else {
+                    setActionReason("");
+                  }
+                }}
+              >
+                <SelectTrigger id="cancel-reason-select" data-testid="select-cancel-reason">
+                  <SelectValue placeholder="Select a reason..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {CANCELLATION_REASONS.map((reason) => (
+                    <SelectItem key={reason.value} value={reason.value}>
+                      {reason.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
+            {selectedCancelReason === "other" && (
+              <div className="space-y-2">
+                <Label htmlFor="cancel-reason-details">Please specify the reason</Label>
+                <Textarea
+                  id="cancel-reason-details"
+                  data-testid="textarea-cancel-reason"
+                  placeholder="Enter the specific reason for cancellation..."
+                  value={actionReason}
+                  onChange={(e) => setActionReason(e.target.value)}
+                />
+              </div>
+            )}
+            {selectedCancelReason && selectedCancelReason !== "other" && (
+              <div className="space-y-2">
+                <Label htmlFor="cancel-reason-notes">Additional notes (optional)</Label>
+                <Textarea
+                  id="cancel-reason-notes"
+                  data-testid="textarea-cancel-notes"
+                  placeholder="Add any additional details..."
+                  value={actionReason.replace(CANCELLATION_REASONS.find(r => r.value === selectedCancelReason)?.label || "", "").trim()}
+                  onChange={(e) => {
+                    const baseReason = CANCELLATION_REASONS.find(r => r.value === selectedCancelReason)?.label || "";
+                    const notes = e.target.value.trim();
+                    setActionReason(notes ? `${baseReason}: ${notes}` : baseReason);
+                  }}
+                />
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setCancelDialogOpen(false)}>
