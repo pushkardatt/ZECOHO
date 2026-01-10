@@ -6092,6 +6092,343 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Admin: Cancel booking (with full refund)
+  app.post("/api/admin/bookings/:id/cancel", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || !userHasRole(user, "admin")) {
+        return res.status(403).json({ message: "Only admins can cancel bookings" });
+      }
+
+      const { reason } = req.body;
+      const booking = await storage.getBooking(req.params.id);
+      if (!booking) {
+        return res.status(404).json({ message: "Booking not found" });
+      }
+
+      if (booking.status === "completed") {
+        return res.status(400).json({ message: "Cannot cancel completed bookings" });
+      }
+
+      const updated = await storage.adminCancelBooking(req.params.id, userId, reason);
+      
+      // Send notification email to guest
+      const property = await storage.getProperty(booking.propertyId);
+      const guest = await storage.getUser(booking.guestId);
+      
+      if (property && guest?.email) {
+        const checkInFormatted = new Date(booking.checkIn).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+        const checkOutFormatted = new Date(booking.checkOut).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+        // Notify guest about admin cancellation
+        sendBookingDeclinedEmail(
+          guest.email,
+          guest.firstName || '',
+          {
+            bookingCode: booking.bookingCode || booking.id.slice(0, 8).toUpperCase(),
+            propertyName: property.title,
+            propertyId: property.id,
+            checkIn: checkInFormatted,
+            checkOut: checkOutFormatted,
+            guests: booking.guests,
+            rooms: booking.rooms || 1,
+            totalPrice: booking.totalPrice,
+          },
+          'cancelled',
+          reason || 'Cancelled by platform administrator'
+        ).catch(console.error);
+      }
+      
+      res.json(updated);
+    } catch (error) {
+      console.error("Error admin cancelling booking:", error);
+      res.status(500).json({ message: "Failed to cancel booking" });
+    }
+  });
+
+  // Admin: Force check-in
+  app.post("/api/admin/bookings/:id/force-check-in", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || !userHasRole(user, "admin")) {
+        return res.status(403).json({ message: "Only admins can force check-in" });
+      }
+
+      const booking = await storage.getBooking(req.params.id);
+      if (!booking) {
+        return res.status(404).json({ message: "Booking not found" });
+      }
+
+      const updated = await storage.adminForceCheckIn(req.params.id, userId);
+      res.json(updated);
+    } catch (error) {
+      console.error("Error admin force check-in:", error);
+      res.status(500).json({ message: "Failed to force check-in" });
+    }
+  });
+
+  // Admin: Force check-out
+  app.post("/api/admin/bookings/:id/force-check-out", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || !userHasRole(user, "admin")) {
+        return res.status(403).json({ message: "Only admins can force check-out" });
+      }
+
+      const booking = await storage.getBooking(req.params.id);
+      if (!booking) {
+        return res.status(404).json({ message: "Booking not found" });
+      }
+
+      const updated = await storage.adminForceCheckOut(req.params.id, userId);
+      res.json(updated);
+    } catch (error) {
+      console.error("Error admin force check-out:", error);
+      res.status(500).json({ message: "Failed to force check-out" });
+    }
+  });
+
+  // Admin: Get all bookings with filters
+  app.get("/api/admin/bookings", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || !userHasRole(user, "admin")) {
+        return res.status(403).json({ message: "Only admins can view all bookings" });
+      }
+
+      const { status, propertyId, limit } = req.query;
+      const bookings = await storage.getAllBookingsForAdmin({
+        status: status as string,
+        propertyId: propertyId as string,
+        limit: limit ? parseInt(limit) : undefined,
+      });
+      
+      res.json(bookings);
+    } catch (error) {
+      console.error("Error fetching admin bookings:", error);
+      res.status(500).json({ message: "Failed to fetch bookings" });
+    }
+  });
+
+  // Admin: Get booking management stats
+  app.get("/api/admin/stats/bookings", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || !userHasRole(user, "admin")) {
+        return res.status(403).json({ message: "Only admins can view stats" });
+      }
+
+      const stats = await storage.getBookingManagementStats();
+      res.json(stats);
+    } catch (error) {
+      console.error("Error fetching booking stats:", error);
+      res.status(500).json({ message: "Failed to fetch booking stats" });
+    }
+  });
+
+  // Admin: Get owner compliance stats
+  app.get("/api/admin/stats/owners", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || !userHasRole(user, "admin")) {
+        return res.status(403).json({ message: "Only admins can view stats" });
+      }
+
+      const stats = await storage.getOwnerComplianceStats();
+      res.json(stats);
+    } catch (error) {
+      console.error("Error fetching owner stats:", error);
+      res.status(500).json({ message: "Failed to fetch owner stats" });
+    }
+  });
+
+  // Admin: Suspend owner
+  app.post("/api/admin/owners/:id/suspend", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || !userHasRole(user, "admin")) {
+        return res.status(403).json({ message: "Only admins can suspend owners" });
+      }
+
+      const { reason } = req.body;
+      if (!reason || reason.length < 10) {
+        return res.status(400).json({ message: "Suspension reason must be at least 10 characters" });
+      }
+
+      const owner = await storage.getUser(req.params.id);
+      if (!owner) {
+        return res.status(404).json({ message: "Owner not found" });
+      }
+
+      if (owner.userRole !== "owner") {
+        return res.status(400).json({ message: "User is not an owner" });
+      }
+
+      if (owner.suspensionStatus === "suspended") {
+        return res.status(400).json({ message: "Owner is already suspended" });
+      }
+
+      const updated = await storage.suspendOwner(req.params.id, userId, reason);
+      
+      // Send suspension notification email
+      if (owner.email) {
+        // Email notification would be sent here
+        console.log(`Suspension notification would be sent to ${owner.email}`);
+      }
+      
+      res.json(updated);
+    } catch (error) {
+      console.error("Error suspending owner:", error);
+      res.status(500).json({ message: "Failed to suspend owner" });
+    }
+  });
+
+  // Admin: Reinstate owner
+  app.post("/api/admin/owners/:id/reinstate", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || !userHasRole(user, "admin")) {
+        return res.status(403).json({ message: "Only admins can reinstate owners" });
+      }
+
+      const owner = await storage.getUser(req.params.id);
+      if (!owner) {
+        return res.status(404).json({ message: "Owner not found" });
+      }
+
+      if (owner.suspensionStatus !== "suspended") {
+        return res.status(400).json({ message: "Owner is not suspended" });
+      }
+
+      const updated = await storage.reinstateOwner(req.params.id, userId);
+      
+      // Send reinstatement notification email
+      if (owner.email) {
+        console.log(`Reinstatement notification would be sent to ${owner.email}`);
+      }
+      
+      res.json(updated);
+    } catch (error) {
+      console.error("Error reinstating owner:", error);
+      res.status(500).json({ message: "Failed to reinstate owner" });
+    }
+  });
+
+  // Admin: Get suspended owners
+  app.get("/api/admin/owners/suspended", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || !userHasRole(user, "admin")) {
+        return res.status(403).json({ message: "Only admins can view suspended owners" });
+      }
+
+      const suspendedOwners = await storage.getSuspendedOwners();
+      res.json(suspendedOwners);
+    } catch (error) {
+      console.error("Error fetching suspended owners:", error);
+      res.status(500).json({ message: "Failed to fetch suspended owners" });
+    }
+  });
+
+  // Admin: Get inventory health
+  app.get("/api/admin/inventory/health", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || !userHasRole(user, "admin")) {
+        return res.status(403).json({ message: "Only admins can view inventory health" });
+      }
+
+      const { propertyId } = req.query;
+      const health = await storage.getInventoryHealth(propertyId as string);
+      res.json(health);
+    } catch (error) {
+      console.error("Error fetching inventory health:", error);
+      res.status(500).json({ message: "Failed to fetch inventory health" });
+    }
+  });
+
+  // Admin: Fix inventory issues
+  app.post("/api/admin/inventory/fix", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || !userHasRole(user, "admin")) {
+        return res.status(403).json({ message: "Only admins can fix inventory" });
+      }
+
+      const { propertyId, roomTypeId, startDate, endDate, dryRun } = req.body;
+      
+      if (!propertyId) {
+        return res.status(400).json({ message: "Property ID is required" });
+      }
+
+      const result = await storage.fixInventory(
+        propertyId,
+        roomTypeId,
+        startDate ? new Date(startDate) : undefined,
+        endDate ? new Date(endDate) : undefined,
+        dryRun
+      );
+      
+      // Log the action
+      await storage.createAdminAuditLog({
+        adminId: userId,
+        action: "fix_inventory",
+        propertyId,
+        reason: `Inventory fix ${dryRun ? '(dry run)' : ''}: ${result.details.join(', ')}`,
+      });
+      
+      res.json(result);
+    } catch (error) {
+      console.error("Error fixing inventory:", error);
+      res.status(500).json({ message: "Failed to fix inventory" });
+    }
+  });
+
+  // Admin: Get audit logs
+  app.get("/api/admin/audit-logs", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || !userHasRole(user, "admin")) {
+        return res.status(403).json({ message: "Only admins can view audit logs" });
+      }
+
+      const { adminId, action, limit } = req.query;
+      const logs = await storage.getAdminAuditLogs({
+        adminId: adminId as string,
+        action: action as string,
+        limit: limit ? parseInt(limit) : undefined,
+      });
+      
+      res.json(logs);
+    } catch (error) {
+      console.error("Error fetching audit logs:", error);
+      res.status(500).json({ message: "Failed to fetch audit logs" });
+    }
+  });
+
   // Search history routes
   app.post("/api/search-history", isAuthenticated, async (req: any, res) => {
     try {
