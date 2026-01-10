@@ -37,12 +37,10 @@ export function broadcastToUser(userId: string, data: any) {
   }
 }
 
-// Helper function to check if a user has a specific role (checks both primary and additional roles)
+// Helper function to check if a user has a specific role (single role only from userRole field)
 function userHasRole(user: any, role: string): boolean {
   if (!user) return false;
-  if (user.userRole === role) return true;
-  if (user.additionalRoles && Array.isArray(user.additionalRoles) && user.additionalRoles.includes(role)) return true;
-  return false;
+  return user.userRole === role;
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
