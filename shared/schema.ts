@@ -270,6 +270,20 @@ export const cancellationPolicyTypeEnum = pgEnum("cancellation_policy_type", [
   "strict",           // No refund / non-refundable
 ]);
 
+// Suspension status enum
+export const suspensionStatusEnum = pgEnum("suspension_status", ["active", "suspended"]);
+
+// Admin action types enum for audit logging
+export const adminActionTypeEnum = pgEnum("admin_action_type", [
+  "cancel_booking",
+  "mark_no_show",
+  "force_check_in",
+  "force_check_out",
+  "fix_inventory",
+  "suspend_owner",
+  "reinstate_owner",
+]);
+
 // User storage table - supports both Replit Auth and local registration
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -303,6 +317,11 @@ export const users = pgTable("users", {
   ownerAgreementAcceptedAt: timestamp("owner_agreement_accepted_at"),
   ownerAgreementAcceptedVersion: integer("owner_agreement_accepted_version"),
   consentCommunication: boolean("consent_communication").notNull().default(false),
+  // Suspension fields - for admin control over problematic owners
+  suspensionStatus: suspensionStatusEnum("suspension_status").notNull().default("active"),
+  suspendedAt: timestamp("suspended_at"),
+  suspendedBy: varchar("suspended_by"), // References users.id (admin who suspended)
+  suspensionReason: text("suspension_reason"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -370,9 +389,36 @@ export const properties = pgTable("properties", {
   hourlyBookingAllowed: boolean("hourly_booking_allowed").notNull().default(false),
   foreignGuestsAllowed: boolean("foreign_guests_allowed").notNull().default(true),
   coupleFriendly: boolean("couple_friendly").notNull().default(true),
+  // Admin suspension - property-level suspension when owner is suspended
+  suspended: boolean("suspended").notNull().default(false),
+  suspendedAt: timestamp("suspended_at"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
+
+// Admin Audit Logs table - tracks all admin actions for accountability
+export const adminAuditLogs = pgTable("admin_audit_logs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  adminId: varchar("admin_id").notNull().references(() => users.id),
+  action: adminActionTypeEnum("action").notNull(),
+  bookingId: varchar("booking_id"), // Optional - for booking-related actions
+  ownerId: varchar("owner_id"), // Optional - for owner-related actions (suspend/reinstate)
+  propertyId: varchar("property_id"), // Optional - for property-related actions
+  reason: text("reason"), // Required for some actions (no-show, suspend)
+  metadata: jsonb("metadata"), // Additional context (inventory fix details, etc.)
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("idx_audit_admin").on(table.adminId),
+  index("idx_audit_action").on(table.action),
+  index("idx_audit_booking").on(table.bookingId),
+  index("idx_audit_owner").on(table.ownerId),
+  index("idx_audit_created").on(table.createdAt),
+]);
+
+export type AdminAuditLog = typeof adminAuditLogs.$inferSelect;
+export type InsertAdminAuditLog = typeof adminAuditLogs.$inferInsert;
+export const insertAdminAuditLogSchema = createInsertSchema(adminAuditLogs).omit({ id: true, createdAt: true });
+export type InsertAdminAuditLogData = z.infer<typeof insertAdminAuditLogSchema>;
 
 // Amenities table
 export const amenities = pgTable("amenities", {
