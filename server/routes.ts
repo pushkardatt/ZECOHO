@@ -6353,6 +6353,149 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ===== Admin User Management Routes =====
+
+  // Admin: Get all users (with filters for search and status)
+  app.get("/api/admin/users", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || !userHasRole(user, "admin")) {
+        return res.status(403).json({ message: "Only admins can view users" });
+      }
+
+      const { search, status, limit } = req.query;
+      const users = await storage.getAllUsersForAdmin({
+        search: search as string,
+        status: (status as 'active' | 'deactivated' | 'all') || 'all',
+        limit: limit ? parseInt(limit as string) : 100,
+      });
+      res.json(users);
+    } catch (error) {
+      console.error("Error fetching users:", error);
+      res.status(500).json({ message: "Failed to fetch users" });
+    }
+  });
+
+  // Admin: Get deactivated users
+  app.get("/api/admin/users/deactivated", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || !userHasRole(user, "admin")) {
+        return res.status(403).json({ message: "Only admins can view deactivated users" });
+      }
+
+      const deactivatedUsers = await storage.getDeactivatedUsers();
+      res.json(deactivatedUsers);
+    } catch (error) {
+      console.error("Error fetching deactivated users:", error);
+      res.status(500).json({ message: "Failed to fetch deactivated users" });
+    }
+  });
+
+  // Admin: Deactivate user (soft delete)
+  app.post("/api/admin/users/:id/deactivate", isAuthenticated, async (req: any, res) => {
+    try {
+      const adminId = req.user.claims.sub;
+      const admin = await storage.getUser(adminId);
+      
+      if (!admin || !userHasRole(admin, "admin")) {
+        return res.status(403).json({ message: "Only admins can deactivate users" });
+      }
+
+      const { reason } = req.body;
+      if (!reason || reason.length < 10) {
+        return res.status(400).json({ message: "Deactivation reason must be at least 10 characters" });
+      }
+
+      const targetUser = await storage.getUser(req.params.id);
+      if (!targetUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      if (targetUser.userRole === "admin") {
+        return res.status(400).json({ message: "Cannot deactivate admin users" });
+      }
+
+      if (targetUser.isDeactivated) {
+        return res.status(400).json({ message: "User is already deactivated" });
+      }
+
+      const updated = await storage.deactivateUser(req.params.id, adminId, reason);
+      
+      res.json({ 
+        message: "User deactivated successfully", 
+        user: updated 
+      });
+    } catch (error) {
+      console.error("Error deactivating user:", error);
+      res.status(500).json({ message: "Failed to deactivate user" });
+    }
+  });
+
+  // Admin: Restore user (reactivate)
+  app.post("/api/admin/users/:id/restore", isAuthenticated, async (req: any, res) => {
+    try {
+      const adminId = req.user.claims.sub;
+      const admin = await storage.getUser(adminId);
+      
+      if (!admin || !userHasRole(admin, "admin")) {
+        return res.status(403).json({ message: "Only admins can restore users" });
+      }
+
+      const targetUser = await storage.getUser(req.params.id);
+      if (!targetUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      if (!targetUser.isDeactivated) {
+        return res.status(400).json({ message: "User is not deactivated" });
+      }
+
+      const updated = await storage.restoreUser(req.params.id, adminId);
+      
+      res.json({ 
+        message: "User restored successfully", 
+        user: updated 
+      });
+    } catch (error) {
+      console.error("Error restoring user:", error);
+      res.status(500).json({ message: "Failed to restore user" });
+    }
+  });
+
+  // Admin: Get user management stats
+  app.get("/api/admin/stats/users", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || !userHasRole(user, "admin")) {
+        return res.status(403).json({ message: "Only admins can view user stats" });
+      }
+
+      const allUsers = await storage.getAllUsersForAdmin({ status: 'all', limit: 10000 });
+      const activeUsers = allUsers.filter(u => !u.isDeactivated);
+      const deactivatedUsers = allUsers.filter(u => u.isDeactivated);
+      const guestUsers = allUsers.filter(u => u.userRole === 'guest' && !u.isDeactivated);
+      const ownerUsers = allUsers.filter(u => u.userRole === 'owner' && !u.isDeactivated);
+      
+      res.json({
+        totalUsers: allUsers.length,
+        activeUsers: activeUsers.length,
+        deactivatedUsers: deactivatedUsers.length,
+        guests: guestUsers.length,
+        owners: ownerUsers.length,
+      });
+    } catch (error) {
+      console.error("Error fetching user stats:", error);
+      res.status(500).json({ message: "Failed to fetch user stats" });
+    }
+  });
+
   // Admin: Get inventory health
   app.get("/api/admin/inventory/health", isAuthenticated, async (req: any, res) => {
     try {
