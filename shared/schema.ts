@@ -282,6 +282,8 @@ export const adminActionTypeEnum = pgEnum("admin_action_type", [
   "fix_inventory",
   "suspend_owner",
   "reinstate_owner",
+  "deactivate_user",
+  "restore_user",
 ]);
 
 // User storage table - supports both Replit Auth and local registration
@@ -322,6 +324,11 @@ export const users = pgTable("users", {
   suspendedAt: timestamp("suspended_at"),
   suspendedBy: varchar("suspended_by"), // References users.id (admin who suspended)
   suspensionReason: text("suspension_reason"),
+  // Deactivation fields - for admin soft-delete of users (preserves all data)
+  isDeactivated: boolean("is_deactivated").notNull().default(false),
+  deactivatedAt: timestamp("deactivated_at"),
+  deactivatedBy: varchar("deactivated_by"), // References users.id (admin who deactivated)
+  deactivationReason: text("deactivation_reason"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
