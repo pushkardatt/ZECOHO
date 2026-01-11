@@ -335,6 +335,12 @@ export interface IStorage {
   suspendOwnerProperties(ownerId: string): Promise<void>;
   reinstateOwnerProperties(ownerId: string): Promise<void>;
 
+  // User Deactivation operations (soft delete)
+  deactivateUser(userId: string, adminId: string, reason: string): Promise<User | undefined>;
+  restoreUser(userId: string, adminId: string): Promise<User | undefined>;
+  getDeactivatedUsers(): Promise<User[]>;
+  getAllUsersForAdmin(filters?: { search?: string; status?: 'active' | 'deactivated' | 'all'; limit?: number }): Promise<User[]>;
+
   // Admin Booking operations
   adminCancelBooking(bookingId: string, adminId: string, reason?: string): Promise<Booking | undefined>;
   adminMarkNoShow(bookingId: string, adminId: string, reason: string): Promise<Booking | undefined>;
@@ -2405,6 +2411,117 @@ export class DatabaseStorage implements IStorage {
         updatedAt: new Date(),
       })
       .where(eq(properties.ownerId, ownerId));
+  }
+
+  // User Deactivation operations (soft delete)
+  async deactivateUser(userId: string, adminId: string, reason: string): Promise<User | undefined> {
+    // Don't allow deactivating admins
+    const targetUser = await this.getUser(userId);
+    if (!targetUser || targetUser.userRole === "admin") {
+      return undefined;
+    }
+
+    const [updated] = await db
+      .update(users)
+      .set({
+        isDeactivated: true,
+        deactivatedAt: new Date(),
+        deactivatedBy: adminId,
+        deactivationReason: reason,
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, userId))
+      .returning();
+    
+    if (updated) {
+      // Log the action
+      await this.createAdminAuditLog({
+        adminId,
+        action: "deactivate_user",
+        ownerId: userId, // Using ownerId field for user ID
+        reason,
+        metadata: {
+          userEmail: updated.email,
+          userName: `${updated.firstName} ${updated.lastName}`,
+          userRole: updated.userRole,
+        },
+      });
+    }
+    
+    return updated;
+  }
+
+  async restoreUser(userId: string, adminId: string): Promise<User | undefined> {
+    const [updated] = await db
+      .update(users)
+      .set({
+        isDeactivated: false,
+        deactivatedAt: null,
+        deactivatedBy: null,
+        deactivationReason: null,
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, userId))
+      .returning();
+    
+    if (updated) {
+      // Log the action
+      await this.createAdminAuditLog({
+        adminId,
+        action: "restore_user",
+        ownerId: userId,
+        metadata: {
+          userEmail: updated.email,
+          userName: `${updated.firstName} ${updated.lastName}`,
+          userRole: updated.userRole,
+        },
+      });
+    }
+    
+    return updated;
+  }
+
+  async getDeactivatedUsers(): Promise<User[]> {
+    return await db
+      .select()
+      .from(users)
+      .where(eq(users.isDeactivated, true))
+      .orderBy(desc(users.deactivatedAt));
+  }
+
+  async getAllUsersForAdmin(filters?: { search?: string; status?: 'active' | 'deactivated' | 'all'; limit?: number }): Promise<User[]> {
+    const conditions: any[] = [];
+    
+    // Exclude admin users from the list
+    conditions.push(sql`${users.userRole} != 'admin'`);
+    
+    // Filter by deactivation status
+    if (filters?.status === 'active') {
+      conditions.push(eq(users.isDeactivated, false));
+    } else if (filters?.status === 'deactivated') {
+      conditions.push(eq(users.isDeactivated, true));
+    }
+    
+    // Search by name or email
+    if (filters?.search) {
+      const searchTerm = `%${filters.search.toLowerCase()}%`;
+      conditions.push(
+        or(
+          sql`LOWER(${users.firstName}) LIKE ${searchTerm}`,
+          sql`LOWER(${users.lastName}) LIKE ${searchTerm}`,
+          sql`LOWER(${users.email}) LIKE ${searchTerm}`
+        )
+      );
+    }
+    
+    let query = db.select().from(users);
+    if (conditions.length > 0) {
+      query = query.where(and(...conditions)) as any;
+    }
+    
+    return await query
+      .orderBy(desc(users.createdAt))
+      .limit(filters?.limit || 100);
   }
 
   // Admin Booking operations
