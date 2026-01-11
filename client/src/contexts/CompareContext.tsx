@@ -25,15 +25,19 @@ export function CompareProvider({ children }: { children: React.ReactNode }) {
   const [compareList, setCompareList] = useState<PropertyWithImages[]>([]);
 
   const addToCompare = useCallback((property: PropertyWithImages): boolean => {
-    if (compareList.length >= MAX_COMPARE_ITEMS) {
-      return false;
-    }
-    if (compareList.some(p => p.id === property.id)) {
-      return false;
-    }
-    setCompareList(prev => [...prev, property]);
-    return true;
-  }, [compareList]);
+    let added = false;
+    setCompareList(prev => {
+      if (prev.length >= MAX_COMPARE_ITEMS) {
+        return prev;
+      }
+      if (prev.some(p => p.id === property.id)) {
+        return prev;
+      }
+      added = true;
+      return [...prev, property];
+    });
+    return added;
+  }, []);
 
   const removeFromCompare = useCallback((propertyId: string) => {
     setCompareList(prev => prev.filter(p => p.id !== propertyId));

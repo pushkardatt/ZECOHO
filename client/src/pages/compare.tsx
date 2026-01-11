@@ -1,3 +1,4 @@
+import React from "react";
 import { useCompare } from "@/contexts/CompareContext";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -68,9 +69,8 @@ export default function ComparePage() {
 
   const allAmenities = new Set<string>();
   compareList.forEach(property => {
-    const amenities = (property as any).amenities;
-    if (amenities && Array.isArray(amenities)) {
-      amenities.forEach((a: string) => allAmenities.add(a));
+    if (property.amenities && Array.isArray(property.amenities)) {
+      property.amenities.forEach((a: string) => allAmenities.add(a));
     }
   });
 
@@ -254,13 +254,13 @@ export default function ComparePage() {
                   {Array.from(allAmenities).slice(0, 10).map((amenity) => {
                     const AmenityIcon = getAmenityIcon(amenity);
                     return (
-                      <>
-                        <div key={`label-${amenity}`} className="text-sm text-muted-foreground flex items-center gap-2 py-2">
+                      <React.Fragment key={`amenity-row-${amenity}`}>
+                        <div className="text-sm text-muted-foreground flex items-center gap-2 py-2">
                           <AmenityIcon className="h-4 w-4" />
                           <span className="capitalize">{amenity}</span>
                         </div>
                         {compareList.map((property) => {
-                          const amenities = (property as any).amenities as string[] | undefined;
+                          const amenities = property.amenities;
                           const hasAmenity = amenities?.includes(amenity);
                           return (
                             <div 
@@ -275,7 +275,7 @@ export default function ComparePage() {
                             </div>
                           );
                         })}
-                      </>
+                      </React.Fragment>
                     );
                   })}
                 </>

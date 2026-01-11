@@ -31,6 +31,7 @@ interface PropertyCardProps {
     ownerContact?: OwnerContact | null;
     startingRoomPrice?: string | null;
     startingRoomOriginalPrice?: string | null;
+    amenities?: string[];
   };
   onWishlistToggle?: (propertyId: string) => void;
   searchParams?: SearchParams;
@@ -52,7 +53,7 @@ export function PropertyCard({ property, onWishlistToggle, searchParams }: Prope
       removeFromCompare(property.id);
       toast({ title: "Removed from compare" });
     } else {
-      const added = addToCompare(property as any);
+      const added = addToCompare(property);
       if (added) {
         toast({ title: "Added to compare", description: "You can compare up to 4 properties" });
       } else {
