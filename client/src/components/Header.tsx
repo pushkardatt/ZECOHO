@@ -274,6 +274,12 @@ export function Header() {
                           User Management
                         </Link>
                       </DropdownMenuItem>
+                      <DropdownMenuItem asChild data-testid="link-admin-support">
+                        <Link href="/admin/support">
+                          <MessageCircle className="h-4 w-4 mr-2" />
+                          Support Inbox
+                        </Link>
+                      </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </>

@@ -6586,6 +6586,333 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ============================================
+  // Support Chat API Routes
+  // ============================================
+
+  const { processMessage, processQuickAction, getGreetingMessage, QUICK_ACTIONS } = await import("./supportAI");
+
+  // Get quick actions for chat UI
+  app.get("/api/support/quick-actions", async (_req, res) => {
+    res.json(QUICK_ACTIONS);
+  });
+
+  // Start or resume support conversation
+  app.post("/api/support/conversations", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Check for existing active conversation
+      let conversation = await storage.getActiveSupportConversation(userId);
+      
+      if (!conversation) {
+        // Create new conversation
+        conversation = await storage.createSupportConversation({
+          userId,
+          userRole: user.userRole || "guest",
+          subject: req.body.subject,
+        });
+
+        // Add greeting message
+        const greetingContent = getGreetingMessage(user.firstName || undefined);
+        await storage.addSupportMessage({
+          conversationId: conversation.id,
+          senderType: 'ai',
+          content: greetingContent,
+          metadata: { intent: 'greeting', confidence: 1 },
+        });
+      }
+
+      // Get messages
+      const messages = await storage.getSupportMessages(conversation.id);
+      
+      res.json({ conversation, messages });
+    } catch (error) {
+      console.error("Error starting support conversation:", error);
+      res.status(500).json({ message: "Failed to start support conversation" });
+    }
+  });
+
+  // Get user's support conversations
+  app.get("/api/support/conversations", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const conversations = await storage.getSupportConversationsByUser(userId);
+      res.json(conversations);
+    } catch (error) {
+      console.error("Error fetching support conversations:", error);
+      res.status(500).json({ message: "Failed to fetch support conversations" });
+    }
+  });
+
+  // Get specific conversation with messages
+  app.get("/api/support/conversations/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const conversation = await storage.getSupportConversation(req.params.id);
+      
+      if (!conversation) {
+        return res.status(404).json({ message: "Conversation not found" });
+      }
+
+      // Check user owns this conversation or is admin
+      const user = await storage.getUser(userId);
+      if (conversation.userId !== userId && !userHasRole(user, "admin")) {
+        return res.status(403).json({ message: "Not authorized to view this conversation" });
+      }
+
+      const messages = await storage.getSupportMessages(conversation.id);
+      
+      // Mark messages as read for this user
+      await storage.markSupportMessagesAsRead(conversation.id, 'user');
+      
+      res.json({ conversation, messages });
+    } catch (error) {
+      console.error("Error fetching support conversation:", error);
+      res.status(500).json({ message: "Failed to fetch support conversation" });
+    }
+  });
+
+  // Send message in support conversation
+  app.post("/api/support/conversations/:id/messages", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { content, quickActionId } = req.body;
+      
+      const conversation = await storage.getSupportConversation(req.params.id);
+      if (!conversation) {
+        return res.status(404).json({ message: "Conversation not found" });
+      }
+
+      // Check user owns this conversation
+      if (conversation.userId !== userId) {
+        return res.status(403).json({ message: "Not authorized" });
+      }
+
+      // Check if conversation is closed
+      if (conversation.status === 'closed') {
+        return res.status(400).json({ message: "Conversation is closed. Please start a new conversation." });
+      }
+
+      // Add user message
+      const userMessage = await storage.addSupportMessage({
+        conversationId: conversation.id,
+        senderType: 'user',
+        senderId: userId,
+        content: content || quickActionId,
+      });
+
+      // Process and get AI response
+      const aiResponse = quickActionId 
+        ? processQuickAction(quickActionId)
+        : processMessage(content);
+
+      // Add AI response
+      const aiMessage = await storage.addSupportMessage({
+        conversationId: conversation.id,
+        senderType: 'ai',
+        content: aiResponse.message,
+        metadata: {
+          intent: aiResponse.intent,
+          confidence: aiResponse.confidence,
+        },
+      });
+
+      // Handle escalation if needed
+      if (aiResponse.shouldEscalate) {
+        const escalation = await storage.escalateSupportConversation(
+          conversation.id,
+          aiResponse.escalationReason || 'User requested human support'
+        );
+        
+        // Notify admins via WebSocket
+        const admins = await storage.getAdminUsers();
+        admins.forEach((admin) => {
+          broadcastToUser(admin.id, {
+            type: 'support_escalation',
+            conversationId: conversation.id,
+            ticketNumber: escalation?.ticket.ticketNumber,
+          });
+        });
+      }
+
+      res.json({ 
+        userMessage, 
+        aiMessage,
+        escalated: aiResponse.shouldEscalate,
+      });
+    } catch (error) {
+      console.error("Error sending support message:", error);
+      res.status(500).json({ message: "Failed to send message" });
+    }
+  });
+
+  // Close support conversation
+  app.post("/api/support/conversations/:id/close", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const conversation = await storage.getSupportConversation(req.params.id);
+      
+      if (!conversation) {
+        return res.status(404).json({ message: "Conversation not found" });
+      }
+
+      // Allow user or admin to close
+      const user = await storage.getUser(userId);
+      if (conversation.userId !== userId && !userHasRole(user, "admin")) {
+        return res.status(403).json({ message: "Not authorized" });
+      }
+
+      const updated = await storage.closeSupportConversation(conversation.id);
+      res.json(updated);
+    } catch (error) {
+      console.error("Error closing support conversation:", error);
+      res.status(500).json({ message: "Failed to close conversation" });
+    }
+  });
+
+  // Admin: Get all support conversations
+  app.get("/api/admin/support/conversations", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || !userHasRole(user, "admin")) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const { status, assignedTo, limit } = req.query;
+      const conversations = await storage.getAllSupportConversations({
+        status: status as string,
+        assignedTo: assignedTo as string,
+        limit: limit ? parseInt(limit) : undefined,
+      });
+
+      res.json(conversations);
+    } catch (error) {
+      console.error("Error fetching admin support conversations:", error);
+      res.status(500).json({ message: "Failed to fetch conversations" });
+    }
+  });
+
+  // Admin: Assign conversation to self
+  app.post("/api/admin/support/conversations/:id/assign", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || !userHasRole(user, "admin")) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const updated = await storage.assignSupportConversation(req.params.id, userId);
+      if (!updated) {
+        return res.status(404).json({ message: "Conversation not found" });
+      }
+
+      res.json(updated);
+    } catch (error) {
+      console.error("Error assigning support conversation:", error);
+      res.status(500).json({ message: "Failed to assign conversation" });
+    }
+  });
+
+  // Admin: Send message as admin
+  app.post("/api/admin/support/conversations/:id/messages", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || !userHasRole(user, "admin")) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const { content } = req.body;
+      if (!content) {
+        return res.status(400).json({ message: "Message content is required" });
+      }
+
+      const conversation = await storage.getSupportConversation(req.params.id);
+      if (!conversation) {
+        return res.status(404).json({ message: "Conversation not found" });
+      }
+
+      const message = await storage.addSupportMessage({
+        conversationId: conversation.id,
+        senderType: 'admin',
+        senderId: userId,
+        content,
+      });
+
+      // Notify user via WebSocket
+      broadcastToUser(conversation.userId, {
+        type: 'support_message',
+        conversationId: conversation.id,
+        message,
+      });
+
+      res.json(message);
+    } catch (error) {
+      console.error("Error sending admin support message:", error);
+      res.status(500).json({ message: "Failed to send message" });
+    }
+  });
+
+  // Admin: Get support tickets
+  app.get("/api/admin/support/tickets", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || !userHasRole(user, "admin")) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const { status, priority } = req.query;
+      const tickets = await storage.getSupportTickets({
+        status: status as string,
+        priority: priority as string,
+      });
+
+      res.json(tickets);
+    } catch (error) {
+      console.error("Error fetching support tickets:", error);
+      res.status(500).json({ message: "Failed to fetch tickets" });
+    }
+  });
+
+  // Admin: Resolve support ticket
+  app.post("/api/admin/support/tickets/:id/resolve", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || !userHasRole(user, "admin")) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const { notes } = req.body;
+      if (!notes) {
+        return res.status(400).json({ message: "Resolution notes are required" });
+      }
+
+      const ticket = await storage.resolveSupportTicket(req.params.id, notes);
+      if (!ticket) {
+        return res.status(404).json({ message: "Ticket not found" });
+      }
+
+      res.json(ticket);
+    } catch (error) {
+      console.error("Error resolving support ticket:", error);
+      res.status(500).json({ message: "Failed to resolve ticket" });
+    }
+  });
+
   // Search history routes
   app.post("/api/search-history", isAuthenticated, async (req: any, res) => {
     try {

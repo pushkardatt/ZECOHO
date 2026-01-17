@@ -1,7 +1,7 @@
 # ZECOHO - Hotel Booking Platform
 
 ## Overview
-ZECOHO is a ZERO COMMISSION hotel booking platform designed to connect guests directly with hoteliers, eliminating intermediary fees. It aims to pass 100% of savings to customers. The platform supports three user roles (Guests, Property Owners, Admins) and offers property discovery with advanced filtering, wishlist management, a comprehensive booking system, and user preference customization. Key features include a strong emphasis on direct hotelier connections, a zero-commission value proposition, and an extensive database of Indian destinations and properties.
+ZECOHO is a zero-commission hotel booking platform connecting guests directly with hoteliers, aiming to pass 100% of savings to customers. It supports Guests, Property Owners, and Admins, offering property discovery with advanced filtering, wishlist management, and a comprehensive booking system. The platform emphasizes direct hotelier connections, a zero-commission model, and an extensive database of Indian destinations. It focuses on disrupting the traditional online travel agency model by eliminating intermediary fees and fostering direct relationships between properties and guests.
 
 ## User Preferences
 Preferred communication style: Simple, everyday language.
@@ -9,73 +9,56 @@ Preferred communication style: Simple, everyday language.
 ## System Architecture
 
 ### Frontend
-The frontend uses **React with TypeScript** and **Vite**, with **Wouter** for client-side routing and role-based access. **TanStack Query** manages server state. **Shadcn/ui components** based on Radix UI, styled with **Tailwind CSS**, provide an Airbnb-inspired, image-first, responsive design. **React Hook Form** and **Zod** ensure type-safe form validation.
+The frontend is built with React, TypeScript, and Vite, using Wouter for routing and TanStack Query for server state management. UI components are derived from Shadcn/ui (Radix UI) and styled with Tailwind CSS, featuring an Airbnb-inspired, image-first, responsive design. React Hook Form and Zod ensure type-safe form validation.
 
 ### Backend
-The backend is built with **Express.js on Node.js**, featuring a **RESTful API** with custom middleware for authentication, logging, and error handling.
+The backend utilizes Express.js on Node.js, providing a RESTful API with custom middleware for authentication, logging, and error handling.
 
 ### Data Storage
-**PostgreSQL** (via Neon's serverless driver) is used with **Drizzle ORM** for type-safe queries. The schema includes Users, Properties, Rooms, Amenities, Wishlists, User Preferences, Bookings, Conversations, Messages, Reviews, and Destinations. **Drizzle-Zod** ensures schema consistency, and **Drizzle Kit** manages migrations.
+PostgreSQL (via Neon's serverless driver) and Drizzle ORM manage data, ensuring type-safe queries. The schema includes entities for Users, Properties, Rooms, Amenities, Wishlists, User Preferences, Bookings, Conversations, Messages, Reviews, and Destinations. Drizzle-Zod ensures schema consistency, and Drizzle Kit manages migrations.
 
 ### Authentication and Authorization
-**Replit Auth (OpenID Connect)** handles authentication. **Express-session** with `connect-pg-simple` manages server-side sessions using secure, httpOnly cookies. **Passport.js** facilitates the OIDC flow and token refresh. User data from OIDC claims is synchronized, and **role-based access control** is enforced at the route level.
+Authentication is handled by Replit Auth (OpenID Connect). Express-session with `connect-pg-simple` manages server-side sessions. Passport.js facilitates the OIDC flow, and role-based access control is enforced at the route level.
 
 ### Key Features
--   **ZERO Commission Model**: Eliminates booking, service, and commission fees.
--   **Dynamic Booking System**: Manages the full booking lifecycle (pending, confirmed, rejected, completed) with server-side validation, pricing calculation, and owner/guest management interfaces. Includes real-time notifications via WebSockets for booking status changes.
--   **Real-time Messaging**: Facilitates direct communication between guests and owners using WebSockets, with conversation management and unread message tracking.
--   **Review System**: Guests receive a review request email after check-out. They can rate properties (1-5 stars) with optional category ratings (cleanliness, staff, location, value) and comments. Owners can respond to reviews. The system prevents duplicate reviews per booking and only allows reviews for completed stays. Review page accessible via `/property/:propertyId/review?bookingId=:id`.
--   **Unified KYC & Property Listing**: A multi-step wizard (`/list-property`) for combined personal details, KYC verification, and property information. Features a "Choose Listing Mode" (Quick or Full Application) for flexible onboarding.
--   **Categorized Property Images**: Supports organized image uploads for properties across six categories with captions.
--   **KYC Document Uploads**: Secure handling of five categories of KYC documents with validation and access control.
--   **Extensive Destinations**: Curated database of 65 Indian destinations and 56+ properties, complemented by **Google Maps Places API** for comprehensive city search.
--   **Owner Experience Enhancements**: Includes a welcome modal, role switcher, owner context indicator, KYC email notifications, in-app banners for property status, and controls to manage listing visibility (pause, resume).
--   **Admin-Approved Property Deactivation**: Owners cannot directly deactivate or delete their properties. Instead, they must submit a deactivation request with a reason (minimum 10 characters). The request can be for either deactivation (keeping property data) or deletion (permanent removal). Admins review pending requests in the admin portal's "Deactivation Requests" tab and can approve (triggering automatic property deactivation/deletion) or reject (with required reason). Owners can view their pending request status and cancel requests before admin action.
--   **Room Utilization Dashboard**: The owner dashboard displays room utilization by room type with aggregate booked/pending/available counts for the next 30 days. Each room type row is expandable to reveal date-wise availability breakdown showing daily occupancy status (Booked, Pending, Available) with visual indicators for full, partial, or open days.
--   **Mandatory Geotagging with Reverse Geocoding**: Properties require GPS coordinates (latitude/longitude) before they can be published. The Owner Portal includes a Location tab with an interactive map picker featuring address search with autocomplete, drag-and-drop pin placement, and reverse geocoding with automatic address field population. When a location is set via GPS, map click, or search, the system extracts and auto-fills street address, locality, city, district, state, pincode, and country from Google Maps Geocoding API. Features 300ms debouncing and caching to prevent duplicate API calls, plus real-time loading indicators. Properties without location data display warning badges and cannot be approved or resumed until coordinates are set.
--   **Availability Override System**: Owners can manage property availability by blocking dates for various reasons (hold, sold_out, maintenance), with options for room count specification and room-type-specific blocking.
--   **Room Type & Meal Plan Management**: Allows owners to define multiple room types with individual base prices, occupancy settings, and total rooms. Supports configurable occupancy-based pricing and various meal options (e.g., Room Only, Breakfast) with price adjustments. **Meal pricing is per-person per-night**: owners set prices per guest, and the platform calculates total meal cost as (meal price × number of guests × nights). All UI labels and booking summaries clearly show "per person" pricing to avoid customer confusion. The customer UI provides an OTA-style room selection with dynamic price calculations.
--   **Booking Email Deep-Linking**: All booking notification emails include CTA links with the booking reference code (e.g., `/my-bookings?bookingRef=OGTYNP`). When users click these links, the my-bookings page automatically highlights and scrolls to the matching booking. Unauthenticated users are redirected to login with the reference preserved, then returned to the booking after authentication. If the booking reference doesn't match any user bookings, a friendly error banner is displayed.
--   **Guest Policy Attributes**: Properties can define guest policies including Couple Friendly, Local ID Allowed, Foreign Guests Allowed, and Hourly Booking options. These are captured during property onboarding (Step 3 of the wizard) and can be edited in the Owner Portal's Status tab via Switch controls. Search filters support all four guest policy attributes for guest-side filtering.
--   **Hidden Property IDs**: Internal property identifiers (property codes like "PROP-SRY23X") are hidden from all customer-facing views including property listing cards, property detail pages, booking confirmations, and emails. Property IDs remain in URLs for routing purposes but are not displayed as visible text. This maintains a clean customer experience while preserving internal tracking capabilities.
--   **How to Reach Section**: Property details page displays a dedicated "How to Reach" section showing nearest transport hubs (Metro Stations, Railway Stations, Bus Stops, Airports) with distance in kilometers and estimated travel time. Features "Get Directions" CTAs that open Google Maps with the property as destination. Transport data is fetched via Google Places API within a 25km radius and updates automatically when property location changes. Visible on both web and mobile views.
--   **Versioned Policy Management**: Complete Terms & Conditions and Privacy Policy management system with admin panel at `/admin/policies`. Features include: draft/publish/archive workflow, version tracking, automatic archiving of previous versions when publishing new ones, dynamic content loading on Terms/Privacy pages with static fallback. Users must accept policies on first login, and when new policy versions are published, the consent modal automatically appears forcing re-acceptance before accessing the platform. Policy acceptance is tracked with timestamps and version numbers in the users table.
--   **Comprehensive Contact Us Page**: Admin-editable contact information system with Contact Us page at `/contact` and admin panel at `/admin/contact-settings`. Features all required contact sections: Customer Support (email, phone, hours), Property Owner Support (dedicated hotelier support), Grievance Redressal Officer (required under Indian IT Act 2000 and Consumer Protection Rules 2020), Privacy & Data Protection (DPO contact, data deletion requests), Business & Partnerships (press/media inquiries), and Registered Office (company address, CIN). All contact information is stored in the `contact_settings` table and can be updated by admins without code deployment. Footer includes links to Contact Us page.
--   **Property Owner Agreement System**: Complete Owner Agreement management with admin panel at `/admin/owner-agreements`. Features include: draft/publish/archive workflow, version tracking, automatic archiving of previous versions when publishing new ones, dynamic content loading on public `/owner-agreement` page. Property owners must accept the agreement when accessing owner features (dashboard, listings, bookings). When new versions are published, owners are required to re-accept before accessing owner functionality. Agreement acceptance is tracked with timestamps and version numbers in the users table. Initial agreement is auto-seeded on first startup with comprehensive ZECOHO Property Owner Agreement terms covering zero commission model, owner obligations, payment terms, and legal provisions.
--   **Guest Cancellation Flow with Policy-Based Refunds**: Complete guest cancellation system with owner-defined cancellation policies (flexible/moderate/strict). Features include:
-    - **Cancellation Policy Types**: Properties can configure `cancellationPolicyType` (flexible/moderate/strict), `freeCancellationHours`, and `partialRefundPercent` in the database schema.
-    - **Refund Calculation Logic**:
-      - **Flexible**: 100% refund if cancelled >= freeCancellationHours before check-in; partialRefundPercent% after.
-      - **Moderate**: 100% refund >= freeCancellationHours; partialRefundPercent% between half and full hours; 0% within half hours.
-      - **Strict**: partialRefundPercent% if cancelled >= 2x freeCancellationHours before; 0% after.
-    - **Refund Preview API**: `GET /api/bookings/:id/cancel-preview` shows refund amount/percentage before confirming cancellation.
-    - **Cancellation Modal**: My Bookings page shows modal with booking details, refund information, optional reason input, and clear confirm/cancel buttons.
-    - **Policy Display on Property Page**: "Things to know" section dynamically shows cancellation policy using actual owner-configured values (not hardcoded), matching backend calculation logic.
-    - **Refund Tracking**: Bookings store `refundAmount` and `refundPercentage` for audit trail.
-    - Owner/admin cancellations always receive 100% refund; guest cancellations follow property policy.
--   **Comprehensive Admin Control System**: Full-featured admin dashboard with three specialized sections:
-    - **Booking Management** (`/admin/bookings`): Admins can view all bookings with status filters, cancel bookings with full refund (100%), mark bookings as no-show, and force check-in/check-out operations. All actions create audit log entries.
-    - **Owner Compliance** (`/admin/owners`): Suspend or reinstate property owners with mandatory reason tracking. Suspension atomically blocks all properties owned by the user. Suspended owners see a dedicated message with suspension reason and support contact when accessing the owner portal.
-    - **Inventory Health** (`/admin/inventory`): Monitor room availability across all properties, identify negative inventory issues, and apply fixes with dry-run preview mode to test changes before applying.
-    - **Audit Logging**: All admin actions (booking changes, owner suspension/reinstatement, inventory fixes) are logged in the `admin_audit_logs` table with timestamps, actor IDs, action types, target IDs, and detailed change data for compliance tracking.
-
-## Pending Features
--   **Payment Gateway Integration**: Stripe integration for booking payments is pending. When ready to implement, use the Stripe connector integration or manually configure with STRIPE_SECRET_KEY and STRIPE_PUBLISHABLE_KEY secrets.
+-   **ZERO Commission Model**: Eliminates all booking and service fees.
+-   **Dynamic Booking System**: Manages the full booking lifecycle, including server-side validation, pricing, and owner/guest interfaces, with real-time notifications via WebSockets.
+-   **Real-time Messaging**: Direct guest-owner communication using WebSockets, including conversation and unread message tracking.
+-   **Review System**: Allows guests to rate properties post-checkout with category ratings and comments, and owners can respond.
+-   **Unified KYC & Property Listing**: A multi-step wizard for combined personal details, KYC, and property information, offering quick or full application modes.
+-   **Categorized Property Images**: Organized image uploads for properties across categories with captions.
+-   **KYC Document Uploads**: Secure handling and validation of KYC documents.
+-   **Extensive Destinations**: Database of Indian destinations, enhanced by Google Maps Places API for city search.
+-   **Owner Experience Enhancements**: Features like welcome modals, role switcher, KYC notifications, in-app banners, and listing visibility controls.
+-   **Admin-Approved Property Deactivation**: Owners request property deactivation/deletion, which admins review and approve/reject.
+-   **Room Utilization Dashboard**: Displays room availability and occupancy breakdown for owners.
+-   **Mandatory Geotagging**: Requires GPS coordinates for properties, with an interactive map picker, address search, and reverse geocoding via Google Maps Geocoding API.
+-   **Availability Override System**: Owners can block dates for rooms with specified reasons.
+-   **Room Type & Meal Plan Management**: Defines room types, occupancy-based pricing, and meal options with per-person pricing.
+-   **Booking Email Deep-Linking**: CTA links in booking emails highlight specific bookings on the 'My Bookings' page.
+-   **Guest Policy Attributes**: Properties can define and filter by Couple Friendly, Local ID Allowed, Foreign Guests Allowed, and Hourly Booking options.
+-   **Hidden Property IDs**: Internal property identifiers are hidden from customer-facing views.
+-   **How to Reach Section**: Property details display nearest transport hubs with distance and "Get Directions" CTAs via Google Maps.
+-   **Versioned Policy Management**: Admin system for Terms & Conditions and Privacy Policy with draft/publish/archive workflows, version tracking, and forced re-acceptance upon updates.
+-   **Comprehensive Contact Us Page**: Admin-editable contact information for various support types, including grievance redressal and registered office details.
+-   **Property Owner Agreement System**: Admin system for managing owner agreements with versioning and mandatory acceptance for accessing owner functionalities.
+-   **Guest Cancellation Flow**: Implements owner-defined cancellation policies (flexible/moderate/strict) with automated refund calculations and a refund preview API.
+-   **Comprehensive Admin Control System**: Admin dashboard with sections for Booking Management (cancel, no-show, check-in/out), Owner Compliance (suspend/reinstate owners), Inventory Health (monitor/fix room availability), and Support Inbox (manage customer conversations), all with audit logging.
+-   **AI Chat Support System**: Rule-based FAQ chatbot for logged-in users, featuring a knowledge base, quick actions, auto-escalation to human support, and conversation management.
 
 ## External Dependencies
 
 -   **Third-Party Services**:
     -   Replit Auth (OpenID Connect)
     -   Neon Database (Serverless PostgreSQL)
-    -   Google Fonts CDN
     -   Google Maps Places API
 -   **NPM Packages**:
-    -   `@radix-ui/*`
-    -   `@tanstack/react-query`
-    -   `wouter`
-    -   `drizzle-orm`, `drizzle-zod`
-    -   `react-hook-form`, `zod`
-    -   `passport`, `openid-client`
-    -   `tailwindcss`
-    -   `vite`
-    -   `express`
+    -   @radix-ui/*
+    -   @tanstack/react-query
+    -   wouter
+    -   drizzle-orm, drizzle-zod
+    -   react-hook-form, zod
+    -   passport, openid-client
+    -   tailwindcss
+    -   vite
+    -   express

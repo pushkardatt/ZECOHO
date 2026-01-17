@@ -43,6 +43,7 @@ import AdminBookings from "@/pages/admin-bookings";
 import AdminOwners from "@/pages/admin-owners";
 import AdminInventory from "@/pages/admin-inventory";
 import AdminUsers from "@/pages/admin-users";
+import AdminSupport from "@/pages/admin-support";
 import ContactUs from "@/pages/contact-us";
 import AboutUs from "@/pages/about-us";
 import OwnerAgreementPage from "@/pages/owner-agreement";
@@ -74,6 +75,7 @@ import { CompareProvider } from "@/contexts/CompareContext";
 import { CompareBar } from "@/components/CompareBar";
 import ComparePage from "@/pages/compare";
 import LogoGallery from "@/pages/logo-gallery";
+import { SupportChat } from "@/components/SupportChat";
 
 function Router() {
   return (
@@ -111,6 +113,7 @@ function Router() {
       <Route path="/admin/owners" component={AdminOwners} />
       <Route path="/admin/inventory" component={AdminInventory} />
       <Route path="/admin/users" component={AdminUsers} />
+      <Route path="/admin/support" component={AdminSupport} />
       <Route path="/contact" component={ContactUs} />
       <Route path="/about-us" component={AboutUs} />
       <Route path="/owner-agreement" component={OwnerAgreementPage} />
@@ -223,6 +226,7 @@ function AppContent() {
           </div>
           <Footer />
           <CompareBar />
+          {user && <SupportChat />}
           <Toaster />
           <ConsentModal 
             open={showConsentModal} 
