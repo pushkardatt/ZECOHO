@@ -48,18 +48,18 @@ export function MobileBottomNav() {
         {navItems.map((item) => {
           const Icon = item.icon;
           return (
-            <Link key={item.href} href={item.href}>
-              <button
-                className={`flex flex-col items-center justify-center w-full h-full px-3 py-2 transition-colors ${
-                  item.active
-                    ? "text-primary"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-                data-testid={`nav-${item.label.toLowerCase()}`}
-              >
-                <Icon className={`h-5 w-5 ${item.active ? "fill-current" : ""}`} />
-                <span className="text-xs mt-1 font-medium">{item.label}</span>
-              </button>
+            <Link 
+              key={item.href} 
+              href={item.href}
+              className={`flex flex-col items-center justify-center flex-1 h-full px-3 py-2 transition-colors min-tap-override ${
+                item.active
+                  ? "text-primary"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+              data-testid={`nav-${item.label.toLowerCase()}`}
+            >
+              <Icon className={`h-5 w-5 ${item.active ? "fill-current" : ""}`} />
+              <span className="text-xs mt-1 font-medium">{item.label}</span>
             </Link>
           );
         })}
