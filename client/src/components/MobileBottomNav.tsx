@@ -51,7 +51,7 @@ export function MobileBottomNav() {
             <Link 
               key={item.href} 
               href={item.href}
-              className={`flex flex-col items-center justify-center flex-1 h-full px-3 py-2 transition-colors min-tap-override ${
+              className={`flex flex-col items-center justify-center flex-1 h-full px-3 py-2 transition-colors ${
                 item.active
                   ? "text-primary"
                   : "text-muted-foreground hover:text-foreground"

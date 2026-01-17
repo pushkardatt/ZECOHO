@@ -310,15 +310,7 @@
 
 /* Mobile-specific optimizations */
 @media (max-width: 768px) {
-  /* Ensure minimum touch target size of 44px for buttons and interactive elements */
-  button:not(.min-tap-override),
-  [role="button"]:not(.min-tap-override),
-  a:not(.min-tap-override) {
-    min-height: 44px;
-    min-width: 44px;
-  }
-  
-  /* Improve spacing for touch on form inputs */
+  /* Improve spacing for touch on form inputs - prevents iOS zoom */
   input[type="text"],
   input[type="email"],
   input[type="password"],
@@ -328,8 +320,7 @@
   input[type="date"],
   select,
   textarea {
-    min-height: 44px;
-    font-size: 16px; /* Prevents iOS zoom on focus */
+    font-size: 16px;
   }
   
   /* Add padding for bottom navigation space */
