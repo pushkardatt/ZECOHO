@@ -892,6 +892,37 @@ export default function PropertyDetails() {
     bookingMutation.mutate();
   };
 
+  // Get minimum price from room types for mobile booking bar (moved before early returns)
+  const minPrice = useMemo(() => {
+    if (roomTypes.length > 0) {
+      const prices = roomTypes.map((rt: any) => Number(rt.basePrice));
+      return Math.min(...prices);
+    }
+    return Number(property?.pricePerNight) || 0;
+  }, [roomTypes, property?.pricePerNight]);
+
+  // Prepare booked dates for calendar (moved before early returns)
+  const bookedDatesForCalendar = useMemo(() => {
+    if (!calendarAvailability.length) return [];
+    return calendarAvailability
+      .filter((day) => day.availableRooms === 0)
+      .map((day) => parseLocalDate(day.date));
+  }, [calendarAvailability]);
+
+  // Prepare blocked dates for calendar (moved before early returns)
+  const blockedDatesForCalendar = useMemo(() => {
+    if (!blockedDates.length) return [];
+    const dates: Date[] = [];
+    blockedDates.forEach((range) => {
+      const current = new Date(range.startDate);
+      while (current <= range.endDate) {
+        dates.push(new Date(current));
+        current.setDate(current.getDate() + 1);
+      }
+    });
+    return dates;
+  }, [blockedDates]);
+
   if (isLoading) {
     return (
       <div className="min-h-screen">
@@ -924,37 +955,6 @@ export default function PropertyDetails() {
 
   const mainImage = property.images?.[0] || "/placeholder-property.jpg";
   const additionalImages = property.images?.slice(1, 5) || [];
-
-  // Get minimum price from room types for mobile booking bar
-  const minPrice = useMemo(() => {
-    if (roomTypes.length > 0) {
-      const prices = roomTypes.map((rt: any) => Number(rt.basePrice));
-      return Math.min(...prices);
-    }
-    return Number(property?.pricePerNight) || 0;
-  }, [roomTypes, property?.pricePerNight]);
-
-  // Prepare booked dates for calendar
-  const bookedDatesForCalendar = useMemo(() => {
-    if (!calendarAvailability.length) return [];
-    return calendarAvailability
-      .filter((day) => day.availableRooms === 0)
-      .map((day) => parseLocalDate(day.date));
-  }, [calendarAvailability]);
-
-  // Prepare blocked dates for calendar
-  const blockedDatesForCalendar = useMemo(() => {
-    if (!blockedDates.length) return [];
-    const dates: Date[] = [];
-    blockedDates.forEach((range) => {
-      const current = new Date(range.startDate);
-      while (current <= range.endDate) {
-        dates.push(new Date(current));
-        current.setDate(current.getDate() + 1);
-      }
-    });
-    return dates;
-  }, [blockedDates]);
 
   return (
     <div className="min-h-screen pb-24 md:pb-16">
