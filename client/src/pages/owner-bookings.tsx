@@ -1103,12 +1103,12 @@ export default function OwnerBookings() {
     <OwnerLayout>
       <div className="space-y-6" data-testid="owner-bookings">
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-5" data-testid="booking-tabs">
-            <TabsTrigger value="pending" data-testid="tab-pending">Pending</TabsTrigger>
-            <TabsTrigger value="upcoming" data-testid="tab-upcoming">Upcoming</TabsTrigger>
-            <TabsTrigger value="ongoing" data-testid="tab-ongoing">Ongoing</TabsTrigger>
-            <TabsTrigger value="past" data-testid="tab-past">Past</TabsTrigger>
-            <TabsTrigger value="cancelled" data-testid="tab-cancelled">Cancelled</TabsTrigger>
+          <TabsList className="flex w-full overflow-x-auto gap-1" data-testid="booking-tabs">
+            <TabsTrigger value="pending" className="flex-shrink-0 px-3 text-sm" data-testid="tab-pending">Pending</TabsTrigger>
+            <TabsTrigger value="upcoming" className="flex-shrink-0 px-3 text-sm" data-testid="tab-upcoming">Upcoming</TabsTrigger>
+            <TabsTrigger value="ongoing" className="flex-shrink-0 px-3 text-sm" data-testid="tab-ongoing">Ongoing</TabsTrigger>
+            <TabsTrigger value="past" className="flex-shrink-0 px-3 text-sm" data-testid="tab-past">Past</TabsTrigger>
+            <TabsTrigger value="cancelled" className="flex-shrink-0 px-3 text-sm" data-testid="tab-cancelled">Cancelled</TabsTrigger>
           </TabsList>
 
           <TabsContent value={activeTab} className="mt-6">
