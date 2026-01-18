@@ -9,25 +9,12 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
-import { Heart, User, LogOut, Menu, Building, MessageCircle, History, PlusCircle, Shield, Settings, FileText, MapPin, CheckCircle, Clock, XCircle, Globe, Check, LayoutDashboard, CalendarCheck, IndianRupee, Star, UserCircle, ArrowRightLeft, Phone, Handshake, Info, Calendar, Users, Package } from "lucide-react";
+import { Heart, User, LogOut, Menu, Building, MessageCircle, History, PlusCircle, Shield, Settings, FileText, MapPin, CheckCircle, Clock, XCircle, Check, LayoutDashboard, CalendarCheck, IndianRupee, Star, UserCircle, ArrowRightLeft, Phone, Handshake, Info, Calendar, Users, Package } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { useKycGuard } from "@/hooks/useKycGuard";
 import { useQuery } from "@tanstack/react-query";
 import type { Conversation, KycApplication } from "@shared/schema";
-
-const languages = [
-  { code: "en", name: "English", nativeName: "English" },
-  { code: "hi", name: "Hindi", nativeName: "हिन्दी" },
-  { code: "bn", name: "Bengali", nativeName: "বাংলা" },
-  { code: "te", name: "Telugu", nativeName: "తెలుగు" },
-  { code: "mr", name: "Marathi", nativeName: "मराठी" },
-  { code: "ta", name: "Tamil", nativeName: "தமிழ்" },
-  { code: "gu", name: "Gujarati", nativeName: "ગુજરાતી" },
-  { code: "kn", name: "Kannada", nativeName: "ಕನ್ನಡ" },
-  { code: "ml", name: "Malayalam", nativeName: "മലയാളം" },
-  { code: "pa", name: "Punjabi", nativeName: "ਪੰਜਾਬੀ" },
-];
 
 type ConversationWithUnread = Conversation & { unreadCount: number };
 
@@ -36,12 +23,6 @@ export function Header() {
   const { hasRejectedKyc, isKycNotStarted, isKycPending, isKycVerified } = useKycGuard();
   const [location] = useLocation();
   const [isScrolled, setIsScrolled] = useState(false);
-  const [selectedLanguage, setSelectedLanguage] = useState(() => {
-    if (typeof window !== "undefined") {
-      return localStorage.getItem("preferredLanguage") || "en";
-    }
-    return "en";
-  });
 
   useEffect(() => {
     const handleScroll = () => {
@@ -50,12 +31,6 @@ export function Header() {
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
-
-  useEffect(() => {
-    localStorage.setItem("preferredLanguage", selectedLanguage);
-  }, [selectedLanguage]);
-
-  const currentLanguage = languages.find(l => l.code === selectedLanguage) || languages[0];
 
   const { data: conversations = [] } = useQuery<ConversationWithUnread[]>({
     queryKey: ["/api/conversations"],
@@ -124,15 +99,15 @@ export function Header() {
     }`}>
       <div className="w-full max-w-screen-2xl mx-auto flex h-16 items-center justify-between px-4 md:px-6 overflow-hidden">
         <Link href="/">
-          <div className="flex items-center gap-2.5 cursor-pointer group" data-testid="link-home">
-            <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center shadow-lg transition-opacity duration-200 group-hover:opacity-90" style={{ boxShadow: '0 10px 15px -3px hsl(var(--primary) / 0.2)' }}>
-              <span className="text-white font-bold text-xl">Z</span>
+          <div className="flex items-center gap-1.5 md:gap-2.5 cursor-pointer group flex-shrink-0" data-testid="link-home">
+            <div className="w-8 h-8 md:w-10 md:h-10 rounded-lg md:rounded-xl bg-primary flex items-center justify-center shadow-lg transition-opacity duration-200 group-hover:opacity-90" style={{ boxShadow: '0 10px 15px -3px hsl(var(--primary) / 0.2)' }}>
+              <span className="text-white font-bold text-lg md:text-xl">Z</span>
             </div>
             <div className="flex items-baseline">
-              <span className="font-bold text-xl text-foreground tracking-tight">
+              <span className="font-bold text-base md:text-xl text-foreground tracking-tight">
                 ZECOHO
               </span>
-              <span className="font-bold text-base text-primary">.COM</span>
+              <span className="font-bold text-sm md:text-base text-primary">.COM</span>
             </div>
           </div>
         </Link>
@@ -503,33 +478,6 @@ export function Header() {
             </div>
           )}
 
-          {/* Language Selector */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm" className="gap-1.5" data-testid="button-language-selector">
-                <Globe className="h-4 w-4" />
-                <span className="hidden md:inline text-sm">{currentLanguage.nativeName}</span>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-48">
-              {languages.map((lang) => (
-                <DropdownMenuItem
-                  key={lang.code}
-                  onClick={() => setSelectedLanguage(lang.code)}
-                  className="flex items-center justify-between cursor-pointer"
-                  data-testid={`language-option-${lang.code}`}
-                >
-                  <div className="flex flex-col">
-                    <span className="font-medium">{lang.nativeName}</span>
-                    <span className="text-xs text-muted-foreground">{lang.name}</span>
-                  </div>
-                  {selectedLanguage === lang.code && (
-                    <Check className="h-4 w-4 text-primary" />
-                  )}
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
         </nav>
       </div>
     </header>
