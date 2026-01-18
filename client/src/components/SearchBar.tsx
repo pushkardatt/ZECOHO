@@ -583,9 +583,9 @@ export function SearchBar({
     <div className="w-full max-w-4xl relative" ref={suggestionsRef}>
       {/* Mobile Card-Based Layout */}
       <div className="md:hidden space-y-3">
-        {/* Destination Card */}
-        <div className="bg-gray-50 dark:bg-gray-800 rounded-xl p-4 border border-gray-100 dark:border-gray-700">
-          <div className="flex items-center gap-3">
+        {/* Destination Card with Inline Suggestions */}
+        <div className="bg-gray-50 dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 overflow-hidden">
+          <div className="flex items-center gap-3 p-4">
             <Search className="h-5 w-5 text-gray-400 flex-shrink-0" />
             <div className="flex-1 min-w-0">
               <input
@@ -605,6 +605,88 @@ export function SearchBar({
               )}
             </div>
           </div>
+          
+          {/* Mobile Suggestions - Inside Destination Card */}
+          {showSuggestions && (groupedSuggestions.cities.length > 0 || groupedSuggestions.topHotelsInCity.length > 0 || groupedSuggestions.otherProperties.length > 0) && (
+            <div className="border-t border-gray-200 dark:border-gray-700 max-h-[300px] overflow-y-auto">
+              {(isLoading || isGoogleLoading || isLoadingCityHotels) && (
+                <div className="px-4 py-2 text-sm text-muted-foreground flex items-center gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Searching...
+                </div>
+              )}
+              
+              {/* Cities */}
+              {groupedSuggestions.cities.length > 0 && (
+                <div>
+                  <div className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wide bg-gray-100 dark:bg-gray-900/50">
+                    Destinations
+                  </div>
+                  {groupedSuggestions.cities.map((dest: any) => (
+                    <button
+                      key={dest.id}
+                      type="button"
+                      onClick={() => handleSelectDestination(dest)}
+                      className="w-full text-left px-4 py-3 hover:bg-gray-100 dark:hover:bg-gray-700 text-sm flex items-center gap-3 border-b border-gray-100 dark:border-gray-700 last:border-b-0"
+                    >
+                      <MapPin className="h-4 w-4 text-primary flex-shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <span className="font-medium text-gray-900 dark:text-white">{dest.name}</span>
+                        {dest.state && (
+                          <span className="text-gray-500 dark:text-gray-400 text-xs ml-1">, {dest.state}</span>
+                        )}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+              
+              {/* Hotels */}
+              {groupedSuggestions.topHotelsInCity.length > 0 && groupedSuggestions.matchedCity && (
+                <div>
+                  <div className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wide bg-gray-100 dark:bg-gray-900/50">
+                    Top Hotels in {groupedSuggestions.matchedCity}
+                  </div>
+                  {groupedSuggestions.topHotelsInCity.map((hotel: any) => (
+                    <button
+                      key={hotel.id}
+                      type="button"
+                      onClick={() => handleSelectDestination(hotel)}
+                      className="w-full text-left px-4 py-3 hover:bg-gray-100 dark:hover:bg-gray-700 text-sm flex items-center gap-3 border-b border-gray-100 dark:border-gray-700 last:border-b-0"
+                    >
+                      <Building2 className="h-4 w-4 text-primary flex-shrink-0" />
+                      <span className="font-medium text-gray-900 dark:text-white truncate">{hotel.name}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+              
+              {/* Other Properties */}
+              {groupedSuggestions.otherProperties.length > 0 && (
+                <div>
+                  <div className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wide bg-gray-100 dark:bg-gray-900/50">
+                    Matching Hotels
+                  </div>
+                  {groupedSuggestions.otherProperties.slice(0, 3).map((dest: any) => (
+                    <button
+                      key={dest.id || dest.propertyId}
+                      type="button"
+                      onClick={() => handleSelectDestination(dest)}
+                      className="w-full text-left px-4 py-3 hover:bg-gray-100 dark:hover:bg-gray-700 text-sm flex items-center gap-3 border-b border-gray-100 dark:border-gray-700 last:border-b-0"
+                    >
+                      <Building2 className="h-4 w-4 text-primary flex-shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <span className="font-medium text-gray-900 dark:text-white truncate">{dest.name}</span>
+                        {dest.city && (
+                          <span className="text-xs text-gray-500 dark:text-gray-400 block">{dest.city}</span>
+                        )}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {showDates && (
@@ -612,11 +694,15 @@ export function SearchBar({
           <div className="bg-gray-50 dark:bg-gray-800 rounded-xl p-4 border border-gray-100 dark:border-gray-700">
             <div className="flex items-center gap-3">
               <CalendarIcon className="h-5 w-5 text-gray-400 flex-shrink-0" />
-              <div className="flex items-center gap-2 flex-1">
+              <div className="flex items-center gap-2 flex-1 flex-wrap">
                 {/* Check-in */}
                 <Popover open={checkInOpen} onOpenChange={setCheckInOpen}>
                   <PopoverTrigger asChild>
-                    <button className="text-left" data-testid="input-checkin-mobile">
+                    <button 
+                      type="button"
+                      className="text-left py-1 px-2 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors" 
+                      data-testid="input-checkin-mobile"
+                    >
                       <span className={`text-base font-semibold ${checkInDate ? 'text-gray-900 dark:text-white' : 'text-gray-400'}`}>
                         {checkInDate ? format(checkInDate, "d MMM") : 'Check in'}
                       </span>
@@ -627,7 +713,7 @@ export function SearchBar({
                       )}
                     </button>
                   </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
+                  <PopoverContent className="w-auto p-0 z-50" align="start" sideOffset={8}>
                     <Calendar
                       mode="single"
                       selected={checkInDate}
@@ -648,7 +734,11 @@ export function SearchBar({
                 {/* Check-out */}
                 <Popover open={checkOutOpen} onOpenChange={setCheckOutOpen}>
                   <PopoverTrigger asChild>
-                    <button className="text-left" data-testid="input-checkout-mobile">
+                    <button 
+                      type="button"
+                      className="text-left py-1 px-2 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors" 
+                      data-testid="input-checkout-mobile"
+                    >
                       <span className={`text-base font-semibold ${checkOutDate ? 'text-gray-900 dark:text-white' : 'text-gray-400'}`}>
                         {checkOutDate ? format(checkOutDate, "d MMM") : 'Check out'}
                       </span>
@@ -659,7 +749,7 @@ export function SearchBar({
                       )}
                     </button>
                   </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
+                  <PopoverContent className="w-auto p-0 z-50" align="start" sideOffset={8}>
                     <Calendar
                       mode="single"
                       selected={checkOutDate}
@@ -681,7 +771,11 @@ export function SearchBar({
           /* Guests Card */
           <Popover open={guestsOpen} onOpenChange={setGuestsOpen}>
             <PopoverTrigger asChild>
-              <div className="bg-gray-50 dark:bg-gray-800 rounded-xl p-4 border border-gray-100 dark:border-gray-700 cursor-pointer" data-testid="input-guests-mobile">
+              <button
+                type="button"
+                className="w-full bg-gray-50 dark:bg-gray-800 rounded-xl p-4 border border-gray-100 dark:border-gray-700 cursor-pointer text-left hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                data-testid="input-guests-mobile"
+              >
                 <div className="flex items-center gap-3">
                   <Users className="h-5 w-5 text-gray-400 flex-shrink-0" />
                   <span className="text-base font-semibold text-gray-900 dark:text-white">
@@ -689,9 +783,9 @@ export function SearchBar({
                   </span>
                   <ChevronDown className="h-4 w-4 text-gray-500 ml-auto" />
                 </div>
-              </div>
+              </button>
             </PopoverTrigger>
-            <PopoverContent className="w-72 p-4" align="center">
+            <PopoverContent className="w-72 p-4 z-50" align="center" sideOffset={8}>
               <div className="space-y-4">
                 {/* Adults */}
                 <div className="flex items-center justify-between">
@@ -776,10 +870,10 @@ export function SearchBar({
           </Popover>
         )}
 
-        {/* Search Button - Gradient Style */}
+        {/* Search Button - Orange Gradient Style */}
         <Button 
           size="lg" 
-          className="w-full h-12 rounded-xl text-base font-semibold bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white shadow-lg" 
+          className="w-full h-12 rounded-xl text-base font-semibold bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white shadow-lg" 
           onClick={handleSearch}
           data-testid="button-search-mobile"
         >

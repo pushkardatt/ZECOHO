@@ -80,6 +80,15 @@ export default function Home() {
       <div className="relative min-h-[600px] md:min-h-[680px] flex items-center justify-center overflow-hidden bg-gradient-to-br from-rose-50 via-background to-amber-50 dark:from-rose-950/20 dark:via-background dark:to-amber-950/20">
         
         <div className="relative z-10 container px-4 md:px-6 text-center py-12">
+          {/* Mobile: Search Bar First */}
+          <div className="md:hidden mb-6">
+            <div className="max-w-4xl mx-auto">
+              <div className="bg-background rounded-2xl shadow-xl border p-3">
+                <SearchBar onSearch={handleSearch} compact={false} showDates={true} showGuests={true} />
+              </div>
+            </div>
+          </div>
+
           {/* Premium Badge */}
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 mb-6">
             <Sparkles className="h-4 w-4 text-amber-500" />
@@ -98,9 +107,9 @@ export default function Home() {
             Zero commission. Zero convenience fees.
           </p>
 
-          {/* Search Bar */}
-          <div className="max-w-4xl mx-auto mb-4">
-            <div className="bg-background rounded-2xl shadow-xl border p-3 md:p-4">
+          {/* Desktop: Search Bar */}
+          <div className="hidden md:block max-w-4xl mx-auto mb-4">
+            <div className="bg-background rounded-2xl shadow-xl border p-4">
               <SearchBar onSearch={handleSearch} compact={false} showDates={true} showGuests={true} />
             </div>
           </div>
