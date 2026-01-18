@@ -1,10 +1,30 @@
 import { Link, useLocation } from "wouter";
-import { Home, Search, Heart, User, Building } from "lucide-react";
+import { Home, Search, Heart, User, Building, MessageCircle, LucideIcon } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { useQuery } from "@tanstack/react-query";
+import { Badge } from "@/components/ui/badge";
+
+type ConversationWithUnread = { unreadCount: number };
+
+interface NavItem {
+  href: string;
+  icon: LucideIcon;
+  label: string;
+  active: boolean;
+  badge?: string;
+}
 
 export function MobileBottomNav() {
   const [location] = useLocation();
   const { isAuthenticated, isOwner } = useAuth();
+  
+  // Fetch unread message count for owners
+  const { data: conversations = [] } = useQuery<ConversationWithUnread[]>({
+    queryKey: ["/api/conversations"],
+    enabled: !!isAuthenticated && isOwner,
+  });
+  
+  const totalUnreadCount = conversations.reduce((sum, conv) => sum + conv.unreadCount, 0);
   
   // Hide on property details pages (they have their own booking bar)
   const isPropertyDetailsPage = location.match(/^\/properties\/[^/]+$/);
@@ -12,7 +32,42 @@ export function MobileBottomNav() {
     return null;
   }
 
-  const navItems = [
+  // Different nav items for owners vs guests
+  const ownerNavItems: NavItem[] = [
+    {
+      href: "/",
+      icon: Home,
+      label: "Home",
+      active: location === "/",
+    },
+    {
+      href: "/owner/dashboard",
+      icon: Building,
+      label: "Owner",
+      active: location.startsWith("/owner") && location !== "/owner/messages",
+    },
+    {
+      href: "/owner/messages",
+      icon: MessageCircle,
+      label: "Messages",
+      active: location === "/owner/messages",
+      badge: totalUnreadCount > 0 ? (totalUnreadCount > 9 ? "9+" : String(totalUnreadCount)) : undefined,
+    },
+    {
+      href: "/wishlist",
+      icon: Heart,
+      label: "Wishlist",
+      active: location === "/wishlist",
+    },
+    {
+      href: "/profile",
+      icon: User,
+      label: "Profile",
+      active: location === "/profile",
+    },
+  ];
+
+  const guestNavItems: NavItem[] = [
     {
       href: "/",
       icon: Home,
@@ -31,12 +86,6 @@ export function MobileBottomNav() {
       label: "Wishlist",
       active: location === "/wishlist",
     },
-    ...(isOwner ? [{
-      href: "/owner/dashboard",
-      icon: Building,
-      label: "Owner",
-      active: location.startsWith("/owner"),
-    }] : []),
     {
       href: isAuthenticated ? "/profile" : "/login",
       icon: User,
@@ -44,6 +93,8 @@ export function MobileBottomNav() {
       active: location === "/profile" || location === "/login",
     },
   ];
+
+  const navItems = isOwner ? ownerNavItems : guestNavItems;
 
   return (
     <nav 
@@ -57,14 +108,25 @@ export function MobileBottomNav() {
             <Link 
               key={item.href} 
               href={item.href}
-              className={`flex flex-col items-center justify-center flex-1 h-full px-3 py-2 transition-colors ${
+              className={`flex flex-col items-center justify-center flex-1 h-full px-3 py-2 transition-colors relative ${
                 item.active
                   ? "text-primary"
                   : "text-muted-foreground hover:text-foreground"
               }`}
               data-testid={`nav-${item.label.toLowerCase()}`}
             >
-              <Icon className={`h-5 w-5 ${item.active ? "fill-current" : ""}`} />
+              <div className="relative">
+                <Icon className={`h-5 w-5 ${item.active ? "fill-current" : ""}`} />
+                {item.badge && (
+                  <Badge 
+                    variant="destructive" 
+                    className="absolute -top-2 -right-3 h-4 min-w-4 flex items-center justify-center p-0 text-[10px] rounded-full"
+                    data-testid="badge-unread-mobile"
+                  >
+                    {item.badge}
+                  </Badge>
+                )}
+              </div>
               <span className="text-xs mt-1 font-medium">{item.label}</span>
             </Link>
           );

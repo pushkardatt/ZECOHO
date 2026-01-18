@@ -169,8 +169,9 @@ export function Header() {
               )}
 
               {/* Show Owner Portal for owners OR users who have engaged with KYC (pending/rejected) */}
+              {/* Hidden on mobile for owners since it's in bottom nav */}
               {(isOwner || isKycRejected || isKycPending) && (
-                <Link href="/owner/dashboard">
+                <Link href="/owner/dashboard" className={isOwner ? "hidden md:block" : ""}>
                   <Button 
                     variant={location.startsWith("/owner") ? "secondary" : "ghost"}
                     size="sm"
@@ -179,6 +180,20 @@ export function Header() {
                   >
                     <Building className="h-4 w-4 md:mr-2" />
                     <span className="hidden md:inline">Owner Portal</span>
+                  </Button>
+                </Link>
+              )}
+              
+              {/* Wishlist button for owners on mobile (since messages moved to bottom nav) */}
+              {isOwner && (
+                <Link href="/wishlist" className="md:hidden">
+                  <Button 
+                    variant={location === "/wishlist" ? "secondary" : "ghost"}
+                    size="sm"
+                    className="font-medium text-sm"
+                    data-testid="link-wishlist-owner-mobile"
+                  >
+                    <Heart className="h-4 w-4" />
                   </Button>
                 </Link>
               )}
@@ -285,7 +300,11 @@ export function Header() {
                 </>
               )}
 
-              <Link href={(isOwner || isKycRejected || isKycPending) ? "/owner/messages" : "/messages"}>
+              {/* Messages - hidden on mobile for owners (moved to bottom nav) */}
+              <Link 
+                href={(isOwner || isKycRejected || isKycPending) ? "/owner/messages" : "/messages"}
+                className={isOwner ? "hidden md:block" : ""}
+              >
                 <Button 
                   variant={location === "/messages" || location === "/owner/messages" ? "secondary" : "ghost"}
                   size="sm"
