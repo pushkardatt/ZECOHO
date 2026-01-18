@@ -2,10 +2,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerFooter, DrawerClose } from "@/components/ui/drawer";
 import { Search, MapPin, Calendar as CalendarIcon, Users, Loader2, Building2, Minus, Plus, ChevronDown, Star, ChevronRight } from "lucide-react";
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { useLocation } from "wouter";
 import { format, addDays } from "date-fns";
 
@@ -95,10 +97,18 @@ export function SearchBar({
   const autocompleteServiceRef = useRef<any>(null);
   const guestsInputRef = useRef<HTMLInputElement>(null);
   
-  // Popover open states for custom calendar and guests
+  // Mobile detection
+  const isMobile = useIsMobile();
+  
+  // Popover open states for custom calendar and guests (desktop)
   const [checkInOpen, setCheckInOpen] = useState(false);
   const [checkOutOpen, setCheckOutOpen] = useState(false);
   const [guestsOpen, setGuestsOpen] = useState(false);
+  
+  // Drawer open states for mobile
+  const [dateDrawerOpen, setDateDrawerOpen] = useState(false);
+  const [guestsDrawerOpen, setGuestsDrawerOpen] = useState(false);
+  const [selectingCheckOut, setSelectingCheckOut] = useState(false);
   
   // Calculate total guests whenever adults/children change
   useEffect(() => {
@@ -690,184 +700,219 @@ export function SearchBar({
         </div>
 
         {showDates && (
-          /* Date Card */
-          <div className="bg-gray-50 dark:bg-gray-800 rounded-xl p-4 border border-gray-100 dark:border-gray-700">
-            <div className="flex items-center gap-3">
-              <CalendarIcon className="h-5 w-5 text-gray-400 flex-shrink-0" />
-              <div className="flex items-center gap-2 flex-1 flex-wrap">
-                {/* Check-in */}
-                <Popover open={checkInOpen} onOpenChange={setCheckInOpen}>
-                  <PopoverTrigger asChild>
-                    <button 
-                      type="button"
-                      className="text-left py-1 px-2 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors" 
-                      data-testid="input-checkin-mobile"
-                    >
-                      <span className={`text-base font-semibold ${checkInDate ? 'text-gray-900 dark:text-white' : 'text-gray-400'}`}>
-                        {checkInDate ? format(checkInDate, "d MMM") : 'Check in'}
-                      </span>
-                      {checkInDate && (
-                        <span className="text-sm text-gray-500 dark:text-gray-400 ml-1">
-                          '{format(checkInDate, "yy")}, {format(checkInDate, "EEE")}
-                        </span>
-                      )}
-                    </button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0 z-50" align="start" sideOffset={8}>
-                    <Calendar
-                      mode="single"
-                      selected={checkInDate}
-                      onSelect={handleCheckInSelect}
-                      disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
-                      initialFocus
-                    />
-                  </PopoverContent>
-                </Popover>
-
-                {/* Nights Badge */}
-                {nights > 0 && (
-                  <span className="px-2 py-0.5 text-xs font-medium border border-gray-300 dark:border-gray-600 rounded text-gray-600 dark:text-gray-300 whitespace-nowrap">
-                    {nights} {nights === 1 ? 'NIGHT' : 'NIGHTS'}
+          <>
+            {/* Date Card - Tap to Open Drawer */}
+            <button
+              type="button"
+              onClick={() => {
+                setSelectingCheckOut(false);
+                setDateDrawerOpen(true);
+              }}
+              className="w-full bg-gray-50 dark:bg-gray-800 rounded-xl p-4 border border-gray-100 dark:border-gray-700 text-left hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+              data-testid="input-dates-mobile"
+            >
+              <div className="flex items-center gap-3">
+                <CalendarIcon className="h-5 w-5 text-gray-400 flex-shrink-0" />
+                <div className="flex items-center gap-2 flex-1 flex-wrap">
+                  {/* Check-in */}
+                  <span className={`text-base font-semibold ${checkInDate ? 'text-gray-900 dark:text-white' : 'text-gray-400'}`}>
+                    {checkInDate ? format(checkInDate, "d MMM") : 'Check in'}
                   </span>
-                )}
+                  {checkInDate && (
+                    <span className="text-sm text-gray-500 dark:text-gray-400">
+                      '{format(checkInDate, "yy")}, {format(checkInDate, "EEE")}
+                    </span>
+                  )}
 
-                {/* Check-out */}
-                <Popover open={checkOutOpen} onOpenChange={setCheckOutOpen}>
-                  <PopoverTrigger asChild>
-                    <button 
+                  {/* Nights Badge */}
+                  {nights > 0 && (
+                    <span className="px-2 py-0.5 text-xs font-medium border border-gray-300 dark:border-gray-600 rounded text-gray-600 dark:text-gray-300 whitespace-nowrap">
+                      {nights} {nights === 1 ? 'NIGHT' : 'NIGHTS'}
+                    </span>
+                  )}
+
+                  {/* Check-out */}
+                  <span className={`text-base font-semibold ${checkOutDate ? 'text-gray-900 dark:text-white' : 'text-gray-400'}`}>
+                    {checkOutDate ? format(checkOutDate, "d MMM") : 'Check out'}
+                  </span>
+                  {checkOutDate && (
+                    <span className="text-sm text-gray-500 dark:text-gray-400">
+                      '{format(checkOutDate, "yy")}, {format(checkOutDate, "EEE")}
+                    </span>
+                  )}
+                </div>
+                <ChevronDown className="h-4 w-4 text-gray-500 flex-shrink-0" />
+              </div>
+            </button>
+
+            {/* Date Selection Drawer */}
+            <Drawer open={dateDrawerOpen} onOpenChange={setDateDrawerOpen}>
+              <DrawerContent className="max-h-[85vh]">
+                <DrawerHeader className="text-left">
+                  <DrawerTitle>{selectingCheckOut ? 'Select Check-out Date' : 'Select Check-in Date'}</DrawerTitle>
+                </DrawerHeader>
+                <div className="px-4 pb-4 flex flex-col items-center">
+                  {/* Date tabs */}
+                  <div className="flex gap-2 mb-4 w-full">
+                    <button
                       type="button"
-                      className="text-left py-1 px-2 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors" 
-                      data-testid="input-checkout-mobile"
+                      onClick={() => setSelectingCheckOut(false)}
+                      className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-colors ${!selectingCheckOut ? 'bg-primary text-primary-foreground' : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400'}`}
                     >
-                      <span className={`text-base font-semibold ${checkOutDate ? 'text-gray-900 dark:text-white' : 'text-gray-400'}`}>
-                        {checkOutDate ? format(checkOutDate, "d MMM") : 'Check out'}
-                      </span>
-                      {checkOutDate && (
-                        <span className="text-sm text-gray-500 dark:text-gray-400 ml-1">
-                          '{format(checkOutDate, "yy")}, {format(checkOutDate, "EEE")}
-                        </span>
-                      )}
+                      Check-in: {checkInDate ? format(checkInDate, "d MMM") : 'Select'}
                     </button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0 z-50" align="start" sideOffset={8}>
-                    <Calendar
-                      mode="single"
-                      selected={checkOutDate}
-                      onSelect={handleCheckOutSelect}
-                      disabled={(date) => {
+                    <button
+                      type="button"
+                      onClick={() => setSelectingCheckOut(true)}
+                      className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-colors ${selectingCheckOut ? 'bg-primary text-primary-foreground' : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400'}`}
+                    >
+                      Check-out: {checkOutDate ? format(checkOutDate, "d MMM") : 'Select'}
+                    </button>
+                  </div>
+                  <Calendar
+                    mode="single"
+                    selected={selectingCheckOut ? checkOutDate : checkInDate}
+                    onSelect={(date) => {
+                      if (selectingCheckOut) {
+                        handleCheckOutSelect(date);
+                        setDateDrawerOpen(false);
+                      } else {
+                        handleCheckInSelect(date);
+                        setSelectingCheckOut(true);
+                      }
+                    }}
+                    disabled={(date) => {
+                      if (selectingCheckOut) {
                         const minDate = checkInDate ? addDays(checkInDate, 1) : new Date(new Date().setHours(0, 0, 0, 0));
                         return date < minDate;
-                      }}
-                      initialFocus
-                    />
-                  </PopoverContent>
-                </Popover>
-              </div>
-            </div>
-          </div>
+                      }
+                      return date < new Date(new Date().setHours(0, 0, 0, 0));
+                    }}
+                    className="rounded-md border"
+                  />
+                </div>
+                <DrawerFooter>
+                  <DrawerClose asChild>
+                    <Button variant="outline" className="w-full">Done</Button>
+                  </DrawerClose>
+                </DrawerFooter>
+              </DrawerContent>
+            </Drawer>
+          </>
         )}
 
         {showGuests && (
-          /* Guests Card */
-          <Popover open={guestsOpen} onOpenChange={setGuestsOpen}>
-            <PopoverTrigger asChild>
-              <button
-                type="button"
-                className="w-full bg-gray-50 dark:bg-gray-800 rounded-xl p-4 border border-gray-100 dark:border-gray-700 cursor-pointer text-left hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-                data-testid="input-guests-mobile"
-              >
-                <div className="flex items-center gap-3">
-                  <Users className="h-5 w-5 text-gray-400 flex-shrink-0" />
-                  <span className="text-base font-semibold text-gray-900 dark:text-white">
-                    {rooms} Room{rooms !== 1 ? 's' : ''}, {adults} Adult{adults !== 1 ? 's' : ''} & {children} Child{children !== 1 ? 'ren' : ''}
-                  </span>
-                  <ChevronDown className="h-4 w-4 text-gray-500 ml-auto" />
-                </div>
-              </button>
-            </PopoverTrigger>
-            <PopoverContent className="w-72 p-4 z-50" align="center" sideOffset={8}>
-              <div className="space-y-4">
-                {/* Adults */}
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="font-medium text-gray-900 dark:text-white">Adults</div>
-                    <div className="text-xs text-gray-500">Ages 13 or above</div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <button
-                      type="button"
-                      onClick={() => setAdults(Math.max(1, adults - 1))}
-                      disabled={adults <= 1}
-                      className="w-8 h-8 rounded-full border border-gray-300 flex items-center justify-center hover:border-gray-400 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                    >
-                      <Minus className="h-4 w-4 text-gray-600" />
-                    </button>
-                    <span className="w-6 text-center font-medium">{adults}</span>
-                    <button
-                      type="button"
-                      onClick={() => setAdults(Math.min(10, adults + 1))}
-                      disabled={adults >= 10}
-                      className="w-8 h-8 rounded-full border border-gray-300 flex items-center justify-center hover:border-gray-400 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                    >
-                      <Plus className="h-4 w-4 text-gray-600" />
-                    </button>
-                  </div>
-                </div>
-                {/* Children */}
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="font-medium text-gray-900 dark:text-white">Children</div>
-                    <div className="text-xs text-gray-500">Ages 2-12</div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <button
-                      type="button"
-                      onClick={() => setChildren(Math.max(0, children - 1))}
-                      disabled={children <= 0}
-                      className="w-8 h-8 rounded-full border border-gray-300 flex items-center justify-center hover:border-gray-400 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                    >
-                      <Minus className="h-4 w-4 text-gray-600" />
-                    </button>
-                    <span className="w-6 text-center font-medium">{children}</span>
-                    <button
-                      type="button"
-                      onClick={() => setChildren(Math.min(6, children + 1))}
-                      disabled={children >= 6}
-                      className="w-8 h-8 rounded-full border border-gray-300 flex items-center justify-center hover:border-gray-400 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                    >
-                      <Plus className="h-4 w-4 text-gray-600" />
-                    </button>
-                  </div>
-                </div>
-                {/* Rooms */}
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="font-medium text-gray-900 dark:text-white">Rooms</div>
-                    <div className="text-xs text-gray-500">Min {calculateMinRooms(adults, children)} for {adults + children} guest{adults + children !== 1 ? 's' : ''}</div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <button
-                      type="button"
-                      onClick={() => setRooms(Math.max(calculateMinRooms(adults, children), rooms - 1))}
-                      disabled={rooms <= calculateMinRooms(adults, children)}
-                      className="w-8 h-8 rounded-full border border-gray-300 flex items-center justify-center hover:border-gray-400 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                    >
-                      <Minus className="h-4 w-4 text-gray-600" />
-                    </button>
-                    <span className="w-6 text-center font-medium">{rooms}</span>
-                    <button
-                      type="button"
-                      onClick={() => setRooms(Math.min(5, rooms + 1))}
-                      disabled={rooms >= 5}
-                      className="w-8 h-8 rounded-full border border-gray-300 flex items-center justify-center hover:border-gray-400 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                    >
-                      <Plus className="h-4 w-4 text-gray-600" />
-                    </button>
-                  </div>
-                </div>
+          <>
+            {/* Guests Card - Tap to Open Drawer */}
+            <button
+              type="button"
+              onClick={() => setGuestsDrawerOpen(true)}
+              className="w-full bg-gray-50 dark:bg-gray-800 rounded-xl p-4 border border-gray-100 dark:border-gray-700 cursor-pointer text-left hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+              data-testid="input-guests-mobile"
+            >
+              <div className="flex items-center gap-3">
+                <Users className="h-5 w-5 text-gray-400 flex-shrink-0" />
+                <span className="text-base font-semibold text-gray-900 dark:text-white">
+                  {rooms} Room{rooms !== 1 ? 's' : ''}, {adults} Adult{adults !== 1 ? 's' : ''} & {children} Child{children !== 1 ? 'ren' : ''}
+                </span>
+                <ChevronDown className="h-4 w-4 text-gray-500 ml-auto" />
               </div>
-            </PopoverContent>
-          </Popover>
+            </button>
+
+            {/* Guests Selection Drawer */}
+            <Drawer open={guestsDrawerOpen} onOpenChange={setGuestsDrawerOpen}>
+              <DrawerContent>
+                <DrawerHeader className="text-left">
+                  <DrawerTitle>Guests & Rooms</DrawerTitle>
+                </DrawerHeader>
+                <div className="px-6 pb-4 space-y-6">
+                  {/* Adults */}
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="font-medium text-gray-900 dark:text-white">Adults</div>
+                      <div className="text-sm text-gray-500">Ages 13 or above</div>
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <button
+                        type="button"
+                        onClick={() => setAdults(Math.max(1, adults - 1))}
+                        disabled={adults <= 1}
+                        className="w-10 h-10 rounded-full border border-gray-300 flex items-center justify-center hover:border-gray-400 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                      >
+                        <Minus className="h-5 w-5 text-gray-600" />
+                      </button>
+                      <span className="w-8 text-center font-semibold text-lg">{adults}</span>
+                      <button
+                        type="button"
+                        onClick={() => setAdults(Math.min(10, adults + 1))}
+                        disabled={adults >= 10}
+                        className="w-10 h-10 rounded-full border border-gray-300 flex items-center justify-center hover:border-gray-400 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                      >
+                        <Plus className="h-5 w-5 text-gray-600" />
+                      </button>
+                    </div>
+                  </div>
+                  {/* Children */}
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="font-medium text-gray-900 dark:text-white">Children</div>
+                      <div className="text-sm text-gray-500">Ages 2-12</div>
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <button
+                        type="button"
+                        onClick={() => setChildren(Math.max(0, children - 1))}
+                        disabled={children <= 0}
+                        className="w-10 h-10 rounded-full border border-gray-300 flex items-center justify-center hover:border-gray-400 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                      >
+                        <Minus className="h-5 w-5 text-gray-600" />
+                      </button>
+                      <span className="w-8 text-center font-semibold text-lg">{children}</span>
+                      <button
+                        type="button"
+                        onClick={() => setChildren(Math.min(6, children + 1))}
+                        disabled={children >= 6}
+                        className="w-10 h-10 rounded-full border border-gray-300 flex items-center justify-center hover:border-gray-400 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                      >
+                        <Plus className="h-5 w-5 text-gray-600" />
+                      </button>
+                    </div>
+                  </div>
+                  {/* Rooms */}
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="font-medium text-gray-900 dark:text-white">Rooms</div>
+                      <div className="text-sm text-gray-500">Min {calculateMinRooms(adults, children)} for {adults + children} guest{adults + children !== 1 ? 's' : ''}</div>
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <button
+                        type="button"
+                        onClick={() => setRooms(Math.max(calculateMinRooms(adults, children), rooms - 1))}
+                        disabled={rooms <= calculateMinRooms(adults, children)}
+                        className="w-10 h-10 rounded-full border border-gray-300 flex items-center justify-center hover:border-gray-400 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                      >
+                        <Minus className="h-5 w-5 text-gray-600" />
+                      </button>
+                      <span className="w-8 text-center font-semibold text-lg">{rooms}</span>
+                      <button
+                        type="button"
+                        onClick={() => setRooms(Math.min(5, rooms + 1))}
+                        disabled={rooms >= 5}
+                        className="w-10 h-10 rounded-full border border-gray-300 flex items-center justify-center hover:border-gray-400 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                      >
+                        <Plus className="h-5 w-5 text-gray-600" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+                <DrawerFooter>
+                  <DrawerClose asChild>
+                    <Button className="w-full">Apply</Button>
+                  </DrawerClose>
+                </DrawerFooter>
+              </DrawerContent>
+            </Drawer>
+          </>
         )}
 
         {/* Search Button - Orange Gradient Style */}
