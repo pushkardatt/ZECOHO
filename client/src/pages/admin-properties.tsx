@@ -423,18 +423,18 @@ export default function AdminProperties() {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="pending" data-testid="tab-pending">
-              Pending Review ({pendingProperties.length})
+          <TabsList className="flex flex-wrap w-full gap-1 md:grid md:grid-cols-4">
+            <TabsTrigger value="pending" className="text-xs md:text-sm flex-1 min-w-fit" data-testid="tab-pending">
+              Pending ({pendingProperties.length})
             </TabsTrigger>
-            <TabsTrigger value="published" data-testid="tab-published">
+            <TabsTrigger value="published" className="text-xs md:text-sm flex-1 min-w-fit" data-testid="tab-published">
               Published ({publishedProperties.length})
             </TabsTrigger>
-            <TabsTrigger value="draft" data-testid="tab-draft">
+            <TabsTrigger value="draft" className="text-xs md:text-sm flex-1 min-w-fit" data-testid="tab-draft">
               Draft ({draftProperties.length})
             </TabsTrigger>
-            <TabsTrigger value="deactivation-requests" data-testid="tab-deactivation-requests">
-              Property Requests ({deactivationRequests.length})
+            <TabsTrigger value="deactivation-requests" className="text-xs md:text-sm flex-1 min-w-fit" data-testid="tab-deactivation-requests">
+              Requests ({deactivationRequests.length})
             </TabsTrigger>
           </TabsList>
 
