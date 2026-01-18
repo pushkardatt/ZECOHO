@@ -70,58 +70,104 @@ export default function Landing() {
       <div className="relative min-h-[450px] md:min-h-[480px] flex items-center justify-center overflow-hidden bg-gradient-to-br from-rose-50 via-background to-amber-50 dark:from-rose-950/20 dark:via-background dark:to-amber-950/20">
         
         <div className="relative z-10 container px-4 md:px-6 text-center py-8">
-          {/* Premium Badge - Subtle */}
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-emerald-100 dark:bg-emerald-900/30 border border-emerald-200 dark:border-emerald-800 mb-4">
-            <BadgeCheck className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
-            <span className="text-emerald-700 dark:text-emerald-300 text-xs font-semibold">ZERO Commission Hotel Booking</span>
-          </div>
+          {/* MOBILE LAYOUT: Search First */}
+          <div className="md:hidden">
+            {/* Search Bar - First on Mobile */}
+            <div className="mb-6">
+              <div className="bg-background rounded-2xl shadow-xl border p-3">
+                <SearchBar 
+                  onSearch={handleSearch} 
+                  compact={false} 
+                  showDates={true} 
+                  showGuests={true} 
+                  ctaText="Book Now"
+                />
+              </div>
+            </div>
 
-          {/* Main Headline - Responsive Typography */}
-          <h1 
-            className="text-hero-title font-extrabold text-foreground tracking-tight mb-2" 
-            data-testid="text-hero-title"
-          >
-            Same Hotel. Same Room.
-          </h1>
-          <h1 
-            className="text-hero-subtitle font-extrabold tracking-tight mb-3 md:mb-4 bg-gradient-to-r from-rose-500 via-rose-600 to-amber-500 bg-clip-text text-transparent"
-          >
-            15–25% Less Than Other OTAs
-          </h1>
-          
-          {/* Subheadline */}
-          <p 
-            className="text-base md:text-lg text-muted-foreground font-normal leading-relaxed mb-6 md:mb-8 max-w-xl mx-auto"
-          >
-            We don't charge hotels commission — so they pass the savings to you. No hidden fees. No surprises.
-          </p>
+            {/* Tagline Section - Second on Mobile */}
+            <div className="mb-6">
+              <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-emerald-100 dark:bg-emerald-900/30 border border-emerald-200 dark:border-emerald-800 mb-4">
+                <BadgeCheck className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+                <span className="text-emerald-700 dark:text-emerald-300 text-xs font-semibold">ZERO Commission Hotel Booking</span>
+              </div>
+              <h1 className="text-2xl font-extrabold text-foreground tracking-tight mb-2" data-testid="text-hero-title-mobile">
+                Same Hotel. Same Room.
+              </h1>
+              <h1 className="text-xl font-extrabold tracking-tight mb-3 bg-gradient-to-r from-rose-500 via-rose-600 to-amber-500 bg-clip-text text-transparent">
+                15–25% Less Than Other OTAs
+              </h1>
+              <p className="text-sm text-muted-foreground font-normal leading-relaxed max-w-sm mx-auto">
+                We don't charge hotels commission — so they pass the savings to you. No hidden fees. No surprises.
+              </p>
+            </div>
 
-          {/* Airbnb-Style Search Bar */}
-          <div className="max-w-4xl mx-auto mb-6">
-            <div className="bg-background rounded-2xl shadow-xl border p-3 md:p-4">
-              <SearchBar 
-                onSearch={handleSearch} 
-                compact={false} 
-                showDates={true} 
-                showGuests={true} 
-                ctaText="Book Now"
-              />
+            {/* Mobile Trust Badges */}
+            <div className="flex flex-wrap items-center justify-center gap-2 mb-4">
+              <div className="flex items-center gap-1.5 bg-white/80 dark:bg-muted/50 px-3 py-1.5 rounded-full">
+                <Percent className="h-3.5 w-3.5 text-emerald-600" />
+                <span className="text-foreground/80 text-xs font-medium">0% Commission</span>
+              </div>
+              <div className="flex items-center gap-1.5 bg-white/80 dark:bg-muted/50 px-3 py-1.5 rounded-full">
+                <ShieldCheck className="h-3.5 w-3.5 text-amber-600" />
+                <span className="text-foreground/80 text-xs font-medium">Verified Properties</span>
+              </div>
             </div>
           </div>
 
-          {/* USPs Under Search Bar */}
-          <div className="flex flex-wrap items-center justify-center gap-4 md:gap-6">
-            <div className="flex items-center gap-1.5 bg-white/80 dark:bg-muted/50 px-3 py-1.5 rounded-full">
-              <Percent className="h-3.5 w-3.5 text-emerald-600" />
-              <span className="text-foreground/80 text-xs font-medium">0% Commission</span>
+          {/* DESKTOP LAYOUT: Original Order */}
+          <div className="hidden md:block">
+            {/* Premium Badge - Subtle */}
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-emerald-100 dark:bg-emerald-900/30 border border-emerald-200 dark:border-emerald-800 mb-4">
+              <BadgeCheck className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+              <span className="text-emerald-700 dark:text-emerald-300 text-xs font-semibold">ZERO Commission Hotel Booking</span>
             </div>
-            <div className="flex items-center gap-1.5 bg-white/80 dark:bg-muted/50 px-3 py-1.5 rounded-full">
-              <MessageCircle className="h-3.5 w-3.5 text-blue-600" />
-              <span className="text-foreground/80 text-xs font-medium">Direct Hotel Contact</span>
+
+            {/* Main Headline */}
+            <h1 
+              className="text-hero-title font-extrabold text-foreground tracking-tight mb-2" 
+              data-testid="text-hero-title"
+            >
+              Same Hotel. Same Room.
+            </h1>
+            <h1 
+              className="text-hero-subtitle font-extrabold tracking-tight mb-4 bg-gradient-to-r from-rose-500 via-rose-600 to-amber-500 bg-clip-text text-transparent"
+            >
+              15–25% Less Than Other OTAs
+            </h1>
+            
+            {/* Subheadline */}
+            <p className="text-lg text-muted-foreground font-normal leading-relaxed mb-8 max-w-xl mx-auto">
+              We don't charge hotels commission — so they pass the savings to you. No hidden fees. No surprises.
+            </p>
+
+            {/* Search Bar */}
+            <div className="max-w-4xl mx-auto mb-6">
+              <div className="bg-background rounded-2xl shadow-xl border p-4">
+                <SearchBar 
+                  onSearch={handleSearch} 
+                  compact={false} 
+                  showDates={true} 
+                  showGuests={true} 
+                  ctaText="Book Now"
+                />
+              </div>
             </div>
-            <div className="flex items-center gap-1.5 bg-white/80 dark:bg-muted/50 px-3 py-1.5 rounded-full">
-              <ShieldCheck className="h-3.5 w-3.5 text-amber-600" />
-              <span className="text-foreground/80 text-xs font-medium">Verified Properties</span>
+
+            {/* USPs Under Search Bar */}
+            <div className="flex flex-wrap items-center justify-center gap-6">
+              <div className="flex items-center gap-1.5 bg-white/80 dark:bg-muted/50 px-3 py-1.5 rounded-full">
+                <Percent className="h-3.5 w-3.5 text-emerald-600" />
+                <span className="text-foreground/80 text-xs font-medium">0% Commission</span>
+              </div>
+              <div className="flex items-center gap-1.5 bg-white/80 dark:bg-muted/50 px-3 py-1.5 rounded-full">
+                <MessageCircle className="h-3.5 w-3.5 text-blue-600" />
+                <span className="text-foreground/80 text-xs font-medium">Direct Hotel Contact</span>
+              </div>
+              <div className="flex items-center gap-1.5 bg-white/80 dark:bg-muted/50 px-3 py-1.5 rounded-full">
+                <ShieldCheck className="h-3.5 w-3.5 text-amber-600" />
+                <span className="text-foreground/80 text-xs font-medium">Verified Properties</span>
+              </div>
             </div>
           </div>
           
