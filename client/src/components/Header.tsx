@@ -161,19 +161,6 @@ export function Header() {
                 </Link>
               )}
               
-              {/* Wishlist button for owners on mobile (since messages moved to bottom nav) */}
-              {isOwner && (
-                <Link href="/wishlist" className="md:hidden">
-                  <Button 
-                    variant={location === "/wishlist" ? "secondary" : "ghost"}
-                    size="sm"
-                    className="font-medium text-sm"
-                    data-testid="link-wishlist-owner-mobile"
-                  >
-                    <Heart className="h-4 w-4" />
-                  </Button>
-                </Link>
-              )}
 
               {isAdmin && (
                 <>
