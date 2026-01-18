@@ -568,44 +568,260 @@ export function SearchBar({
     );
   }
 
+  // Calculate number of nights
+  const calculateNights = () => {
+    if (checkInDate && checkOutDate) {
+      const diffTime = checkOutDate.getTime() - checkInDate.getTime();
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      return diffDays > 0 ? diffDays : 0;
+    }
+    return 0;
+  };
+  const nights = calculateNights();
+
   return (
     <div className="w-full max-w-4xl relative" ref={suggestionsRef}>
-      <div className="bg-white rounded-2xl md:rounded-full shadow-lg border border-gray-200 p-2 md:p-1.5 flex flex-col md:flex-row md:items-center w-full gap-2 md:gap-0">
-        {/* Destination */}
-        <div className="flex-1 px-4 py-2 rounded-xl md:rounded-full hover:bg-gray-50 transition-colors">
-          <label className="text-xs font-semibold block mb-0.5 text-gray-700">Where</label>
-          <div className="relative">
-            <input
-              type="text"
-              placeholder="Search destinations"
-              value={destination}
-              onChange={(e) => {
-                setDestination(e.target.value);
-                setShowSuggestions(e.target.value.length > 0);
-              }}
-              onFocus={() => destination.length > 0 && setShowSuggestions(true)}
-              className="w-full bg-transparent focus:outline-none text-sm text-gray-900 placeholder:text-gray-400"
-              data-testid="input-destination-full"
-            />
+      {/* Mobile Card-Based Layout */}
+      <div className="md:hidden space-y-3">
+        {/* Destination Card */}
+        <div className="bg-gray-50 dark:bg-gray-800 rounded-xl p-4 border border-gray-100 dark:border-gray-700">
+          <div className="flex items-center gap-3">
+            <Search className="h-5 w-5 text-gray-400 flex-shrink-0" />
+            <div className="flex-1 min-w-0">
+              <input
+                type="text"
+                placeholder="Search destinations"
+                value={destination}
+                onChange={(e) => {
+                  setDestination(e.target.value);
+                  setShowSuggestions(e.target.value.length > 0);
+                }}
+                onFocus={() => destination.length > 0 && setShowSuggestions(true)}
+                className="w-full bg-transparent focus:outline-none text-base font-medium text-gray-900 dark:text-white placeholder:text-gray-400"
+                data-testid="input-destination-mobile"
+              />
+              {destination && (
+                <span className="text-sm text-gray-500 dark:text-gray-400">India</span>
+              )}
+            </div>
           </div>
         </div>
-        
-        {/* Subtle divider - hidden on mobile */}
-        {showDates && <div className="hidden md:block h-8 w-px bg-gray-200" />}
-      
+
         {showDates && (
-          <>
-            {/* Date pickers row - side by side on mobile */}
-            <div className="flex flex-row gap-2 md:gap-0 md:contents">
+          /* Date Card */
+          <div className="bg-gray-50 dark:bg-gray-800 rounded-xl p-4 border border-gray-100 dark:border-gray-700">
+            <div className="flex items-center gap-3">
+              <CalendarIcon className="h-5 w-5 text-gray-400 flex-shrink-0" />
+              <div className="flex items-center gap-2 flex-1">
+                {/* Check-in */}
+                <Popover open={checkInOpen} onOpenChange={setCheckInOpen}>
+                  <PopoverTrigger asChild>
+                    <button className="text-left" data-testid="input-checkin-mobile">
+                      <span className={`text-base font-semibold ${checkInDate ? 'text-gray-900 dark:text-white' : 'text-gray-400'}`}>
+                        {checkInDate ? format(checkInDate, "d MMM") : 'Check in'}
+                      </span>
+                      {checkInDate && (
+                        <span className="text-sm text-gray-500 dark:text-gray-400 ml-1">
+                          '{format(checkInDate, "yy")}, {format(checkInDate, "EEE")}
+                        </span>
+                      )}
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={checkInDate}
+                      onSelect={handleCheckInSelect}
+                      disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+
+                {/* Nights Badge */}
+                {nights > 0 && (
+                  <span className="px-2 py-0.5 text-xs font-medium border border-gray-300 dark:border-gray-600 rounded text-gray-600 dark:text-gray-300 whitespace-nowrap">
+                    {nights} {nights === 1 ? 'NIGHT' : 'NIGHTS'}
+                  </span>
+                )}
+
+                {/* Check-out */}
+                <Popover open={checkOutOpen} onOpenChange={setCheckOutOpen}>
+                  <PopoverTrigger asChild>
+                    <button className="text-left" data-testid="input-checkout-mobile">
+                      <span className={`text-base font-semibold ${checkOutDate ? 'text-gray-900 dark:text-white' : 'text-gray-400'}`}>
+                        {checkOutDate ? format(checkOutDate, "d MMM") : 'Check out'}
+                      </span>
+                      {checkOutDate && (
+                        <span className="text-sm text-gray-500 dark:text-gray-400 ml-1">
+                          '{format(checkOutDate, "yy")}, {format(checkOutDate, "EEE")}
+                        </span>
+                      )}
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={checkOutDate}
+                      onSelect={handleCheckOutSelect}
+                      disabled={(date) => {
+                        const minDate = checkInDate ? addDays(checkInDate, 1) : new Date(new Date().setHours(0, 0, 0, 0));
+                        return date < minDate;
+                      }}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {showGuests && (
+          /* Guests Card */
+          <Popover open={guestsOpen} onOpenChange={setGuestsOpen}>
+            <PopoverTrigger asChild>
+              <div className="bg-gray-50 dark:bg-gray-800 rounded-xl p-4 border border-gray-100 dark:border-gray-700 cursor-pointer" data-testid="input-guests-mobile">
+                <div className="flex items-center gap-3">
+                  <Users className="h-5 w-5 text-gray-400 flex-shrink-0" />
+                  <span className="text-base font-semibold text-gray-900 dark:text-white">
+                    {rooms} Room{rooms !== 1 ? 's' : ''}, {adults} Adult{adults !== 1 ? 's' : ''} & {children} Child{children !== 1 ? 'ren' : ''}
+                  </span>
+                  <ChevronDown className="h-4 w-4 text-gray-500 ml-auto" />
+                </div>
+              </div>
+            </PopoverTrigger>
+            <PopoverContent className="w-72 p-4" align="center">
+              <div className="space-y-4">
+                {/* Adults */}
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="font-medium text-gray-900 dark:text-white">Adults</div>
+                    <div className="text-xs text-gray-500">Ages 13 or above</div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setAdults(Math.max(1, adults - 1))}
+                      disabled={adults <= 1}
+                      className="w-8 h-8 rounded-full border border-gray-300 flex items-center justify-center hover:border-gray-400 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                    >
+                      <Minus className="h-4 w-4 text-gray-600" />
+                    </button>
+                    <span className="w-6 text-center font-medium">{adults}</span>
+                    <button
+                      type="button"
+                      onClick={() => setAdults(Math.min(10, adults + 1))}
+                      disabled={adults >= 10}
+                      className="w-8 h-8 rounded-full border border-gray-300 flex items-center justify-center hover:border-gray-400 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                    >
+                      <Plus className="h-4 w-4 text-gray-600" />
+                    </button>
+                  </div>
+                </div>
+                {/* Children */}
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="font-medium text-gray-900 dark:text-white">Children</div>
+                    <div className="text-xs text-gray-500">Ages 2-12</div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setChildren(Math.max(0, children - 1))}
+                      disabled={children <= 0}
+                      className="w-8 h-8 rounded-full border border-gray-300 flex items-center justify-center hover:border-gray-400 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                    >
+                      <Minus className="h-4 w-4 text-gray-600" />
+                    </button>
+                    <span className="w-6 text-center font-medium">{children}</span>
+                    <button
+                      type="button"
+                      onClick={() => setChildren(Math.min(6, children + 1))}
+                      disabled={children >= 6}
+                      className="w-8 h-8 rounded-full border border-gray-300 flex items-center justify-center hover:border-gray-400 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                    >
+                      <Plus className="h-4 w-4 text-gray-600" />
+                    </button>
+                  </div>
+                </div>
+                {/* Rooms */}
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="font-medium text-gray-900 dark:text-white">Rooms</div>
+                    <div className="text-xs text-gray-500">Min {calculateMinRooms(adults, children)} for {adults + children} guest{adults + children !== 1 ? 's' : ''}</div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setRooms(Math.max(calculateMinRooms(adults, children), rooms - 1))}
+                      disabled={rooms <= calculateMinRooms(adults, children)}
+                      className="w-8 h-8 rounded-full border border-gray-300 flex items-center justify-center hover:border-gray-400 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                    >
+                      <Minus className="h-4 w-4 text-gray-600" />
+                    </button>
+                    <span className="w-6 text-center font-medium">{rooms}</span>
+                    <button
+                      type="button"
+                      onClick={() => setRooms(Math.min(5, rooms + 1))}
+                      disabled={rooms >= 5}
+                      className="w-8 h-8 rounded-full border border-gray-300 flex items-center justify-center hover:border-gray-400 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                    >
+                      <Plus className="h-4 w-4 text-gray-600" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </PopoverContent>
+          </Popover>
+        )}
+
+        {/* Search Button - Gradient Style */}
+        <Button 
+          size="lg" 
+          className="w-full h-12 rounded-xl text-base font-semibold bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white shadow-lg" 
+          onClick={handleSearch}
+          data-testid="button-search-mobile"
+        >
+          SEARCH
+        </Button>
+      </div>
+
+      {/* Desktop Layout - Original Style */}
+      <div className="hidden md:block">
+        <div className="bg-white dark:bg-gray-900 rounded-full shadow-lg border border-gray-200 dark:border-gray-700 p-1.5 flex flex-row items-center w-full">
+          {/* Destination */}
+          <div className="flex-1 px-4 py-2 rounded-full hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+            <label className="text-xs font-semibold block mb-0.5 text-gray-700 dark:text-gray-300">Where</label>
+            <div className="relative">
+              <input
+                type="text"
+                placeholder="Search destinations"
+                value={destination}
+                onChange={(e) => {
+                  setDestination(e.target.value);
+                  setShowSuggestions(e.target.value.length > 0);
+                }}
+                onFocus={() => destination.length > 0 && setShowSuggestions(true)}
+                className="w-full bg-transparent focus:outline-none text-sm text-gray-900 dark:text-white placeholder:text-gray-400"
+                data-testid="input-destination-full"
+              />
+            </div>
+          </div>
+          
+          {showDates && <div className="h-8 w-px bg-gray-200 dark:bg-gray-700" />}
+        
+          {showDates && (
+            <>
               {/* Check-in Date Picker */}
               <Popover open={checkInOpen} onOpenChange={setCheckInOpen}>
                 <PopoverTrigger asChild>
                   <div 
-                    className="flex-1 px-4 py-2 rounded-xl md:rounded-full cursor-pointer hover:bg-gray-50 transition-colors"
+                    className="flex-1 px-4 py-2 rounded-full cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
                     data-testid="input-checkin"
                   >
-                    <label className="text-xs font-semibold block mb-0.5 text-gray-700 cursor-pointer">Check in</label>
-                    <span className={`text-sm ${checkInDate ? 'text-gray-900' : 'text-gray-400'}`}>
+                    <label className="text-xs font-semibold block mb-0.5 text-gray-700 dark:text-gray-300 cursor-pointer">Check in</label>
+                    <span className={`text-sm ${checkInDate ? 'text-gray-900 dark:text-white' : 'text-gray-400'}`}>
                       {checkInDate ? format(checkInDate, 'MMM d') : 'Add dates'}
                     </span>
                   </div>
@@ -621,18 +837,17 @@ export function SearchBar({
                 </PopoverContent>
               </Popover>
               
-              {/* Subtle divider - hidden on mobile */}
-              <div className="hidden md:block h-8 w-px bg-gray-200" />
+              <div className="h-8 w-px bg-gray-200 dark:bg-gray-700" />
               
               {/* Check-out Date Picker */}
               <Popover open={checkOutOpen} onOpenChange={setCheckOutOpen}>
                 <PopoverTrigger asChild>
                   <div 
-                    className="flex-1 px-4 py-2 rounded-xl md:rounded-full cursor-pointer hover:bg-gray-50 transition-colors"
+                    className="flex-1 px-4 py-2 rounded-full cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
                     data-testid="input-checkout"
                   >
-                    <label className="text-xs font-semibold block mb-0.5 text-gray-700 cursor-pointer">Check out</label>
-                    <span className={`text-sm ${checkOutDate ? 'text-gray-900' : 'text-gray-400'}`}>
+                    <label className="text-xs font-semibold block mb-0.5 text-gray-700 dark:text-gray-300 cursor-pointer">Check out</label>
+                    <span className={`text-sm ${checkOutDate ? 'text-gray-900 dark:text-white' : 'text-gray-400'}`}>
                       {checkOutDate ? format(checkOutDate, 'MMM d') : 'Add dates'}
                     </span>
                   </div>
@@ -650,133 +865,132 @@ export function SearchBar({
                   />
                 </PopoverContent>
               </Popover>
-            </div>
-          </>
-        )}
+            </>
+          )}
         
-        {showGuests && (
-          <>
-            {/* Subtle divider - hidden on mobile */}
-            <div className="hidden md:block h-8 w-px bg-gray-200" />
-            
-            {/* Airbnb-style Guests Popover */}
-            <Popover open={guestsOpen} onOpenChange={setGuestsOpen}>
-              <PopoverTrigger asChild>
-                <div 
-                  className="flex-1 px-4 py-2 rounded-xl md:rounded-full cursor-pointer hover:bg-gray-50 transition-colors"
-                  data-testid="input-guests"
-                >
-                  <label className="text-xs font-semibold block mb-0.5 text-gray-700 cursor-pointer">Who</label>
-                  <div className="flex items-center gap-1">
-                    <span className={`text-sm ${guests > 0 ? 'text-gray-900' : 'text-gray-400'}`}>
-                      {guests > 0 ? `${adults} Adult${adults !== 1 ? 's' : ''}, ${children} Child${children !== 1 ? 'ren' : ''}` : 'Add guests'}
-                    </span>
-                    <ChevronDown className="h-3 w-3 text-gray-500" />
-                  </div>
-                </div>
-              </PopoverTrigger>
-              <PopoverContent className="w-72 p-4" align="end">
-                <div className="space-y-4">
-                  {/* Adults */}
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <div className="font-medium text-gray-900">Adults</div>
-                      <div className="text-xs text-gray-500">Ages 13 or above</div>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <button
-                        type="button"
-                        onClick={() => setAdults(Math.max(1, adults - 1))}
-                        disabled={adults <= 1}
-                        className="w-8 h-8 rounded-full border border-gray-300 flex items-center justify-center hover:border-gray-400 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                        data-testid="button-adults-minus"
-                      >
-                        <Minus className="h-4 w-4 text-gray-600" />
-                      </button>
-                      <span className="w-6 text-center font-medium" data-testid="text-adults-count">{adults}</span>
-                      <button
-                        type="button"
-                        onClick={() => setAdults(Math.min(10, adults + 1))}
-                        disabled={adults >= 10}
-                        className="w-8 h-8 rounded-full border border-gray-300 flex items-center justify-center hover:border-gray-400 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                        data-testid="button-adults-plus"
-                      >
-                        <Plus className="h-4 w-4 text-gray-600" />
-                      </button>
+          {showGuests && (
+            <>
+              <div className="h-8 w-px bg-gray-200 dark:bg-gray-700" />
+              
+              {/* Desktop Guests Popover */}
+              <Popover open={guestsOpen} onOpenChange={setGuestsOpen}>
+                <PopoverTrigger asChild>
+                  <div 
+                    className="flex-1 px-4 py-2 rounded-full cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                    data-testid="input-guests"
+                  >
+                    <label className="text-xs font-semibold block mb-0.5 text-gray-700 dark:text-gray-300 cursor-pointer">Who</label>
+                    <div className="flex items-center gap-1">
+                      <span className={`text-sm ${guests > 0 ? 'text-gray-900 dark:text-white' : 'text-gray-400'}`}>
+                        {guests > 0 ? `${adults} Adult${adults !== 1 ? 's' : ''}, ${children} Child${children !== 1 ? 'ren' : ''}` : 'Add guests'}
+                      </span>
+                      <ChevronDown className="h-3 w-3 text-gray-500" />
                     </div>
                   </div>
-                  
-                  {/* Children */}
-                  <div className="flex items-center justify-between border-t pt-4">
-                    <div>
-                      <div className="font-medium text-gray-900">Children</div>
-                      <div className="text-xs text-gray-500">Ages 2–12</div>
+                </PopoverTrigger>
+                <PopoverContent className="w-72 p-4" align="end">
+                  <div className="space-y-4">
+                    {/* Adults */}
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="font-medium text-gray-900 dark:text-white">Adults</div>
+                        <div className="text-xs text-gray-500">Ages 13 or above</div>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <button
+                          type="button"
+                          onClick={() => setAdults(Math.max(1, adults - 1))}
+                          disabled={adults <= 1}
+                          className="w-8 h-8 rounded-full border border-gray-300 flex items-center justify-center hover:border-gray-400 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                          data-testid="button-adults-minus"
+                        >
+                          <Minus className="h-4 w-4 text-gray-600" />
+                        </button>
+                        <span className="w-6 text-center font-medium" data-testid="text-adults-count">{adults}</span>
+                        <button
+                          type="button"
+                          onClick={() => setAdults(Math.min(10, adults + 1))}
+                          disabled={adults >= 10}
+                          className="w-8 h-8 rounded-full border border-gray-300 flex items-center justify-center hover:border-gray-400 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                          data-testid="button-adults-plus"
+                        >
+                          <Plus className="h-4 w-4 text-gray-600" />
+                        </button>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-3">
-                      <button
-                        type="button"
-                        onClick={() => setChildren(Math.max(0, children - 1))}
-                        disabled={children <= 0}
-                        className="w-8 h-8 rounded-full border border-gray-300 flex items-center justify-center hover:border-gray-400 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                        data-testid="button-children-minus"
-                      >
-                        <Minus className="h-4 w-4 text-gray-600" />
-                      </button>
-                      <span className="w-6 text-center font-medium" data-testid="text-children-count">{children}</span>
-                      <button
-                        type="button"
-                        onClick={() => setChildren(Math.min(6, children + 1))}
-                        disabled={children >= 6}
-                        className="w-8 h-8 rounded-full border border-gray-300 flex items-center justify-center hover:border-gray-400 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                        data-testid="button-children-plus"
-                      >
-                        <Plus className="h-4 w-4 text-gray-600" />
-                      </button>
+                    
+                    {/* Children */}
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="font-medium text-gray-900 dark:text-white">Children</div>
+                        <div className="text-xs text-gray-500">Ages 2-12</div>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <button
+                          type="button"
+                          onClick={() => setChildren(Math.max(0, children - 1))}
+                          disabled={children <= 0}
+                          className="w-8 h-8 rounded-full border border-gray-300 flex items-center justify-center hover:border-gray-400 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                          data-testid="button-children-minus"
+                        >
+                          <Minus className="h-4 w-4 text-gray-600" />
+                        </button>
+                        <span className="w-6 text-center font-medium" data-testid="text-children-count">{children}</span>
+                        <button
+                          type="button"
+                          onClick={() => setChildren(Math.min(6, children + 1))}
+                          disabled={children >= 6}
+                          className="w-8 h-8 rounded-full border border-gray-300 flex items-center justify-center hover:border-gray-400 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                          data-testid="button-children-plus"
+                        >
+                          <Plus className="h-4 w-4 text-gray-600" />
+                        </button>
+                      </div>
+                    </div>
+                    
+                    {/* Rooms */}
+                    <div className="flex items-center justify-between border-t pt-4">
+                      <div>
+                        <div className="font-medium text-gray-900 dark:text-white">Rooms</div>
+                        <div className="text-xs text-gray-500">Min {calculateMinRooms(adults, children)} for {adults + children} guest{adults + children !== 1 ? 's' : ''}</div>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <button
+                          type="button"
+                          onClick={() => setRooms(Math.max(calculateMinRooms(adults, children), rooms - 1))}
+                          disabled={rooms <= calculateMinRooms(adults, children)}
+                          className="w-8 h-8 rounded-full border border-gray-300 flex items-center justify-center hover:border-gray-400 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                          data-testid="button-rooms-minus"
+                        >
+                          <Minus className="h-4 w-4 text-gray-600" />
+                        </button>
+                        <span className="w-6 text-center font-medium" data-testid="text-rooms-count">{rooms}</span>
+                        <button
+                          type="button"
+                          onClick={() => setRooms(Math.min(5, rooms + 1))}
+                          disabled={rooms >= 5}
+                          className="w-8 h-8 rounded-full border border-gray-300 flex items-center justify-center hover:border-gray-400 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                          data-testid="button-rooms-plus"
+                        >
+                          <Plus className="h-4 w-4 text-gray-600" />
+                        </button>
+                      </div>
                     </div>
                   </div>
-                  
-                  {/* Rooms */}
-                  <div className="flex items-center justify-between border-t pt-4">
-                    <div>
-                      <div className="font-medium text-gray-900">Rooms</div>
-                      <div className="text-xs text-gray-500">Min {calculateMinRooms(adults, children)} for {adults + children} guest{adults + children !== 1 ? 's' : ''}</div>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <button
-                        type="button"
-                        onClick={() => setRooms(Math.max(calculateMinRooms(adults, children), rooms - 1))}
-                        disabled={rooms <= calculateMinRooms(adults, children)}
-                        className="w-8 h-8 rounded-full border border-gray-300 flex items-center justify-center hover:border-gray-400 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                        data-testid="button-rooms-minus"
-                      >
-                        <Minus className="h-4 w-4 text-gray-600" />
-                      </button>
-                      <span className="w-6 text-center font-medium" data-testid="text-rooms-count">{rooms}</span>
-                      <button
-                        type="button"
-                        onClick={() => setRooms(Math.min(5, rooms + 1))}
-                        disabled={rooms >= 5}
-                        className="w-8 h-8 rounded-full border border-gray-300 flex items-center justify-center hover:border-gray-400 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                        data-testid="button-rooms-plus"
-                      >
-                        <Plus className="h-4 w-4 text-gray-600" />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </PopoverContent>
-            </Popover>
-          </>
-        )}
-        
-        <Button 
-          size="lg" 
-          className="w-full md:w-auto rounded-xl md:rounded-full px-6 md:ml-1 mt-1 md:mt-0" 
-          onClick={handleSearch}
-          data-testid="button-search-full"
-        >
-          {ctaText}
-        </Button>
+                </PopoverContent>
+              </Popover>
+            </>
+          )}
+          
+          <Button 
+            size="lg" 
+            className="rounded-full px-6 ml-1" 
+            onClick={handleSearch}
+            data-testid="button-search-full"
+          >
+            {ctaText}
+          </Button>
+        </div>
       </div>
       
       {/* Swiggy-style grouped suggestions dropdown */}
