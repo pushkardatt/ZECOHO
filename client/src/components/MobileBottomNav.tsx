@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { Home, Search, Heart, User, Building, MessageCircle, LucideIcon } from "lucide-react";
+import { Home, Search, Heart, User, Building, MessageCircle, CalendarCheck, LucideIcon } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery } from "@tanstack/react-query";
 import { Badge } from "@/components/ui/badge";
@@ -54,10 +54,10 @@ export function MobileBottomNav() {
       badge: totalUnreadCount > 0 ? (totalUnreadCount > 9 ? "9+" : String(totalUnreadCount)) : undefined,
     },
     {
-      href: "/wishlist",
-      icon: Heart,
-      label: "Wishlist",
-      active: location === "/wishlist",
+      href: "/owner/bookings",
+      icon: CalendarCheck,
+      label: "Bookings",
+      active: location === "/owner/bookings",
     },
     {
       href: "/profile",
