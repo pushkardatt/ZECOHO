@@ -14,7 +14,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { X } from "lucide-react";
+import { X, SlidersHorizontal, ChevronDown, ChevronUp } from "lucide-react";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import type { Property, Amenity } from "@shared/schema";
 import { useAuth } from "@/hooks/useAuth";
 import { useKycGuard } from "@/hooks/useKycGuard";
@@ -43,6 +48,8 @@ export default function Search() {
   const [localIdAllowed, setLocalIdAllowed] = useState<string>("");
   const [foreignGuestsAllowed, setForeignGuestsAllowed] = useState<string>("");
   const [selectedLocality, setSelectedLocality] = useState<string>("");
+  // More filters toggle for mobile
+  const [showMoreFilters, setShowMoreFilters] = useState(false);
   
   const [searchDestination, setSearchDestination] = useState("");
   const [initialSearchValues, setInitialSearchValues] = useState({
