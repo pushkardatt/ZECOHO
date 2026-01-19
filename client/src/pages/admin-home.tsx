@@ -1,7 +1,5 @@
 import { useAuth } from "@/hooks/useAuth";
 import { useLocation } from "wouter";
-import { useIsMobile } from "@/hooks/use-mobile";
-import { useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -110,14 +108,6 @@ const adminSections = [
 export default function AdminHome() {
   const { user } = useAuth();
   const [, setLocation] = useLocation();
-  const isMobile = useIsMobile();
-
-  // Redirect desktop users directly to properties page
-  useEffect(() => {
-    if (!isMobile) {
-      setLocation("/admin/properties");
-    }
-  }, [isMobile, setLocation]);
 
   // Check if user is admin
   if (user?.userRole !== "admin") {
