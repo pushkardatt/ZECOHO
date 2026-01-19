@@ -104,7 +104,6 @@ function Router() {
       <Route path="/search-history" component={SearchHistoryPage} />
       <Route path="/messages" component={Messages} />
       <Route path="/profile" component={Profile} />
-      <Route path="/admin" component={AdminHome} />
       <Route path="/admin/destinations" component={AdminDestinations} />
       <Route path="/admin/properties" component={AdminProperties} />
       <Route path="/admin/kyc" component={AdminKYC} />
@@ -117,6 +116,7 @@ function Router() {
       <Route path="/admin/inventory" component={AdminInventory} />
       <Route path="/admin/users" component={AdminUsers} />
       <Route path="/admin/support" component={AdminSupport} />
+      <Route path="/admin" component={AdminHome} />
       <Route path="/contact" component={ContactUs} />
       <Route path="/about-us" component={AboutUs} />
       <Route path="/owner-agreement" component={OwnerAgreementPage} />
