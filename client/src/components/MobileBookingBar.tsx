@@ -118,9 +118,12 @@ export function MobileBookingBar({
           <div className="flex flex-col">
             <div className="flex items-baseline gap-1">
               <span className="text-lg font-semibold" data-testid="mobile-base-price">
-                ₹{property.minPrice.toLocaleString('en-IN')}
+                ₹{(selectedRoomType ? Number(selectedRoomType.basePrice) : property.minPrice).toLocaleString('en-IN')}
               </span>
               <span className="text-sm text-muted-foreground">/ night</span>
+              {rooms > 1 && (
+                <span className="text-xs text-muted-foreground">× {rooms}</span>
+              )}
             </div>
             {property.rating && (
               <div className="flex items-center gap-1 text-sm text-muted-foreground">
@@ -154,10 +157,18 @@ export function MobileBookingBar({
                 </div>
                 <div className="flex items-baseline gap-2">
                   <span className="text-2xl font-bold">
-                    ₹{property.minPrice.toLocaleString('en-IN')}
+                    ₹{(selectedRoomType ? Number(selectedRoomType.basePrice) : property.minPrice).toLocaleString('en-IN')}
                   </span>
                   <span className="text-muted-foreground">/ night</span>
+                  {selectedRoomType && (
+                    <span className="text-sm text-primary">({selectedRoomType.name})</span>
+                  )}
                 </div>
+                {guests > 0 && (
+                  <div className="text-sm text-muted-foreground">
+                    {guests} guest{guests !== 1 ? 's' : ''} · {rooms} room{rooms !== 1 ? 's' : ''}
+                  </div>
+                )}
               </SheetHeader>
 
               <div className="py-4 space-y-6">
