@@ -28,10 +28,13 @@ export function MobileBottomNav() {
   
   // Hide on property details pages (they have their own booking bar)
   const isPropertyDetailsPage = location.match(/^\/properties\/[^/]+$/);
-  // Hide on messages page (it has its own input bar)
-  const isMessagesPage = location === "/messages" || location === "/owner/messages";
   
-  if (isPropertyDetailsPage || isMessagesPage) {
+  // Hide on messages page only when viewing a specific conversation (has conversationId in URL)
+  const isMessagesPage = location === "/messages" || location === "/owner/messages";
+  const urlParams = new URLSearchParams(window.location.search);
+  const hasConversationOpen = urlParams.get('conversationId') !== null;
+  
+  if (isPropertyDetailsPage || (isMessagesPage && hasConversationOpen)) {
     return null;
   }
 

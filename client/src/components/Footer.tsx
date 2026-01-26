@@ -1,8 +1,15 @@
 import { Mail } from "lucide-react";
 import { SiInstagram, SiYoutube, SiFacebook, SiLinkedin, SiX } from "react-icons/si";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 
 export function Footer() {
+  const [location] = useLocation();
+  
+  // Hide footer on messages pages
+  if (location === "/messages" || location === "/owner/messages") {
+    return null;
+  }
+  
   return (
     <footer className="border-t bg-background py-4 md:py-6 mt-auto mb-16 md:mb-0">
       <div className="w-full max-w-screen-2xl mx-auto px-4 md:px-6">
