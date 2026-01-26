@@ -187,9 +187,33 @@ export default function PropertyDetails() {
       const savedPrefs = localStorage.getItem("guestPreferences");
       const savedGuestPrefs = savedPrefs ? JSON.parse(savedPrefs) : null;
       
+      // Load saved dates from localStorage
+      const savedDates = localStorage.getItem("searchDates");
+      const savedDatePrefs = savedDates ? JSON.parse(savedDates) : null;
+      
       // URL params take priority, then localStorage, then defaults
-      if (urlCheckIn) setCheckIn(urlCheckIn);
-      if (urlCheckOut) setCheckOut(urlCheckOut);
+      // For dates: check if saved dates are still valid (check-in is today or future)
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      if (urlCheckIn) {
+        setCheckIn(urlCheckIn);
+      } else if (savedDatePrefs?.checkIn) {
+        const savedCheckIn = new Date(savedDatePrefs.checkIn);
+        if (savedCheckIn >= today) {
+          setCheckIn(savedDatePrefs.checkIn);
+        }
+      }
+      
+      if (urlCheckOut) {
+        setCheckOut(urlCheckOut);
+      } else if (savedDatePrefs?.checkOut) {
+        const savedCheckOut = new Date(savedDatePrefs.checkOut);
+        const currentCheckIn = urlCheckIn || savedDatePrefs?.checkIn;
+        if (currentCheckIn && savedCheckOut > new Date(currentCheckIn)) {
+          setCheckOut(savedDatePrefs.checkOut);
+        }
+      }
       
       setAdults(urlAdults ? parseInt(urlAdults) : (savedGuestPrefs?.adults ?? 2));
       setChildren(urlChildren ? parseInt(urlChildren) : (savedGuestPrefs?.children ?? 0));

@@ -139,15 +139,42 @@ export function SearchBar({
     });
   }, [adults, children, calculateMinRooms]);
   
-  // Load saved guest preferences from localStorage on mount (only if no initial values provided)
+  // Load saved guest preferences and dates from localStorage on mount (only if no initial values provided)
   useEffect(() => {
-    if (typeof window !== 'undefined' && initialAdults === 2 && initialChildren === 0 && initialRooms === 1) {
-      const savedPrefs = localStorage.getItem("guestPreferences");
-      if (savedPrefs) {
-        const prefs = JSON.parse(savedPrefs);
-        if (prefs.adults) setAdults(prefs.adults);
-        if (prefs.children !== undefined) setChildren(prefs.children);
-        if (prefs.rooms) setRooms(prefs.rooms);
+    if (typeof window !== 'undefined') {
+      // Load guest preferences
+      if (initialAdults === 2 && initialChildren === 0 && initialRooms === 1) {
+        const savedPrefs = localStorage.getItem("guestPreferences");
+        if (savedPrefs) {
+          const prefs = JSON.parse(savedPrefs);
+          if (prefs.adults) setAdults(prefs.adults);
+          if (prefs.children !== undefined) setChildren(prefs.children);
+          if (prefs.rooms) setRooms(prefs.rooms);
+        }
+      }
+      
+      // Load saved dates if no initial dates provided
+      if (!initialCheckIn && !initialCheckOut) {
+        const savedDates = localStorage.getItem("searchDates");
+        if (savedDates) {
+          const dates = JSON.parse(savedDates);
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          
+          // Only use saved dates if check-in is today or future
+          if (dates.checkIn) {
+            const savedCheckIn = new Date(dates.checkIn);
+            if (savedCheckIn >= today) {
+              setCheckInDate(savedCheckIn);
+              if (dates.checkOut) {
+                const savedCheckOut = new Date(dates.checkOut);
+                if (savedCheckOut > savedCheckIn) {
+                  setCheckOutDate(savedCheckOut);
+                }
+              }
+            }
+          }
+        }
       }
     }
   }, []);
@@ -158,6 +185,16 @@ export function SearchBar({
       localStorage.setItem("guestPreferences", JSON.stringify({ adults, children, rooms }));
     }
   }, [adults, children, rooms]);
+  
+  // Save dates to localStorage when they change
+  useEffect(() => {
+    if (typeof window !== 'undefined' && checkInDate && checkOutDate) {
+      localStorage.setItem("searchDates", JSON.stringify({
+        checkIn: format(checkInDate, 'yyyy-MM-dd'),
+        checkOut: format(checkOutDate, 'yyyy-MM-dd'),
+      }));
+    }
+  }, [checkInDate, checkOutDate]);
   
   const debouncedDestination = useDebounce(destination.trim(), 300);
 
