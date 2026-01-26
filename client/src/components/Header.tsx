@@ -103,7 +103,7 @@ export function Header() {
             <img 
               src="/zecoho-logo.jpg" 
               alt="ZECOHO" 
-              className="h-16 w-16 md:h-20 md:w-20 rounded-xl transition-opacity duration-200 group-hover:opacity-90 object-cover"
+              className="h-14 w-auto md:h-16 transition-opacity duration-200 group-hover:opacity-90"
             />
           </div>
         </Link>
