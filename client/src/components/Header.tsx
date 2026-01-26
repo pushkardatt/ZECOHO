@@ -101,9 +101,9 @@ export function Header() {
         <Link href="/">
           <div className="flex items-center cursor-pointer group flex-shrink-0" data-testid="link-home">
             <img 
-              src="/logos/zecoho_friendly_coral_logo.png" 
+              src="/zecoho-logo.jpg" 
               alt="ZECOHO" 
-              className="h-12 w-auto md:h-14 transition-opacity duration-200 group-hover:opacity-90 object-contain"
+              className="h-14 w-14 md:h-16 md:w-16 rounded-xl transition-opacity duration-200 group-hover:opacity-90 object-cover"
             />
           </div>
         </Link>
