@@ -386,10 +386,10 @@ export default function Messages() {
     );
   }
 
-  // Mobile conversation view
+  // Mobile conversation view - full height since main header is hidden
   const renderMobileConversation = () => (
-    <div className="flex flex-col h-[calc(100vh-80px)] bg-background">
-      {/* Header with back button, centered avatar */}
+    <div className="flex flex-col h-screen bg-background">
+      {/* Header with back button, centered avatar - sticky at top */}
       <div className="flex items-center justify-between p-3 border-b bg-background sticky top-0 z-10">
         <Button 
           variant="ghost" 

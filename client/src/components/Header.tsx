@@ -91,8 +91,14 @@ export function Header() {
     return (first + last).toUpperCase() || user.email?.[0]?.toUpperCase() || "U";
   };
 
+  // Hide header on mobile when viewing a message conversation
+  const isMessagesPage = location === "/messages" || location === "/owner/messages";
+  const urlParams = new URLSearchParams(window.location.search);
+  const hasConversationOpen = urlParams.get('conversationId') !== null;
+  const hideOnMobile = isMessagesPage && hasConversationOpen;
+
   return (
-    <header className={`fixed md:sticky top-0 left-0 right-0 z-50 w-full border-b transition-all duration-300 ${
+    <header className={`fixed md:sticky top-0 left-0 right-0 z-50 w-full border-b transition-all duration-300 ${hideOnMobile ? 'hidden md:block' : ''} ${
       isScrolled 
         ? "bg-background/98 backdrop-blur-lg shadow-md border-border/50" 
         : "bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60"
