@@ -101,10 +101,9 @@ export function Header() {
         <Link href="/">
           <div className="flex items-center cursor-pointer group flex-shrink-0" data-testid="link-home">
             <img 
-              src="/zecoho-logo.jpg" 
+              src="/logos/zecoho_friendly_coral_logo.png" 
               alt="ZECOHO" 
-              className="w-10 h-10 md:w-12 md:h-12 rounded-xl shadow-lg transition-opacity duration-200 group-hover:opacity-90 object-cover"
-              style={{ boxShadow: '0 10px 15px -3px rgba(249, 115, 22, 0.2)' }}
+              className="h-12 w-auto md:h-14 transition-opacity duration-200 group-hover:opacity-90 object-contain"
             />
           </div>
         </Link>
