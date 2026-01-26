@@ -1421,4 +1421,86 @@ export const notificationsRelations = relations(notifications, ({ one }) => ({
     fields: [notifications.userId],
     references: [users.id],
   }),
+}));
+
+// Chat logs for analytics
+export const chatLogs = pgTable(
+  "chat_logs",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    bookingId: varchar("booking_id").references(() => bookings.id),
+    propertyId: varchar("property_id").references(() => properties.id),
+    ownerId: varchar("owner_id").references(() => users.id),
+    guestId: varchar("guest_id").references(() => users.id),
+    senderRole: varchar("sender_role", { length: 20 }),
+    messageCount: integer("message_count").default(0),
+    startedAt: timestamp("started_at"),
+    endedAt: timestamp("ended_at"),
+    createdAt: timestamp("created_at").defaultNow(),
+  },
+  (table) => [
+    index("IDX_chat_log_owner").on(table.ownerId),
+    index("IDX_chat_log_property").on(table.propertyId),
+    index("IDX_chat_log_created").on(table.createdAt),
+  ],
+);
+
+export type ChatLog = typeof chatLogs.$inferSelect;
+export type InsertChatLog = typeof chatLogs.$inferInsert;
+
+// Call logs for analytics
+export const callLogs = pgTable(
+  "call_logs",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    bookingId: varchar("booking_id").references(() => bookings.id),
+    propertyId: varchar("property_id").references(() => properties.id),
+    ownerId: varchar("owner_id").references(() => users.id),
+    guestId: varchar("guest_id").references(() => users.id),
+    initiatedBy: varchar("initiated_by", { length: 20 }),
+    callType: varchar("call_type", { length: 20 }),
+    startedAt: timestamp("started_at"),
+    endedAt: timestamp("ended_at"),
+    durationSeconds: integer("duration_seconds"),
+    createdAt: timestamp("created_at").defaultNow(),
+  },
+  (table) => [
+    index("IDX_call_log_owner").on(table.ownerId),
+    index("IDX_call_log_property").on(table.propertyId),
+    index("IDX_call_log_created").on(table.createdAt),
+  ],
+);
+
+export type CallLog = typeof callLogs.$inferSelect;
+export type InsertCallLog = typeof callLogs.$inferInsert;
+
+// Relations for chat/call logs
+export const chatLogsRelations = relations(chatLogs, ({ one }) => ({
+  owner: one(users, {
+    fields: [chatLogs.ownerId],
+    references: [users.id],
+  }),
+  guest: one(users, {
+    fields: [chatLogs.guestId],
+    references: [users.id],
+  }),
+  property: one(properties, {
+    fields: [chatLogs.propertyId],
+    references: [properties.id],
+  }),
+}));
+
+export const callLogsRelations = relations(callLogs, ({ one }) => ({
+  owner: one(users, {
+    fields: [callLogs.ownerId],
+    references: [users.id],
+  }),
+  guest: one(users, {
+    fields: [callLogs.guestId],
+    references: [users.id],
+  }),
+  property: one(properties, {
+    fields: [callLogs.propertyId],
+    references: [properties.id],
+  }),
 }))

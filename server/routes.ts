@@ -4,7 +4,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { db } from "./db";
 import { eq, sql, inArray, desc, and } from "drizzle-orm";
-import { users, contactInteractions, notifications } from "@shared/schema";
+import { users, contactInteractions, notifications, chatLogs, callLogs } from "@shared/schema";
 import { setupAuth, isAuthenticated } from "./replitAuth";
 import { insertPropertySchema, insertRoomSchema, insertRoomOptionSchema, insertWishlistSchema, insertUserPreferencesSchema, insertBookingSchema, insertMessageSchema, insertReviewSchema, insertDestinationSchema, insertSearchHistorySchema, updateKYCSchema, becomeOwnerSchema, insertKycApplicationSchema } from "@shared/schema";
 import { ObjectStorageService, ObjectNotFoundError, generateUploadToken, verifyUploadToken } from "./objectStorage";
@@ -8677,6 +8677,151 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching owner conversations:", error);
       res.status(500).json({ message: "Failed to fetch conversations" });
+    }
+  });
+
+  // ==================== COMMUNICATION ANALYTICS ROUTES ====================
+
+  // Get owner's chat and call analytics
+  app.get("/api/communication/owner", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || !userHasRole(user, "owner")) {
+        return res.status(403).json({ message: "Only owners can access communication analytics" });
+      }
+
+      const chats = await db
+        .select()
+        .from(chatLogs)
+        .where(eq(chatLogs.ownerId, userId))
+        .orderBy(desc(chatLogs.createdAt))
+        .limit(100);
+        
+      const calls = await db
+        .select()
+        .from(callLogs)
+        .where(eq(callLogs.ownerId, userId))
+        .orderBy(desc(callLogs.createdAt))
+        .limit(100);
+      
+      // Calculate summary stats
+      const totalChats = chats.length;
+      const totalCalls = calls.length;
+      const totalMessages = chats.reduce((sum, c) => sum + (c.messageCount || 0), 0);
+      const totalCallDuration = calls.reduce((sum, c) => sum + (c.durationSeconds || 0), 0);
+      
+      res.json({ 
+        chats, 
+        calls,
+        summary: {
+          totalChats,
+          totalCalls,
+          totalMessages,
+          totalCallDuration
+        }
+      });
+    } catch (error) {
+      console.error("Error fetching owner communication analytics:", error);
+      res.status(500).json({ message: "Failed to fetch communication analytics" });
+    }
+  });
+
+  // Get admin's communication analytics (all owners)
+  app.get("/api/communication/admin", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || !userHasRole(user, "admin")) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const chats = await db
+        .select()
+        .from(chatLogs)
+        .orderBy(desc(chatLogs.createdAt))
+        .limit(500);
+        
+      const calls = await db
+        .select()
+        .from(callLogs)
+        .orderBy(desc(callLogs.createdAt))
+        .limit(500);
+      
+      // Calculate summary stats
+      const totalChats = chats.length;
+      const totalCalls = calls.length;
+      const totalMessages = chats.reduce((sum, c) => sum + (c.messageCount || 0), 0);
+      const totalCallDuration = calls.reduce((sum, c) => sum + (c.durationSeconds || 0), 0);
+      
+      res.json({ 
+        chats, 
+        calls,
+        summary: {
+          totalChats,
+          totalCalls,
+          totalMessages,
+          totalCallDuration
+        }
+      });
+    } catch (error) {
+      console.error("Error fetching admin communication analytics:", error);
+      res.status(500).json({ message: "Failed to fetch communication analytics" });
+    }
+  });
+
+  // Log a chat session
+  app.post("/api/communication/chat", isAuthenticated, async (req: any, res) => {
+    try {
+      const { propertyId, guestId, ownerId, bookingId, messageCount, startedAt, endedAt, senderRole } = req.body;
+      
+      const [chatLog] = await db
+        .insert(chatLogs)
+        .values({
+          propertyId,
+          guestId,
+          ownerId,
+          bookingId,
+          messageCount,
+          startedAt: startedAt ? new Date(startedAt) : null,
+          endedAt: endedAt ? new Date(endedAt) : null,
+          senderRole,
+        })
+        .returning();
+      
+      res.json(chatLog);
+    } catch (error) {
+      console.error("Error logging chat:", error);
+      res.status(500).json({ message: "Failed to log chat" });
+    }
+  });
+
+  // Log a call
+  app.post("/api/communication/call", isAuthenticated, async (req: any, res) => {
+    try {
+      const { propertyId, guestId, ownerId, bookingId, callType, initiatedBy, startedAt, endedAt, durationSeconds } = req.body;
+      
+      const [callLog] = await db
+        .insert(callLogs)
+        .values({
+          propertyId,
+          guestId,
+          ownerId,
+          bookingId,
+          callType,
+          initiatedBy,
+          startedAt: startedAt ? new Date(startedAt) : null,
+          endedAt: endedAt ? new Date(endedAt) : null,
+          durationSeconds,
+        })
+        .returning();
+      
+      res.json(callLog);
+    } catch (error) {
+      console.error("Error logging call:", error);
+      res.status(500).json({ message: "Failed to log call" });
     }
   });
 
