@@ -3,8 +3,8 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { db } from "./db";
-import { eq, sql } from "drizzle-orm";
-import { users } from "@shared/schema";
+import { eq, sql, inArray, desc } from "drizzle-orm";
+import { users, contactInteractions } from "@shared/schema";
 import { setupAuth, isAuthenticated } from "./replitAuth";
 import { insertPropertySchema, insertRoomSchema, insertRoomOptionSchema, insertWishlistSchema, insertUserPreferencesSchema, insertBookingSchema, insertMessageSchema, insertReviewSchema, insertDestinationSchema, insertSearchHistorySchema, updateKYCSchema, becomeOwnerSchema, insertKycApplicationSchema } from "@shared/schema";
 import { ObjectStorageService, ObjectNotFoundError, generateUploadToken, verifyUploadToken } from "./objectStorage";
@@ -5584,6 +5584,278 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error logging contact interaction:", error);
       res.status(500).json({ message: "Failed to log contact interaction" });
+    }
+  });
+
+  // Get contact interaction statistics for owner
+  app.get("/api/owner/contact-interactions/stats", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || user.userRole !== "owner") {
+        return res.status(403).json({ message: "Owner access required" });
+      }
+
+      // Get all properties for this owner
+      const properties = await storage.getPropertiesByOwner(userId);
+      const propertyIds = properties.map(p => p.id);
+
+      // Get all bookings for these properties
+      const allBookings = [];
+      for (const propId of propertyIds) {
+        const bookings = await storage.getBookingsByProperty(propId);
+        allBookings.push(...bookings);
+      }
+      const bookingIds = allBookings.map(b => b.id);
+
+      // Fetch contact interactions for these bookings
+      const interactions = await db.select()
+        .from(contactInteractions)
+        .where(inArray(contactInteractions.bookingId, bookingIds.length > 0 ? bookingIds : ['']))
+        .orderBy(desc(contactInteractions.createdAt));
+
+      // Calculate statistics
+      const stats = {
+        totalCalls: interactions.filter(i => i.actionType === 'call').length,
+        totalChats: interactions.filter(i => i.actionType === 'chat').length,
+        totalWhatsapp: interactions.filter(i => i.actionType === 'whatsapp').length,
+        receivedCalls: interactions.filter(i => i.actionType === 'call' && i.targetRole === 'owner').length,
+        receivedChats: interactions.filter(i => (i.actionType === 'chat' || i.actionType === 'whatsapp') && i.targetRole === 'owner').length,
+        initiatedCalls: interactions.filter(i => i.actionType === 'call' && i.actorRole === 'owner').length,
+        initiatedChats: interactions.filter(i => (i.actionType === 'chat' || i.actionType === 'whatsapp') && i.actorRole === 'owner').length,
+        last30Days: {
+          calls: interactions.filter(i => i.actionType === 'call' && new Date(i.createdAt!) > new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)).length,
+          chats: interactions.filter(i => (i.actionType === 'chat' || i.actionType === 'whatsapp') && new Date(i.createdAt!) > new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)).length,
+        },
+        recentInteractions: interactions.slice(0, 20).map(i => ({
+          id: i.id,
+          actionType: i.actionType,
+          actorRole: i.actorRole,
+          targetRole: i.targetRole,
+          createdAt: i.createdAt,
+          metadata: i.metadata,
+        })),
+      };
+
+      res.json(stats);
+    } catch (error) {
+      console.error("Error fetching contact interaction stats:", error);
+      res.status(500).json({ message: "Failed to fetch contact interaction stats" });
+    }
+  });
+
+  // Get contact interactions list for owner (for download)
+  app.get("/api/owner/contact-interactions", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || user.userRole !== "owner") {
+        return res.status(403).json({ message: "Owner access required" });
+      }
+
+      // Get all properties for this owner
+      const properties = await storage.getPropertiesByOwner(userId);
+      const propertyIds = properties.map(p => p.id);
+
+      // Get all bookings for these properties
+      const allBookings = [];
+      for (const propId of propertyIds) {
+        const bookings = await storage.getBookingsByProperty(propId);
+        allBookings.push(...bookings);
+      }
+      const bookingIds = allBookings.map(b => b.id);
+
+      // Fetch contact interactions for these bookings
+      const interactions = await db.select()
+        .from(contactInteractions)
+        .where(inArray(contactInteractions.bookingId, bookingIds.length > 0 ? bookingIds : ['']))
+        .orderBy(desc(contactInteractions.createdAt));
+
+      // Enrich with booking and property info
+      const enrichedInteractions = await Promise.all(interactions.map(async (i) => {
+        const booking = allBookings.find(b => b.id === i.bookingId);
+        const property = booking ? properties.find(p => p.id === booking.propertyId) : null;
+        const actor = await storage.getUser(i.actorUserId);
+        
+        return {
+          id: i.id,
+          actionType: i.actionType,
+          actorRole: i.actorRole,
+          targetRole: i.targetRole,
+          actorName: actor ? `${actor.firstName || ''} ${actor.lastName || ''}`.trim() || actor.email : 'Unknown',
+          propertyName: property?.title || 'Unknown',
+          bookingCode: booking?.bookingCode || 'Unknown',
+          createdAt: i.createdAt,
+          metadata: i.metadata,
+        };
+      }));
+
+      res.json(enrichedInteractions);
+    } catch (error) {
+      console.error("Error fetching contact interactions:", error);
+      res.status(500).json({ message: "Failed to fetch contact interactions" });
+    }
+  });
+
+  // Admin: Get contact interaction statistics for specific owner
+  app.get("/api/admin/owners/:ownerId/contact-interactions/stats", isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const { ownerId } = req.params;
+      const owner = await storage.getUser(ownerId);
+      
+      if (!owner) {
+        return res.status(404).json({ message: "Owner not found" });
+      }
+
+      // Get all properties for this owner
+      const properties = await storage.getPropertiesByOwner(ownerId);
+      const propertyIds = properties.map(p => p.id);
+
+      // Get all bookings for these properties
+      const allBookings = [];
+      for (const propId of propertyIds) {
+        const bookings = await storage.getBookingsByProperty(propId);
+        allBookings.push(...bookings);
+      }
+      const bookingIds = allBookings.map(b => b.id);
+
+      // Fetch contact interactions for these bookings
+      const interactions = await db.select()
+        .from(contactInteractions)
+        .where(inArray(contactInteractions.bookingId, bookingIds.length > 0 ? bookingIds : ['']))
+        .orderBy(desc(contactInteractions.createdAt));
+
+      // Calculate statistics
+      const stats = {
+        ownerId,
+        ownerName: `${owner.firstName || ''} ${owner.lastName || ''}`.trim() || owner.email,
+        totalCalls: interactions.filter(i => i.actionType === 'call').length,
+        totalChats: interactions.filter(i => i.actionType === 'chat').length,
+        totalWhatsapp: interactions.filter(i => i.actionType === 'whatsapp').length,
+        receivedCalls: interactions.filter(i => i.actionType === 'call' && i.targetRole === 'owner').length,
+        receivedChats: interactions.filter(i => (i.actionType === 'chat' || i.actionType === 'whatsapp') && i.targetRole === 'owner').length,
+        initiatedCalls: interactions.filter(i => i.actionType === 'call' && i.actorRole === 'owner').length,
+        initiatedChats: interactions.filter(i => (i.actionType === 'chat' || i.actionType === 'whatsapp') && i.actorRole === 'owner').length,
+        last30Days: {
+          calls: interactions.filter(i => i.actionType === 'call' && new Date(i.createdAt!) > new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)).length,
+          chats: interactions.filter(i => (i.actionType === 'chat' || i.actionType === 'whatsapp') && new Date(i.createdAt!) > new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)).length,
+        },
+        recentInteractions: interactions.slice(0, 20).map(i => ({
+          id: i.id,
+          actionType: i.actionType,
+          actorRole: i.actorRole,
+          targetRole: i.targetRole,
+          createdAt: i.createdAt,
+          metadata: i.metadata,
+        })),
+      };
+
+      res.json(stats);
+    } catch (error) {
+      console.error("Error fetching owner contact interaction stats:", error);
+      res.status(500).json({ message: "Failed to fetch contact interaction stats" });
+    }
+  });
+
+  // Admin: Get all contact interactions for specific owner (for download)
+  app.get("/api/admin/owners/:ownerId/contact-interactions", isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const { ownerId } = req.params;
+      const owner = await storage.getUser(ownerId);
+      
+      if (!owner) {
+        return res.status(404).json({ message: "Owner not found" });
+      }
+
+      // Get all properties for this owner
+      const properties = await storage.getPropertiesByOwner(ownerId);
+      const propertyIds = properties.map(p => p.id);
+
+      // Get all bookings for these properties
+      const allBookings = [];
+      for (const propId of propertyIds) {
+        const bookings = await storage.getBookingsByProperty(propId);
+        allBookings.push(...bookings);
+      }
+      const bookingIds = allBookings.map(b => b.id);
+
+      // Fetch contact interactions for these bookings
+      const interactions = await db.select()
+        .from(contactInteractions)
+        .where(inArray(contactInteractions.bookingId, bookingIds.length > 0 ? bookingIds : ['']))
+        .orderBy(desc(contactInteractions.createdAt));
+
+      // Enrich with booking and property info
+      const enrichedInteractions = await Promise.all(interactions.map(async (i) => {
+        const booking = allBookings.find(b => b.id === i.bookingId);
+        const property = booking ? properties.find(p => p.id === booking.propertyId) : null;
+        const actor = await storage.getUser(i.actorUserId);
+        
+        return {
+          id: i.id,
+          actionType: i.actionType,
+          actorRole: i.actorRole,
+          targetRole: i.targetRole,
+          actorName: actor ? `${actor.firstName || ''} ${actor.lastName || ''}`.trim() || actor.email : 'Unknown',
+          propertyName: property?.title || 'Unknown',
+          bookingCode: booking?.bookingCode || 'Unknown',
+          createdAt: i.createdAt,
+          metadata: i.metadata,
+        };
+      }));
+
+      res.json(enrichedInteractions);
+    } catch (error) {
+      console.error("Error fetching owner contact interactions:", error);
+      res.status(500).json({ message: "Failed to fetch contact interactions" });
+    }
+  });
+
+  // Admin: Get all owners with contact interaction summary
+  app.get("/api/admin/contact-interactions/summary", isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      // Get all owners
+      const allUsers = await db.select().from(users).where(eq(users.userRole, 'owner'));
+      
+      const ownerSummaries = await Promise.all(allUsers.map(async (owner) => {
+        // Get all properties for this owner
+        const properties = await storage.getPropertiesByOwner(owner.id);
+        const propertyIds = properties.map(p => p.id);
+
+        // Get all bookings for these properties
+        const allBookings = [];
+        for (const propId of propertyIds) {
+          const bookings = await storage.getBookingsByProperty(propId);
+          allBookings.push(...bookings);
+        }
+        const bookingIds = allBookings.map(b => b.id);
+
+        // Fetch contact interactions count
+        const interactions = bookingIds.length > 0 
+          ? await db.select().from(contactInteractions)
+              .where(inArray(contactInteractions.bookingId, bookingIds))
+          : [];
+
+        return {
+          ownerId: owner.id,
+          ownerName: `${owner.firstName || ''} ${owner.lastName || ''}`.trim() || owner.email || 'Unknown',
+          ownerEmail: owner.email,
+          propertyCount: properties.length,
+          totalCalls: interactions.filter(i => i.actionType === 'call').length,
+          totalChats: interactions.filter(i => i.actionType === 'chat' || i.actionType === 'whatsapp').length,
+          totalInteractions: interactions.length,
+        };
+      }));
+
+      // Sort by total interactions (descending)
+      ownerSummaries.sort((a, b) => b.totalInteractions - a.totalInteractions);
+
+      res.json(ownerSummaries);
+    } catch (error) {
+      console.error("Error fetching contact interaction summary:", error);
+      res.status(500).json({ message: "Failed to fetch contact interaction summary" });
     }
   });
 
