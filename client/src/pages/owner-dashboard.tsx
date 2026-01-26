@@ -38,6 +38,8 @@ import {
   Package,
   ClipboardList,
   XCircle,
+  Phone,
+  MessageCircle,
 } from "lucide-react";
 import { useState } from "react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -111,6 +113,17 @@ interface RoomUtilization {
     pendingRooms: number;
     availableRooms: number;
   }[];
+}
+
+interface CommunicationAnalytics {
+  chats: any[];
+  calls: any[];
+  summary: {
+    totalChats: number;
+    totalCalls: number;
+    totalMessages: number;
+    totalCallDuration: number;
+  };
 }
 
 interface DateUtilization {
@@ -316,6 +329,12 @@ export default function OwnerDashboard() {
       return response.json();
     },
     refetchInterval: 30000,
+  });
+
+  // Communication analytics query
+  const { data: commAnalytics, isLoading: isLoadingCommAnalytics } = useQuery<CommunicationAnalytics>({
+    queryKey: ["/api/communication/owner"],
+    refetchInterval: 60000, // Refresh every minute
   });
 
   // Real-time property status updates via WebSocket
@@ -661,6 +680,67 @@ export default function OwnerDashboard() {
                   <p className="text-xs text-primary/70">Total Revenue</p>
                 </div>
               </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Communication Analytics */}
+        <Card data-testid="card-communication-analytics">
+          <CardHeader className="flex flex-row items-center justify-between gap-2 flex-wrap">
+            <CardTitle className="flex items-center gap-2">
+              <MessageCircle className="h-5 w-5" />
+              Communication Analytics
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {isLoadingCommAnalytics ? (
+              <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
+                {[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-16" />)}
+              </div>
+            ) : (
+              <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
+                <div className="p-3 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
+                  <div className="flex items-center gap-2 mb-1">
+                    <MessageSquare className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                    <span className="text-xs text-blue-600 dark:text-blue-400 font-medium">Chat Sessions</span>
+                  </div>
+                  <div className="text-2xl font-bold text-blue-700 dark:text-blue-300" data-testid="comm-total-chats">
+                    {commAnalytics?.summary?.totalChats || 0}
+                  </div>
+                </div>
+                <div className="p-3 rounded-lg bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800">
+                  <div className="flex items-center gap-2 mb-1">
+                    <MessageCircle className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+                    <span className="text-xs text-purple-600 dark:text-purple-400 font-medium">Total Messages</span>
+                  </div>
+                  <div className="text-2xl font-bold text-purple-700 dark:text-purple-300" data-testid="comm-total-messages">
+                    {commAnalytics?.summary?.totalMessages || 0}
+                  </div>
+                </div>
+                <div className="p-3 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Phone className="h-4 w-4 text-green-600 dark:text-green-400" />
+                    <span className="text-xs text-green-600 dark:text-green-400 font-medium">Total Calls</span>
+                  </div>
+                  <div className="text-2xl font-bold text-green-700 dark:text-green-300" data-testid="comm-total-calls">
+                    {commAnalytics?.summary?.totalCalls || 0}
+                  </div>
+                </div>
+                <div className="p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Clock className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                    <span className="text-xs text-amber-600 dark:text-amber-400 font-medium">Call Duration</span>
+                  </div>
+                  <div className="text-2xl font-bold text-amber-700 dark:text-amber-300" data-testid="comm-call-duration">
+                    {Math.round((commAnalytics?.summary?.totalCallDuration || 0) / 60)} min
+                  </div>
+                </div>
+              </div>
+            )}
+            {(!commAnalytics?.summary?.totalChats && !commAnalytics?.summary?.totalCalls && !isLoadingCommAnalytics) && (
+              <p className="text-sm text-muted-foreground text-center mt-4">
+                No communication data yet. Stats will appear as guests interact with you.
+              </p>
             )}
           </CardContent>
         </Card>
