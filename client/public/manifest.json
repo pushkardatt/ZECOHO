@@ -4,7 +4,7 @@
   "description": "India's first ZERO commission hotel booking platform. Book directly with verified hotels and save 15-25%.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#ffffff",
+  "background_color": "#FF7A00",
   "theme_color": "#FF7A00",
   "orientation": "portrait-primary",
   "categories": ["travel", "booking", "hotels"],
