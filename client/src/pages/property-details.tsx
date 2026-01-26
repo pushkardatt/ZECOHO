@@ -1620,8 +1620,8 @@ export default function PropertyDetails() {
             </div>
           </div>
 
-          {/* Booking Card */}
-          <div className="md:sticky md:top-24 h-fit">
+          {/* Booking Card - Hidden on mobile, shown on desktop */}
+          <div className="hidden md:block md:sticky md:top-24 h-fit">
             <Card>
               <CardContent className="p-6">
                 <div className="mb-6">

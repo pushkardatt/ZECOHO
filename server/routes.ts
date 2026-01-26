@@ -3383,10 +3383,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const checkInFormatted = checkIn.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
       const checkOutFormatted = checkOut.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
       
-      // Format booking created date for emails
+      // Format booking created date for emails with IST timezone
       const bookingCreatedAtFormatted = booking.bookingCreatedAt 
         ? new Date(booking.bookingCreatedAt).toLocaleString('en-IN', { 
-            day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true 
+            day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'Asia/Kolkata'
           })
         : undefined;
         
@@ -3930,7 +3930,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const checkOutFormatted = new Date(booking.checkOut).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
         const bookingCreatedAtFormatted = booking.bookingCreatedAt 
           ? new Date(booking.bookingCreatedAt).toLocaleString('en-IN', { 
-              day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true 
+              day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'Asia/Kolkata'
             })
           : undefined;
         
@@ -7731,7 +7731,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const checkOutFormatted = new Date(booking.checkOut).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
         const bookingCreatedAtFormatted = booking.bookingCreatedAt 
           ? new Date(booking.bookingCreatedAt).toLocaleString('en-IN', { 
-              day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true 
+              day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'Asia/Kolkata'
             })
           : undefined;
         

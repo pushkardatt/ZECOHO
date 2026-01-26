@@ -1136,19 +1136,15 @@ export async function sendBookingCreatedGuestEmail(
                 <p style="color: #10b981; margin: 0; font-size: 20px; font-weight: 700; letter-spacing: 1px;">${data.bookingCode}</p>
               </div>
               
-              <div style="background: #f3f4f6; border-radius: 8px; padding: 16px; margin-bottom: 16px;">
+              <div style="background: #f3f4f6; border-radius: 8px; padding: 16px; margin-bottom: 24px;">
                 <p style="color: #1f2937; margin: 0 0 12px 0; font-weight: 600;">Booking Details:</p>
                 <p style="color: #6b7280; margin: 0 0 8px 0;"><strong>Property:</strong> ${data.propertyName}</p>
                 <p style="color: #6b7280; margin: 0 0 8px 0;"><strong>Check-in:</strong> ${data.checkIn}</p>
                 <p style="color: #6b7280; margin: 0 0 8px 0;"><strong>Check-out:</strong> ${data.checkOut}</p>
                 <p style="color: #6b7280; margin: 0 0 8px 0;"><strong>Guests:</strong> ${data.guests}</p>
                 ${data.bookingCreatedAt ? `<p style="color: #6b7280; margin: 0 0 8px 0;"><strong>Booked On:</strong> ${data.bookingCreatedAt}</p>` : ''}
-                <p style="color: #1f2937; margin: 0; font-weight: 600; font-size: 18px;">Total: Rs. ${data.totalPrice}</p>
-              </div>
-              
-              <div style="background: #ecfdf5; border-radius: 8px; padding: 16px; margin-bottom: 24px;">
-                <p style="color: #065f46; margin: 0 0 12px 0; font-weight: 600;">Property & Room Details:</p>
-                ${generatePropertyDetailsSection(data, { showStatus: true })}
+                ${generatePropertyDetailsSection(data, { showStatus: false })}
+                <p style="color: #1f2937; margin: 16px 0 0 0; font-weight: 600; font-size: 18px; padding-top: 12px; border-top: 1px solid #e5e7eb;">Total: Rs. ${data.totalPrice}</p>
               </div>
               
               <div style="background: #fef3c7; border-radius: 8px; padding: 16px; margin-bottom: 24px; border-left: 4px solid #f59e0b;">
@@ -1251,19 +1247,15 @@ export async function sendBookingOwnerAcceptedEmail(
                 <p style="color: #10b981; margin: 0; font-size: 20px; font-weight: 700; letter-spacing: 1px;">${data.bookingCode}</p>
               </div>
               
-              <div style="background: #f3f4f6; border-radius: 8px; padding: 16px; margin-bottom: 16px;">
+              <div style="background: #f3f4f6; border-radius: 8px; padding: 16px; margin-bottom: 24px;">
                 <p style="color: #1f2937; margin: 0 0 12px 0; font-weight: 600;">Booking Details:</p>
                 <p style="color: #6b7280; margin: 0 0 8px 0;"><strong>Property:</strong> ${data.propertyName}</p>
                 <p style="color: #6b7280; margin: 0 0 8px 0;"><strong>Check-in:</strong> ${data.checkIn}</p>
                 <p style="color: #6b7280; margin: 0 0 8px 0;"><strong>Check-out:</strong> ${data.checkOut}</p>
                 <p style="color: #6b7280; margin: 0 0 8px 0;"><strong>Guests:</strong> ${data.guests}</p>
                 ${data.bookingCreatedAt ? `<p style="color: #6b7280; margin: 0 0 8px 0;"><strong>Booked On:</strong> ${data.bookingCreatedAt}</p>` : ''}
-                <p style="color: #1f2937; margin: 0; font-weight: 600; font-size: 18px;">Total: Rs. ${data.totalPrice}</p>
-              </div>
-              
-              <div style="background: #ecfdf5; border-radius: 8px; padding: 16px; margin-bottom: 24px;">
-                <p style="color: #065f46; margin: 0 0 12px 0; font-weight: 600;">Property & Room Details:</p>
-                ${generatePropertyDetailsSection(data, { showStatus: true })}
+                ${generatePropertyDetailsSection(data, { showStatus: false })}
+                <p style="color: #1f2937; margin: 16px 0 0 0; font-weight: 600; font-size: 18px; padding-top: 12px; border-top: 1px solid #e5e7eb;">Total: Rs. ${data.totalPrice}</p>
               </div>
               
               <div style="background: #fef3c7; border-radius: 8px; padding: 16px; margin-bottom: 24px; border-left: 4px solid #f59e0b;">
@@ -1353,19 +1345,15 @@ export async function sendBookingConfirmedGuestEmail(
                 <p style="color: #047857; margin: 0; font-size: 24px; font-weight: 700; letter-spacing: 2px;">${data.bookingCode}</p>
               </div>
               
-              <div style="background: #f3f4f6; border-radius: 8px; padding: 16px; margin-bottom: 16px;">
+              <div style="background: #f3f4f6; border-radius: 8px; padding: 16px; margin-bottom: 24px;">
                 <p style="color: #1f2937; margin: 0 0 12px 0; font-weight: 600;">Booking Details:</p>
                 <p style="color: #6b7280; margin: 0 0 8px 0;"><strong>Property:</strong> ${data.propertyName}</p>
                 <p style="color: #6b7280; margin: 0 0 8px 0;"><strong>Check-in:</strong> ${data.checkIn}</p>
                 <p style="color: #6b7280; margin: 0 0 8px 0;"><strong>Check-out:</strong> ${data.checkOut}</p>
                 <p style="color: #6b7280; margin: 0 0 8px 0;"><strong>Guests:</strong> ${data.guests}</p>
                 ${data.bookingCreatedAt ? `<p style="color: #6b7280; margin: 0 0 8px 0;"><strong>Booked On:</strong> ${data.bookingCreatedAt}</p>` : ''}
-                <p style="color: #1f2937; margin: 0; font-weight: 600; font-size: 18px;">Total: Rs. ${data.totalPrice}</p>
-              </div>
-              
-              <div style="background: #ecfdf5; border-radius: 8px; padding: 16px; margin-bottom: 24px;">
-                <p style="color: #065f46; margin: 0 0 12px 0; font-weight: 600;">Property & Room Details:</p>
-                ${generatePropertyDetailsSection(data, { showStatus: true })}
+                ${generatePropertyDetailsSection(data, { showStatus: false })}
+                <p style="color: #1f2937; margin: 16px 0 0 0; font-weight: 600; font-size: 18px; padding-top: 12px; border-top: 1px solid #e5e7eb;">Total: Rs. ${data.totalPrice}</p>
               </div>
               
               <div style="background: #f0fdf4; border-radius: 8px; padding: 16px; margin-bottom: 24px; border-left: 4px solid #10b981;">

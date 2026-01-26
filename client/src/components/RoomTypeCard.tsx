@@ -165,7 +165,15 @@ export function RoomTypeCard({
                 <span className="text-muted-foreground">Included</span>
               </div>
             </div>
-            {roomType.mealOptions.map((option) => (
+            {roomType.mealOptions
+              .filter((option) => {
+                const nameLC = option.name.toLowerCase();
+                return nameLC !== 'room only' && 
+                       nameLC !== 'roomonly' && 
+                       !nameLC.includes('no meal') &&
+                       !nameLC.includes('no meals');
+              })
+              .map((option) => (
               <div
                 key={option.id}
                 className={`p-2 rounded border cursor-pointer text-sm transition-all ${
