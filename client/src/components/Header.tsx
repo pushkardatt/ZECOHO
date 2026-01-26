@@ -105,11 +105,11 @@ export function Header() {
     }`}>
       <div className="w-full max-w-screen-2xl mx-auto flex h-20 items-center justify-between px-4 md:px-6 overflow-hidden">
         <Link href="/">
-          <div className="flex items-center cursor-pointer group flex-shrink-0" data-testid="link-home">
+          <div className="flex items-center cursor-pointer group flex-shrink-0 overflow-hidden rounded-xl" data-testid="link-home">
             <img 
               src="/zecoho-logo.jpg" 
               alt="ZECOHO" 
-              className="h-14 w-auto md:h-16 transition-opacity duration-200 group-hover:opacity-90"
+              className="h-14 w-14 md:h-16 md:w-16 transition-opacity duration-200 group-hover:opacity-90 scale-110"
             />
           </div>
         </Link>
