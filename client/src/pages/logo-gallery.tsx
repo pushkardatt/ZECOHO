@@ -29,15 +29,15 @@ function LogoSVG({ size = 200 }: { size?: number }) {
       >
         ZECOH
       </text>
-      <g transform="translate(152, 85)">
+      <g transform="translate(148, 82)">
         <path 
-          d="M 17 6 A 8 8 0 1 1 17 14" 
+          d="M 15.3 4.7 A 7.5 7.5 0 1 0 17.1 8.3" 
           stroke="white" 
-          strokeWidth="4" 
+          strokeWidth="3.5" 
           strokeLinecap="round"
           fill="none" 
         />
-        <circle cx="10" cy="10" r="4" fill="white" />
+        <circle cx="10" cy="10" r="2.5" fill="white" />
       </g>
     </svg>
   );
@@ -53,9 +53,9 @@ function downloadSVG() {
   </defs>
   <rect width="200" height="200" rx="32" fill="url(#logoGradient)" />
   <text x="28" y="118" fill="white" font-family="system-ui, -apple-system, sans-serif" font-size="42" font-weight="700" letter-spacing="1">ZECOH</text>
-  <g transform="translate(152, 85)">
-    <path d="M 17 6 A 8 8 0 1 1 17 14" stroke="white" stroke-width="4" stroke-linecap="round" fill="none" />
-    <circle cx="10" cy="10" r="4" fill="white" />
+  <g transform="translate(148, 82)">
+    <path d="M 15.3 4.7 A 7.5 7.5 0 1 0 17.1 8.3" stroke="white" stroke-width="3.5" stroke-linecap="round" fill="none" />
+    <circle cx="10" cy="10" r="2.5" fill="white" />
   </g>
 </svg>`;
   
@@ -106,14 +106,18 @@ function downloadPNG(size: number) {
   const oRadius = size * 0.075;
   
   ctx.beginPath();
-  ctx.arc(oX, oY, oRadius, 0.4 * Math.PI, -0.4 * Math.PI);
+  ctx.arc(oX, oY, oRadius, -0.35 * Math.PI, 0.35 * Math.PI, true);
   ctx.strokeStyle = 'white';
-  ctx.lineWidth = size * 0.02;
+  ctx.lineWidth = size * 0.018;
   ctx.lineCap = 'round';
+  ctx.stroke();
+  
+  ctx.beginPath();
+  ctx.arc(oX, oY, oRadius, 0.35 * Math.PI, 2 * Math.PI - 0.35 * Math.PI);
   ctx.stroke();
 
   ctx.beginPath();
-  ctx.arc(oX, oY, size * 0.02, 0, 2 * Math.PI);
+  ctx.arc(oX, oY, size * 0.0125, 0, 2 * Math.PI);
   ctx.fillStyle = 'white';
   ctx.fill();
 
