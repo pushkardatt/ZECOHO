@@ -1,9 +1,12 @@
 import { Mail } from "lucide-react";
 import { SiInstagram, SiYoutube, SiFacebook, SiLinkedin, SiX } from "react-icons/si";
 import { Link, useLocation } from "wouter";
+import { useAuth } from "@/hooks/useAuth";
 
 export function Footer() {
   const [location] = useLocation();
+  const { user } = useAuth();
+  const isAdmin = user?.role === "admin";
   
   // Hide footer on messages pages
   if (location === "/messages" || location === "/owner/messages") {
@@ -47,14 +50,18 @@ export function Footer() {
             >
               Contact Us
             </Link>
-            <span className="text-muted-foreground/40">|</span>
-            <Link 
-              href="/logo-gallery" 
-              className="text-muted-foreground hover:text-primary transition-colors whitespace-nowrap"
-              data-testid="link-footer-logo-gallery"
-            >
-              Brand Assets
-            </Link>
+            {isAdmin && (
+              <>
+                <span className="text-muted-foreground/40">|</span>
+                <Link 
+                  href="/logo-gallery" 
+                  className="text-muted-foreground hover:text-primary transition-colors whitespace-nowrap"
+                  data-testid="link-footer-logo-gallery"
+                >
+                  Brand Assets
+                </Link>
+              </>
+            )}
           </div>
 
           {/* Email - Single line */}
