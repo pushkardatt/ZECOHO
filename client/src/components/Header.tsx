@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
 import { Heart, User, LogOut, Menu, Building, MessageCircle, History, PlusCircle, Shield, Settings, FileText, MapPin, CheckCircle, Clock, XCircle, Check, LayoutDashboard, CalendarCheck, IndianRupee, Star, UserCircle, ArrowRightLeft, Phone, Handshake, Info, Calendar, Users, Package, Bell } from "lucide-react";
+import { Logo } from "@/components/Logo";
 import { useNotifications } from "@/hooks/useNotifications";
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
@@ -108,7 +109,7 @@ export function Header() {
       <div className="w-full max-w-screen-2xl mx-auto flex h-20 items-center justify-between px-4 md:px-6 overflow-hidden">
         <Link href="/">
           <div className="flex items-center cursor-pointer group flex-shrink-0 transition-opacity duration-200 group-hover:opacity-90" data-testid="link-home">
-            <div className="logo font-bold text-xl px-4 py-2 rounded-lg">ZECOHO</div>
+            <Logo />
           </div>
         </Link>
 
