@@ -9,13 +9,13 @@ export function Logo({ className = "" }: { className?: string }) {
         aria-hidden="true"
       >
         <path 
-          d="M 5.5 5.5 A 9 9 0 1 0 12 3 A 9 9 0 0 0 5.5 5.5" 
+          d="M 5.64 5.64 A 9 9 0 1 1 3.5 10" 
           stroke="currentColor" 
-          strokeWidth="3" 
+          strokeWidth="2.5" 
           strokeLinecap="round"
           fill="none" 
         />
-        <circle cx="12" cy="12" r="3" fill="currentColor" />
+        <circle cx="12" cy="12" r="2.5" fill="currentColor" />
       </svg>
     </div>
   );
@@ -32,13 +32,13 @@ export function LogoText({ className = "" }: { className?: string }) {
         aria-hidden="true"
       >
         <path 
-          d="M 5.5 5.5 A 9 9 0 1 0 12 3 A 9 9 0 0 0 5.5 5.5" 
+          d="M 5.64 5.64 A 9 9 0 1 1 3.5 10" 
           stroke="currentColor" 
-          strokeWidth="3" 
+          strokeWidth="2.5" 
           strokeLinecap="round"
           fill="none" 
         />
-        <circle cx="12" cy="12" r="3" fill="currentColor" />
+        <circle cx="12" cy="12" r="2.5" fill="currentColor" />
       </svg>
     </span>
   );
