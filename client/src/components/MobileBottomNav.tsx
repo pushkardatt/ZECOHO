@@ -3,6 +3,7 @@ import { Home, Search, Heart, User, Building, MessageCircle, CalendarCheck, Shie
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery } from "@tanstack/react-query";
 import { Badge } from "@/components/ui/badge";
+import { useNotificationSound } from "@/hooks/useNotificationSound";
 
 type ConversationWithUnread = { unreadCount: number };
 
@@ -25,6 +26,9 @@ export function MobileBottomNav() {
   });
   
   const totalUnreadCount = conversations.reduce((sum, conv) => sum + conv.unreadCount, 0);
+  
+  // Play sound when new messages arrive (mobile)
+  useNotificationSound(totalUnreadCount, !!isAuthenticated, true);
   
   // Hide on property details pages (they have their own booking bar)
   const isPropertyDetailsPage = location.match(/^\/properties\/[^/]+$/);

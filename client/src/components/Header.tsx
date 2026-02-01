@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Heart, User, LogOut, Menu, Building, MessageCircle, History, PlusCircle, Shield, Settings, FileText, MapPin, CheckCircle, Clock, XCircle, Check, LayoutDashboard, CalendarCheck, IndianRupee, Star, UserCircle, ArrowRightLeft, Phone, Handshake, Info, Calendar, Users, Package, Bell } from "lucide-react";
 import { Logo } from "@/components/Logo";
 import { useNotifications } from "@/hooks/useNotifications";
+import { useNotificationSound } from "@/hooks/useNotificationSound";
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { useKycGuard } from "@/hooks/useKycGuard";
@@ -47,6 +48,10 @@ export function Header() {
   });
 
   const totalUnreadCount = conversations.reduce((sum, conv) => sum + conv.unreadCount, 0);
+
+  // Play sound when new notifications or messages arrive
+  useNotificationSound(unreadCount, !!isAuthenticated, true);
+  useNotificationSound(totalUnreadCount, !!isAuthenticated, true);
 
   // Check if KYC is rejected - from either user.kycStatus OR kycApplication.status
   // This handles cases where user.kycStatus wasn't synced with the application status
