@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { OwnerLayout } from "@/components/OwnerLayout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -5,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useKycGuard } from "@/hooks/useKycGuard";
 import { Link } from "wouter";
 import {
@@ -15,6 +17,11 @@ import {
   ArrowUpRight,
   ArrowDownRight,
   XCircle,
+  Calendar,
+  CheckCircle,
+  Clock,
+  Ban,
+  AlertTriangle,
 } from "lucide-react";
 
 interface EarningsStats {
@@ -28,11 +35,46 @@ interface EarningsStats {
   totalBookings: number;
 }
 
+interface MonthlySummary {
+  year: number;
+  month: number;
+  confirmed: number;
+  completed: number;
+  cancelled: number;
+  rejected: number;
+  noShow: number;
+  pending: number;
+  totalRevenue: number;
+}
+
+const MONTH_NAMES = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December"
+];
+
 export default function OwnerEarnings() {
   const { isKycRejected } = useKycGuard();
+  
+  // Get current date for default month/year
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const currentMonth = now.getMonth() + 1;
+  
+  // State for month filter
+  const [selectedYear, setSelectedYear] = useState(currentYear);
+  const [selectedMonth, setSelectedMonth] = useState(currentMonth);
+  
   const { data: stats, isLoading } = useQuery<EarningsStats>({
     queryKey: ["/api/owner/stats"],
   });
+  
+  // Fetch monthly summary based on selected month/year
+  const { data: monthlySummary, isLoading: isLoadingMonthly } = useQuery<MonthlySummary>({
+    queryKey: ["/api/owner/monthly-summary", selectedYear, selectedMonth],
+  });
+  
+  // Generate year options (last 3 years)
+  const yearOptions = Array.from({ length: 3 }, (_, i) => currentYear - i);
 
   if (isKycRejected) {
     return (
@@ -225,6 +267,147 @@ export default function OwnerEarnings() {
             </CardContent>
           </Card>
         </div>
+
+        {/* Monthly Summary Section with Filter */}
+        <Card data-testid="card-monthly-summary">
+          <CardHeader>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <Calendar className="h-5 w-5" />
+                  Monthly Summary
+                </CardTitle>
+                <CardDescription>
+                  Booking and earnings breakdown for {MONTH_NAMES[selectedMonth - 1]} {selectedYear}
+                </CardDescription>
+              </div>
+              <div className="flex items-center gap-2">
+                <Select
+                  value={String(selectedMonth)}
+                  onValueChange={(value) => setSelectedMonth(parseInt(value))}
+                >
+                  <SelectTrigger className="w-[130px]" data-testid="select-month">
+                    <SelectValue placeholder="Month" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {MONTH_NAMES.map((month, index) => (
+                      <SelectItem key={index + 1} value={String(index + 1)}>
+                        {month}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Select
+                  value={String(selectedYear)}
+                  onValueChange={(value) => setSelectedYear(parseInt(value))}
+                >
+                  <SelectTrigger className="w-[100px]" data-testid="select-year">
+                    <SelectValue placeholder="Year" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {yearOptions.map((year) => (
+                      <SelectItem key={year} value={String(year)}>
+                        {year}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {isLoadingMonthly ? (
+              <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-4">
+                {[1, 2, 3, 4].map((i) => (
+                  <Skeleton key={i} className="h-20 w-full" />
+                ))}
+              </div>
+            ) : (
+              <div className="space-y-6">
+                {/* Revenue Highlight */}
+                <div className="p-4 bg-primary/10 rounded-lg">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-muted-foreground">
+                        Revenue for {MONTH_NAMES[selectedMonth - 1]} {selectedYear}
+                      </p>
+                      <p className="text-3xl font-bold text-primary" data-testid="monthly-revenue-value">
+                        {formatCurrency(monthlySummary?.totalRevenue || 0)}
+                      </p>
+                    </div>
+                    <IndianRupee className="h-10 w-10 text-primary/50" />
+                  </div>
+                </div>
+
+                {/* Booking Status Breakdown */}
+                <div className="grid gap-4 grid-cols-2 md:grid-cols-3 lg:grid-cols-6">
+                  <div className="p-4 bg-green-50 dark:bg-green-950/30 rounded-lg" data-testid="stat-completed">
+                    <div className="flex items-center gap-2 mb-2">
+                      <CheckCircle className="h-4 w-4 text-green-600" />
+                      <span className="text-sm font-medium text-green-700 dark:text-green-400">Completed</span>
+                    </div>
+                    <p className="text-2xl font-bold">{monthlySummary?.completed || 0}</p>
+                  </div>
+                  
+                  <div className="p-4 bg-blue-50 dark:bg-blue-950/30 rounded-lg" data-testid="stat-confirmed">
+                    <div className="flex items-center gap-2 mb-2">
+                      <CalendarCheck className="h-4 w-4 text-blue-600" />
+                      <span className="text-sm font-medium text-blue-700 dark:text-blue-400">Confirmed</span>
+                    </div>
+                    <p className="text-2xl font-bold">{monthlySummary?.confirmed || 0}</p>
+                  </div>
+                  
+                  <div className="p-4 bg-yellow-50 dark:bg-yellow-950/30 rounded-lg" data-testid="stat-pending">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Clock className="h-4 w-4 text-yellow-600" />
+                      <span className="text-sm font-medium text-yellow-700 dark:text-yellow-400">Pending</span>
+                    </div>
+                    <p className="text-2xl font-bold">{monthlySummary?.pending || 0}</p>
+                  </div>
+                  
+                  <div className="p-4 bg-red-50 dark:bg-red-950/30 rounded-lg" data-testid="stat-cancelled">
+                    <div className="flex items-center gap-2 mb-2">
+                      <XCircle className="h-4 w-4 text-red-600" />
+                      <span className="text-sm font-medium text-red-700 dark:text-red-400">Cancelled</span>
+                    </div>
+                    <p className="text-2xl font-bold">{monthlySummary?.cancelled || 0}</p>
+                  </div>
+                  
+                  <div className="p-4 bg-gray-50 dark:bg-gray-950/30 rounded-lg" data-testid="stat-rejected">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Ban className="h-4 w-4 text-gray-600" />
+                      <span className="text-sm font-medium text-gray-700 dark:text-gray-400">Rejected</span>
+                    </div>
+                    <p className="text-2xl font-bold">{monthlySummary?.rejected || 0}</p>
+                  </div>
+                  
+                  <div className="p-4 bg-orange-50 dark:bg-orange-950/30 rounded-lg" data-testid="stat-noshow">
+                    <div className="flex items-center gap-2 mb-2">
+                      <AlertTriangle className="h-4 w-4 text-orange-600" />
+                      <span className="text-sm font-medium text-orange-700 dark:text-orange-400">No Show</span>
+                    </div>
+                    <p className="text-2xl font-bold">{monthlySummary?.noShow || 0}</p>
+                  </div>
+                </div>
+
+                {/* Total Bookings for Month */}
+                <div className="pt-4 border-t">
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Total Bookings this Month</span>
+                    <span className="text-xl font-bold" data-testid="monthly-total-bookings">
+                      {(monthlySummary?.completed || 0) + 
+                       (monthlySummary?.confirmed || 0) + 
+                       (monthlySummary?.pending || 0) + 
+                       (monthlySummary?.cancelled || 0) + 
+                       (monthlySummary?.rejected || 0) + 
+                       (monthlySummary?.noShow || 0)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
     </OwnerLayout>
   );
