@@ -52,7 +52,7 @@ export function StickySearchSummary({
   };
 
   return (
-    <div className="bg-muted/50 border-b" data-testid="sticky-search-summary">
+    <div className="bg-muted/50 border-b sticky top-14 z-40" data-testid="sticky-search-summary">
       <div className="container px-4 md:px-6 py-3">
         {/* MakeMyTrip-style Search Summary Card */}
         <div 
