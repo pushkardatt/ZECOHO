@@ -290,6 +290,8 @@ export default function Search() {
         rooms={initialSearchValues.rooms}
         onSearch={handleSearch}
       />
+      {/* Spacer for fixed search bar on mobile */}
+      <div className="h-20 md:h-0" />
 
       {/* Horizontal Filters Bar - MakeMyTrip style - scrolls with content */}
       <div className="border-b bg-muted/30">
