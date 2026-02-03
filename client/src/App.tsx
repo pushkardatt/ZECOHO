@@ -227,7 +227,7 @@ function AppContent() {
           <div className="flex-1 pt-16 md:pt-0 pb-16 md:pb-0">
             <Router />
           </div>
-          <Footer />
+          {location === "/" && <Footer />}
           <CompareBar />
           <MobileBottomNav />
           {user && <SupportChat />}
