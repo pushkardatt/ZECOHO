@@ -19,16 +19,27 @@ function LogoSVG({ size = 200 }: { size?: number }) {
       </defs>
       <rect width="200" height="200" rx="32" fill="url(#logoGradient)" />
       <text 
-        x="22" 
+        x="20" 
         y="118" 
         fill="white" 
         fontFamily="system-ui, -apple-system, sans-serif" 
-        fontSize="38" 
+        fontSize="42" 
         fontWeight="700"
-        letterSpacing="0"
+        letterSpacing="1"
       >
-        ZECOHO
+        ZECOH
       </text>
+      {/* Special O symbol - matches header logo */}
+      <g transform="translate(152, 78)">
+        <path 
+          d="M 18.36 5.64 A 15 15 0 1 0 22 14" 
+          stroke="white" 
+          strokeWidth="4" 
+          strokeLinecap="round"
+          fill="none" 
+        />
+        <circle cx="12" cy="18" r="4" fill="white" />
+      </g>
     </svg>
   );
 }
@@ -42,7 +53,11 @@ function downloadSVG() {
     </linearGradient>
   </defs>
   <rect width="200" height="200" rx="32" fill="url(#logoGradient)" />
-  <text x="22" y="118" fill="white" font-family="system-ui, -apple-system, sans-serif" font-size="38" font-weight="700" letter-spacing="0">ZECOHO</text>
+  <text x="20" y="118" fill="white" font-family="system-ui, -apple-system, sans-serif" font-size="42" font-weight="700" letter-spacing="1">ZECOH</text>
+  <g transform="translate(152, 78)">
+    <path d="M 18.36 5.64 A 15 15 0 1 0 22 14" stroke="white" stroke-width="4" stroke-linecap="round" fill="none" />
+    <circle cx="12" cy="18" r="4" fill="white" />
+  </g>
 </svg>`;
   
   const blob = new Blob([svgContent], { type: 'image/svg+xml' });
@@ -83,8 +98,27 @@ function downloadPNG(size: number) {
   ctx.fill();
 
   ctx.fillStyle = 'white';
-  ctx.font = `700 ${size * 0.19}px system-ui, -apple-system, sans-serif`;
-  ctx.fillText('ZECOHO', size * 0.11, size * 0.59);
+  ctx.font = `700 ${size * 0.21}px system-ui, -apple-system, sans-serif`;
+  ctx.fillText('ZECOH', size * 0.10, size * 0.59);
+
+  // Draw the special O symbol (circle with gap and dot in center)
+  const oX = size * 0.84;
+  const oY = size * 0.48;
+  const oRadius = size * 0.08;
+  
+  // Draw the arc (circle with a gap at top-right)
+  ctx.beginPath();
+  ctx.arc(oX, oY, oRadius, 0.4 * Math.PI, 2.3 * Math.PI);
+  ctx.strokeStyle = 'white';
+  ctx.lineWidth = size * 0.02;
+  ctx.lineCap = 'round';
+  ctx.stroke();
+  
+  // Draw center dot
+  ctx.beginPath();
+  ctx.arc(oX, oY, size * 0.02, 0, 2 * Math.PI);
+  ctx.fillStyle = 'white';
+  ctx.fill();
 
   canvas.toBlob((blob) => {
     if (!blob) return;
