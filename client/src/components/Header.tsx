@@ -9,7 +9,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
-import { Heart, User, LogOut, Menu, Building, MessageCircle, History, PlusCircle, Shield, Settings, FileText, MapPin, CheckCircle, Clock, XCircle, Check, LayoutDashboard, CalendarCheck, IndianRupee, Star, UserCircle, ArrowRightLeft, Phone, Handshake, Info, Calendar, Users, Package, Bell } from "lucide-react";
+import { Heart, User, LogOut, Menu, Building, MessageCircle, History, PlusCircle, Shield, Settings, FileText, MapPin, CheckCircle, Clock, XCircle, Check, LayoutDashboard, CalendarCheck, IndianRupee, Star, Phone, Handshake, Info, Calendar, Users, Package, Bell } from "lucide-react";
 import { Logo } from "@/components/Logo";
 import { useNotifications } from "@/hooks/useNotifications";
 import { useNotificationSound } from "@/hooks/useNotificationSound";
@@ -347,68 +347,6 @@ export function Header() {
               ) : null}
 
               {/* Owner Context Indicator - shows when user is in owner mode */}
-              {isOwner && location.startsWith("/owner") && (
-                <Badge 
-                  variant="secondary" 
-                  className="hidden md:flex items-center gap-1.5 bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400 border-orange-200 dark:border-orange-800"
-                  data-testid="badge-owner-mode"
-                >
-                  <Building className="h-3 w-3" />
-                  Owner Mode
-                </Badge>
-              )}
-
-              {/* Role Switcher for Owners */}
-              {isOwner && (
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      className="gap-1.5"
-                      data-testid="button-role-switcher"
-                    >
-                      <ArrowRightLeft className="h-4 w-4" />
-                      <span className="hidden md:inline text-sm">Switch Mode</span>
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-56">
-                    <div className="px-2 py-1.5">
-                      <p className="text-sm font-semibold flex items-center gap-2">
-                        <ArrowRightLeft className="h-4 w-4" />
-                        Switch Mode
-                      </p>
-                      <p className="text-xs text-muted-foreground">Toggle between customer and owner views</p>
-                    </div>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem asChild className="cursor-pointer" data-testid="switch-customer-mode">
-                      <Link href="/">
-                        <UserCircle className="h-4 w-4 mr-2" />
-                        <div className="flex flex-col">
-                          <span className="font-medium">Customer Mode</span>
-                          <span className="text-xs text-muted-foreground">Browse & book properties</span>
-                        </div>
-                        {!location.startsWith("/owner") && (
-                          <Check className="h-4 w-4 ml-auto text-primary" />
-                        )}
-                      </Link>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem asChild className="cursor-pointer" data-testid="switch-owner-mode">
-                      <Link href="/owner/dashboard">
-                        <Building className="h-4 w-4 mr-2" />
-                        <div className="flex flex-col">
-                          <span className="font-medium">Owner Mode</span>
-                          <span className="text-xs text-muted-foreground">Manage your property</span>
-                        </div>
-                        {location.startsWith("/owner") && (
-                          <Check className="h-4 w-4 ml-auto text-primary" />
-                        )}
-                      </Link>
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              )}
-
               {/* Notification Bell */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
