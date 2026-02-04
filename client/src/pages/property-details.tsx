@@ -88,6 +88,7 @@ import type { LucideIcon } from "lucide-react";
 import { PropertyMap } from "@/components/PropertyMap";
 import { MobileBookingBar } from "@/components/MobileBookingBar";
 import { RoomTypeCard, type RoomInventory } from "@/components/RoomTypeCard";
+import { ImageLightbox } from "@/components/ImageLightbox";
 import type { Property, Amenity } from "@shared/schema";
 import { insertReviewSchema } from "@shared/schema";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -168,6 +169,8 @@ export default function PropertyDetails() {
   const [ownerResponseDialogOpen, setOwnerResponseDialogOpen] = useState(false);
   const [selectedReviewId, setSelectedReviewId] = useState<string | null>(null);
   const [amenitiesDialogOpen, setAmenitiesDialogOpen] = useState(false);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [lightboxIndex, setLightboxIndex] = useState(0);
   const getHelpfulStorageKey = () => user?.id ? `markedHelpfulReviews_${user.id}` : 'markedHelpfulReviews';
   
   // Sync guests from adults + children
@@ -1113,33 +1116,64 @@ export default function PropertyDetails() {
         <div className="mb-8">
           {additionalImages.length > 0 ? (
             <div className="grid grid-cols-4 gap-2 rounded-xl overflow-hidden h-[500px]">
-              <div className="col-span-4 md:col-span-2 md:row-span-2">
+              <div 
+                className="col-span-4 md:col-span-2 md:row-span-2 cursor-pointer"
+                onClick={() => {
+                  setLightboxIndex(0);
+                  setLightboxOpen(true);
+                }}
+                data-testid="button-image-main"
+              >
                 <img
                   src={mainImage}
                   alt={property.title}
-                  className="w-full h-full object-cover"
+                  className="w-full h-full object-cover hover:opacity-90 transition-opacity"
                 />
               </div>
               {additionalImages.map((img, idx) => (
-                <div key={idx} className="col-span-2 md:col-span-1">
+                <div 
+                  key={idx} 
+                  className="col-span-2 md:col-span-1 cursor-pointer"
+                  onClick={() => {
+                    setLightboxIndex(idx + 1);
+                    setLightboxOpen(true);
+                  }}
+                  data-testid={`button-image-${idx + 1}`}
+                >
                   <img
                     src={img}
                     alt={`${property.title} ${idx + 2}`}
-                    className="w-full h-full object-cover"
+                    className="w-full h-full object-cover hover:opacity-90 transition-opacity"
                   />
                 </div>
               ))}
             </div>
           ) : (
-            <div className="aspect-[2/1] rounded-xl overflow-hidden">
+            <div 
+              className="aspect-[2/1] rounded-xl overflow-hidden cursor-pointer"
+              onClick={() => {
+                setLightboxIndex(0);
+                setLightboxOpen(true);
+              }}
+              data-testid="button-image-single"
+            >
               <img
                 src={mainImage}
                 alt={property.title}
-                className="w-full h-full object-cover"
+                className="w-full h-full object-cover hover:opacity-90 transition-opacity"
               />
             </div>
           )}
         </div>
+
+        {/* Image Lightbox */}
+        <ImageLightbox
+          images={property.images || [mainImage]}
+          initialIndex={lightboxIndex}
+          isOpen={lightboxOpen}
+          onClose={() => setLightboxOpen(false)}
+          alt={property.title}
+        />
 
         {/* Content Grid */}
         <div className="grid md:grid-cols-3 gap-8">
