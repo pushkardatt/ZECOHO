@@ -12,6 +12,7 @@ import { seedAmenities } from "./seed-amenities";
 import { seedDestinations } from "./seed-destinations";
 import { seedOwnerAgreement } from "./seed-owner-agreement";
 import { seedPolicies } from "./seed-policies";
+import { migrateMealOptionNames } from "./migrate-meal-options";
 
 export function log(message: string, source = "express") {
   const formattedTime = new Date().toLocaleTimeString("en-US", {
@@ -121,6 +122,7 @@ export default async function runApp(
       // Fire-and-forget seeding - functions check if data exists before inserting
       seedPolicies();
       seedOwnerAgreement();
+      migrateMealOptionNames();
       
       // Only run amenities/destinations seeding in development - they are large datasets
       // This prevents deployment timeouts from expensive seeding operations
