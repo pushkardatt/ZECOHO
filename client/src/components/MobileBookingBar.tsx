@@ -47,6 +47,9 @@ interface MobileBookingBarProps {
   hasBlockedDateOverlap?: boolean;
   bookedDates?: Date[];
   blockedDates?: Date[];
+  bookingStep?: "select" | "details";
+  onBackToSelect?: () => void;
+  detailsContent?: React.ReactNode;
 }
 
 const parseLocalDate = (dateStr: string): Date => {
@@ -82,6 +85,9 @@ export function MobileBookingBar({
   hasBlockedDateOverlap,
   bookedDates = [],
   blockedDates = [],
+  bookingStep = "select",
+  onBackToSelect,
+  detailsContent,
 }: MobileBookingBarProps) {
   const [sheetOpen, setSheetOpen] = useState(false);
   const [checkInPopoverOpen, setCheckInPopoverOpen] = useState(false);
@@ -392,19 +398,16 @@ export function MobileBookingBar({
                   </div>
                 )}
 
-                {/* Price Summary */}
-                {nights > 0 && totalPrice > 0 && selectedRoomTypeId && !hasDateOverlap && !hasBlockedDateOverlap && (
+                {/* Price Summary - shown on select step */}
+                {bookingStep === "select" && nights > 0 && totalPrice > 0 && selectedRoomTypeId && !hasDateOverlap && !hasBlockedDateOverlap && (
                   <div className="p-4 bg-muted rounded-lg space-y-2">
                     <div className="flex justify-between text-sm">
                       <span className="text-muted-foreground">
-                        ₹{selectedRoomType ? Number(selectedRoomType.basePrice).toLocaleString('en-IN') : 0} × {nights} nights × {rooms} rooms
+                        ₹{selectedRoomType ? Number(selectedRoomType.basePrice).toLocaleString('en-IN') : 0} × {nights}N × {rooms}R
                       </span>
                       <span className="font-medium">
                         ₹{(Number(selectedRoomType?.basePrice || 0) * nights * rooms).toLocaleString('en-IN')}
                       </span>
-                    </div>
-                    <div className="flex justify-between text-sm text-muted-foreground">
-                      <span>{guests} guest{guests !== 1 ? 's' : ''}</span>
                     </div>
                     <div className="flex justify-between text-base font-semibold pt-2 border-t">
                       <span>Total</span>
@@ -412,10 +415,27 @@ export function MobileBookingBar({
                     </div>
                   </div>
                 )}
+
+                {bookingStep === "details" && detailsContent && (
+                  <div className="space-y-4">
+                    {detailsContent}
+                  </div>
+                )}
               </div>
 
               {/* Reserve Button */}
               <div className="sticky bottom-0 pt-4 pb-6 bg-background border-t mt-4">
+                {bookingStep === "details" && onBackToSelect && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full mb-2"
+                    onClick={onBackToSelect}
+                    data-testid="mobile-button-back-to-select"
+                  >
+                    Back to Room Selection
+                  </Button>
+                )}
                 <Button
                   className="w-full"
                   size="lg"
@@ -426,7 +446,7 @@ export function MobileBookingBar({
                   {isReserving ? "Processing..." : disabledReason || "Reserve"}
                 </Button>
                 <p className="text-center text-sm text-muted-foreground mt-2">
-                  No payment required now
+                  {bookingStep === "details" ? "Pay directly at the hotel" : "No payment required now"}
                 </p>
               </div>
             </SheetContent>

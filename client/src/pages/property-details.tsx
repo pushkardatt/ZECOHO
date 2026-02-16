@@ -1,6 +1,6 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useRoute, useLocation } from "wouter";
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -89,6 +89,8 @@ import { PropertyMap } from "@/components/PropertyMap";
 import { MobileBookingBar } from "@/components/MobileBookingBar";
 import { RoomTypeCard, type RoomInventory } from "@/components/RoomTypeCard";
 import { ImageLightbox } from "@/components/ImageLightbox";
+import { GuestDetailsForm, type GuestDetailsFormData } from "@/components/GuestDetailsForm";
+import { BookingPriceSummary } from "@/components/BookingPriceSummary";
 import type { Property, Amenity } from "@shared/schema";
 import { insertReviewSchema } from "@shared/schema";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -161,6 +163,9 @@ export default function PropertyDetails() {
   const [reviewDialogOpen, setReviewDialogOpen] = useState(false);
   const [selectedRoomTypeId, setSelectedRoomTypeId] = useState<string | null>(null);
   const [selectedMealOptionId, setSelectedMealOptionId] = useState<string | null>(null);
+  const [bookingStep, setBookingStep] = useState<"select" | "details">("select");
+  const [guestDetailsValid, setGuestDetailsValid] = useState(false);
+  const [guestDetailsData, setGuestDetailsData] = useState<GuestDetailsFormData | null>(null);
   
   // Controlled popover states for date pickers and guests with auto-navigation
   const [checkInPopoverOpen, setCheckInPopoverOpen] = useState(false);
@@ -705,6 +710,11 @@ export default function PropertyDetails() {
     },
   });
 
+  const handleGuestDetailsChange = useCallback((isValid: boolean, data: GuestDetailsFormData | null) => {
+    setGuestDetailsValid(isValid);
+    setGuestDetailsData(data);
+  }, []);
+
   const bookingMutation = useMutation({
     mutationFn: async () => {
       if (!checkIn || !checkOut) {
@@ -716,7 +726,9 @@ export default function PropertyDetails() {
       if (guests < 1) {
         throw new Error("At least 1 guest is required");
       }
-      // Validate that required rooms don't exceed available capacity
+      if (!guestDetailsData) {
+        throw new Error("Please fill in traveller details");
+      }
       if (hasInsufficientRooms) {
         throw new Error(`Not enough rooms available for ${guests} guest${guests !== 1 ? 's' : ''}. Please reduce guest count or select different dates.`);
       }
@@ -730,6 +742,13 @@ export default function PropertyDetails() {
         guests,
         rooms,
         totalPrice,
+        guestName: guestDetailsData.guestName,
+        guestMobile: `+91${guestDetailsData.guestMobile}`,
+        guestEmail: guestDetailsData.guestEmail,
+        gstNumber: guestDetailsData.gstNumber || null,
+        specialRequests: guestDetailsData.specialRequests || null,
+        adults,
+        childrenCount: children,
       };
       
       if (selectedRoomTypeId) {
@@ -756,6 +775,9 @@ export default function PropertyDetails() {
       setRooms(1);
       setSelectedRoomTypeId(null);
       setSelectedMealOptionId(null);
+      setBookingStep("select");
+      setGuestDetailsValid(false);
+      setGuestDetailsData(null);
       
       // Redirect to My Bookings page immediately with success indicator
       setLocation("/my-bookings?new=true");
@@ -983,6 +1005,31 @@ export default function PropertyDetails() {
       toast({
         title: "Room Type Required",
         description: "Please select a room type before booking",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    if (!checkIn || !checkOut) {
+      toast({
+        title: "Dates Required",
+        description: "Please select check-in and check-out dates",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    // If on select step, move to details step
+    if (bookingStep === "select") {
+      setBookingStep("details");
+      return;
+    }
+    
+    // On details step, validate guest details and confirm booking
+    if (!guestDetailsValid || !guestDetailsData) {
+      toast({
+        title: "Traveller Details Required",
+        description: "Please fill in all required traveller details",
         variant: "destructive",
       });
       return;
@@ -2157,7 +2204,7 @@ export default function PropertyDetails() {
                   </div>
                 )}
 
-                {nights > 0 && totalPrice > 0 && !hasDateOverlap && !hasBlockedDateOverlap && selectedRoomTypeId && (() => {
+                {nights > 0 && totalPrice > 0 && !hasDateOverlap && !hasBlockedDateOverlap && selectedRoomTypeId && bookingStep === "select" && (() => {
                   const selectedRoomType = roomTypes.find((rt: any) => rt.id === selectedRoomTypeId);
                   if (!selectedRoomType) return null;
                   
@@ -2167,7 +2214,6 @@ export default function PropertyDetails() {
                   let mealOptionName = "";
                   let mealOptionPrice = 0;
                   
-                  // Calculate occupancy adjustment
                   let occupancyAdjustment = 0;
                   let occupancyLabel = "";
                   const adultsPerRoom = Math.ceil(adults / rooms);
@@ -2183,7 +2229,65 @@ export default function PropertyDetails() {
                   
                   const effectivePrice = basePrice + occupancyAdjustment;
                   
-                  // Check for original price (strikethrough)
+                  if (selectedRoomType.originalPrice && parseFloat(selectedRoomType.originalPrice) > parseFloat(selectedRoomType.basePrice)) {
+                    originalPrice = Number(selectedRoomType.originalPrice);
+                  }
+                  
+                  if (selectedMealOptionId && selectedRoomType.mealOptions) {
+                    const selectedMealOption = selectedRoomType.mealOptions.find((opt: any) => opt.id === selectedMealOptionId);
+                    if (selectedMealOption) {
+                      mealOptionName = selectedMealOption.name;
+                      mealOptionPrice = Number(selectedMealOption.priceAdjustment);
+                    }
+                  }
+                  
+                  const roomSubtotal = nights * effectivePrice * rooms;
+                  const mealSubtotal = nights * mealOptionPrice * guests;
+                  
+                  return (
+                    <div className="mb-4 p-4 bg-muted rounded-lg space-y-2">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">
+                          <span className="font-medium">{roomTypeName}</span>
+                          {' × '}{nights}N × {rooms}R
+                        </span>
+                        <span className="font-semibold">₹{roomSubtotal.toLocaleString('en-IN')}</span>
+                      </div>
+                      {mealOptionPrice > 0 && (
+                        <div className="flex justify-between text-sm">
+                          <span className="text-muted-foreground">{mealOptionName}</span>
+                          <span className="font-semibold">₹{mealSubtotal.toLocaleString('en-IN')}</span>
+                        </div>
+                      )}
+                      <div className="flex justify-between text-base font-semibold pt-2 border-t">
+                        <span>Total</span>
+                        <span data-testid="text-total-price">₹{totalPrice.toLocaleString('en-IN')}</span>
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                {bookingStep === "details" && nights > 0 && selectedRoomTypeId && (() => {
+                  const selectedRoomType = roomTypes.find((rt: any) => rt.id === selectedRoomTypeId);
+                  if (!selectedRoomType) return null;
+                  
+                  const basePrice = Number(selectedRoomType.basePrice);
+                  let originalPrice: number | null = null;
+                  let mealOptionName = "";
+                  let mealOptionPrice = 0;
+                  let occupancyAdjustment = 0;
+                  let occupancyLabel = "";
+                  const adultsPerRoom = Math.ceil(adults / rooms);
+                  const singleOccupancyBase = selectedRoomType.singleOccupancyBase || 1;
+                  
+                  if (adultsPerRoom >= 3 && selectedRoomType.tripleOccupancyAdjustment) {
+                    occupancyAdjustment = Number(selectedRoomType.tripleOccupancyAdjustment);
+                    occupancyLabel = "Triple occupancy";
+                  } else if (adultsPerRoom >= 2 && adultsPerRoom > singleOccupancyBase && selectedRoomType.doubleOccupancyAdjustment) {
+                    occupancyAdjustment = Number(selectedRoomType.doubleOccupancyAdjustment);
+                    occupancyLabel = "Double occupancy";
+                  }
+                  
                   if (selectedRoomType.originalPrice && parseFloat(selectedRoomType.originalPrice) > parseFloat(selectedRoomType.basePrice)) {
                     originalPrice = Number(selectedRoomType.originalPrice);
                   }
@@ -2200,90 +2304,70 @@ export default function PropertyDetails() {
                     property.bulkBookingMinRooms && 
                     rooms >= property.bulkBookingMinRooms && 
                     property.bulkBookingDiscountPercent;
-                  
                   const discountPercent = hasBulkDiscount ? Number(property.bulkBookingDiscountPercent) : 0;
-                  const roomSubtotal = nights * effectivePrice * rooms;
-                  const occupancySubtotal = nights * occupancyAdjustment * rooms;
-                  const mealSubtotal = nights * mealOptionPrice * guests;
-                  const subtotal = roomSubtotal + mealSubtotal;
-                  
-                  // Calculate savings from original price
-                  const originalSubtotal = originalPrice ? nights * originalPrice * rooms : 0;
-                  const priceSavings = originalPrice ? originalSubtotal - roomSubtotal : 0;
-                  
+
                   return (
-                    <div className="mb-6 p-4 bg-muted rounded-lg space-y-2">
-                      {/* Room pricing with strikethrough if discount */}
-                      {originalPrice && (
-                        <div className="flex justify-between text-sm">
-                          <span className="text-muted-foreground line-through">
-                            <span className="font-medium">{roomTypeName}: </span>
-                            ₹{originalPrice.toLocaleString('en-IN')} × {nights} {nights === 1 ? 'night' : 'nights'} × {rooms} {rooms === 1 ? 'room' : 'rooms'}
-                          </span>
-                          <span className="text-muted-foreground line-through">₹{originalSubtotal.toLocaleString('en-IN')}</span>
-                        </div>
-                      )}
-                      <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">
-                          <span className="font-medium">{roomTypeName}: </span>
-                          <span className={originalPrice ? 'text-green-600 dark:text-green-400' : ''}>
-                            ₹{basePrice.toLocaleString('en-IN')}
-                          </span>
-                          {occupancyAdjustment > 0 && (
-                            <span className="text-orange-600 dark:text-orange-400">
-                              {' + ₹'}{occupancyAdjustment.toLocaleString('en-IN')} ({occupancyLabel})
-                            </span>
-                          )}
-                          {' × '}{nights} {nights === 1 ? 'night' : 'nights'} × {rooms} {rooms === 1 ? 'room' : 'rooms'}
-                        </span>
-                        <span className="font-semibold">₹{roomSubtotal.toLocaleString('en-IN')}</span>
-                      </div>
-                      
-                      {/* Discount savings line */}
-                      {priceSavings > 0 && (
-                        <div className="flex justify-between text-sm text-green-600 dark:text-green-400">
-                          <span>Discount savings</span>
-                          <span>-₹{priceSavings.toLocaleString('en-IN')}</span>
-                        </div>
-                      )}
-                      
-                      {/* Meal option pricing (per person) */}
-                      {mealOptionPrice > 0 && (
-                        <div className="flex justify-between text-sm">
-                          <span className="text-muted-foreground">
-                            {mealOptionName}: ₹{mealOptionPrice.toLocaleString('en-IN')}/person × {guests} {guests === 1 ? 'guest' : 'guests'} × {nights} {nights === 1 ? 'night' : 'nights'}
-                          </span>
-                          <span className="font-semibold">₹{mealSubtotal.toLocaleString('en-IN')}</span>
-                        </div>
-                      )}
-                      
-                      <div className="flex justify-between text-xs text-muted-foreground">
-                        <span>
-                          {guests} guest{guests !== 1 ? 's' : ''} ({adults} adult{adults !== 1 ? 's' : ''}, {children} child{children !== 1 ? 'ren' : ''})
-                        </span>
-                      </div>
-                      {hasBulkDiscount && (
-                        <div className="flex justify-between text-sm text-green-600 dark:text-green-400">
-                          <span>Bulk booking discount ({discountPercent}%)</span>
-                          <span>-₹{Math.round(subtotal * discountPercent / 100).toLocaleString('en-IN')}</span>
-                        </div>
-                      )}
-                      <div className="flex justify-between text-base font-semibold pt-2 border-t">
-                        <span>Total</span>
-                        <span data-testid="text-total-price">₹{totalPrice.toLocaleString('en-IN')}</span>
-                      </div>
+                    <div className="space-y-4">
+                      <GuestDetailsForm
+                        user={user}
+                        adults={adults}
+                        children={children}
+                        onValidChange={handleGuestDetailsChange}
+                      />
+                      <BookingPriceSummary
+                        breakdown={{
+                          roomTypeName: selectedRoomType.name,
+                          basePrice,
+                          occupancyAdjustment,
+                          occupancyLabel,
+                          mealOptionName,
+                          mealOptionPrice,
+                          nights,
+                          rooms,
+                          guests,
+                          adults,
+                          children,
+                          originalPrice,
+                          bulkDiscountPercent: discountPercent,
+                        }}
+                      />
                     </div>
                   );
                 })()}
+
+                {bookingStep === "details" && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full mb-2"
+                    onClick={() => setBookingStep("select")}
+                    data-testid="button-back-to-select"
+                  >
+                    Back to Room Selection
+                  </Button>
+                )}
 
                 <Button 
                   className="w-full" 
                   size="lg" 
                   onClick={handleBooking}
-                  disabled={bookingMutation.isPending || !checkIn || !checkOut || !selectedRoomTypeId || hasDateOverlap || hasBlockedDateOverlap || isBookingDisabled}
+                  disabled={
+                    bookingMutation.isPending || 
+                    !checkIn || !checkOut || !selectedRoomTypeId || 
+                    hasDateOverlap || hasBlockedDateOverlap || isBookingDisabled ||
+                    (bookingStep === "details" && !guestDetailsValid)
+                  }
                   data-testid="button-reserve"
                 >
-                  {bookingMutation.isPending ? "Processing..." : !selectedRoomTypeId ? "Select Room Type" : isBookingDisabled ? "Not Available" : "Reserve"}
+                  {bookingMutation.isPending 
+                    ? "Processing..." 
+                    : !selectedRoomTypeId 
+                      ? "Select Room Type" 
+                      : isBookingDisabled 
+                        ? "Not Available" 
+                        : bookingStep === "select" 
+                          ? "Continue to Booking" 
+                          : "Confirm Booking"}
                 </Button>
                 
                 <div className="text-center mt-2 space-y-1">
@@ -2291,7 +2375,7 @@ export default function PropertyDetails() {
                     No payment required now
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    Booking confirmation pending hotel approval
+                    Pay directly at the hotel
                   </p>
                 </div>
                 
@@ -2385,11 +2469,17 @@ export default function PropertyDetails() {
         onMealOptionSelect={setSelectedMealOptionId}
         onReserve={handleBooking}
         isReserving={bookingMutation.isPending}
-        isDisabled={isBookingDisabled || !checkIn || !checkOut || !selectedRoomTypeId || hasDateOverlap || hasBlockedDateOverlap}
+        isDisabled={
+          isBookingDisabled || !checkIn || !checkOut || !selectedRoomTypeId || 
+          hasDateOverlap || hasBlockedDateOverlap ||
+          (bookingStep === "details" && !guestDetailsValid)
+        }
         disabledReason={
           !selectedRoomTypeId ? "Select Room Type" : 
           isBookingDisabled ? "Not Available" : 
-          undefined
+          bookingStep === "select" ? "Continue to Booking" :
+          !guestDetailsValid ? "Fill Traveller Details" :
+          "Confirm Booking"
         }
         totalPrice={totalPrice}
         nights={nights}
@@ -2397,6 +2487,42 @@ export default function PropertyDetails() {
         hasBlockedDateOverlap={hasBlockedDateOverlap}
         bookedDates={bookedDatesForCalendar}
         blockedDates={blockedDatesForCalendar}
+        bookingStep={bookingStep}
+        onBackToSelect={() => setBookingStep("select")}
+        detailsContent={bookingStep === "details" && selectedRoomTypeId ? (() => {
+          const selectedRoomType = roomTypes.find((rt: any) => rt.id === selectedRoomTypeId);
+          if (!selectedRoomType) return null;
+          const basePrice = Number(selectedRoomType.basePrice);
+          let mealOptionName = "";
+          let mealOptionPrice = 0;
+          let occupancyAdjustment = 0;
+          let occupancyLabel = "";
+          const adultsPerRoom = Math.ceil(adults / rooms);
+          const singleOccupancyBase = selectedRoomType.singleOccupancyBase || 1;
+          if (adultsPerRoom >= 3 && selectedRoomType.tripleOccupancyAdjustment) {
+            occupancyAdjustment = Number(selectedRoomType.tripleOccupancyAdjustment);
+            occupancyLabel = "Triple occupancy";
+          } else if (adultsPerRoom >= 2 && adultsPerRoom > singleOccupancyBase && selectedRoomType.doubleOccupancyAdjustment) {
+            occupancyAdjustment = Number(selectedRoomType.doubleOccupancyAdjustment);
+            occupancyLabel = "Double occupancy";
+          }
+          let originalPrice: number | null = null;
+          if (selectedRoomType.originalPrice && parseFloat(selectedRoomType.originalPrice) > parseFloat(selectedRoomType.basePrice)) {
+            originalPrice = Number(selectedRoomType.originalPrice);
+          }
+          if (selectedMealOptionId && selectedRoomType.mealOptions) {
+            const mo = selectedRoomType.mealOptions.find((opt: any) => opt.id === selectedMealOptionId);
+            if (mo) { mealOptionName = mo.name; mealOptionPrice = Number(mo.priceAdjustment); }
+          }
+          const hasBulkDiscount = property.bulkBookingEnabled && property.bulkBookingMinRooms && rooms >= property.bulkBookingMinRooms && property.bulkBookingDiscountPercent;
+          const discountPercent = hasBulkDiscount ? Number(property.bulkBookingDiscountPercent) : 0;
+          return (
+            <>
+              <GuestDetailsForm user={user} adults={adults} children={children} onValidChange={handleGuestDetailsChange} />
+              <BookingPriceSummary breakdown={{ roomTypeName: selectedRoomType.name, basePrice, occupancyAdjustment, occupancyLabel, mealOptionName, mealOptionPrice, nights, rooms, guests, adults, children, originalPrice, bulkDiscountPercent: discountPercent }} />
+            </>
+          );
+        })() : undefined}
       />
     </div>
   );

@@ -3372,12 +3372,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Meal subtotal: mealPrice × guests × nights (per person per night)
       const roomSubtotal = nights * (basePrice + occupancyAdjustment) * roomsCount;
       const mealSubtotal = nights * mealPrice * guestCount;
-      const totalPrice = roomSubtotal + mealSubtotal;
+      
+      // Platform fee: ZERO commission model - no platform fee
+      const platformFee = 0;
+      // GST: 12% on room charges for properties with tariff > ₹7500/night, 0% otherwise (ZECOHO zero-commission)
+      const gstRate = 0;
+      const gstAmount = 0;
+      
+      const totalPrice = roomSubtotal + mealSubtotal + platformFee + gstAmount;
+      
+      // Advance payment: configurable percentage (default 0 - pay at hotel model)
+      const ADVANCE_PAYMENT_PERCENT = 0;
+      const advanceAmount = Math.round(totalPrice * ADVANCE_PAYMENT_PERCENT / 100);
       
       const booking = await storage.createBooking({
         ...validatedData,
         rooms: roomsCount,
         totalPrice: totalPrice.toString(),
+        roomPrice: roomSubtotal.toString(),
+        mealPrice: mealSubtotal.toString(),
+        platformFee: platformFee.toString(),
+        gstAmount: gstAmount.toString(),
+        advanceAmount: advanceAmount.toString(),
+        adults: validatedData.adults || null,
+        childrenCount: validatedData.childrenCount || null,
       });
       
       // STATE: CREATED - Send state-driven booking emails

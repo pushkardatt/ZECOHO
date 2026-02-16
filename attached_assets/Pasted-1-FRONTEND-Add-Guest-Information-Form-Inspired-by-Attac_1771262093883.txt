@@ -1,0 +1,248 @@
+1️⃣ FRONTEND: Add Guest Information Form (Inspired by Attached Reference UI)
+
+Add a “Traveller Details” section before payment on all booking-enabled property pages.
+
+Required Fields:
+
+Mobile Number (with country code default +91)
+
+Traveller’s Full Name
+
+Email Address
+
+Optional Fields:
+
+Checkbox: “I have a GST number”
+
+If checked → show GST Number field
+
+Special Requests (textarea)
+
+Number of Adults
+
+Number of Children
+
+UI Requirements:
+
+Clean card-style container
+
+Real-time validation
+
+Mobile-first responsive layout
+
+Autofill if user is logged in
+
+Prevent proceeding to payment without required fields
+
+2️⃣ UPDATE BOOKING FLOW SEQUENCE
+
+Modify flow across all booking-enabled pages:
+
+Old Flow:
+Room → Meal → Book
+
+New Flow:
+Room → Meal → Guest Details → Price Summary → Advance Payment → Confirmation
+
+3️⃣ PRICE SUMMARY BLOCK (Dynamic)
+
+Below guest details form, add:
+
+Price Breakdown:
+
+Room Price
+Meal Price
+Platform Fee
+GST
+Subtotal
+
+Then show:
+
+💰 “Pay ₹X Now to Confirm Booking”
+Remaining payable at hotel.
+
+Advance payment amount must be configurable (e.g., 20% or fixed ₹500).
+
+4️⃣ PAYMENT INTEGRATION
+
+On clicking:
+
+“Pay ₹X Now”
+
+Trigger:
+
+POST /api/bookings/create
+
+Payload:
+{
+property_id,
+room_id,
+checkin_date,
+checkout_date,
+guests_adults,
+guests_children,
+meal_plan,
+guest_name,
+guest_mobile,
+guest_email,
+gst_number (optional),
+special_requests,
+room_price,
+meal_price,
+platform_fee,
+gst_amount,
+total_price,
+advance_amount
+}
+
+Then:
+
+Create booking record with status = "Pending Payment"
+
+Generate unique booking_id
+
+Redirect to payment gateway (Razorpay / Stripe / configured PG)
+
+5️⃣ PAYMENT CALLBACK HANDLING
+
+On payment success:
+
+Update booking:
+status = "Confirmed"
+payment_status = "Advance Paid"
+transaction_id = gateway_reference
+
+On failure:
+status = "Payment Failed"
+
+6️⃣ DATABASE SCHEMA UPDATE
+
+Create or update bookings table:
+
+Fields:
+
+id (UUID)
+booking_id (human readable e.g., ZEC-2026-000123)
+property_id
+room_id
+checkin_date
+checkout_date
+adults
+children
+guest_name
+guest_mobile
+guest_email
+gst_number
+special_requests
+room_price
+meal_price
+platform_fee
+gst_amount
+total_amount
+advance_amount
+payment_status
+booking_status
+transaction_id
+created_at
+updated_at
+
+Ensure indexing on:
+
+guest_mobile
+
+property_id
+
+booking_id
+
+7️⃣ OWNER PANEL INTEGRATION
+
+On successful booking:
+
+Send booking notification to hotel owner dashboard
+
+Display:
+Guest name
+Mobile
+Stay dates
+Room type
+Amount paid
+Balance due
+
+Owner must see:
+“Advance Paid via ZECOHO”
+
+8️⃣ CUSTOMER CONFIRMATION
+
+After payment success:
+
+Redirect to:
+“Booking Confirmed” page
+
+Show:
+Booking ID
+Property details
+Stay dates
+Advance paid
+Balance payable at hotel
+
+Send:
+
+SMS confirmation
+
+Email confirmation with invoice PDF
+
+9️⃣ BOOKING HISTORY PAGE
+
+Add:
+User → My Bookings
+
+Allow:
+
+View booking details
+
+Download invoice
+
+Cancel booking (if policy allows)
+
+🔟 API STANDARDIZATION
+
+Ensure:
+
+All booking-related endpoints updated:
+
+POST /api/bookings/create
+POST /api/bookings/payment-callback
+GET /api/bookings/{id}
+GET /api/user/bookings
+
+Ensure proper validation + error handling.
+
+1️⃣1️⃣ HYBRID MODEL PRESERVATION
+
+Keep secondary CTA:
+
+“Call Hotel Directly”
+
+But booking button must be primary CTA.
+
+Do NOT remove call functionality.
+
+1️⃣2️⃣ VALIDATION & TESTING
+
+Test scenarios:
+
+1 guest, 1 night
+
+2 guests, 3 nights
+
+With GST
+
+Without GST
+
+Payment success
+
+Payment failure
+
+Owner receives notification
+
+Ensure no page bypasses guest detail collection before booking.
