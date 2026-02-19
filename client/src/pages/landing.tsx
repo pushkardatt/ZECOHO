@@ -531,35 +531,35 @@ export default function Landing() {
       </div>
 
       {/* Stats Section */}
-      <div className="py-16 px-4 md:px-6 bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900">
+      <div className="py-16 px-4 md:px-6 bg-white dark:bg-slate-900 border-t border-b border-border">
         <div className="container mx-auto">
           <div className="flex flex-wrap items-center justify-center gap-8 md:gap-16">
             <div className="text-center">
-              <div className="text-4xl md:text-5xl font-bold text-white">
+              <div className="text-4xl md:text-5xl font-bold text-slate-800 dark:text-white">
                 <AnimatedCounter end={56} suffix="+" />
               </div>
-              <div className="text-slate-400 text-sm mt-1">Verified Properties</div>
+              <div className="text-slate-500 dark:text-slate-400 text-sm mt-1">Verified Properties</div>
             </div>
-            <div className="hidden md:block w-px h-16 bg-slate-600" />
+            <div className="hidden md:block w-px h-16 bg-slate-300 dark:bg-slate-600" />
             <div className="text-center">
-              <div className="text-4xl md:text-5xl font-bold text-white">
+              <div className="text-4xl md:text-5xl font-bold text-slate-800 dark:text-white">
                 <AnimatedCounter end={65} suffix="+" />
               </div>
-              <div className="text-slate-400 text-sm mt-1">Indian Destinations</div>
+              <div className="text-slate-500 dark:text-slate-400 text-sm mt-1">Indian Destinations</div>
             </div>
-            <div className="hidden md:block w-px h-16 bg-slate-600" />
+            <div className="hidden md:block w-px h-16 bg-slate-300 dark:bg-slate-600" />
             <div className="text-center">
-              <div className="text-4xl md:text-5xl font-bold text-amber-400">
+              <div className="text-4xl md:text-5xl font-bold text-amber-500 dark:text-amber-400">
                 0%
               </div>
-              <div className="text-slate-400 text-sm mt-1">Commission Fee</div>
+              <div className="text-slate-500 dark:text-slate-400 text-sm mt-1">Commission Fee</div>
             </div>
-            <div className="hidden md:block w-px h-16 bg-slate-600" />
+            <div className="hidden md:block w-px h-16 bg-slate-300 dark:bg-slate-600" />
             <div className="text-center">
-              <div className="text-4xl md:text-5xl font-bold text-emerald-400">
+              <div className="text-4xl md:text-5xl font-bold text-emerald-500 dark:text-emerald-400">
                 15-25%
               </div>
-              <div className="text-slate-400 text-sm mt-1">You Save</div>
+              <div className="text-slate-500 dark:text-slate-400 text-sm mt-1">You Save</div>
             </div>
           </div>
         </div>
