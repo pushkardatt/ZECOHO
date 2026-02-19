@@ -1,0 +1,116 @@
+Project Update: Footer Redesign + Remove Promotional Sections (Web & App)
+We need to restructure the footer and remove specific promotional sections across ZECOHO platform (web + mobile app views).
+Please implement the following:
+________________________________________
+1️⃣ WEBSITE VERSION – FOOTER LAYOUT UPDATE (DESKTOP)
+Update website footer to 3-column horizontal layout:
+LEFT SIDE:
+Display:
+📧 support@zecoho.com
+•	Make it clickable (mailto link)
+•	Place at extreme left of footer
+•	Align vertically centered
+________________________________________
+CENTER:
+Display inline links (center-aligned):
+Terms & Conditions
+|
+Privacy Policy
+|
+About Us
+|
+Contact Us
+•	Proper spacing between links
+•	Keep them horizontally aligned
+•	Ensure SEO-friendly anchor tags
+•	Maintain existing routing
+________________________________________
+RIGHT SIDE:
+Display social media icons aligned to extreme right:
+Instagram
+YouTube
+Facebook
+LinkedIn
+X (Twitter)
+Requirements:
+•	Equal spacing between icons
+•	Hover animation (subtle color change)
+•	Clickable external links
+•	Open in new tab
+•	Use consistent icon size
+•	Vertically centered
+________________________________________
+Footer Bottom Line:
+Keep:
+© 2026 ZECOHO. All rights reserved.
+Centered below main footer row.
+________________________________________
+2️⃣ MOBILE APP VERSION – FOOTER ARRANGEMENT
+In mobile/app view:
+Do NOT replicate desktop 3-column layout.
+Instead use this structure:
+________________________________________
+📧 support@zecoho.com
+(center aligned)
+Then below it:
+Terms & Conditions
+Privacy Policy
+About Us
+Contact Us
+Stacked vertically, center aligned.
+Then below:
+Social media icons in single row (center aligned)
+Then copyright line at bottom.
+________________________________________
+Make sure:
+•	Clean spacing
+•	Touch-friendly links
+•	Proper padding
+•	No overcrowding
+________________________________________
+3️⃣ REMOVE PROMOTIONAL SECTIONS (WEB + APP)
+Completely remove the following sections across all relevant pages:
+❌ “Own a Property?” section (black background)
+❌ “Ready to Save on Your Next Booking?” gradient section
+Remove:
+•	Entire HTML blocks
+•	Associated CSS
+•	Associated components
+•	Associated routing if any
+•	Associated unused assets
+Ensure:
+•	No empty spacing remains
+•	No layout break
+•	No broken links
+•	No impact on SEO
+________________________________________
+4️⃣ CODE CLEANUP
+After removing sections:
+•	Delete unused CSS classes
+•	Delete unused component imports
+•	Ensure no console errors
+•	Ensure responsive layout remains intact
+________________________________________
+5️⃣ TESTING REQUIREMENTS
+Test:
+Desktop view
+Tablet view
+Mobile view
+App webview
+Ensure:
+•	Footer alignment correct
+•	Email clickable
+•	Social icons functional
+•	No extra blank space
+•	No layout shift
+________________________________________
+🎯 FINAL GOAL
+Website footer should look:
+LEFT: support@zecoho.com
+CENTER: T&C | Privacy | About | Contact
+RIGHT: Social icons
+App version:
+Stacked, clean, premium, mobile-optimized.
+Remove promotional sections entirely.
+
+
