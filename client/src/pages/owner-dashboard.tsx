@@ -41,10 +41,13 @@ import {
   Phone,
   MessageCircle,
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { format } from "date-fns";
 import { usePropertyUpdates } from "@/hooks/usePropertyUpdates";
+import { useBookingUpdates } from "@/hooks/useBookingUpdates";
+import type { UrgentBookingAlert } from "@/hooks/useBookingUpdates";
+import { UrgentBookingAlertModal, UrgentBookingBanner } from "@/components/UrgentBookingAlert";
 import {
   Select,
   SelectContent,
@@ -308,6 +311,52 @@ export default function OwnerDashboard() {
   const { user } = useAuth();
   const { toast } = useToast();
   
+  // Urgent booking alert state
+  const [urgentAlert, setUrgentAlert] = useState<UrgentBookingAlert | null>(null);
+  const [showBanner, setShowBanner] = useState<UrgentBookingAlert | null>(null);
+
+  const handleUrgentBooking = useCallback((data: UrgentBookingAlert) => {
+    setUrgentAlert(data);
+    setShowBanner(data);
+  }, []);
+
+  useBookingUpdates({ userId: user?.id, onUrgentBooking: handleUrgentBooking });
+
+  // Listen for service worker messages (push action buttons)
+  useEffect(() => {
+    const handleSwMessage = (event: MessageEvent) => {
+      if (event.data?.type === 'BOOKING_ACTION') {
+        const { action, bookingId } = event.data;
+        if (action === 'accept') {
+          apiRequest("POST", `/api/bookings/${bookingId}/confirm`, {})
+            .then(() => {
+              queryClient.invalidateQueries({ queryKey: ["/api/owner/bookings"] });
+              queryClient.invalidateQueries({ queryKey: ["/api/owner/stats"] });
+              queryClient.invalidateQueries({ queryKey: ["/api/bookings", bookingId] });
+            })
+            .catch(console.error);
+        } else if (action === 'reject') {
+          apiRequest("POST", `/api/bookings/${bookingId}/reject`, { responseMessage: "Unable to accommodate." })
+            .then(() => {
+              queryClient.invalidateQueries({ queryKey: ["/api/owner/bookings"] });
+              queryClient.invalidateQueries({ queryKey: ["/api/owner/stats"] });
+              queryClient.invalidateQueries({ queryKey: ["/api/bookings", bookingId] });
+            })
+            .catch(console.error);
+        }
+        // Log the push action
+        apiRequest("POST", "/api/push/log-action", { bookingId, action, channel: 'web_push' }).catch(console.error);
+        setUrgentAlert(null);
+        setShowBanner(null);
+      }
+    };
+
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.addEventListener('message', handleSwMessage);
+      return () => navigator.serviceWorker.removeEventListener('message', handleSwMessage);
+    }
+  }, []);
+
   // Month selection state for monthly summary (defaults to current month)
   const now = new Date();
   const [selectedYear, setSelectedYear] = useState(now.getFullYear());
@@ -419,6 +468,8 @@ export default function OwnerDashboard() {
 
   return (
     <OwnerLayout>
+      <UrgentBookingBanner alert={showBanner} onDismiss={() => setShowBanner(null)} />
+      <UrgentBookingAlertModal alert={urgentAlert} onDismiss={() => setUrgentAlert(null)} />
       <div className="space-y-6" data-testid="owner-dashboard">
         {hasPublishedProperty && (
           <Alert className="bg-green-50 dark:bg-green-950/30 border-green-200 dark:border-green-800" data-testid="banner-property-live">

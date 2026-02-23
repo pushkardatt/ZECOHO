@@ -45,6 +45,7 @@ Authentication is handled by Replit Auth (OpenID Connect). Express-session with 
 -   **Guest Cancellation Flow**: Implements owner-defined cancellation policies (flexible/moderate/strict) with automated refund calculations and a refund preview API.
 -   **Comprehensive Admin Control System**: Admin dashboard with sections for Booking Management (cancel, no-show, check-in/out), Owner Compliance (suspend/reinstate owners), Inventory Health (monitor/fix room availability), and Support Inbox (manage customer conversations), all with audit logging.
 -   **AI Chat Support System**: Rule-based FAQ chatbot for logged-in users, featuring a knowledge base, quick actions, auto-escalation to human support, and conversation management.
+-   **Urgent Booking Notification System**: Real-time multi-channel alerts (WebSocket in-app modal/banner, Web Push with Accept/Reject action buttons, notification logging) for property owners when new bookings arrive, with 2-minute countdown timer, Web Audio API alert sounds, and service worker action handling.
 
 ## External Dependencies
 

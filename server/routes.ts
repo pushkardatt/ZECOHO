@@ -3583,9 +3583,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
           entityType: "booking"
         });
         
-        // Send push notification to owner
-        const { sendBookingPush } = require('./services/pushService');
-        await sendBookingPush(property.ownerId, 'new_booking', property.title, booking.id);
+        // Send urgent push notification to owner with action buttons
+        const { sendUrgentBookingPush } = require('./services/pushService');
+        await sendUrgentBookingPush(
+          property.ownerId,
+          booking.id,
+          booking.bookingCode || booking.id.slice(0, 8).toUpperCase(),
+          guestFullName,
+          property.title,
+          checkInFormatted,
+          roomTypeName || 'Standard Room'
+        );
+        
+        // Broadcast urgent booking alert via WebSocket for in-app modal
+        broadcastToUser(property.ownerId, {
+          type: 'urgent_booking_alert',
+          bookingId: booking.id,
+          bookingCode: booking.bookingCode || booking.id.slice(0, 8).toUpperCase(),
+          guestName: guestFullName,
+          propertyName: property.title,
+          checkIn: checkInFormatted,
+          checkOut: checkOutFormatted,
+          roomType: roomTypeName || 'Standard Room',
+          guests: validatedData.guests || 1,
+          rooms: roomsCount,
+          totalPrice: totalPrice.toString(),
+          timestamp: Date.now(),
+        });
+
+        // Log WebSocket notification
+        await storage.createNotificationLog({
+          userId: property.ownerId,
+          bookingId: booking.id,
+          channel: 'websocket',
+          status: 'sent',
+          title: 'Urgent Booking Alert (WebSocket)',
+          body: `Booking ${booking.bookingCode || booking.id.slice(0, 8).toUpperCase()} for ${property.title}`,
+          sentAt: new Date(),
+        });
       } catch (notifError) {
         console.error('Failed to create booking notification:', notifError);
       }
@@ -9041,6 +9076,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error removing push subscription:", error);
       res.status(500).json({ message: "Failed to remove subscription" });
+    }
+  });
+
+  // Notification log tracking endpoint (for push action tracking)
+  app.post("/api/push/log-action", isAuthenticated, async (req: any, res) => {
+    try {
+      const { bookingId, action } = req.body;
+      const userId = req.user.claims.sub;
+      
+      if (!bookingId || !action) {
+        return res.status(400).json({ message: "bookingId and action are required" });
+      }
+
+      await storage.createNotificationLog({
+        userId,
+        bookingId,
+        channel: 'web_push',
+        status: 'clicked',
+        title: `Push action: ${action}`,
+        actionTaken: action,
+        actionAt: new Date(),
+        sentAt: new Date(),
+      });
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error logging push action:", error);
+      res.status(500).json({ message: "Failed to log action" });
+    }
+  });
+
+  // Get notification logs for a booking (admin/owner)
+  app.get("/api/notification-logs/:bookingId", isAuthenticated, async (req: any, res) => {
+    try {
+      const logs = await storage.getNotificationLogsByBooking(req.params.bookingId);
+      res.json(logs);
+    } catch (error) {
+      console.error("Error fetching notification logs:", error);
+      res.status(500).json({ message: "Failed to fetch logs" });
     }
   });
 

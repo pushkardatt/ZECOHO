@@ -83,6 +83,9 @@ import {
   type InsertSupportMessage,
   type SupportTicket,
   type InsertSupportTicket,
+  notificationLogs,
+  type NotificationLog,
+  type InsertNotificationLog,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, gte, lte, lt, gt, inArray, sql, or, not, desc, count } from "drizzle-orm";
@@ -394,6 +397,11 @@ export interface IStorage {
   getPushSubscriptions(userId: string): Promise<{ endpoint: string; p256dh: string; auth: string }[]>;
   deletePushSubscription(endpoint: string): Promise<void>;
   deletePushSubscriptionsByUser(userId: string): Promise<void>;
+
+  // Notification log operations
+  createNotificationLog(log: InsertNotificationLog): Promise<NotificationLog>;
+  updateNotificationLog(id: string, updates: Partial<InsertNotificationLog>): Promise<void>;
+  getNotificationLogsByBooking(bookingId: string): Promise<NotificationLog[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -3165,6 +3173,19 @@ export class DatabaseStorage implements IStorage {
 
   async deletePushSubscriptionsByUser(userId: string): Promise<void> {
     await db.delete(pushSubscriptions).where(eq(pushSubscriptions.userId, userId));
+  }
+
+  async createNotificationLog(log: InsertNotificationLog): Promise<NotificationLog> {
+    const [result] = await db.insert(notificationLogs).values(log).returning();
+    return result;
+  }
+
+  async updateNotificationLog(id: string, updates: Partial<InsertNotificationLog>): Promise<void> {
+    await db.update(notificationLogs).set(updates).where(eq(notificationLogs.id, id));
+  }
+
+  async getNotificationLogsByBooking(bookingId: string): Promise<NotificationLog[]> {
+    return db.select().from(notificationLogs).where(eq(notificationLogs.bookingId, bookingId));
   }
 }
 

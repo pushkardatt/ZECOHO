@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { OwnerLayout } from "@/components/OwnerLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -28,6 +28,8 @@ import { useToast } from "@/hooks/use-toast";
 import { useKycGuard } from "@/hooks/useKycGuard";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { UrgentBookingAlertModal, UrgentBookingBanner } from "@/components/UrgentBookingAlert";
+import type { UrgentBookingAlert } from "@/hooks/useBookingUpdates";
 import { useBookingUpdates } from "@/hooks/useBookingUpdates";
 import { format } from "date-fns";
 import { Calendar } from "@/components/ui/calendar";
@@ -148,8 +150,59 @@ export default function OwnerBookings() {
     }
   }, [location]);
   
+  // Urgent booking alert state
+  const [urgentAlert, setUrgentAlert] = useState<UrgentBookingAlert | null>(null);
+  const [showBanner, setShowBanner] = useState<UrgentBookingAlert | null>(null);
+
+  const handleUrgentBooking = useCallback((data: UrgentBookingAlert) => {
+    setUrgentAlert(data);
+    setShowBanner(data);
+  }, []);
+
+  const handleDismissModal = useCallback(() => {
+    setUrgentAlert(null);
+  }, []);
+
+  const handleDismissBanner = useCallback(() => {
+    setShowBanner(null);
+  }, []);
+
   // Subscribe to real-time booking updates via WebSocket with polling fallback
-  useBookingUpdates({ userId: user?.id });
+  useBookingUpdates({ userId: user?.id, onUrgentBooking: handleUrgentBooking });
+
+  // Listen for service worker messages (push action buttons)
+  useEffect(() => {
+    const handleSwMessage = (event: MessageEvent) => {
+      if (event.data?.type === 'BOOKING_ACTION') {
+        const { action, bookingId } = event.data;
+        if (action === 'accept') {
+          apiRequest("POST", `/api/bookings/${bookingId}/confirm`, {})
+            .then(() => {
+              queryClient.invalidateQueries({ queryKey: ["/api/owner/bookings"] });
+              queryClient.invalidateQueries({ queryKey: ["/api/bookings", bookingId] });
+            })
+            .catch(console.error);
+        } else if (action === 'reject') {
+          apiRequest("POST", `/api/bookings/${bookingId}/reject`, { responseMessage: "Unable to accommodate." })
+            .then(() => {
+              queryClient.invalidateQueries({ queryKey: ["/api/owner/bookings"] });
+              queryClient.invalidateQueries({ queryKey: ["/api/bookings", bookingId] });
+            })
+            .catch(console.error);
+        }
+        // Log the push action
+        apiRequest("POST", "/api/push/log-action", { bookingId, action, channel: 'web_push' }).catch(console.error);
+        setUrgentAlert(null);
+        setShowBanner(null);
+      }
+    };
+
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.addEventListener('message', handleSwMessage);
+      return () => navigator.serviceWorker.removeEventListener('message', handleSwMessage);
+    }
+  }, []);
+
   const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
   const [selectedRejectionReason, setSelectedRejectionReason] = useState("");
@@ -1101,6 +1154,8 @@ export default function OwnerBookings() {
 
   return (
     <OwnerLayout>
+      <UrgentBookingBanner alert={showBanner} onDismiss={handleDismissBanner} />
+      <UrgentBookingAlertModal alert={urgentAlert} onDismiss={handleDismissModal} />
       <div className="space-y-6" data-testid="owner-bookings">
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="w-full h-auto flex-wrap justify-start gap-1 p-1" data-testid="booking-tabs">

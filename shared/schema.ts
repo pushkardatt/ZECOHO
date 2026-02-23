@@ -1559,3 +1559,55 @@ export const pushSubscriptionsRelations = relations(pushSubscriptions, ({ one })
     references: [users.id],
   }),
 }))
+
+export const notificationChannelEnum = pgEnum("notification_channel", [
+  "web_push",
+  "websocket",
+  "in_app",
+  "email",
+]);
+
+export const notificationDeliveryStatusEnum = pgEnum("notification_delivery_status", [
+  "sent",
+  "delivered",
+  "failed",
+  "clicked",
+  "dismissed",
+]);
+
+export const notificationLogs = pgTable(
+  "notification_logs",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    userId: varchar("user_id").references(() => users.id).notNull(),
+    bookingId: varchar("booking_id").references(() => bookings.id),
+    channel: notificationChannelEnum("channel").notNull(),
+    status: notificationDeliveryStatusEnum("status").notNull().default("sent"),
+    title: varchar("title", { length: 255 }),
+    body: text("body"),
+    error: text("error"),
+    devicePlatform: varchar("device_platform", { length: 50 }),
+    sentAt: timestamp("sent_at").defaultNow(),
+    deliveredAt: timestamp("delivered_at"),
+    actionTaken: varchar("action_taken", { length: 50 }),
+    actionAt: timestamp("action_at"),
+  },
+  (table) => [
+    index("IDX_notif_log_user").on(table.userId),
+    index("IDX_notif_log_booking").on(table.bookingId),
+  ],
+);
+
+export type NotificationLog = typeof notificationLogs.$inferSelect;
+export type InsertNotificationLog = typeof notificationLogs.$inferInsert;
+
+export const notificationLogsRelations = relations(notificationLogs, ({ one }) => ({
+  user: one(users, {
+    fields: [notificationLogs.userId],
+    references: [users.id],
+  }),
+  booking: one(bookings, {
+    fields: [notificationLogs.bookingId],
+    references: [bookings.id],
+  }),
+}))

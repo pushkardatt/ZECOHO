@@ -24,20 +24,24 @@ interface PushPayload {
   };
   actions?: { action: string; title: string }[];
   requireInteraction?: boolean;
+  urgency?: 'high' | 'normal' | 'low';
 }
 
-export async function sendPushNotification(userId: string, payload: PushPayload): Promise<void> {
+export async function sendPushNotification(userId: string, payload: PushPayload): Promise<{ sent: number; failed: number }> {
   if (!VAPID_PRIVATE_KEY) {
     console.log('[Push] VAPID private key not configured, skipping push notification');
-    return;
+    return { sent: 0, failed: 0 };
   }
+
+  let sent = 0;
+  let failed = 0;
 
   try {
     const subscriptions = await storage.getPushSubscriptions(userId);
     
     if (subscriptions.length === 0) {
       console.log(`[Push] No subscriptions found for user ${userId}`);
-      return;
+      return { sent: 0, failed: 0 };
     }
 
     const payloadString = JSON.stringify({
@@ -49,6 +53,7 @@ export async function sendPushNotification(userId: string, payload: PushPayload)
       data: payload.data || { url: '/' },
       actions: payload.actions || [],
       requireInteraction: payload.requireInteraction || false,
+      urgency: payload.urgency || 'normal',
     });
 
     const sendPromises = subscriptions.map(async (sub) => {
@@ -61,9 +66,14 @@ export async function sendPushNotification(userId: string, payload: PushPayload)
               auth: sub.auth,
             },
           },
-          payloadString
+          payloadString,
+          {
+            urgency: payload.urgency || 'normal',
+            TTL: payload.urgency === 'high' ? 30 : 86400,
+          }
         );
         console.log(`[Push] Sent notification to user ${userId}`);
+        sent++;
       } catch (error: any) {
         if (error.statusCode === 410 || error.statusCode === 404) {
           console.log(`[Push] Subscription expired, removing: ${sub.endpoint.substring(0, 50)}...`);
@@ -71,6 +81,7 @@ export async function sendPushNotification(userId: string, payload: PushPayload)
         } else {
           console.error(`[Push] Error sending notification:`, error.message);
         }
+        failed++;
       }
     });
 
@@ -78,6 +89,53 @@ export async function sendPushNotification(userId: string, payload: PushPayload)
   } catch (error) {
     console.error('[Push] Error sending push notification:', error);
   }
+
+  return { sent, failed };
+}
+
+export async function sendUrgentBookingPush(
+  userId: string,
+  bookingId: string,
+  bookingCode: string,
+  guestName: string,
+  propertyName: string,
+  checkIn: string,
+  roomType: string,
+) {
+  const result = await sendPushNotification(userId, {
+    title: 'New Booking — Immediate Action Required',
+    body: `Booking: ${bookingCode}\nGuest: ${guestName}\nCheck-in: ${checkIn}\nRoom: ${roomType}`,
+    tag: `urgent-booking-${bookingId}`,
+    data: {
+      url: `/owner/bookings?highlight=${bookingId}`,
+      bookingId,
+      bookingCode,
+      type: 'urgent_booking',
+    },
+    actions: [
+      { action: 'accept_booking', title: 'Accept' },
+      { action: 'reject_booking', title: 'Reject' },
+    ],
+    requireInteraction: true,
+    urgency: 'high',
+  });
+
+  try {
+    await storage.createNotificationLog({
+      userId,
+      bookingId,
+      channel: 'web_push',
+      status: result.sent > 0 ? 'sent' : 'failed',
+      title: 'New Booking — Immediate Action Required',
+      body: `Booking: ${bookingCode} | Guest: ${guestName} | Check-in: ${checkIn}`,
+      error: result.failed > 0 ? `${result.failed} delivery failures` : null,
+      sentAt: new Date(),
+    });
+  } catch (logError) {
+    console.error('[Push] Failed to create notification log:', logError);
+  }
+
+  return result;
 }
 
 export async function sendBookingPush(

@@ -5,6 +5,7 @@ import { useToast } from "@/hooks/use-toast";
 interface BookingUpdateOptions {
   userId?: string;
   onUpdate?: (data: BookingStatusUpdate) => void;
+  onUrgentBooking?: (data: UrgentBookingAlert) => void;
   pollingInterval?: number;
 }
 
@@ -18,8 +19,23 @@ export interface BookingStatusUpdate {
   isEarlyCheckout?: boolean;
 }
 
+export interface UrgentBookingAlert {
+  type: "urgent_booking_alert";
+  bookingId: string;
+  bookingCode: string;
+  guestName: string;
+  propertyName: string;
+  checkIn: string;
+  checkOut: string;
+  roomType: string;
+  guests: number;
+  rooms: number;
+  totalPrice: string;
+  timestamp: number;
+}
+
 export function useBookingUpdates(options: BookingUpdateOptions = {}) {
-  const { userId, onUpdate, pollingInterval = 20000 } = options;
+  const { userId, onUpdate, onUrgentBooking, pollingInterval = 20000 } = options;
   const { toast } = useToast();
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -64,6 +80,11 @@ export function useBookingUpdates(options: BookingUpdateOptions = {}) {
 
     onUpdate?.(data);
   }, [invalidateBookingQueries, onUpdate, toast]);
+
+  const handleUrgentBookingAlert = useCallback((data: UrgentBookingAlert) => {
+    invalidateBookingQueries();
+    onUrgentBooking?.(data);
+  }, [invalidateBookingQueries, onUrgentBooking]);
 
   const startPolling = useCallback(() => {
     if (pollingIntervalRef.current) {
@@ -111,6 +132,8 @@ export function useBookingUpdates(options: BookingUpdateOptions = {}) {
           
           if (data.type === "booking_status_update") {
             handleBookingUpdate(data as BookingStatusUpdate);
+          } else if (data.type === "urgent_booking_alert") {
+            handleUrgentBookingAlert(data as UrgentBookingAlert);
           }
         } catch (e) {
           console.error("[BookingUpdates] Message parse error:", e);
@@ -144,7 +167,7 @@ export function useBookingUpdates(options: BookingUpdateOptions = {}) {
       console.error("[BookingUpdates] Failed to create WebSocket:", error);
       startPolling();
     }
-  }, [userId, handleBookingUpdate, startPolling, stopPolling]);
+  }, [userId, handleBookingUpdate, handleUrgentBookingAlert, startPolling, stopPolling]);
 
   useEffect(() => {
     if (userId) {

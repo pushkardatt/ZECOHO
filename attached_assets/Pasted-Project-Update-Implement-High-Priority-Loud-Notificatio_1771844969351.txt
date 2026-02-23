@@ -1,0 +1,169 @@
+Project Update: Implement High-Priority Loud Notification for All New Bookings (Owner App + Web Admin)
+
+We need to implement an urgent, high-priority notification system for all new bookings in ZECOHO.
+
+This must work similar to the MyGate alert system (loud, attention-grabbing, cannot be easily ignored).
+
+Implement the following:
+
+1️⃣ Trigger Condition
+
+Whenever a new booking is created (any type: prepaid, request-to-book, instant booking), immediately trigger:
+
+High-priority push notification to owner app
+
+In-app alert modal (if app is open)
+
+Sound alert (loud, custom tone)
+
+Vibration pattern
+
+This applies to ALL booking types.
+
+2️⃣ Android Implementation Requirements
+
+Create a dedicated Notification Channel named: "ZECOHO URGENT BOOKINGS"
+
+Set importance level: HIGH or MAX
+
+Enable sound + vibration
+
+Use custom loud notification sound (not default)
+
+Support full-screen intent for urgent booking alerts
+
+Override silent mode only if OS allows (do not break Android policies)
+
+Ensure notification appears on lock screen
+
+Show large icon + booking details
+
+Add action buttons: Accept | Reject | View
+
+3️⃣ iOS Implementation Requirements
+
+Use APNs with "time-sensitive" interruption level
+
+Enable sound in notification payload
+
+Ensure notification displays even in Focus mode (where allowed)
+
+Add actionable buttons (Accept / Reject)
+
+If app is foreground → show full-screen modal alert with loud sound
+
+Do not use VoIP push unless absolutely required.
+
+4️⃣ Notification Content
+
+Title:
+New Booking — Immediate Action Required
+
+Body:
+Booking ID: {booking_id}
+Guest: {guest_name}
+Check-in: {date}
+Room: {room_type}
+
+Subtext:
+Confirm within 2 minutes to avoid escalation call.
+
+5️⃣ Backend Trigger Logic
+
+On booking creation:
+
+Save booking with status = PENDING_OWNER_CONFIRM
+
+Immediately dispatch notification event
+
+Log notification attempt in database
+
+Record timestamp for escalation timer
+
+Do NOT delay notification.
+
+6️⃣ In-App Behavior (Owner App)
+
+If app is open:
+
+Display full-screen modal
+
+Play loud alert sound
+
+Disable background interaction until action taken
+
+Show countdown timer (2:00 minutes)
+
+Accept button:
+→ Immediately call API to confirm booking
+
+Reject button:
+→ Update booking status
+
+7️⃣ Web Owner Dashboard Behavior
+
+If owner is logged in via web:
+
+Show large top banner alert
+
+Play browser notification sound
+
+Flash booking card visually
+
+8️⃣ Testing Requirements
+
+Test on:
+
+Android (latest version)
+
+iOS (latest version)
+
+Device in silent mode
+
+Device locked
+
+App in background
+
+App in foreground
+
+Ensure:
+
+Alert always visible
+
+Sound plays correctly
+
+Action buttons functional
+
+No duplicate notifications
+
+No delay in push dispatch
+
+9️⃣ Logging & Monitoring
+
+Store:
+
+Push delivery status
+
+Notification open timestamp
+
+Confirmation time
+
+Device platform
+
+This data will be used for response-time analytics.
+
+10️⃣ Do NOT Modify:
+
+Booking logic
+
+Payment logic
+
+Existing call escalation logic (if any)
+
+Inventory logic
+
+Only implement urgent notification layer.
+
+🎯 Goal
+
+Reduce booking confirmation time by creating an unavoidable, high-priority alert system similar to MyGate.
