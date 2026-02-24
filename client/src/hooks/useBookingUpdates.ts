@@ -134,6 +134,8 @@ export function useBookingUpdates(options: BookingUpdateOptions = {}) {
             handleBookingUpdate(data as BookingStatusUpdate);
           } else if (data.type === "urgent_booking_alert") {
             handleUrgentBookingAlert(data as UrgentBookingAlert);
+          } else if (data.type === "notification_update") {
+            queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
           }
         } catch (e) {
           console.error("[BookingUpdates] Message parse error:", e);

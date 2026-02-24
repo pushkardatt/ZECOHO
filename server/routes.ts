@@ -3582,6 +3582,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           entityId: booking.id,
           entityType: "booking"
         });
+
+        broadcastToUser(property.ownerId, { type: 'notification_update' });
         
         // Send urgent push notification to owner with action buttons
         const { sendUrgentBookingPush } = require('./services/pushService');
@@ -4022,7 +4024,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           type: "booking_confirmed",
           entityId: booking.id,
           entityType: "booking",
-        }).catch(console.error);
+        }).then(() => broadcastToUser(property.ownerId, { type: 'notification_update' })).catch(console.error);
         
         // Send push notification to owner about customer confirmation
         try {
@@ -8150,7 +8152,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           type: "booking_confirmed",
           entityId: booking.id,
           entityType: "booking",
-        }).catch(console.error);
+        }).then(() => broadcastToUser(booking.guestId, { type: 'notification_update' })).catch(console.error);
       } else if (status === "rejected") {
         createNotification({
           userId: booking.guestId,
@@ -8159,7 +8161,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           type: "booking_cancelled",
           entityId: booking.id,
           entityType: "booking",
-        }).catch(console.error);
+        }).then(() => broadcastToUser(booking.guestId, { type: 'notification_update' })).catch(console.error);
       }
       
       // Send push notification to guest about booking status

@@ -8,6 +8,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useAuth } from "@/hooks/useAuth";
 import { usePushNotifications } from "@/hooks/use-push-notifications";
+import { useBookingUpdates } from "@/hooks/useBookingUpdates";
 import { KycRouteGuard } from "@/lib/KycRouteGuard";
 import { usePreLoginBooking } from "@/hooks/usePreLoginBooking";
 
@@ -172,6 +173,9 @@ function AppContent() {
   
   // Auto-subscribe authenticated users to push notifications by default
   usePushNotifications(isAuthenticated);
+
+  // Mount WebSocket at app root so notification_update events always trigger cache invalidation
+  useBookingUpdates({ userId: user?.id });
 
   // Fetch current policy versions to check if user needs to re-consent
   const { data: policyVersions } = useQuery<{ termsVersion: number | null; privacyVersion: number | null }>({

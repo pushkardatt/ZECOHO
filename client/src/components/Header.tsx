@@ -11,6 +11,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Heart, User, LogOut, Menu, Building, MessageCircle, History, PlusCircle, Shield, Settings, FileText, MapPin, CheckCircle, Clock, XCircle, Check, LayoutDashboard, CalendarCheck, IndianRupee, Star, Phone, Handshake, Info, Calendar, Users, Package } from "lucide-react";
 import { Logo } from "@/components/Logo";
+import { NotificationBell } from "@/components/NotificationBell";
 import { useNotificationSound } from "@/hooks/useNotificationSound";
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
@@ -342,6 +343,8 @@ export function Header() {
                   </Button>
                 </Link>
               ) : null}
+
+              <NotificationBell />
 
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>

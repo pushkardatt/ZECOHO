@@ -46,6 +46,7 @@ Authentication is handled by Replit Auth (OpenID Connect). Express-session with 
 -   **Comprehensive Admin Control System**: Admin dashboard with sections for Booking Management (cancel, no-show, check-in/out), Owner Compliance (suspend/reinstate owners), Inventory Health (monitor/fix room availability), and Support Inbox (manage customer conversations), all with audit logging.
 -   **AI Chat Support System**: Rule-based FAQ chatbot for logged-in users, featuring a knowledge base, quick actions, auto-escalation to human support, and conversation management.
 -   **Urgent Booking Notification System**: Real-time multi-channel alerts (WebSocket in-app modal/banner, Web Push with Accept/Reject action buttons, notification logging) for property owners when new bookings arrive, with 2-minute countdown timer, Web Audio API alert sounds, and service worker action handling.
+-   **In-App Notification Bell**: Bell icon in navbar with unread badge count, dropdown panel showing latest 10 notifications with mark-as-read functionality, time-ago formatting, and click-to-navigate to related bookings/properties. Enhanced 6-second notification sound with tab visibility detection, overlap prevention, vibration support, and AudioContext preloading. Real-time updates via WebSocket `notification_update` events.
 
 ## External Dependencies
 

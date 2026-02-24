@@ -1,9 +1,10 @@
 import { Link, useLocation } from "wouter";
-import { Home, Search, Heart, User, Building, MessageCircle, CalendarCheck, Shield, LucideIcon } from "lucide-react";
+import { Home, Search, Heart, User, Building, MessageCircle, CalendarCheck, Shield, Bell, LucideIcon } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery } from "@tanstack/react-query";
 import { Badge } from "@/components/ui/badge";
 import { useNotificationSound } from "@/hooks/useNotificationSound";
+import { useNotifications } from "@/hooks/useNotifications";
 
 type ConversationWithUnread = { unreadCount: number };
 
@@ -27,6 +28,8 @@ export function MobileBottomNav() {
   
   const totalUnreadCount = conversations.reduce((sum, conv) => sum + conv.unreadCount, 0);
   
+  const { unreadCount: notificationUnreadCount } = useNotifications();
+  
   // Play sound when new messages arrive (mobile)
   useNotificationSound(totalUnreadCount, !!isAuthenticated, true);
   
@@ -43,6 +46,10 @@ export function MobileBottomNav() {
   }
 
   // Different nav items for owners vs guests
+  const notifBadge = isAuthenticated && notificationUnreadCount > 0
+    ? (notificationUnreadCount > 9 ? "9+" : String(notificationUnreadCount))
+    : undefined;
+
   const ownerNavItems: NavItem[] = [
     {
       href: "/",
@@ -74,6 +81,7 @@ export function MobileBottomNav() {
       icon: User,
       label: "Profile",
       active: location === "/profile",
+      badge: notifBadge,
     },
   ];
 
@@ -112,6 +120,7 @@ export function MobileBottomNav() {
       icon: User,
       label: isAuthenticated ? "Profile" : "Login",
       active: location === "/profile" || location === "/login",
+      badge: notifBadge,
     },
   ];
 
@@ -147,6 +156,7 @@ export function MobileBottomNav() {
       icon: User,
       label: "Profile",
       active: location === "/profile",
+      badge: notifBadge,
     },
   ];
 
