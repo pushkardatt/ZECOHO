@@ -19,6 +19,13 @@ import {
   SidebarInset,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
+import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -36,6 +43,7 @@ import {
   HelpCircle,
   XCircle,
   AlertTriangle,
+  Menu,
 } from "lucide-react";
 
 interface OwnerLayoutProps {
@@ -70,6 +78,7 @@ export function OwnerLayout({ children }: OwnerLayoutProps) {
   const { user, isLoading, isOwner } = useAuth();
   const [location, setLocation] = useLocation();
   const [showWelcomeModal, setShowWelcomeModal] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
   
   // Check if owner is suspended
   const isSuspended = user?.suspensionStatus === "suspended";
@@ -289,8 +298,86 @@ export function OwnerLayout({ children }: OwnerLayoutProps) {
           </SidebarFooter>
         </Sidebar>
 
+        <Sheet open={drawerOpen} onOpenChange={setDrawerOpen}>
+          <SheetContent side="left" className="w-72 p-0">
+            <SheetHeader className="p-4 pb-2">
+              <SheetTitle className="text-left">
+                <div className="flex items-center gap-3">
+                  <Avatar className="h-10 w-10">
+                    <AvatarImage src={user.profileImageUrl || undefined} alt={user.firstName || "Owner"} />
+                    <AvatarFallback>{userInitials}</AvatarFallback>
+                  </Avatar>
+                  <div className="flex flex-col min-w-0">
+                    <span className="font-semibold text-sm truncate">
+                      {user.firstName} {user.lastName}
+                    </span>
+                    <Badge 
+                      variant={getBadgeVariant()} 
+                      className="w-fit text-xs pointer-events-none"
+                    >
+                      {isRejected && <XCircle className="h-3 w-3 mr-1" />}
+                      {getBadgeContent()}
+                    </Badge>
+                  </div>
+                </div>
+              </SheetTitle>
+            </SheetHeader>
+            <Separator />
+            <nav className="flex flex-col py-2">
+              {menuItems.map((item) => (
+                <Link
+                  key={item.path}
+                  href={item.path}
+                  onClick={() => setDrawerOpen(false)}
+                  className={`flex items-center gap-3 px-4 py-3 text-sm font-medium transition-colors ${
+                    location === item.path
+                      ? "text-primary bg-primary/5"
+                      : "text-foreground hover-elevate"
+                  }`}
+                  data-testid={`drawer-nav-${item.title.toLowerCase()}`}
+                >
+                  <item.icon className="h-5 w-5" />
+                  <span>{item.title}</span>
+                </Link>
+              ))}
+            </nav>
+            <Separator className="my-1" />
+            <nav className="flex flex-col py-2">
+              <Link
+                href="/"
+                onClick={() => setDrawerOpen(false)}
+                className="flex items-center gap-3 px-4 py-3 text-sm font-medium text-foreground hover-elevate"
+                data-testid="drawer-nav-back-home"
+              >
+                <ArrowLeft className="h-5 w-5" />
+                <span>Back to Home</span>
+              </Link>
+              <button
+                onClick={() => {
+                  setDrawerOpen(false);
+                  handleLogout();
+                }}
+                className="flex items-center gap-3 px-4 py-3 text-sm font-medium text-foreground hover-elevate w-full text-left"
+                data-testid="drawer-nav-logout"
+              >
+                <LogOut className="h-5 w-5" />
+                <span>Logout</span>
+              </button>
+            </nav>
+          </SheetContent>
+        </Sheet>
+
         <SidebarInset className="flex flex-col flex-1">
           <header className="flex h-14 items-center gap-4 border-b px-4 lg:px-6 sticky top-0 bg-background z-40">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="md:hidden"
+              onClick={() => setDrawerOpen(true)}
+              data-testid="button-mobile-drawer"
+            >
+              <Menu className="h-5 w-5" />
+            </Button>
             <SidebarTrigger data-testid="sidebar-toggle" className="hidden md:flex" />
             <div className="flex-1">
               <h1 className="text-lg font-semibold" data-testid="page-title">
