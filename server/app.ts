@@ -43,6 +43,10 @@ app.head('/', (_req, res) => {
   res.status(200).send();
 });
 
+app.get('/__healthcheck', (_req, res) => {
+  res.status(200).send('ok');
+});
+
 // NOW add middleware after health checks
 app.use(express.json({
   verify: (req, _res, buf) => {
@@ -85,10 +89,21 @@ app.use((req, res, next) => {
 export default async function runApp(
   setup: (app: Express, server: Server) => Promise<void>,
 ): Promise<never> {
-  // This function must never return to keep the process alive
-  // It returns Promise<never> to indicate it's a long-lived operation
+  const port = parseInt(process.env.PORT || '5000', 10);
 
-  const server = await registerRoutes(app);
+  const http = await import("node:http");
+  const server = http.createServer(app);
+
+  // Start listening IMMEDIATELY so health checks pass during initialization
+  await new Promise<void>((resolve) => {
+    server.listen({ port, host: "0.0.0.0", reusePort: true }, () => {
+      log(`serving on port ${port}`);
+      resolve();
+    });
+  });
+
+  // Now register routes and complete setup (database connections, etc.)
+  await registerRoutes(app, server);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
@@ -98,38 +113,18 @@ export default async function runApp(
     throw err;
   });
 
-  // importantly run the final setup after setting up all the other routes so
-  // the catch-all route doesn't interfere with the other routes
   await setup(app, server);
 
-  // ALWAYS serve the app on the port specified in the environment variable PORT
-  // Other ports are firewalled. Default to 5000 if not specified.
-  // this serves both the API and the client.
-  // It is the only port that is not firewalled.
-  const port = parseInt(process.env.PORT || '5000', 10);
+  // Fire-and-forget seeding after server is fully ready
+  seedPolicies();
+  seedOwnerAgreement();
+  migrateMealOptionNames();
+
+  if (process.env.NODE_ENV !== 'production') {
+    seedAmenities();
+    seedDestinations();
+  }
 
   // Return a promise that never resolves - keeping the process alive
-  return new Promise(() => {
-    server.listen({
-      port,
-      host: "0.0.0.0",
-      reusePort: true,
-    }, () => {
-      log(`serving on port ${port}`);
-      
-      // Critical policies and agreements must be seeded in all environments
-      // These are required for the app to function (users must accept policies)
-      // Fire-and-forget seeding - functions check if data exists before inserting
-      seedPolicies();
-      seedOwnerAgreement();
-      migrateMealOptionNames();
-      
-      // Only run amenities/destinations seeding in development - they are large datasets
-      // This prevents deployment timeouts from expensive seeding operations
-      if (process.env.NODE_ENV !== 'production') {
-        seedAmenities();
-        seedDestinations();
-      }
-    });
-  });
+  return new Promise(() => {});
 }

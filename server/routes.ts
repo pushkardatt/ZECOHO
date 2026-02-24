@@ -44,7 +44,7 @@ function userHasRole(user: any, role: string): boolean {
   return user.userRole === role;
 }
 
-export async function registerRoutes(app: Express): Promise<Server> {
+export async function registerRoutes(app: Express, existingServer?: Server): Promise<Server> {
   // Auth middleware
   await setupAuth(app);
 
@@ -9120,7 +9120,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  const httpServer = createServer(app);
+  const httpServer = existingServer || createServer(app);
 
   // WebSocket server for real-time messaging
   const wss = new WebSocketServer({ server: httpServer, path: "/ws" });
