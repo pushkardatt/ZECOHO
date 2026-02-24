@@ -1,0 +1,183 @@
+Project Update: Build Complete Real-Time Notification System from Scratch with Maximum Urgency
+
+ZECOHO currently does NOT have:
+
+Notification bell icon
+
+Notification database structure
+
+Real-time notification engine
+
+Loud notification sound system
+
+We need to build this completely and professionally for:
+
+Website (desktop browser)
+
+WebApp / PWA
+
+APK version (WebView-based)
+
+1️⃣ Add Notification Icon in Navbar
+
+For logged-in users (Owner & Customer):
+
+Add Bell icon in top right navbar
+
+Add red unread badge count
+
+Clicking opens dropdown panel
+
+Show latest 10 notifications
+
+Add “Mark all as read”
+
+Mark individual as read on click
+
+Clicking notification redirects to related booking
+
+2️⃣ Create Notification Backend Infrastructure
+
+Create a notifications table:
+
+Fields:
+
+id
+
+user_id
+
+role (OWNER / CUSTOMER)
+
+type
+
+title
+
+message
+
+related_booking_id
+
+is_read
+
+created_at
+
+On booking events:
+
+A) When booking is created:
+→ Create notification for OWNER
+
+B) When owner accepts:
+→ Create notification for CUSTOMER
+
+C) When owner rejects:
+→ Create notification for CUSTOMER
+
+Save notification to DB AND emit via WebSocket.
+
+3️⃣ Real-Time Delivery System
+
+Implement WebSocket or equivalent real-time channel
+
+On user login → join user-specific room
+
+Emit notification ONLY to intended user
+
+Ensure no broadcast to all users
+
+Persist notifications after refresh
+
+4️⃣ Loud and Long Notification Sound (Maximum Browser-Level Capability)
+
+For ALL booking-related notifications:
+
+Implement:
+
+Custom 5–8 second audio file (not default browser beep)
+
+Preload audio after first user interaction to bypass autoplay restrictions
+
+If tab is ACTIVE → play sound immediately
+
+If tab is INACTIVE → queue sound and play immediately when user returns to tab
+
+Allow one repeat (loop once only)
+
+Prevent overlapping sounds
+
+Stop sound when user clicks notification
+
+Trigger vibration pattern if supported by browser
+
+Important:
+Document clearly in code:
+
+"Background continuous audio playback is not supported by browser security policies. Sound will play when tab becomes active."
+
+5️⃣ In-App Visual Urgency Layer (Owner Side)
+
+When OWNER receives booking request:
+
+Show large top banner alert
+
+Highlight with color (e.g. red/orange)
+
+Display countdown timer (2 minutes)
+
+Include Accept / Reject buttons
+
+Auto-hide after action
+
+This creates urgency visually even if sound cannot override silent mode.
+
+6️⃣ Browser Push Notifications
+
+Implement Web Push (Service Worker based):
+
+Show system-level notification
+
+Include Accept / Reject action buttons (if possible)
+
+Redirect user to booking page when clicked
+
+Request notification permission on login (owner only)
+
+7️⃣ Prevent Duplicate Notifications
+
+Ensure one notification per event
+
+Prevent multiple WebSocket triggers
+
+Use unique event IDs
+
+8️⃣ Testing Requirements
+
+Test:
+
+Owner logged in, tab active → sound plays
+
+Owner logged in, tab inactive → sound plays when tab returns
+
+Browser minimized → push notification visible
+
+PWA installed mode
+
+APK WebView mode
+
+Badge count updates correctly
+
+Notifications persist after refresh
+
+No sound spam
+
+No duplicate entries
+
+9️⃣ Do NOT Modify:
+
+Payment logic
+
+Booking creation logic
+
+Pricing logic
+
+Inventory logic
+
+Only implement notification layer.
