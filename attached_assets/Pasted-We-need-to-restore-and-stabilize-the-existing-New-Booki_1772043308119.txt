@@ -1,0 +1,129 @@
+We need to restore and stabilize the existing “New Booking – Action Required” alert modal without breaking the current working flow.
+
+Do NOT restructure routing.
+Do NOT change modal mounting logic.
+Do NOT modify notification sound system.
+Do NOT modify event listener logic for new booking.
+
+The goal is to restore the full-screen booking alert modal exactly as it was previously working (with Accept and Reject buttons and notification tone), and then carefully add the following improvements without breaking the flow:
+
+1️⃣ Restore Original Modal Behavior
+
+Ensure:
+
+When a new booking arrives, the full centered modal appears automatically.
+
+The background dims.
+
+Notification sound plays.
+
+Countdown timer starts.
+
+Accept and Reject buttons are visible.
+
+Modal is not replaced by side panel or redirect.
+
+If any routing redirection was added earlier, remove it.
+
+2️⃣ Add “View” Button (Without Breaking Modal)
+
+Add a third button:
+
+View Details
+
+Behavior:
+
+When clicked, close modal.
+
+Navigate to Owner Dashboard → Bookings page.
+
+Scroll to or highlight that specific booking.
+
+Do NOT auto-redirect on modal open.
+
+3️⃣ Modify 2-Minute Timer Logic (Without Expiring Booking)
+
+When countdown reaches 0:
+
+Do NOT expire booking.
+
+Do NOT disable Accept button.
+
+Do NOT close modal automatically.
+
+Do NOT auto-cancel booking.
+
+Instead:
+
+Automatically redirect owner to Bookings page.
+
+Keep booking status as Pending.
+
+Accept and Reject must still work inside Bookings page.
+
+Ensure timer expiration does not remove modal state before redirect executes.
+
+4️⃣ Fix Accept / Reject Silent Failure
+
+Ensure:
+
+Booking ID is correctly passed to API.
+
+Modal does not close unless API returns success.
+
+If API fails, show visible error message.
+
+Buttons are disabled while processing.
+
+After success:
+
+Close modal.
+
+Refresh booking list.
+
+Update notification badge.
+
+Do NOT swallow API errors silently.
+
+5️⃣ Preserve Existing Working Systems
+
+Do not modify:
+
+Notification sound playback.
+
+Escalation call trigger.
+
+WebSocket listener.
+
+New booking event system.
+
+Modal component structure.
+
+Countdown animation UI.
+
+Only stabilize logic and add View button safely.
+
+6️⃣ Test Conditions
+
+After implementation, verify:
+
+New booking → modal appears.
+
+Sound plays.
+
+Accept works.
+
+Reject works.
+
+View works.
+
+Timer reaches 0 → redirect to bookings page.
+
+Booking remains pending.
+
+Important:
+Do NOT convert modal into side drawer.
+Do NOT attach modal to left panel.
+Do NOT change layout structure.
+
+Only restore original behavior and enhance safely.

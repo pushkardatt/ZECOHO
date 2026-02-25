@@ -22,14 +22,55 @@ export function UrgentBookingAlertModal({ alert, onDismiss }: UrgentBookingAlert
   const [actionTaken, setActionTaken] = useState(false);
   const [escalated, setEscalated] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const soundIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const countdownIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
   const { toast } = useToast();
   const [, setLocation] = useLocation();
 
-  useEffect(() => {
-    if (!alert) return;
+  // --- Sound helpers (defined first so effects can reference them) ---
 
+  const stopSound = useCallback(() => {
+    if (soundIntervalRef.current) {
+      clearInterval(soundIntervalRef.current);
+      soundIntervalRef.current = null;
+    }
+    if (audioContextRef.current) {
+      audioContextRef.current.close().catch(() => {});
+      audioContextRef.current = null;
+    }
+  }, []);
+
+  const playAlertTone = useCallback((ctx: AudioContext) => {
+    const now = ctx.currentTime;
+    [800, 1000, 1200].forEach((freq, i) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.frequency.value = freq;
+      osc.type = "square";
+      gain.gain.setValueAtTime(0.3, now + i * 0.15);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + i * 0.15 + 0.14);
+      osc.start(now + i * 0.15);
+      osc.stop(now + i * 0.15 + 0.14);
+    });
+  }, []);
+
+  // --- Reset all state when a new alert arrives ---
+  useEffect(() => {
+    if (!alert) {
+      stopSound();
+      if (countdownIntervalRef.current) {
+        clearInterval(countdownIntervalRef.current);
+        countdownIntervalRef.current = null;
+      }
+      return;
+    }
+
+    // Reset state for fresh alert
     setCountdown(COUNTDOWN_SECONDS);
     setActionTaken(false);
     setIsAccepting(false);
@@ -37,47 +78,35 @@ export function UrgentBookingAlertModal({ alert, onDismiss }: UrgentBookingAlert
     setEscalated(false);
     setErrorMessage(null);
 
+    // Start audio
     try {
-      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-      
-      const playAlertTone = () => {
-        const now = audioContext.currentTime;
-        
-        [800, 1000, 1200].forEach((freq, i) => {
-          const osc = audioContext.createOscillator();
-          const gain = audioContext.createGain();
-          osc.connect(gain);
-          gain.connect(audioContext.destination);
-          osc.frequency.value = freq;
-          osc.type = 'square';
-          gain.gain.setValueAtTime(0.3, now + i * 0.15);
-          gain.gain.exponentialRampToValueAtTime(0.01, now + i * 0.15 + 0.14);
-          osc.start(now + i * 0.15);
-          osc.stop(now + i * 0.15 + 0.14);
-        });
-      };
-
-      playAlertTone();
-      const soundInterval = setInterval(playAlertTone, 5000);
-      
-      audioRef.current = { pause: () => clearInterval(soundInterval) } as any;
-
-      return () => {
-        clearInterval(soundInterval);
-        audioContext.close().catch(() => {});
-      };
+      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+      if (AudioCtx) {
+        const ctx = new AudioCtx();
+        audioContextRef.current = ctx;
+        playAlertTone(ctx);
+        soundIntervalRef.current = setInterval(() => playAlertTone(ctx), 5000);
+      }
     } catch (err) {
-      console.warn('[UrgentAlert] Audio not supported:', err);
+      console.warn("[UrgentAlert] Audio not supported:", err);
     }
-  }, [alert]);
 
+    return () => {
+      stopSound();
+    };
+  }, [alert, playAlertTone, stopSound]);
+
+  // --- Countdown timer ---
   useEffect(() => {
     if (!alert || actionTaken) return;
 
-    intervalRef.current = setInterval(() => {
+    countdownIntervalRef.current = setInterval(() => {
       setCountdown((prev) => {
         if (prev <= 1) {
-          if (intervalRef.current) clearInterval(intervalRef.current);
+          if (countdownIntervalRef.current) {
+            clearInterval(countdownIntervalRef.current);
+            countdownIntervalRef.current = null;
+          }
           return 0;
         }
         return prev - 1;
@@ -85,27 +114,29 @@ export function UrgentBookingAlertModal({ alert, onDismiss }: UrgentBookingAlert
     }, 1000);
 
     return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
+      if (countdownIntervalRef.current) {
+        clearInterval(countdownIntervalRef.current);
+        countdownIntervalRef.current = null;
+      }
     };
   }, [alert, actionTaken]);
 
-  // When countdown reaches 0: redirect to bookings page, keep booking pending
+  // --- Timer expiry: navigate to bookings page, then close modal ---
+  // Per spec: Do NOT expire booking. Do NOT disable Accept.
+  // Redirect to bookings page. Keep booking Pending. Modal closes via navigation.
   useEffect(() => {
-    if (countdown === 0 && !actionTaken && !escalated && alert) {
-      setEscalated(true);
-      stopSound();
-      onDismiss();
-      setLocation(`/owner/bookings?highlight=${alert.bookingId}`);
-    }
-  }, [countdown, actionTaken, escalated, alert]);
+    if (countdown !== 0 || actionTaken || escalated || !alert) return;
 
-  const stopSound = useCallback(() => {
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current = null;
-    }
-  }, []);
+    setEscalated(true);
+    stopSound();
 
+    // Navigate first — if on a different page this unmounts the modal naturally.
+    // Then dismiss to clear state (batched with navigation in the same React flush).
+    setLocation(`/owner/bookings?highlight=${alert.bookingId}`);
+    onDismiss();
+  }, [countdown, actionTaken, escalated, alert, stopSound, onDismiss, setLocation]);
+
+  // --- Accept action ---
   const handleAccept = async () => {
     if (!alert || isAccepting || isRejecting) return;
     setIsAccepting(true);
@@ -117,7 +148,7 @@ export function UrgentBookingAlertModal({ alert, onDismiss }: UrgentBookingAlert
         status: "confirmed",
       });
       setActionTaken(true);
-      
+
       queryClient.invalidateQueries({ queryKey: ["/api/owner/bookings"] });
       queryClient.invalidateQueries({ queryKey: ["/api/owner/stats"] });
       queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
@@ -129,12 +160,14 @@ export function UrgentBookingAlertModal({ alert, onDismiss }: UrgentBookingAlert
 
       setTimeout(onDismiss, 1500);
     } catch (error: any) {
-      const msg = error?.message || "Failed to accept booking. Please try from the Bookings page.";
+      const msg =
+        error?.message || "Failed to accept booking. Please try from the Bookings page.";
       setErrorMessage(msg);
       setIsAccepting(false);
     }
   };
 
+  // --- Reject action ---
   const handleReject = async () => {
     if (!alert || isRejecting || isAccepting) return;
     setIsRejecting(true);
@@ -147,7 +180,7 @@ export function UrgentBookingAlertModal({ alert, onDismiss }: UrgentBookingAlert
         responseMessage: "Unable to accommodate at this time.",
       });
       setActionTaken(true);
-      
+
       queryClient.invalidateQueries({ queryKey: ["/api/owner/bookings"] });
       queryClient.invalidateQueries({ queryKey: ["/api/owner/stats"] });
       queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
@@ -160,16 +193,19 @@ export function UrgentBookingAlertModal({ alert, onDismiss }: UrgentBookingAlert
 
       setTimeout(onDismiss, 1500);
     } catch (error: any) {
-      const msg = error?.message || "Failed to decline booking. Please try from the Bookings page.";
+      const msg =
+        error?.message || "Failed to decline booking. Please try from the Bookings page.";
       setErrorMessage(msg);
       setIsRejecting(false);
     }
   };
 
+  // --- View Details: close modal and go to bookings ---
   const handleViewDetails = () => {
+    if (!alert) return;
     stopSound();
     onDismiss();
-    setLocation(`/owner/bookings?highlight=${alert?.bookingId}`);
+    setLocation(`/owner/bookings?highlight=${alert.bookingId}`);
   };
 
   if (!alert) return null;
@@ -187,27 +223,49 @@ export function UrgentBookingAlertModal({ alert, onDismiss }: UrgentBookingAlert
     >
       <Card className="w-full max-w-md overflow-visible border-2 border-orange-500 shadow-2xl animate-in fade-in zoom-in-95 duration-300">
         <div className="relative">
+          {/* Progress bar */}
           <div
             className="absolute top-0 left-0 h-1 bg-orange-500 transition-all duration-1000 rounded-t-lg"
             style={{ width: `${progressPercent}%` }}
           />
 
-          <div className={`p-4 text-center ${isUrgent ? 'bg-red-50 dark:bg-red-950/30' : 'bg-orange-50 dark:bg-orange-950/30'}`}>
+          {/* Header */}
+          <div
+            className={`p-4 text-center ${
+              isUrgent
+                ? "bg-red-50 dark:bg-red-950/30"
+                : "bg-orange-50 dark:bg-orange-950/30"
+            }`}
+          >
             <div className="flex items-center justify-center gap-2 mb-1">
-              <AlertTriangle className={`h-5 w-5 ${isUrgent ? 'text-red-500 animate-pulse' : 'text-orange-500'}`} />
+              <AlertTriangle
+                className={`h-5 w-5 ${isUrgent ? "text-red-500 animate-pulse" : "text-orange-500"}`}
+              />
               <span className="text-sm font-semibold uppercase tracking-wider text-orange-700 dark:text-orange-400">
                 New Booking – Action Required
               </span>
-              <AlertTriangle className={`h-5 w-5 ${isUrgent ? 'text-red-500 animate-pulse' : 'text-orange-500'}`} />
+              <AlertTriangle
+                className={`h-5 w-5 ${isUrgent ? "text-red-500 animate-pulse" : "text-orange-500"}`}
+              />
             </div>
             <div className="flex items-center justify-center gap-2">
-              <Clock className={`h-5 w-5 ${isUrgent ? 'text-red-500' : 'text-orange-500'}`} />
-              <span className={`text-2xl font-bold tabular-nums ${isUrgent ? 'text-red-600 dark:text-red-400' : 'text-orange-600 dark:text-orange-400'}`}>
-                {minutes}:{seconds.toString().padStart(2, '0')}
+              <Clock
+                className={`h-5 w-5 ${isUrgent ? "text-red-500" : "text-orange-500"}`}
+              />
+              <span
+                className={`text-2xl font-bold tabular-nums ${
+                  isUrgent
+                    ? "text-red-600 dark:text-red-400"
+                    : "text-orange-600 dark:text-orange-400"
+                }`}
+                data-testid="alert-countdown"
+              >
+                {minutes}:{seconds.toString().padStart(2, "0")}
               </span>
             </div>
           </div>
 
+          {/* Body */}
           <div className="p-4 space-y-3">
             <div className="flex items-center gap-2 justify-between flex-wrap">
               <Badge variant="outline" className="text-xs font-mono">
@@ -230,20 +288,32 @@ export function UrgentBookingAlertModal({ alert, onDismiss }: UrgentBookingAlert
               </div>
               <div className="flex items-center gap-2 text-sm" data-testid="alert-dates">
                 <Calendar className="h-4 w-4 text-muted-foreground shrink-0" />
-                <span>{alert.checkIn} – {alert.checkOut}</span>
+                <span>
+                  {alert.checkIn} – {alert.checkOut}
+                </span>
               </div>
               <div className="flex items-center gap-2 text-sm" data-testid="alert-room-type">
                 <BedDouble className="h-4 w-4 text-muted-foreground shrink-0" />
-                <span>{alert.roomType} ({alert.rooms} room{alert.rooms > 1 ? 's' : ''}, {alert.guests} guest{alert.guests > 1 ? 's' : ''})</span>
+                <span>
+                  {alert.roomType} ({alert.rooms} room{alert.rooms > 1 ? "s" : ""},{" "}
+                  {alert.guests} guest{alert.guests > 1 ? "s" : ""})
+                </span>
               </div>
-              <div className="flex items-center gap-2 text-sm font-semibold" data-testid="alert-total-price">
+              <div
+                className="flex items-center gap-2 text-sm font-semibold"
+                data-testid="alert-total-price"
+              >
                 <IndianRupee className="h-4 w-4 text-muted-foreground shrink-0" />
-                <span>Rs. {Number(alert.totalPrice).toLocaleString('en-IN')}</span>
+                <span>Rs. {Number(alert.totalPrice).toLocaleString("en-IN")}</span>
               </div>
             </div>
 
+            {/* Inline error */}
             {errorMessage && (
-              <div className="flex items-start gap-2 p-2 bg-destructive/10 border border-destructive/20 rounded-md" data-testid="alert-error-message">
+              <div
+                className="flex items-start gap-2 p-2 bg-destructive/10 border border-destructive/20 rounded-md"
+                data-testid="alert-error-message"
+              >
                 <AlertTriangle className="h-4 w-4 text-destructive shrink-0 mt-0.5" />
                 <p className="text-xs text-destructive">{errorMessage}</p>
               </div>
@@ -263,6 +333,7 @@ export function UrgentBookingAlertModal({ alert, onDismiss }: UrgentBookingAlert
             ) : (
               <div className="space-y-2">
                 <div className="flex gap-2">
+                  {/* Accept */}
                   <Button
                     className="flex-1 bg-green-600 text-white border-green-600"
                     onClick={handleAccept}
@@ -281,6 +352,8 @@ export function UrgentBookingAlertModal({ alert, onDismiss }: UrgentBookingAlert
                       </span>
                     )}
                   </Button>
+
+                  {/* Reject */}
                   <Button
                     variant="outline"
                     className="flex-1 border-red-300 text-red-600 dark:border-red-700 dark:text-red-400"
@@ -301,6 +374,8 @@ export function UrgentBookingAlertModal({ alert, onDismiss }: UrgentBookingAlert
                     )}
                   </Button>
                 </div>
+
+                {/* View Details */}
                 <Button
                   variant="outline"
                   className="w-full"
@@ -337,9 +412,7 @@ export function UrgentBookingBanner({ alert, onDismiss }: UrgentBookingAlertProp
   return (
     <div
       className={`sticky top-0 z-[100] w-full px-4 py-3 flex items-center justify-between gap-3 flex-wrap transition-colors duration-500 ${
-        isFlashing
-          ? 'bg-orange-500 text-white'
-          : 'bg-orange-600 text-white'
+        isFlashing ? "bg-orange-500 text-white" : "bg-orange-600 text-white"
       }`}
       data-testid="urgent-booking-banner"
     >
