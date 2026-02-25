@@ -6,6 +6,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Skeleton } from "@/components/ui/skeleton";
 import { useNotifications } from "@/hooks/useNotifications";
 import { stopNotificationSound } from "@/hooks/useNotificationSound";
+import { useAuth } from "@/hooks/useAuth";
 import { useLocation } from "wouter";
 import type { Notification } from "@shared/schema";
 
@@ -38,8 +39,23 @@ function getNotificationIcon(type: string) {
   }
 }
 
-function getNotificationLink(notification: Notification): string | null {
-  if (notification.entityType === "booking" && notification.entityId) {
+function getNotificationLink(notification: Notification, isOwner: boolean): string | null {
+  if (notification.entityType === "booking") {
+    if (isOwner) {
+      // Owner: route to the owner bookings page
+      // booking_request → land on the Pending tab and highlight the specific booking
+      const bookingId = notification.bookingId || notification.entityId;
+      if (notification.type === "booking_request") {
+        return bookingId
+          ? `/owner/bookings?tab=pending&highlight=${bookingId}`
+          : `/owner/bookings?tab=pending`;
+      }
+      // Other booking events (confirmed, cancelled, etc.) → owner bookings without a forced tab
+      return bookingId
+        ? `/owner/bookings?highlight=${bookingId}`
+        : `/owner/bookings`;
+    }
+    // Customer: always go to their own bookings page
     return `/my-bookings`;
   }
   if (notification.entityType === "property" && notification.entityId) {
@@ -50,6 +66,7 @@ function getNotificationLink(notification: Notification): string | null {
 
 export function NotificationBell() {
   const { notifications, unreadCount, isLoading, markAsRead, markAllAsRead } = useNotifications();
+  const { isOwner } = useAuth();
   const [open, setOpen] = useState(false);
   const [, setLocation] = useLocation();
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -81,12 +98,12 @@ export function NotificationBell() {
     if (!notification.isRead) {
       markAsRead(notification.id);
     }
-    const link = getNotificationLink(notification);
+    const link = getNotificationLink(notification, isOwner);
     if (link) {
       setLocation(link);
       setOpen(false);
     }
-  }, [markAsRead, setLocation]);
+  }, [markAsRead, setLocation, isOwner]);
 
   const handleMarkAllRead = useCallback(() => {
     markAllAsRead();
@@ -172,7 +189,7 @@ export function NotificationBell() {
           ) : (
             <div>
               {latestNotifications.map((notification) => {
-                const link = getNotificationLink(notification);
+                const link = getNotificationLink(notification, isOwner);
                 return (
                   <button
                     key={notification.id}
