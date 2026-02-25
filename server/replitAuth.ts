@@ -192,6 +192,14 @@ export const isAuthenticated: RequestHandler = async (req, res, next) => {
     const config = await getOidcConfig();
     const tokenResponse = await client.refreshTokenGrant(config, refreshToken);
     updateUserSession(user, tokenResponse);
+    // Persist the refreshed tokens to the session store so subsequent requests
+    // (especially non-GET ones like PATCH) don't try to re-use an already-consumed refresh token.
+    await new Promise<void>((resolve, reject) => {
+      req.session.save((err) => {
+        if (err) reject(err);
+        else resolve();
+      });
+    });
     return next();
   } catch (error) {
     res.status(401).json({ message: "Unauthorized" });
