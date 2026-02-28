@@ -41,13 +41,11 @@ import {
   Phone,
   MessageCircle,
 } from "lucide-react";
-import { useState, useCallback, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { format } from "date-fns";
 import { usePropertyUpdates } from "@/hooks/usePropertyUpdates";
 import { useBookingUpdates } from "@/hooks/useBookingUpdates";
-import type { UrgentBookingAlert } from "@/hooks/useBookingUpdates";
-import { UrgentBookingAlertModal, UrgentBookingBanner } from "@/components/UrgentBookingAlert";
 import {
   Select,
   SelectContent,
@@ -311,16 +309,8 @@ export default function OwnerDashboard() {
   const { user } = useAuth();
   const { toast } = useToast();
   
-  // Urgent booking alert state
-  const [urgentAlert, setUrgentAlert] = useState<UrgentBookingAlert | null>(null);
-  const [showBanner, setShowBanner] = useState<UrgentBookingAlert | null>(null);
-
-  const handleUrgentBooking = useCallback((data: UrgentBookingAlert) => {
-    setUrgentAlert(data);
-    setShowBanner(data);
-  }, []);
-
-  useBookingUpdates({ userId: user?.id, onUrgentBooking: handleUrgentBooking });
+  // Cache invalidation via WebSocket (urgent alert is handled globally in App.tsx)
+  useBookingUpdates({ userId: user?.id });
 
   // Listen for service worker messages (push action buttons)
   useEffect(() => {
@@ -468,8 +458,6 @@ export default function OwnerDashboard() {
 
   return (
     <OwnerLayout>
-      <UrgentBookingBanner alert={showBanner} onDismiss={() => setShowBanner(null)} />
-      <UrgentBookingAlertModal alert={urgentAlert} onDismiss={() => setUrgentAlert(null)} />
       <div className="space-y-6" data-testid="owner-dashboard">
         {hasPublishedProperty && (
           <Alert className="bg-green-50 dark:bg-green-950/30 border-green-200 dark:border-green-800" data-testid="banner-property-live">

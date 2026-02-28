@@ -1,5 +1,5 @@
 // Referenced from blueprint:javascript_log_in_with_replit
-import { useEffect } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { Switch, Route, useLocation } from "wouter";
 // Note: useEffect is still used by ScrollToTop component
 import { queryClient } from "./lib/queryClient";
@@ -9,6 +9,8 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { useAuth } from "@/hooks/useAuth";
 import { usePushNotifications } from "@/hooks/use-push-notifications";
 import { useBookingUpdates } from "@/hooks/useBookingUpdates";
+import type { UrgentBookingAlert } from "@/hooks/useBookingUpdates";
+import { UrgentBookingAlertModal } from "@/components/UrgentBookingAlert";
 import { KycRouteGuard } from "@/lib/KycRouteGuard";
 import { usePreLoginBooking } from "@/hooks/usePreLoginBooking";
 
@@ -170,12 +172,23 @@ function Router() {
 function AppContent() {
   const { user, isAuthenticated, isLoading } = useAuth();
   const [location] = useLocation();
-  
+
+  // Global urgent alert state — fires regardless of which owner page is active
+  const [urgentAlert, setUrgentAlert] = useState<UrgentBookingAlert | null>(null);
+
+  const handleUrgentBooking = useCallback((data: UrgentBookingAlert) => {
+    setUrgentAlert(data);
+  }, []);
+
   // Auto-subscribe authenticated users to push notifications by default
   usePushNotifications(isAuthenticated);
 
-  // Mount WebSocket at app root so notification_update events always trigger cache invalidation
-  useBookingUpdates({ userId: user?.id });
+  // Mount WebSocket at app root — handles notification_update events AND urgent booking alerts globally
+  const isOwner = user?.userRole === "owner" || user?.additionalRoles?.includes("owner");
+  useBookingUpdates({
+    userId: user?.id,
+    onUrgentBooking: isOwner ? handleUrgentBooking : undefined,
+  });
 
   // Fetch current policy versions to check if user needs to re-consent
   const { data: policyVersions } = useQuery<{ termsVersion: number | null; privacyVersion: number | null }>({
@@ -269,6 +282,11 @@ function AppContent() {
             open={showOwnerAgreementModal}
             userName={user?.firstName || undefined}
             isVersionUpdate={ownerNeedsVersionUpdate && !ownerHasNeverAccepted}
+          />
+          {/* Global urgent booking alert — shown on ANY page the owner is on */}
+          <UrgentBookingAlertModal
+            alert={urgentAlert}
+            onDismiss={() => setUrgentAlert(null)}
           />
         </div>
       </KycRouteGuard>

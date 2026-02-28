@@ -28,8 +28,6 @@ import { useToast } from "@/hooks/use-toast";
 import { useKycGuard } from "@/hooks/useKycGuard";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { UrgentBookingAlertModal, UrgentBookingBanner } from "@/components/UrgentBookingAlert";
-import type { UrgentBookingAlert } from "@/hooks/useBookingUpdates";
 import { useBookingUpdates } from "@/hooks/useBookingUpdates";
 import { format } from "date-fns";
 import { Calendar } from "@/components/ui/calendar";
@@ -166,25 +164,8 @@ export default function OwnerBookings() {
     }
   }, [location]);
   
-  // Urgent booking alert state
-  const [urgentAlert, setUrgentAlert] = useState<UrgentBookingAlert | null>(null);
-  const [showBanner, setShowBanner] = useState<UrgentBookingAlert | null>(null);
-
-  const handleUrgentBooking = useCallback((data: UrgentBookingAlert) => {
-    setUrgentAlert(data);
-    setShowBanner(data);
-  }, []);
-
-  const handleDismissModal = useCallback(() => {
-    setUrgentAlert(null);
-  }, []);
-
-  const handleDismissBanner = useCallback(() => {
-    setShowBanner(null);
-  }, []);
-
-  // Subscribe to real-time booking updates via WebSocket with polling fallback
-  useBookingUpdates({ userId: user?.id, onUrgentBooking: handleUrgentBooking });
+  // Cache invalidation via WebSocket (urgent alert is handled globally in App.tsx)
+  useBookingUpdates({ userId: user?.id });
 
   // Auto-scroll to highlighted booking after data loads
   const { data: bookings, isLoading } = useQuery<Booking[]>({
@@ -1192,8 +1173,6 @@ export default function OwnerBookings() {
 
   return (
     <OwnerLayout>
-      <UrgentBookingBanner alert={showBanner} onDismiss={handleDismissBanner} />
-      <UrgentBookingAlertModal alert={urgentAlert} onDismiss={handleDismissModal} />
       {showEscalationMsg && (
         <div className="mx-4 mt-3 p-3 bg-orange-50 dark:bg-orange-950/30 border border-orange-300 dark:border-orange-700 rounded-md flex items-center gap-2" data-testid="escalation-message">
           <AlertTriangle className="h-4 w-4 text-orange-600 dark:text-orange-400 shrink-0" />
