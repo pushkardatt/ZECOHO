@@ -121,6 +121,13 @@ const adminSections = [
     testId: "admin-nav-contact",
   },
   {
+    title: "Logo Settings",
+    description: "Upload and update the website logo",
+    icon: Palette,
+    href: "/admin/logo",
+    testId: "admin-nav-logo",
+  },
+  {
     title: "Brand Assets",
     description: "Download logo files",
     icon: Palette,

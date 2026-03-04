@@ -23,6 +23,7 @@ import {
   ownerAgreements,
   aboutUs,
   contactSettings,
+  siteSettings,
   contactInteractions,
   adminAuditLogs,
   supportConversations,
@@ -73,6 +74,8 @@ import {
   type InsertAboutUs,
   type ContactSettings,
   type InsertContactSettings,
+  type SiteSettings,
+  type InsertSiteSettings,
   type ContactInteraction,
   type InsertContactInteraction,
   type AdminAuditLog,
@@ -333,6 +336,10 @@ export interface IStorage {
   // Contact Settings operations
   getContactSettings(): Promise<ContactSettings | undefined>;
   upsertContactSettings(settings: Partial<InsertContactSettings>): Promise<ContactSettings>;
+
+  // Site Settings operations (singleton row — logo, branding)
+  getSiteSettings(): Promise<SiteSettings | undefined>;
+  upsertSiteSettings(settings: Partial<InsertSiteSettings>): Promise<SiteSettings>;
 
   // Contact Interaction logging
   logContactInteraction(data: InsertContactInteraction): Promise<ContactInteraction>;
@@ -2304,6 +2311,30 @@ export class DatabaseStorage implements IStorage {
     } else {
       const [created] = await db
         .insert(contactSettings)
+        .values({ ...settings })
+        .returning();
+      return created;
+    }
+  }
+
+  // Site Settings operations
+  async getSiteSettings(): Promise<SiteSettings | undefined> {
+    const [settings] = await db.select().from(siteSettings).limit(1);
+    return settings;
+  }
+
+  async upsertSiteSettings(settings: Partial<InsertSiteSettings>): Promise<SiteSettings> {
+    const existing = await this.getSiteSettings();
+    if (existing) {
+      const [updated] = await db
+        .update(siteSettings)
+        .set({ ...settings, updatedAt: new Date() })
+        .where(eq(siteSettings.id, existing.id))
+        .returning();
+      return updated;
+    } else {
+      const [created] = await db
+        .insert(siteSettings)
         .values({ ...settings })
         .returning();
       return created;

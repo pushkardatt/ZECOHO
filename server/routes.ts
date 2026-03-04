@@ -5650,6 +5650,38 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
   });
 
   // ===============================
+  // SITE SETTINGS (logo, branding)
+  // ===============================
+
+  // Public: Get site settings (logo URL, alt text)
+  app.get("/api/site-settings", async (req, res) => {
+    try {
+      const settings = await storage.getSiteSettings();
+      res.json(settings || { logoUrl: null, logoAlt: "ZECOHO" });
+    } catch (error) {
+      console.error("Error getting site settings:", error);
+      res.status(500).json({ message: "Failed to get site settings" });
+    }
+  });
+
+  // Admin: Update site settings (logo URL, alt text)
+  app.patch("/api/admin/site-settings", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      if (!user || !userHasRole(user, "admin")) {
+        return res.status(403).json({ message: "Only admins can update site settings" });
+      }
+      const { logoUrl, logoAlt } = req.body;
+      const updated = await storage.upsertSiteSettings({ logoUrl, logoAlt, updatedBy: userId });
+      res.json({ message: "Site settings updated successfully", settings: updated });
+    } catch (error) {
+      console.error("Error updating site settings:", error);
+      res.status(500).json({ message: "Failed to update site settings" });
+    }
+  });
+
+  // ===============================
   // CONTACT INTERACTION LOGGING
   // ===============================
 

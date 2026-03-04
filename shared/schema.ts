@@ -1611,3 +1611,20 @@ export const notificationLogsRelations = relations(notificationLogs, ({ one }) =
     references: [bookings.id],
   }),
 }))
+
+// Site-wide settings (singleton row) — logo URL, alt text, etc.
+export const siteSettings = pgTable(
+  "site_settings",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    logoUrl: text("logo_url"),
+    logoAlt: varchar("logo_alt", { length: 255 }).default("ZECOHO"),
+    updatedAt: timestamp("updated_at").defaultNow(),
+    updatedBy: varchar("updated_by"),
+  },
+);
+
+export type SiteSettings = typeof siteSettings.$inferSelect;
+export type InsertSiteSettings = typeof siteSettings.$inferInsert;
+export const insertSiteSettingsSchema = createInsertSchema(siteSettings).omit({ id: true, updatedAt: true });
+export type InsertSiteSettingsData = z.infer<typeof insertSiteSettingsSchema>;
