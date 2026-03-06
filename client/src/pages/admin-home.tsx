@@ -173,8 +173,32 @@ export default function AdminHome() {
           Manage your platform
         </p>
 
+        <div className="space-y-3 mb-6">
+          {adminSections.map((section) => (
+            <Card
+              key={section.href}
+              className="hover-elevate cursor-pointer"
+              onClick={() => setLocation(section.href)}
+              data-testid={section.testId}
+            >
+              <CardContent className="p-4 flex items-center gap-4">
+                <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                  <section.icon className="w-5 h-5 text-primary" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-medium text-sm">{section.title}</h3>
+                  <p className="text-xs text-muted-foreground truncate">
+                    {section.description}
+                  </p>
+                </div>
+                <ChevronRight className="w-5 h-5 text-muted-foreground flex-shrink-0" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+
         {/* Communication Analytics */}
-        <Card className="mb-6" data-testid="card-admin-communication-analytics">
+        <Card data-testid="card-admin-communication-analytics">
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 text-lg">
               <MessageCircle className="h-5 w-5" />
@@ -218,7 +242,7 @@ export default function AdminHome() {
                 <div className="p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
                   <div className="flex items-center gap-2 mb-1">
                     <Clock className="h-4 w-4 text-amber-600 dark:text-amber-400" />
-                    <span className="text-xs text-amber-600 dark:text-amber-400 font-medium">Call Duration</span>
+                    <span className="text-xs text-amber-600 dark:text-blue-400 font-medium">Call Duration</span>
                   </div>
                   <div className="text-2xl font-bold text-amber-700 dark:text-amber-300" data-testid="admin-comm-call-duration">
                     {Math.round((commAnalytics?.summary?.totalCallDuration || 0) / 60)} min
@@ -228,30 +252,6 @@ export default function AdminHome() {
             )}
           </CardContent>
         </Card>
-
-        <div className="space-y-3">
-          {adminSections.map((section) => (
-            <Card
-              key={section.href}
-              className="hover-elevate cursor-pointer"
-              onClick={() => setLocation(section.href)}
-              data-testid={section.testId}
-            >
-              <CardContent className="p-4 flex items-center gap-4">
-                <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
-                  <section.icon className="w-5 h-5 text-primary" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <h3 className="font-medium text-sm">{section.title}</h3>
-                  <p className="text-xs text-muted-foreground truncate">
-                    {section.description}
-                  </p>
-                </div>
-                <ChevronRight className="w-5 h-5 text-muted-foreground flex-shrink-0" />
-              </CardContent>
-            </Card>
-          ))}
-        </div>
       </div>
     </div>
   );
