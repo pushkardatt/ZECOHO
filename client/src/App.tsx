@@ -196,10 +196,11 @@ function AppContent() {
     onUrgentBooking: isOwner ? handleUrgentBooking : undefined,
   });
 
-  // Coming Soon gate — check if current visitor has access
+  // Coming Soon gate — check if current visitor has access.
+  // Include user ID in query key so the check re-runs after login/logout.
   const { data: accessCheck } = useQuery<{ comingSoonMode: boolean; canAccess: boolean }>({
-    queryKey: ["/api/coming-soon/access"],
-    staleTime: 60000,
+    queryKey: ["/api/coming-soon/access", user?.id ?? "anon"],
+    staleTime: 30000,
     enabled: !isLoading,
   });
 

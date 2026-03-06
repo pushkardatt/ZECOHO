@@ -88,6 +88,21 @@ export default function ComingSoon() {
             </div>
           </div>
 
+          {/* Existing user login prompt */}
+          <div className="w-full bg-muted/40 border rounded-xl p-4 flex items-center justify-between gap-4 flex-wrap">
+            <div className="text-sm text-left">
+              <p className="font-medium text-foreground">Already have an account?</p>
+              <p className="text-muted-foreground text-xs mt-0.5">Existing members can log in to access the platform.</p>
+            </div>
+            <Button
+              variant="outline"
+              onClick={() => { window.location.href = "/api/auth/login"; }}
+              data-testid="button-coming-soon-login"
+            >
+              Log In
+            </Button>
+          </div>
+
           {/* Form card */}
           <div className="w-full bg-card border rounded-xl p-6 shadow-sm mt-2">
             {submitted ? (

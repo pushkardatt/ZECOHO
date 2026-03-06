@@ -171,30 +171,37 @@ export default function AdminComingSoon() {
             {loadingSettings ? (
               <Skeleton className="h-12 w-full" />
             ) : (
-              <div className="flex items-center justify-between gap-4 flex-wrap">
-                <div className="flex items-center gap-3">
-                  <div className={`w-3 h-3 rounded-full ${isComingSoonOn ? "bg-amber-500" : "bg-green-500"}`} />
-                  <div>
-                    <p className="font-medium text-sm">
-                      {isComingSoonOn ? "Coming Soon — Site is restricted" : "Live — Site is open to everyone"}
-                    </p>
-                    {isComingSoonOn && enabledAt && (
-                      <p className="text-xs text-muted-foreground">Enabled at: {enabledAt}</p>
-                    )}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between gap-4 flex-wrap">
+                  <div className="flex items-center gap-3">
+                    <div className={`w-3 h-3 rounded-full ${isComingSoonOn ? "bg-amber-500" : "bg-green-500"}`} />
+                    <div>
+                      <p className="font-medium text-sm">
+                        {isComingSoonOn ? "Coming Soon — Site is restricted" : "Live — Site is open to everyone"}
+                      </p>
+                      {isComingSoonOn && enabledAt && (
+                        <p className="text-xs text-muted-foreground">Enabled at: {enabledAt}</p>
+                      )}
+                    </div>
                   </div>
+                  <Button
+                    variant={isComingSoonOn ? "destructive" : "default"}
+                    disabled={toggleModeMutation.isPending}
+                    onClick={() => toggleModeMutation.mutate(!isComingSoonOn)}
+                    data-testid="button-toggle-coming-soon"
+                  >
+                    {toggleModeMutation.isPending
+                      ? "Updating..."
+                      : isComingSoonOn
+                      ? "Turn OFF (Go Live)"
+                      : "Turn ON Coming Soon"}
+                  </Button>
                 </div>
-                <Button
-                  variant={isComingSoonOn ? "destructive" : "default"}
-                  disabled={toggleModeMutation.isPending}
-                  onClick={() => toggleModeMutation.mutate(!isComingSoonOn)}
-                  data-testid="button-toggle-coming-soon"
-                >
-                  {toggleModeMutation.isPending
-                    ? "Updating..."
-                    : isComingSoonOn
-                    ? "Turn OFF (Go Live)"
-                    : "Turn ON Coming Soon"}
-                </Button>
+                {isComingSoonOn && (
+                  <div className="rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 px-4 py-3 text-sm text-amber-800 dark:text-amber-300">
+                    <strong>To test:</strong> Open an incognito / private browser window and visit the site — admin accounts always bypass the gate automatically.
+                  </div>
+                )}
               </div>
             )}
           </CardContent>
