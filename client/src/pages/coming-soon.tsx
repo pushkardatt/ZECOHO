@@ -188,7 +188,7 @@ export default function ComingSoon() {
             </div>
             <Button
               variant="outline"
-              onClick={() => { window.location.href = "/api/login"; }}
+              onClick={() => { window.location.href = "/api/login?returnTo=/"; }}
               data-testid="button-coming-soon-login"
             >
               Log In

@@ -209,11 +209,15 @@ function AppContent() {
     enabled: !isLoading,
   });
 
-  // Redirect to /coming-soon if mode is on and user is not allowed
+  // Gate: redirect to /coming-soon if blocked; redirect away if access granted
   useEffect(() => {
     if (isLoading || !accessCheck) return;
     if (!accessCheck.canAccess && location !== "/coming-soon") {
       setLocation("/coming-soon");
+    }
+    // If user is on /coming-soon but now has access (e.g. just logged in), send them home
+    if (accessCheck.canAccess && location === "/coming-soon") {
+      setLocation("/");
     }
   }, [accessCheck, isLoading, location, setLocation]);
 
