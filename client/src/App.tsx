@@ -196,22 +196,22 @@ function AppContent() {
     onUrgentBooking: isOwner ? handleUrgentBooking : undefined,
   });
 
-  // Coming Soon gate — check if current visitor has access.
-  // User ID is in query key so the check re-runs fresh after login/logout.
-  // queryFn is explicit to prevent the default key-join behaviour from mangling the URL.
+  // Coming Soon gate — always fetch fresh on mount; don't wait for auth to resolve.
+  // The session cookie on the server determines whether access is granted.
+  // staleTime:0 ensures we never serve a cached "denied" result after a login redirect.
   const { data: accessCheck } = useQuery<{ comingSoonMode: boolean; canAccess: boolean }>({
-    queryKey: ["/api/coming-soon/access", user?.id ?? "anon"],
+    queryKey: ["/api/coming-soon/access"],
     queryFn: async () => {
       const res = await fetch("/api/coming-soon/access", { credentials: "include" });
       return res.json();
     },
-    staleTime: 30000,
-    enabled: !isLoading,
+    staleTime: 0,
+    refetchInterval: false,
   });
 
   // Gate: redirect to /coming-soon if blocked; redirect away if access granted
   useEffect(() => {
-    if (isLoading || !accessCheck) return;
+    if (!accessCheck) return;
     if (!accessCheck.canAccess && location !== "/coming-soon") {
       setLocation("/coming-soon");
     }
@@ -219,7 +219,7 @@ function AppContent() {
     if (accessCheck.canAccess && location === "/coming-soon") {
       setLocation("/");
     }
-  }, [accessCheck, isLoading, location, setLocation]);
+  }, [accessCheck, location, setLocation]);
 
   // Fetch current policy versions to check if user needs to re-consent
   const { data: policyVersions } = useQuery<{ termsVersion: number | null; privacyVersion: number | null }>({
