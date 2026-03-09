@@ -53,7 +53,7 @@ export default function ComingSoon() {
         <div className="relative z-10 w-full max-w-lg mx-auto px-6 py-16 flex flex-col items-center text-center gap-6">
           {/* Logo */}
           <div className="mb-2">
-            <Logo className="h-10" />
+            <Logo />
           </div>
 
           {/* Badge */}

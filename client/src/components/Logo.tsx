@@ -20,11 +20,11 @@ export function Logo({ className = "" }: { className?: string }) {
 
   if (logoUrl) {
     return (
-      <div className={`flex items-center px-2 py-1 ${className}`}>
+      <div className={`flex items-center shrink-0 ${className}`}>
         <img
           src={logoUrl}
           alt={logoAlt}
-          className="max-h-9 max-w-[160px] object-contain"
+          style={{ height: "36px", width: "auto", maxWidth: "180px", objectFit: "contain", display: "block" }}
           data-testid="img-site-logo"
         />
       </div>
@@ -60,11 +60,11 @@ export function LogoText({ className = "" }: { className?: string }) {
 
   if (logoUrl) {
     return (
-      <span className={`flex items-center ${className}`}>
+      <span className={`flex items-center shrink-0 ${className}`}>
         <img
           src={logoUrl}
           alt={logoAlt}
-          className="max-h-7 max-w-[140px] object-contain"
+          style={{ height: "28px", width: "auto", maxWidth: "160px", objectFit: "contain", display: "block" }}
           data-testid="img-site-logo-text"
         />
       </span>
