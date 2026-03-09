@@ -97,14 +97,19 @@ export default function AdminLogo() {
     if (!selectedFile) return;
     setIsUploading(true);
     try {
-      const uploadData: UploadUrlResponse = await apiRequest("POST", "/api/objects/upload");
+      // apiRequest returns a Response — must call .json() to get the body
+      const uploadRes = await apiRequest("POST", "/api/objects/upload");
+      const uploadData: UploadUrlResponse = await uploadRes.json();
 
-      await fetch(uploadData.uploadURL, {
+      // Upload the file directly to object storage
+      const putRes = await fetch(uploadData.uploadURL, {
         method: "PUT",
         body: selectedFile,
         headers: { "Content-Type": selectedFile.type },
       });
+      if (!putRes.ok) throw new Error("File upload to storage failed");
 
+      // Make the object publicly accessible
       await apiRequest("POST", "/api/objects/set-acl", {
         accessPath: uploadData.accessPath,
         aclToken: uploadData.aclToken,
@@ -115,7 +120,8 @@ export default function AdminLogo() {
         logoUrl: uploadData.accessPath,
         logoAlt: logoAlt || siteSettings?.logoAlt || "ZECOHO",
       });
-    } catch {
+    } catch (err) {
+      console.error("Logo upload error:", err);
       toast({ title: "Upload failed", description: "Could not upload the logo. Please try again.", variant: "destructive" });
     } finally {
       setIsUploading(false);
