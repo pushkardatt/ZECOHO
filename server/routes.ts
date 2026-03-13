@@ -124,12 +124,10 @@ export async function registerRoutes(
         typeof termsAccepted !== "boolean" ||
         typeof privacyAccepted !== "boolean"
       ) {
-        return res
-          .status(400)
-          .json({
-            message:
-              "Both termsAccepted and privacyAccepted are required as boolean values",
-          });
+        return res.status(400).json({
+          message:
+            "Both termsAccepted and privacyAccepted are required as boolean values",
+        });
       }
 
       const now = new Date();
@@ -295,12 +293,10 @@ export async function registerRoutes(
   // Disabled in development to allow OIDC testing
   app.post("/api/auth/register", async (req: any, res) => {
     if (process.env.NODE_ENV === "development") {
-      return res
-        .status(403)
-        .json({
-          message:
-            "Password registration is disabled in development mode. Use OIDC login instead.",
-        });
+      return res.status(403).json({
+        message:
+          "Password registration is disabled in development mode. Use OIDC login instead.",
+      });
     }
     try {
       const {
@@ -314,28 +310,22 @@ export async function registerRoutes(
       } = req.body;
 
       if (!firstName || !lastName || !email || !password) {
-        return res
-          .status(400)
-          .json({
-            message: "First name, last name, email, and password are required",
-          });
+        return res.status(400).json({
+          message: "First name, last name, email, and password are required",
+        });
       }
 
       // Validate consent - terms and privacy are required
       if (termsAccepted !== true) {
-        return res
-          .status(400)
-          .json({
-            message:
-              "You must accept the Terms & Conditions to create an account",
-          });
+        return res.status(400).json({
+          message:
+            "You must accept the Terms & Conditions to create an account",
+        });
       }
       if (privacyAccepted !== true) {
-        return res
-          .status(400)
-          .json({
-            message: "You must accept the Privacy Policy to create an account",
-          });
+        return res.status(400).json({
+          message: "You must accept the Privacy Policy to create an account",
+        });
       }
 
       // Validate email format
@@ -387,12 +377,10 @@ export async function registerRoutes(
 
       const emailSent = await sendOtpEmail(email, otp);
       if (!emailSent) {
-        return res
-          .status(500)
-          .json({
-            message:
-              "Account created but failed to send verification email. Please try logging in.",
-          });
+        return res.status(500).json({
+          message:
+            "Account created but failed to send verification email. Please try logging in.",
+        });
       }
 
       res.json({
@@ -419,11 +407,9 @@ export async function registerRoutes(
       // Get valid OTP code
       const otpCode = await storage.getValidOtpCode(email, otp);
       if (!otpCode) {
-        return res
-          .status(400)
-          .json({
-            message: "Invalid or expired OTP. Please request a new one.",
-          });
+        return res.status(400).json({
+          message: "Invalid or expired OTP. Please request a new one.",
+        });
       }
 
       // Check attempts
@@ -489,12 +475,10 @@ export async function registerRoutes(
   // Disabled in development to allow OIDC testing
   app.post("/api/auth/login/password", async (req: any, res) => {
     if (process.env.NODE_ENV === "development") {
-      return res
-        .status(403)
-        .json({
-          message:
-            "Password login is disabled in development mode. Use OIDC login instead.",
-        });
+      return res.status(403).json({
+        message:
+          "Password login is disabled in development mode. Use OIDC login instead.",
+      });
     }
     try {
       const { email, password } = req.body;
@@ -628,11 +612,9 @@ export async function registerRoutes(
       const emailSent = await sendOtpEmail(email, otp, "Password Reset");
 
       if (!emailSent) {
-        return res
-          .status(500)
-          .json({
-            message: "Failed to send password reset email. Please try again.",
-          });
+        return res.status(500).json({
+          message: "Failed to send password reset email. Please try again.",
+        });
       }
 
       // Clean up expired codes periodically
@@ -670,11 +652,9 @@ export async function registerRoutes(
       // Get valid OTP code
       const otpCode = await storage.getValidOtpCode(email, otp);
       if (!otpCode) {
-        return res
-          .status(400)
-          .json({
-            message: "Invalid or expired code. Please request a new one.",
-          });
+        return res.status(400).json({
+          message: "Invalid or expired code. Please request a new one.",
+        });
       }
 
       // Check attempts
@@ -789,12 +769,10 @@ export async function registerRoutes(
 
       // Check if user already has a password
       if (user.passwordHash) {
-        return res
-          .status(400)
-          .json({
-            message:
-              "You already have a password set. Use 'Change Password' instead.",
-          });
+        return res.status(400).json({
+          message:
+            "You already have a password set. Use 'Change Password' instead.",
+        });
       }
 
       // Hash and set the password
@@ -827,12 +805,10 @@ export async function registerRoutes(
       const { currentPassword, newPassword, confirmPassword } = req.body;
 
       if (!currentPassword || !newPassword || !confirmPassword) {
-        return res
-          .status(400)
-          .json({
-            message:
-              "Current password, new password, and confirmation are required",
-          });
+        return res.status(400).json({
+          message:
+            "Current password, new password, and confirmation are required",
+        });
       }
 
       if (newPassword !== confirmPassword) {
@@ -852,12 +828,9 @@ export async function registerRoutes(
 
       // Check if user has a password
       if (!user.passwordHash) {
-        return res
-          .status(400)
-          .json({
-            message:
-              "You don't have a password set. Use 'Set Password' instead.",
-          });
+        return res.status(400).json({
+          message: "You don't have a password set. Use 'Set Password' instead.",
+        });
       }
 
       // Verify current password
@@ -1466,12 +1439,10 @@ export async function registerRoutes(
       } catch (error) {
         console.error("Error submitting combined application:", error);
         if (error instanceof Error && error.name === "ZodError") {
-          return res
-            .status(400)
-            .json({
-              message: "Invalid application data",
-              error: error.message,
-            });
+          return res.status(400).json({
+            message: "Invalid application data",
+            error: error.message,
+          });
         }
         res.status(500).json({ message: "Failed to submit application" });
       }
@@ -1529,12 +1500,10 @@ export async function registerRoutes(
             .json({ message: "At least one property image is required" });
         }
         if (!latitude || !longitude) {
-          return res
-            .status(400)
-            .json({
-              message:
-                "Property location (GPS coordinates) is required. Please use the map picker to set your property's location.",
-            });
+          return res.status(400).json({
+            message:
+              "Property location (GPS coordinates) is required. Please use the map picker to set your property's location.",
+          });
         }
 
         // Update user info if provided, and promote to owner role
@@ -1805,11 +1774,9 @@ export async function registerRoutes(
         const { listingMode } = req.body;
 
         if (!listingMode || !["quick", "full"].includes(listingMode)) {
-          return res
-            .status(400)
-            .json({
-              message: "Invalid listing mode. Must be 'quick' or 'full'",
-            });
+          return res.status(400).json({
+            message: "Invalid listing mode. Must be 'quick' or 'full'",
+          });
         }
 
         const updatedUser = await storage.upsertUser({
@@ -2527,12 +2494,9 @@ export async function registerRoutes(
         user.kycStatus === "not_started" ||
         user.kycStatus === "rejected"
       ) {
-        return res
-          .status(403)
-          .json({
-            message:
-              "Please complete KYC verification before listing properties",
-          });
+        return res.status(403).json({
+          message: "Please complete KYC verification before listing properties",
+        });
       }
 
       const validatedData = insertPropertySchema.parse(req.body);
@@ -2942,12 +2906,9 @@ export async function registerRoutes(
         }
 
         if (property.ownerId !== userId) {
-          return res
-            .status(403)
-            .json({
-              message:
-                "Not authorized to request deactivation for this property",
-            });
+          return res.status(403).json({
+            message: "Not authorized to request deactivation for this property",
+          });
         }
 
         const { reason, requestType } = req.body;
@@ -2956,11 +2917,9 @@ export async function registerRoutes(
         // For deactivation/deletion requests, property must NOT be deactivated
         if (requestType === "reactivate") {
           if (property.status !== "deactivated") {
-            return res
-              .status(400)
-              .json({
-                message: "Only deactivated properties can request reactivation",
-              });
+            return res.status(400).json({
+              message: "Only deactivated properties can request reactivation",
+            });
           }
         } else {
           if (property.status === "deactivated") {
@@ -2977,19 +2936,15 @@ export async function registerRoutes(
         if (existingRequest) {
           const requestTypeLabel =
             requestType === "reactivate" ? "reactivation" : "deactivation";
-          return res
-            .status(400)
-            .json({
-              message: `A ${requestTypeLabel} request is already pending for this property`,
-            });
+          return res.status(400).json({
+            message: `A ${requestTypeLabel} request is already pending for this property`,
+          });
         }
 
         if (!reason || reason.trim().length < 10) {
-          return res
-            .status(400)
-            .json({
-              message: "Please provide a reason (at least 10 characters)",
-            });
+          return res.status(400).json({
+            message: "Please provide a reason (at least 10 characters)",
+          });
         }
 
         // Validate and normalize request type - support deactivate, delete, and reactivate
@@ -3165,11 +3120,9 @@ export async function registerRoutes(
         } = req.body;
 
         if (!overrideType || !startDate || !endDate) {
-          return res
-            .status(400)
-            .json({
-              message: "Override type, start date, and end date are required",
-            });
+          return res.status(400).json({
+            message: "Override type, start date, and end date are required",
+          });
         }
 
         const start = new Date(startDate);
@@ -3553,11 +3506,9 @@ export async function registerRoutes(
         }
 
         if (property.ownerId !== userId) {
-          return res
-            .status(403)
-            .json({
-              message: "Not authorized to modify rooms for this property",
-            });
+          return res.status(403).json({
+            message: "Not authorized to modify rooms for this property",
+          });
         }
 
         const room = await storage.updateRoom(req.params.roomId, req.body);
@@ -3596,11 +3547,9 @@ export async function registerRoutes(
         }
 
         if (property.ownerId !== userId) {
-          return res
-            .status(403)
-            .json({
-              message: "Not authorized to delete rooms from this property",
-            });
+          return res.status(403).json({
+            message: "Not authorized to delete rooms from this property",
+          });
         }
 
         await storage.deleteRoom(req.params.roomId);
@@ -3661,12 +3610,10 @@ export async function registerRoutes(
       } catch (error: any) {
         console.error("Error creating room option:", error);
         if (error.name === "ZodError") {
-          return res
-            .status(400)
-            .json({
-              message: "Invalid room option data",
-              errors: error.errors,
-            });
+          return res.status(400).json({
+            message: "Invalid room option data",
+            errors: error.errors,
+          });
         }
         res.status(500).json({ message: "Failed to create room option" });
       }
@@ -3694,11 +3641,9 @@ export async function registerRoutes(
 
         const property = await storage.getProperty(room.propertyId);
         if (!property || property.ownerId !== userId) {
-          return res
-            .status(403)
-            .json({
-              message: "Not authorized to update options for this room",
-            });
+          return res.status(403).json({
+            message: "Not authorized to update options for this room",
+          });
         }
 
         const option = await storage.updateRoomOption(
@@ -3739,11 +3684,9 @@ export async function registerRoutes(
 
         const property = await storage.getProperty(room.propertyId);
         if (!property || property.ownerId !== userId) {
-          return res
-            .status(403)
-            .json({
-              message: "Not authorized to delete options from this room",
-            });
+          return res.status(403).json({
+            message: "Not authorized to delete options from this room",
+          });
         }
 
         await storage.deleteRoomOption(req.params.optionId);
@@ -5180,11 +5123,9 @@ export async function registerRoutes(
 
         // Only the guest can view cancellation preview
         if (booking.guestId !== userId) {
-          return res
-            .status(403)
-            .json({
-              message: "You can only view your own booking cancellation",
-            });
+          return res.status(403).json({
+            message: "You can only view your own booking cancellation",
+          });
         }
 
         // Check if booking can be cancelled based on status
@@ -5583,11 +5524,9 @@ export async function registerRoutes(
           conversation.guestId !== userId &&
           conversation.ownerId !== userId
         ) {
-          return res
-            .status(403)
-            .json({
-              message: "Not authorized to send messages in this conversation",
-            });
+          return res.status(403).json({
+            message: "Not authorized to send messages in this conversation",
+          });
         }
 
         const validatedData = insertMessageSchema.parse({
@@ -5831,12 +5770,10 @@ export async function registerRoutes(
 
         const property = await storage.getProperty(booking.propertyId);
         if (!property) {
-          return res
-            .status(404)
-            .json({
-              message: "Property not found",
-              code: "PROPERTY_NOT_FOUND",
-            });
+          return res.status(404).json({
+            message: "Property not found",
+            code: "PROPERTY_NOT_FOUND",
+          });
         }
 
         res.json({
@@ -5955,7 +5892,48 @@ export async function registerRoutes(
       }
     },
   );
+  app.post(
+    "/api/owner/reviews/:id/respond",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const userId = req.user.claims.sub;
+        const user = await storage.getUser(userId);
 
+        if (!user || !userHasRole(user, "owner")) {
+          return res
+            .status(403)
+            .json({ message: "Only owners can respond to reviews" });
+        }
+
+        const review = await storage.getReview(req.params.id);
+        if (!review) {
+          return res.status(404).json({ message: "Review not found" });
+        }
+
+        const property = await storage.getProperty(review.propertyId);
+        if (!property || property.ownerId !== userId) {
+          return res
+            .status(403)
+            .json({ message: "Not authorized to respond to this review" });
+        }
+
+        const { response } = req.body;
+        if (!response || typeof response !== "string") {
+          return res.status(400).json({ message: "Response is required" });
+        }
+
+        const updated = await storage.updateOwnerResponse(
+          req.params.id,
+          response,
+        );
+        res.json(updated);
+      } catch (error) {
+        console.error("Error updating review response:", error);
+        res.status(500).json({ message: "Failed to update review response" });
+      }
+    },
+  );
   app.patch(
     "/api/reviews/:id/helpful",
     isAuthenticated,
@@ -6227,11 +6205,9 @@ export async function registerRoutes(
           !user ||
           (!userHasRole(user, "admin") && !userHasRole(user, "owner"))
         ) {
-          return res
-            .status(403)
-            .json({
-              message: "Only admins or owners can feature destinations",
-            });
+          return res.status(403).json({
+            message: "Only admins or owners can feature destinations",
+          });
         }
 
         const { isFeatured } = req.body;
@@ -6847,12 +6823,10 @@ export async function registerRoutes(
         }
 
         if (policy.status !== "draft") {
-          return res
-            .status(400)
-            .json({
-              message:
-                "Only draft policies can be edited. Create a new version instead.",
-            });
+          return res.status(400).json({
+            message:
+              "Only draft policies can be edited. Create a new version instead.",
+          });
         }
 
         const { title, content } = req.body;
@@ -6900,12 +6874,10 @@ export async function registerRoutes(
         }
 
         if (policy.status === "archived") {
-          return res
-            .status(400)
-            .json({
-              message:
-                "Cannot publish an archived policy. Create a new version instead.",
-            });
+          return res.status(400).json({
+            message:
+              "Cannot publish an archived policy. Create a new version instead.",
+          });
         }
 
         const publishedPolicy = await storage.publishPolicy(req.params.id);
@@ -6932,12 +6904,9 @@ export async function registerRoutes(
       const privacyPolicy = await storage.getPublishedPolicy("privacy");
 
       if (!termsPolicy || !privacyPolicy) {
-        return res
-          .status(400)
-          .json({
-            message:
-              "Cannot accept policies. Published policies not available.",
-          });
+        return res.status(400).json({
+          message: "Cannot accept policies. Published policies not available.",
+        });
       }
 
       const updatedUser = await storage.updateUserPolicyConsent(
@@ -7242,11 +7211,9 @@ export async function registerRoutes(
         req.body;
 
       if (!bookingId || !actorRole || !actionType) {
-        return res
-          .status(400)
-          .json({
-            message: "bookingId, actorRole, and actionType are required",
-          });
+        return res.status(400).json({
+          message: "bookingId, actorRole, and actionType are required",
+        });
       }
 
       if (!["guest", "owner"].includes(actorRole)) {
@@ -7876,12 +7843,10 @@ export async function registerRoutes(
         }
 
         if (agreement.status !== "draft") {
-          return res
-            .status(400)
-            .json({
-              message:
-                "Only draft agreements can be edited. Create a new version instead.",
-            });
+          return res.status(400).json({
+            message:
+              "Only draft agreements can be edited. Create a new version instead.",
+          });
         }
 
         const { title, content } = req.body;
@@ -7929,12 +7894,10 @@ export async function registerRoutes(
         }
 
         if (agreement.status === "archived") {
-          return res
-            .status(400)
-            .json({
-              message:
-                "Cannot publish an archived agreement. Create a new version instead.",
-            });
+          return res.status(400).json({
+            message:
+              "Cannot publish an archived agreement. Create a new version instead.",
+          });
         }
 
         const publishedAgreement = await storage.publishOwnerAgreement(
@@ -7990,12 +7953,10 @@ export async function registerRoutes(
         const agreement = await storage.getPublishedOwnerAgreement();
 
         if (!agreement) {
-          return res
-            .status(400)
-            .json({
-              message:
-                "Cannot accept agreement. Published owner agreement not available.",
-            });
+          return res.status(400).json({
+            message:
+              "Cannot accept agreement. Published owner agreement not available.",
+          });
         }
 
         const updatedUser = await storage.updateUserOwnerAgreementConsent(
@@ -8185,12 +8146,10 @@ export async function registerRoutes(
         }
 
         if (aboutUs.status === "archived") {
-          return res
-            .status(400)
-            .json({
-              message:
-                "Cannot publish archived content. Create a new version instead.",
-            });
+          return res.status(400).json({
+            message:
+              "Cannot publish archived content. Create a new version instead.",
+          });
         }
 
         const publishedAboutUs = await storage.publishAboutUs(req.params.id);
@@ -8284,11 +8243,9 @@ export async function registerRoutes(
 
         // Allow admin to mark no-show from customer_confirmed status
         if (booking.status !== "customer_confirmed") {
-          return res
-            .status(400)
-            .json({
-              message: "Can only mark no-show for guest-confirmed bookings",
-            });
+          return res.status(400).json({
+            message: "Can only mark no-show for guest-confirmed bookings",
+          });
         }
 
         // Time-based validation with 2-hour grace period
@@ -8628,11 +8585,9 @@ export async function registerRoutes(
 
         const { reason } = req.body;
         if (!reason || reason.length < 10) {
-          return res
-            .status(400)
-            .json({
-              message: "Suspension reason must be at least 10 characters",
-            });
+          return res.status(400).json({
+            message: "Suspension reason must be at least 10 characters",
+          });
         }
 
         const owner = await storage.getUser(req.params.id);
@@ -8803,11 +8758,9 @@ export async function registerRoutes(
 
         const { reason } = req.body;
         if (!reason || reason.length < 10) {
-          return res
-            .status(400)
-            .json({
-              message: "Deactivation reason must be at least 10 characters",
-            });
+          return res.status(400).json({
+            message: "Deactivation reason must be at least 10 characters",
+          });
         }
 
         const targetUser = await storage.getUser(req.params.id);
@@ -9190,12 +9143,9 @@ export async function registerRoutes(
 
         // Check if conversation is closed
         if (conversation.status === "closed") {
-          return res
-            .status(400)
-            .json({
-              message:
-                "Conversation is closed. Please start a new conversation.",
-            });
+          return res.status(400).json({
+            message: "Conversation is closed. Please start a new conversation.",
+          });
         }
 
         // Add user message
@@ -10663,11 +10613,9 @@ export async function registerRoutes(
         checkInDate.setHours(0, 0, 0, 0);
 
         if (today < checkInDate) {
-          return res
-            .status(400)
-            .json({
-              message: "Cannot check-in before the scheduled check-in date",
-            });
+          return res.status(400).json({
+            message: "Cannot check-in before the scheduled check-in date",
+          });
         }
 
         const updated = await storage.markCheckedIn(req.params.id, userId);
@@ -10723,11 +10671,9 @@ export async function registerRoutes(
 
         // Only allow check-out from checked_in status
         if (booking.status !== "checked_in") {
-          return res
-            .status(400)
-            .json({
-              message: "Can only check-out guests who are currently checked-in",
-            });
+          return res.status(400).json({
+            message: "Can only check-out guests who are currently checked-in",
+          });
         }
 
         // Check if this is an early checkout
@@ -10871,11 +10817,9 @@ export async function registerRoutes(
 
         // Only allow no-show from customer_confirmed status
         if (booking.status !== "customer_confirmed") {
-          return res
-            .status(400)
-            .json({
-              message: "Can only mark no-show for guest-confirmed bookings",
-            });
+          return res.status(400).json({
+            message: "Can only mark no-show for guest-confirmed bookings",
+          });
         }
 
         // Time-based validation with 2-hour grace period
@@ -11084,12 +11028,10 @@ export async function registerRoutes(
 
         // Validate: extension must start from original checkout and end after it
         if (extensionCheckOut <= extensionCheckIn) {
-          return res
-            .status(400)
-            .json({
-              message:
-                "Extension check-out must be after the original check-out date",
-            });
+          return res.status(400).json({
+            message:
+              "Extension check-out must be after the original check-out date",
+          });
         }
 
         // Check for overlapping bookings during extension period (for same room type)
@@ -11350,11 +11292,9 @@ export async function registerRoutes(
         const user = await storage.getUser(userId);
 
         if (!user || !userHasRole(user, "owner")) {
-          return res
-            .status(403)
-            .json({
-              message: "Only owners can access communication analytics",
-            });
+          return res.status(403).json({
+            message: "Only owners can access communication analytics",
+          });
         }
 
         const chats = await db

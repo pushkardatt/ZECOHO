@@ -85,7 +85,7 @@ export default function OwnerReviews() {
     );
   }
 
-  const handleRespond = (reviewId: number) => {
+  const handleRespond = (reviewId: string) => {
     if (!responseText.trim()) {
       toast({
         title: "Empty Response",
