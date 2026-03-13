@@ -587,33 +587,33 @@ export function SearchBar({
     setShowSuggestions(false);
   };
 
-    const handleSearch = () => {
-      const checkIn = checkInDate ? format(checkInDate, "yyyy-MM-dd") : "";
-      const checkOut = checkOutDate ? format(checkOutDate, "yyyy-MM-dd") : "";
-      const searchDestination = destination.trim();
+  const handleSearch = () => {
+    const checkIn = checkInDate ? format(checkInDate, "yyyy-MM-dd") : "";
+    const checkOut = checkOutDate ? format(checkOutDate, "yyyy-MM-dd") : "";
+    const searchDestination = destination.trim();
 
-      if (!searchDestination) {
-        navigate(`/search`);
-        return;
-      }
+    if (!searchDestination) {
+      navigate(`/search`);
+      return;
+    }
 
-      if (searchDestination === "Near Me") {
-        navigate(`/search?nearMe=true`);
-        return;
-      }
+    if (searchDestination === "Near Me") {
+      navigate(`/search?nearMe=true`);
+      return;
+    }
 
-      navigate(`/search?destination=${encodeURIComponent(searchDestination)}`);
+    navigate(`/search?destination=${encodeURIComponent(searchDestination)}`);
 
-      onSearch?.({
-        destination: destination.trim(),
-        checkIn,
-        checkOut,
-        guests,
-        adults,
-        children,
-        rooms,
-        isExplicitSearch: true, // ← flag to tell parent this was a button click
-      });
+    onSearch?.({
+      destination: destination.trim(),
+      checkIn,
+      checkOut,
+      guests,
+      adults,
+      children,
+      rooms,
+      isExplicitSearch: true, // ← flag to tell parent this was a button click
+    });
     if (isAuthenticated && destination.trim()) {
       saveSearchMutation.mutate({
         destination,
@@ -644,6 +644,10 @@ export function SearchBar({
       autoSearchOnChange &&
       debouncedAutoSearch !== prevAutoSearchRef.current
     ) {
+      // Never auto-search for "Near Me" — geolocation handles its own navigation
+      if (debouncedAutoSearch.trim().toLowerCase() === "near me") {
+        return;
+      }
       prevAutoSearchRef.current = debouncedAutoSearch;
       const checkIn = checkInDate ? format(checkInDate, "yyyy-MM-dd") : "";
       const checkOut = checkOutDate ? format(checkOutDate, "yyyy-MM-dd") : "";
@@ -666,8 +670,8 @@ export function SearchBar({
     adults,
     children,
     rooms,
-    // onSearch intentionally omitted — using ref above
   ]);
+  // onSearch intentionally omitted — using ref above
 
   // Handler for check-in date selection - auto opens check-out
   const handleCheckInSelect = (date: Date | undefined) => {
