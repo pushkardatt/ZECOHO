@@ -276,7 +276,7 @@ export function SearchBar({
       }
 
       const script = document.createElement("script");
-      script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places`;
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places&v=beta&loading=async`;
       script.async = true;
       script.defer = true;
       script.onload = () => {
@@ -376,13 +376,12 @@ export function SearchBar({
         .filter((s: any) => s.placePrediction)
         .map((s: any) => ({
           place_id: s.placePrediction.placeId || "",
-          description: s.placePrediction.text?.toString() || "",
+          description: s.placePrediction.text?.text || "",
           structured_formatting: {
-            main_text: s.placePrediction.mainText?.toString() || "",
-            secondary_text: s.placePrediction.secondaryText?.toString() || "",
+            main_text: s.placePrediction.mainText?.text || "",
+            secondary_text: s.placePrediction.secondaryText?.text || "",
           },
         }));
-
       setGoogleCityPredictions(predictions);
     } catch (error) {
       console.error("Error fetching Google predictions:", error);
