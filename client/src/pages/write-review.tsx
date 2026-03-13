@@ -2,13 +2,25 @@ import { useState, useEffect } from "react";
 import { useRoute, useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Star, ArrowLeft, Loader2, AlertTriangle, CheckCircle2 } from "lucide-react";
+import {
+  Star,
+  ArrowLeft,
+  Loader2,
+  AlertTriangle,
+  CheckCircle2,
+} from "lucide-react";
 
 interface ReviewDetails {
   booking: {
@@ -26,23 +38,25 @@ interface ReviewDetails {
   };
 }
 
-function StarRating({ 
-  rating, 
-  onRatingChange, 
+function StarRating({
+  rating,
+  onRatingChange,
   label,
-  size = "lg"
-}: { 
-  rating: number; 
+  size = "lg",
+}: {
+  rating: number;
   onRatingChange: (rating: number) => void;
   label?: string;
   size?: "sm" | "lg";
 }) {
   const [hoverRating, setHoverRating] = useState(0);
   const starSize = size === "lg" ? "h-8 w-8" : "h-5 w-5";
-  
+
   return (
     <div className="space-y-2">
-      {label && <Label className="text-sm text-muted-foreground">{label}</Label>}
+      {label && (
+        <Label className="text-sm text-muted-foreground">{label}</Label>
+      )}
       <div className="flex gap-1" data-testid="star-rating">
         {[1, 2, 3, 4, 5].map((star) => (
           <button
@@ -73,11 +87,11 @@ export default function WriteReview() {
   const [, setLocation] = useLocation();
   const [, params] = useRoute("/property/:propertyId/review");
   const { toast } = useToast();
-  
+
   const propertyId = params?.propertyId;
   const searchParams = new URLSearchParams(window.location.search);
   const bookingId = searchParams.get("bookingId");
-  
+
   const [overallRating, setOverallRating] = useState(0);
   const [cleanlinessRating, setCleanlinessRating] = useState(0);
   const [staffRating, setStaffRating] = useState(0);
@@ -86,7 +100,11 @@ export default function WriteReview() {
   const [comment, setComment] = useState("");
   const [submitted, setSubmitted] = useState(false);
 
-  const { data: reviewDetails, isLoading, error } = useQuery<ReviewDetails>({
+  const {
+    data: reviewDetails,
+    isLoading,
+    error,
+  } = useQuery<ReviewDetails>({
     queryKey: ["/api/bookings", bookingId, "review-details"],
     queryFn: async () => {
       const res = await fetch(`/api/bookings/${bookingId}/review-details`, {
@@ -94,7 +112,9 @@ export default function WriteReview() {
       });
       if (!res.ok) {
         const data = await res.json();
-        throw new Error(data.code || data.message || "Failed to load review details");
+        throw new Error(
+          data.code || data.message || "Failed to load review details",
+        );
       }
       return res.json();
     },
@@ -102,16 +122,20 @@ export default function WriteReview() {
   });
 
   const submitReviewMutation = useMutation({
-    mutationFn: async (reviewData: { propertyId: string; bookingId: string; rating: number; comment?: string }) => {
-      return apiRequest("/api/reviews", {
-        method: "POST",
-        body: JSON.stringify(reviewData),
-      });
+    mutationFn: async (reviewData: {
+      propertyId: string;
+      bookingId: string;
+      rating: number;
+      comment?: string;
+    }) => {
+      return apiRequest("POST", "/api/reviews", reviewData);
     },
     onSuccess: () => {
       setSubmitted(true);
       queryClient.invalidateQueries({ queryKey: ["/api/bookings"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/properties", propertyId] });
+      queryClient.invalidateQueries({
+        queryKey: ["/api/properties", propertyId],
+      });
       toast({
         title: "Review Submitted",
         description: "Thank you for your feedback!",
@@ -128,7 +152,9 @@ export default function WriteReview() {
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
-      const returnUrl = encodeURIComponent(window.location.pathname + window.location.search);
+      const returnUrl = encodeURIComponent(
+        window.location.pathname + window.location.search,
+      );
       setLocation(`/login?returnUrl=${returnUrl}`);
     }
   }, [authLoading, isAuthenticated, setLocation]);
@@ -148,8 +174,13 @@ export default function WriteReview() {
           <CardContent className="pt-6 text-center">
             <AlertTriangle className="h-12 w-12 text-destructive mx-auto mb-4" />
             <h2 className="text-xl font-semibold mb-2">Invalid Review Link</h2>
-            <p className="text-muted-foreground mb-4">This review link is no longer active.</p>
-            <Button onClick={() => setLocation("/my-bookings")} data-testid="btn-go-to-bookings">
+            <p className="text-muted-foreground mb-4">
+              This review link is no longer active.
+            </p>
+            <Button
+              onClick={() => setLocation("/my-bookings")}
+              data-testid="btn-go-to-bookings"
+            >
               Go to My Bookings
             </Button>
           </CardContent>
@@ -161,7 +192,7 @@ export default function WriteReview() {
   if (error) {
     const errorMessage = (error as Error).message;
     const isAlreadyReviewed = errorMessage === "ALREADY_REVIEWED";
-    
+
     return (
       <div className="min-h-screen flex items-center justify-center p-4">
         <Card className="max-w-md w-full">
@@ -170,20 +201,33 @@ export default function WriteReview() {
               <>
                 <CheckCircle2 className="h-12 w-12 text-primary mx-auto mb-4" />
                 <h2 className="text-xl font-semibold mb-2">Already Reviewed</h2>
-                <p className="text-muted-foreground mb-4">You've already reviewed this stay.</p>
+                <p className="text-muted-foreground mb-4">
+                  You've already reviewed this stay.
+                </p>
               </>
             ) : (
               <>
                 <AlertTriangle className="h-12 w-12 text-destructive mx-auto mb-4" />
-                <h2 className="text-xl font-semibold mb-2">Cannot Write Review</h2>
+                <h2 className="text-xl font-semibold mb-2">
+                  Cannot Write Review
+                </h2>
                 <p className="text-muted-foreground mb-4">
-                  {errorMessage === "NOT_COMPLETED" 
+                  {errorMessage === "NOT_COMPLETED"
                     ? "You can only review completed stays."
                     : "This review link is no longer active."}
                 </p>
               </>
             )}
-            <Button onClick={() => setLocation(reviewDetails?.property?.id ? `/properties/${reviewDetails.property.id}` : "/my-bookings")} data-testid="btn-view-property">
+            <Button
+              onClick={() =>
+                setLocation(
+                  reviewDetails?.property?.id
+                    ? `/properties/${reviewDetails.property.id}`
+                    : "/my-bookings",
+                )
+              }
+              data-testid="btn-view-property"
+            >
               {isAlreadyReviewed ? "View Property" : "Go to My Bookings"}
             </Button>
           </CardContent>
@@ -199,8 +243,13 @@ export default function WriteReview() {
           <CardContent className="pt-6 text-center">
             <CheckCircle2 className="h-12 w-12 text-primary mx-auto mb-4" />
             <h2 className="text-xl font-semibold mb-2">Thank You!</h2>
-            <p className="text-muted-foreground mb-4">Your review has been submitted successfully.</p>
-            <Button onClick={() => setLocation(`/properties/${propertyId}`)} data-testid="btn-view-property-after">
+            <p className="text-muted-foreground mb-4">
+              Your review has been submitted successfully.
+            </p>
+            <Button
+              onClick={() => setLocation(`/properties/${propertyId}`)}
+              data-testid="btn-view-property-after"
+            >
               View Property
             </Button>
           </CardContent>
@@ -211,7 +260,7 @@ export default function WriteReview() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (overallRating === 0) {
       toast({
         title: "Rating Required",
@@ -230,18 +279,26 @@ export default function WriteReview() {
   };
 
   const propertyImage = reviewDetails?.property.images?.[0] || "";
-  const checkInFormatted = reviewDetails?.booking.checkIn 
-    ? new Date(reviewDetails.booking.checkIn).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
+  const checkInFormatted = reviewDetails?.booking.checkIn
+    ? new Date(reviewDetails.booking.checkIn).toLocaleDateString("en-IN", {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+      })
     : "";
   const checkOutFormatted = reviewDetails?.booking.checkOut
-    ? new Date(reviewDetails.booking.checkOut).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
+    ? new Date(reviewDetails.booking.checkOut).toLocaleDateString("en-IN", {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+      })
     : "";
 
   return (
     <div className="min-h-screen bg-background py-8 px-4">
       <div className="max-w-2xl mx-auto">
-        <Button 
-          variant="ghost" 
+        <Button
+          variant="ghost"
           onClick={() => setLocation("/my-bookings")}
           className="mb-6"
           data-testid="btn-back"
@@ -254,14 +311,17 @@ export default function WriteReview() {
           <CardHeader>
             <div className="flex gap-4 items-start">
               {propertyImage && (
-                <img 
-                  src={propertyImage} 
+                <img
+                  src={propertyImage}
                   alt={reviewDetails?.property.title}
                   className="w-20 h-20 object-cover rounded-md"
                 />
               )}
               <div>
-                <CardTitle className="text-xl" data-testid="text-property-title">
+                <CardTitle
+                  className="text-xl"
+                  data-testid="text-property-title"
+                >
                   {reviewDetails?.property.title}
                 </CardTitle>
                 <CardDescription>
@@ -276,35 +336,45 @@ export default function WriteReview() {
             <form onSubmit={handleSubmit} className="space-y-6">
               <div className="space-y-4">
                 <div>
-                  <Label className="text-base font-medium">Overall Rating *</Label>
-                  <p className="text-sm text-muted-foreground mb-2">How would you rate your overall experience?</p>
-                  <StarRating rating={overallRating} onRatingChange={setOverallRating} size="lg" />
+                  <Label className="text-base font-medium">
+                    Overall Rating *
+                  </Label>
+                  <p className="text-sm text-muted-foreground mb-2">
+                    How would you rate your overall experience?
+                  </p>
+                  <StarRating
+                    rating={overallRating}
+                    onRatingChange={setOverallRating}
+                    size="lg"
+                  />
                 </div>
 
                 <div className="border-t pt-4">
-                  <Label className="text-base font-medium mb-3 block">Category Ratings (Optional)</Label>
+                  <Label className="text-base font-medium mb-3 block">
+                    Category Ratings (Optional)
+                  </Label>
                   <div className="grid grid-cols-2 gap-4">
-                    <StarRating 
-                      rating={cleanlinessRating} 
-                      onRatingChange={setCleanlinessRating} 
+                    <StarRating
+                      rating={cleanlinessRating}
+                      onRatingChange={setCleanlinessRating}
                       label="Cleanliness"
                       size="sm"
                     />
-                    <StarRating 
-                      rating={staffRating} 
-                      onRatingChange={setStaffRating} 
+                    <StarRating
+                      rating={staffRating}
+                      onRatingChange={setStaffRating}
                       label="Staff"
                       size="sm"
                     />
-                    <StarRating 
-                      rating={locationRating} 
-                      onRatingChange={setLocationRating} 
+                    <StarRating
+                      rating={locationRating}
+                      onRatingChange={setLocationRating}
                       label="Location"
                       size="sm"
                     />
-                    <StarRating 
-                      rating={valueRating} 
-                      onRatingChange={setValueRating} 
+                    <StarRating
+                      rating={valueRating}
+                      onRatingChange={setValueRating}
                       label="Value for Money"
                       size="sm"
                     />
@@ -313,7 +383,9 @@ export default function WriteReview() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="comment" className="text-base font-medium">Your Review (Optional)</Label>
+                <Label htmlFor="comment" className="text-base font-medium">
+                  Your Review (Optional)
+                </Label>
                 <Textarea
                   id="comment"
                   placeholder="Share your experience with other travelers..."
@@ -325,9 +397,9 @@ export default function WriteReview() {
                 />
               </div>
 
-              <Button 
-                type="submit" 
-                className="w-full" 
+              <Button
+                type="submit"
+                className="w-full"
                 disabled={submitReviewMutation.isPending || overallRating === 0}
                 data-testid="btn-submit-review"
               >
