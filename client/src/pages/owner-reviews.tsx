@@ -33,33 +33,15 @@ export default function OwnerReviews() {
   const { isKycRejected } = useKycGuard();
   const [respondingTo, setRespondingTo] = useState<number | null>(null);
   const [responseText, setResponseText] = useState("");
-
-  if (isKycRejected) {
-    return (
-      <OwnerLayout>
-        <Alert variant="destructive" className="mb-6" data-testid="kyc-rejected-block">
-          <XCircle className="h-5 w-5" />
-          <AlertTitle>Access Restricted</AlertTitle>
-          <AlertDescription className="flex flex-col gap-3">
-            <span>Your KYC has been rejected. Please fix your KYC to view reviews.</span>
-            <Link href="/owner/kyc">
-              <Button variant="destructive" size="sm" data-testid="btn-fix-kyc">
-                Fix KYC & Resubmit
-              </Button>
-            </Link>
-          </AlertDescription>
-        </Alert>
-      </OwnerLayout>
-    );
-  }
-
   const { data: reviews, isLoading } = useQuery<Review[]>({
     queryKey: ["/api/owner/reviews"],
   });
 
   const respondMutation = useMutation({
     mutationFn: async ({ id, response }: { id: number; response: string }) => {
-      return apiRequest("POST", `/api/owner/reviews/${id}/respond`, { response });
+      return apiRequest("POST", `/api/owner/reviews/${id}/respond`, {
+        response,
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/owner/reviews"] });
@@ -78,6 +60,30 @@ export default function OwnerReviews() {
       });
     },
   });
+  if (isKycRejected) {
+    return (
+      <OwnerLayout>
+        <Alert
+          variant="destructive"
+          className="mb-6"
+          data-testid="kyc-rejected-block"
+        >
+          <XCircle className="h-5 w-5" />
+          <AlertTitle>Access Restricted</AlertTitle>
+          <AlertDescription className="flex flex-col gap-3">
+            <span>
+              Your KYC has been rejected. Please fix your KYC to view reviews.
+            </span>
+            <Link href="/owner/kyc">
+              <Button variant="destructive" size="sm" data-testid="btn-fix-kyc">
+                Fix KYC & Resubmit
+              </Button>
+            </Link>
+          </AlertDescription>
+        </Alert>
+      </OwnerLayout>
+    );
+  }
 
   const handleRespond = (reviewId: number) => {
     if (!responseText.trim()) {
@@ -98,7 +104,9 @@ export default function OwnerReviews() {
           <Star
             key={star}
             className={`h-4 w-4 ${
-              star <= rating ? "text-yellow-500 fill-yellow-500" : "text-muted-foreground"
+              star <= rating
+                ? "text-yellow-500 fill-yellow-500"
+                : "text-muted-foreground"
             }`}
           />
         ))}
@@ -107,7 +115,9 @@ export default function OwnerReviews() {
   };
 
   const averageRating = reviews?.length
-    ? (reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length).toFixed(1)
+    ? (reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length).toFixed(
+        1,
+      )
     : "0.0";
 
   return (
@@ -128,7 +138,8 @@ export default function OwnerReviews() {
               <div>
                 {renderStars(parseFloat(averageRating))}
                 <p className="text-sm text-muted-foreground mt-1">
-                  {reviews?.length || 0} review{reviews?.length !== 1 ? "s" : ""}
+                  {reviews?.length || 0} review
+                  {reviews?.length !== 1 ? "s" : ""}
                 </p>
               </div>
             </div>
@@ -148,18 +159,28 @@ export default function OwnerReviews() {
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex items-start gap-3">
                       <Avatar className="h-10 w-10">
-                        <AvatarImage src={review.guestImage} alt={review.guestName} />
+                        <AvatarImage
+                          src={review.guestImage}
+                          alt={review.guestName}
+                        />
                         <AvatarFallback>
-                          {review.guestName.split(" ").map((n) => n[0]).join("").toUpperCase()}
+                          {review.guestName
+                            .split(" ")
+                            .map((n) => n[0])
+                            .join("")
+                            .toUpperCase()}
                         </AvatarFallback>
                       </Avatar>
                       <div>
                         <div className="flex items-center gap-2">
-                          <span className="font-medium">{review.guestName}</span>
+                          <span className="font-medium">
+                            {review.guestName}
+                          </span>
                           {renderStars(review.rating)}
                         </div>
                         <p className="text-sm text-muted-foreground">
-                          {review.propertyTitle} • {format(new Date(review.createdAt), "dd MMM yyyy")}
+                          {review.propertyTitle} •{" "}
+                          {format(new Date(review.createdAt), "dd MMM yyyy")}
                         </p>
                       </div>
                     </div>
@@ -167,14 +188,20 @@ export default function OwnerReviews() {
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <p className="text-sm" data-testid={`review-comment-${review.id}`}>
+                  <p
+                    className="text-sm"
+                    data-testid={`review-comment-${review.id}`}
+                  >
                     {review.comment}
                   </p>
 
                   {review.ownerResponse && (
                     <div className="bg-muted p-4 rounded-md">
                       <p className="text-sm font-medium mb-1">Your Response:</p>
-                      <p className="text-sm text-muted-foreground" data-testid={`owner-response-${review.id}`}>
+                      <p
+                        className="text-sm text-muted-foreground"
+                        data-testid={`owner-response-${review.id}`}
+                      >
                         {review.ownerResponse}
                       </p>
                     </div>
