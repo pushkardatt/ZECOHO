@@ -357,7 +357,7 @@ export function SearchBar({
   }, [navigate]);
 
   const fetchGooglePredictions = useCallback(async (query: string) => {
-    if (query.length < 1 || !(window as any).google?.maps?.places) {
+    if (!autocompleteServiceRef.current || query.length < 1) {
       setGoogleCityPredictions([]);
       setIsGoogleLoading(false);
       return;
@@ -365,25 +365,18 @@ export function SearchBar({
 
     setIsGoogleLoading(true);
     try {
-      const { suggestions } = await (
-        window as any
-      ).google.maps.places.AutocompleteSuggestion.fetchAutocompleteSuggestions({
-        input: query,
-        includedRegionCodes: ["in"],
+      const cityResults = await new Promise<any>((resolve) => {
+        autocompleteServiceRef.current.getPlacePredictions(
+          {
+            input: query,
+            componentRestrictions: { country: "in" },
+            types: ["(cities)"],
+          },
+          (predictions: any, status: any) => resolve({ predictions, status }),
+        );
       });
 
-      const predictions = (suggestions || [])
-        .filter((s: any) => s.placePrediction)
-        .map((s: any) => ({
-          place_id: s.placePrediction.placeId || "",
-          description: s.placePrediction.text?.toString() || "",
-          structured_formatting: {
-            main_text: s.placePrediction.mainText?.toString() || "",
-            secondary_text: s.placePrediction.secondaryText?.toString() || "",
-          },
-        }));
-
-      setGoogleCityPredictions(predictions);
+      setGoogleCityPredictions(cityResults?.predictions || []);
     } catch (error) {
       console.error("Error fetching Google predictions:", error);
       setGoogleCityPredictions([]);
