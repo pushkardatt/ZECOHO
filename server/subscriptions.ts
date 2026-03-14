@@ -83,4 +83,13 @@ router.post("/owner/subscribe", async (req, res) => {
     res.status(500).json({ error: "Failed to submit subscription" });
   }
 });
+/* ADMIN — delete plan */
+router.delete("/admin/subscription-plans/:id", async (req, res) => {
+  try {
+    await storage.deleteSubscriptionPlan(req.params.id);
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: "Failed to delete plan" });
+  }
+});
 export default router;
