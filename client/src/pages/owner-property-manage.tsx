@@ -46,9 +46,6 @@ import {
   Settings,
   Bed,
   Edit,
-  Utensils,
-  ChevronDown,
-  ChevronUp,
   MapPin,
   RefreshCw,
   FileX,
@@ -59,18 +56,9 @@ import {
   type AddressData,
 } from "@/components/PropertyLocationPicker";
 import { PropertyMap } from "@/components/PropertyMap";
-import type {
-  Property,
-  AvailabilityOverride,
-  RoomType,
-  RoomOption,
-} from "@shared/schema";
+import type { Property, AvailabilityOverride, RoomType } from "@shared/schema";
 import { PriceCalendar } from "@/components/PriceCalendar";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
+import { Collapsible } from "@/components/ui/collapsible";
 import { Switch } from "@/components/ui/switch";
 import {
   Dialog,
@@ -1894,7 +1882,8 @@ function RoomsSection({
             <div>
               <CardTitle>Room Types</CardTitle>
               <CardDescription>
-                Manage room types, pricing, and meal plans for your property
+                Manage room types and pricing for your property. Meal plan
+                prices are set in the Pricing tab.
               </CardDescription>
             </div>
             {!showAddForm && (
@@ -2075,9 +2064,8 @@ function RoomsSection({
                 </div>
 
                 <p className="text-sm text-muted-foreground">
-                  Default meal options (Room Only, Breakfast Included, Breakfast
-                  + Dinner/Lunch, All Meals Included) will be added
-                  automatically. You can customize them after adding the room.
+                  After adding the room type, set per-date prices and meal plan
+                  prices from the <strong>Pricing</strong> tab.
                 </p>
                 <div className="flex gap-2">
                   <Button
@@ -2114,8 +2102,8 @@ function RoomsSection({
               <Bed className="h-12 w-12 mx-auto mb-4 opacity-50" />
               <p>No room types added yet.</p>
               <p className="text-sm">
-                Add room types to offer different accommodations with specific
-                pricing and meal plans.
+                Add room types with pricing. Use the Pricing tab to set meal
+                plan prices per date.
               </p>
             </div>
           ) : (
@@ -2139,9 +2127,8 @@ function RoomsSection({
                 />
               ))}
               <div className="bg-muted/30 rounded-lg p-4 text-sm text-muted-foreground">
-                <strong>Tip:</strong> Click on a room type to expand and manage
-                its meal plans. The final price shown to customers is: Room Base
-                Price + Meal Option Price Adjustment.
+                <strong>Tip:</strong> Set per-date room prices and meal plan
+                prices in the <strong>Pricing</strong> tab.
               </div>
             </div>
           )}
@@ -2200,10 +2187,7 @@ function RoomTypeCard({
     room.tripleOccupancyAdjustment || "",
   );
 
-  // Fetch meal plan count for this room
-  const { data: mealOptions = [] } = useQuery<RoomOption[]>({
-    queryKey: ["/api/rooms", room.id, "options"],
-  });
+  // meal plans managed from Pricing tab
 
   const handleSave = () => {
     // Validate original price > selling price if original price is set
@@ -2286,10 +2270,6 @@ function RoomTypeCard({
                     <span>₹{room.basePrice}/night</span>
                   </Badge>
                 )}
-                <Badge variant="outline" className="gap-1">
-                  <Utensils className="h-3 w-3" />
-                  {mealOptions.length} meal plans
-                </Badge>
                 {room.isActive === false && (
                   <Badge variant="destructive">Inactive</Badge>
                 )}
@@ -2339,19 +2319,6 @@ function RoomTypeCard({
                 >
                   <Trash2 className="h-4 w-4 text-destructive" />
                 </Button>
-                <CollapsibleTrigger asChild>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    data-testid={`expand-room-${room.id}`}
-                  >
-                    {isExpanded ? (
-                      <ChevronUp className="h-4 w-4" />
-                    ) : (
-                      <ChevronDown className="h-4 w-4" />
-                    )}
-                  </Button>
-                </CollapsibleTrigger>
               </>
             )}
           </div>
@@ -2520,476 +2487,7 @@ function RoomTypeCard({
             </div>
           </div>
         )}
-
-        <CollapsibleContent>
-          <div className="p-4 border-t">
-            <RoomOptionsSection roomId={room.id} />
-          </div>
-        </CollapsibleContent>
       </div>
     </Collapsible>
-  );
-}
-
-const PRESET_MEAL_OPTIONS = [
-  {
-    name: "Room Only (Best Price)",
-    priceAdjustment: "0",
-    inclusions: "No meals included",
-  },
-  {
-    name: "Breakfast Included",
-    priceAdjustment: "300",
-    inclusions: "Daily breakfast buffet",
-  },
-  {
-    name: "Breakfast + Dinner/Lunch",
-    priceAdjustment: "600",
-    inclusions: "Breakfast and dinner or lunch included",
-  },
-  {
-    name: "All Meals Included",
-    priceAdjustment: "900",
-    inclusions: "All meals included (breakfast, lunch, dinner)",
-  },
-];
-
-function RoomOptionsSection({ roomId }: { roomId: string }) {
-  const { toast } = useToast();
-  const [showAddOption, setShowAddOption] = useState(false);
-  const [selectedPreset, setSelectedPreset] = useState<string>("");
-  const [newOptionName, setNewOptionName] = useState("");
-  const [newOptionPrice, setNewOptionPrice] = useState("");
-  const [newOptionInclusions, setNewOptionInclusions] = useState("");
-
-  // Edit state
-  const [editingOptionId, setEditingOptionId] = useState<string | null>(null);
-  const [editOptionName, setEditOptionName] = useState("");
-  const [editOptionPrice, setEditOptionPrice] = useState("");
-  const [editOptionInclusions, setEditOptionInclusions] = useState("");
-
-  const { data: options = [], isLoading } = useQuery<RoomOption[]>({
-    queryKey: ["/api/rooms", roomId, "options"],
-  });
-
-  const createOptionMutation = useMutation({
-    mutationFn: async (data: {
-      name: string;
-      priceAdjustment: string;
-      inclusions?: string;
-    }) => {
-      return apiRequest("POST", `/api/rooms/${roomId}/options`, data);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: ["/api/rooms", roomId, "options"],
-      });
-      setShowAddOption(false);
-      setSelectedPreset("");
-      setNewOptionName("");
-      setNewOptionPrice("");
-      setNewOptionInclusions("");
-      toast({
-        title: "Plan Added",
-        description: "Meal plan has been added successfully.",
-      });
-    },
-    onError: () => {
-      toast({
-        title: "Error",
-        description: "Failed to add meal plan.",
-        variant: "destructive",
-      });
-    },
-  });
-
-  const deleteOptionMutation = useMutation({
-    mutationFn: async (optionId: string) => {
-      return apiRequest("DELETE", `/api/rooms/${roomId}/options/${optionId}`);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: ["/api/rooms", roomId, "options"],
-      });
-      toast({
-        title: "Plan Removed",
-        description: "Meal plan has been removed.",
-      });
-    },
-    onError: () => {
-      toast({
-        title: "Error",
-        description: "Failed to remove meal plan.",
-        variant: "destructive",
-      });
-    },
-  });
-
-  const updateOptionMutation = useMutation({
-    mutationFn: async ({
-      optionId,
-      data,
-    }: {
-      optionId: string;
-      data: { name?: string; priceAdjustment?: string; inclusions?: string };
-    }) => {
-      return apiRequest(
-        "PATCH",
-        `/api/rooms/${roomId}/options/${optionId}`,
-        data,
-      );
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: ["/api/rooms", roomId, "options"],
-      });
-      setEditingOptionId(null);
-      setEditOptionName("");
-      setEditOptionPrice("");
-      setEditOptionInclusions("");
-      toast({
-        title: "Plan Updated",
-        description: "Meal plan has been updated successfully.",
-      });
-    },
-    onError: () => {
-      toast({
-        title: "Error",
-        description: "Failed to update meal plan.",
-        variant: "destructive",
-      });
-    },
-  });
-
-  const startEditing = (option: RoomOption) => {
-    setEditingOptionId(option.id);
-    setEditOptionName(option.name);
-    setEditOptionPrice(option.priceAdjustment?.toString() || "0");
-    setEditOptionInclusions(option.inclusions || "");
-  };
-
-  const cancelEditing = () => {
-    setEditingOptionId(null);
-    setEditOptionName("");
-    setEditOptionPrice("");
-    setEditOptionInclusions("");
-  };
-
-  const handleUpdateOption = () => {
-    if (!editingOptionId || !editOptionName.trim()) {
-      toast({
-        title: "Name Required",
-        description: "Please enter a plan name.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    updateOptionMutation.mutate({
-      optionId: editingOptionId,
-      data: {
-        name: editOptionName.trim(),
-        priceAdjustment: editOptionPrice || "0",
-        inclusions: editOptionInclusions.trim() || undefined,
-      },
-    });
-  };
-
-  const handlePresetSelect = (presetName: string) => {
-    setSelectedPreset(presetName);
-    if (presetName === "custom") {
-      setNewOptionName("");
-      setNewOptionPrice("");
-      setNewOptionInclusions("");
-    } else {
-      const preset = PRESET_MEAL_OPTIONS.find((p) => p.name === presetName);
-      if (preset) {
-        setNewOptionName(preset.name);
-        setNewOptionPrice(preset.priceAdjustment);
-        setNewOptionInclusions(preset.inclusions);
-      }
-    }
-  };
-
-  const handleAddOption = () => {
-    if (!newOptionName.trim()) {
-      toast({
-        title: "Name Required",
-        description: "Please enter a plan name.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    createOptionMutation.mutate({
-      name: newOptionName.trim(),
-      priceAdjustment: newOptionPrice || "0",
-      inclusions: newOptionInclusions.trim() || undefined,
-    });
-  };
-
-  const handleQuickAdd = (preset: (typeof PRESET_MEAL_OPTIONS)[0]) => {
-    createOptionMutation.mutate({
-      name: preset.name,
-      priceAdjustment: preset.priceAdjustment,
-      inclusions: preset.inclusions,
-    });
-  };
-
-  return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between gap-4 flex-wrap">
-        <div className="flex items-center gap-2">
-          <Utensils className="h-4 w-4 text-muted-foreground" />
-          <span className="font-medium">Meal Plans & Options</span>
-        </div>
-        {!showAddOption && (
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => setShowAddOption(true)}
-            data-testid={`add-option-${roomId}`}
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            Add Plan
-          </Button>
-        )}
-      </div>
-
-      {showAddOption && (
-        <Card className="border-dashed border-primary/30">
-          <CardContent className="pt-4 space-y-4">
-            <div className="space-y-3">
-              <Label className="text-sm font-medium">
-                Quick Add Preset Plans
-              </Label>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                {PRESET_MEAL_OPTIONS.map((preset) => {
-                  const alreadyExists = options.some(
-                    (o) => o.name === preset.name,
-                  );
-                  return (
-                    <Button
-                      key={preset.name}
-                      type="button"
-                      variant={alreadyExists ? "secondary" : "outline"}
-                      size="sm"
-                      className="justify-start h-auto py-2 px-3"
-                      onClick={() => !alreadyExists && handleQuickAdd(preset)}
-                      disabled={alreadyExists || createOptionMutation.isPending}
-                      data-testid={`quick-add-${preset.name.toLowerCase().replace(/\s+/g, "-")}-${roomId}`}
-                    >
-                      <div className="text-left">
-                        <div className="font-medium text-xs">{preset.name}</div>
-                        <div className="text-xs text-muted-foreground">
-                          {preset.priceAdjustment === "0"
-                            ? "Included"
-                            : `+₹${preset.priceAdjustment}`}
-                        </div>
-                      </div>
-                    </Button>
-                  );
-                })}
-              </div>
-            </div>
-
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <span className="w-full border-t" />
-              </div>
-              <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-card px-2 text-muted-foreground">
-                  Or add custom plan
-                </span>
-              </div>
-            </div>
-
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-2">
-                <Label>Plan Name</Label>
-                <Input
-                  value={newOptionName}
-                  onChange={(e) => setNewOptionName(e.target.value)}
-                  placeholder="e.g., Early Bird Breakfast"
-                  data-testid={`input-option-name-${roomId}`}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Price Adjustment (₹)</Label>
-                <Input
-                  type="number"
-                  value={newOptionPrice}
-                  onChange={(e) => setNewOptionPrice(e.target.value)}
-                  placeholder="0"
-                  data-testid={`input-option-price-${roomId}`}
-                />
-                <p className="text-xs text-muted-foreground">
-                  Additional cost per night
-                </p>
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Label>What's Included</Label>
-              <Input
-                value={newOptionInclusions}
-                onChange={(e) => setNewOptionInclusions(e.target.value)}
-                placeholder="e.g., Continental breakfast, Tea/coffee"
-                data-testid={`input-option-inclusions-${roomId}`}
-              />
-            </div>
-            <div className="flex gap-2">
-              <Button
-                size="sm"
-                onClick={handleAddOption}
-                disabled={
-                  createOptionMutation.isPending || !newOptionName.trim()
-                }
-                data-testid={`save-option-${roomId}`}
-              >
-                {createOptionMutation.isPending
-                  ? "Adding..."
-                  : "Add Custom Plan"}
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => {
-                  setShowAddOption(false);
-                  setSelectedPreset("");
-                  setNewOptionName("");
-                  setNewOptionPrice("");
-                  setNewOptionInclusions("");
-                }}
-                data-testid={`cancel-option-${roomId}`}
-              >
-                Done
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {isLoading ? (
-        <Skeleton className="h-16 w-full" />
-      ) : options.length === 0 ? (
-        <p className="text-sm text-muted-foreground text-center py-4">
-          No meal plans added. Add plans to offer different booking options.
-        </p>
-      ) : (
-        <div className="space-y-2">
-          {options.map((option) => (
-            <div
-              key={option.id}
-              className="p-3 rounded-lg border bg-background"
-              data-testid={`option-${option.id}`}
-            >
-              {editingOptionId === option.id ? (
-                <div className="space-y-4">
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <div className="space-y-2">
-                      <Label>Plan Name</Label>
-                      <Input
-                        value={editOptionName}
-                        onChange={(e) => setEditOptionName(e.target.value)}
-                        placeholder="e.g., Breakfast Included"
-                        data-testid={`edit-input-option-name-${option.id}`}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Price Adjustment (₹)</Label>
-                      <Input
-                        type="number"
-                        value={editOptionPrice}
-                        onChange={(e) => setEditOptionPrice(e.target.value)}
-                        placeholder="0"
-                        data-testid={`edit-input-option-price-${option.id}`}
-                      />
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>What's Included</Label>
-                    <Input
-                      value={editOptionInclusions}
-                      onChange={(e) => setEditOptionInclusions(e.target.value)}
-                      placeholder="e.g., Continental breakfast, Tea/coffee"
-                      data-testid={`edit-input-option-inclusions-${option.id}`}
-                    />
-                  </div>
-                  <div className="flex gap-2">
-                    <Button
-                      size="sm"
-                      onClick={handleUpdateOption}
-                      disabled={
-                        updateOptionMutation.isPending || !editOptionName.trim()
-                      }
-                      data-testid={`save-edit-option-${option.id}`}
-                    >
-                      {updateOptionMutation.isPending
-                        ? "Saving..."
-                        : "Save Changes"}
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={cancelEditing}
-                      data-testid={`cancel-edit-option-${option.id}`}
-                    >
-                      Cancel
-                    </Button>
-                  </div>
-                </div>
-              ) : (
-                <div className="flex items-center justify-between gap-4 flex-wrap">
-                  <div className="flex items-center gap-3 flex-wrap">
-                    <span className="font-medium">{option.name}</span>
-                    {Number(option.priceAdjustment) === 0 ? (
-                      <Badge
-                        variant="secondary"
-                        className="bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300"
-                      >
-                        Included
-                      </Badge>
-                    ) : (
-                      <Badge className="bg-orange-500 text-white hover:bg-orange-600">
-                        +₹{option.priceAdjustment}
-                      </Badge>
-                    )}
-                    {option.isActive === false && (
-                      <Badge variant="destructive">Inactive</Badge>
-                    )}
-                    {option.inclusions && (
-                      <span className="text-sm text-muted-foreground">
-                        {option.inclusions}
-                      </span>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      className="h-8 w-8"
-                      onClick={() => startEditing(option)}
-                      data-testid={`edit-option-${option.id}`}
-                    >
-                      <Edit className="h-4 w-4 text-muted-foreground" />
-                    </Button>
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      className="h-8 w-8"
-                      onClick={() => deleteOptionMutation.mutate(option.id)}
-                      disabled={deleteOptionMutation.isPending}
-                      data-testid={`delete-option-${option.id}`}
-                    >
-                      <Trash2 className="h-4 w-4 text-muted-foreground" />
-                    </Button>
-                  </div>
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
   );
 }

@@ -2330,3 +2330,137 @@ export const mealPlanPriceOverridesRelations = relations(
     }),
   }),
 );
+// ============================================================
+// SUBSCRIPTION PLAN TABLES
+// ============================================================
+
+// Subscription plan tier enum
+export const subscriptionTierEnum = pgEnum("subscription_tier", [
+  "basic",
+  "standard", 
+  "premium",
+]);
+
+// Subscription status enum
+export const subscriptionStatusEnum = pgEnum("subscription_status", [
+  "active",
+  "expired",
+  "cancelled",
+  "pending_payment",
+  "waived",  // Admin waived the fee for this owner
+]);
+
+// Subscription duration enum
+export const subscriptionDurationEnum = pgEnum("subscription_duration", [
+  "monthly",
+  "quarterly",
+  "half_yearly",
+  "yearly",
+]);
+
+// Subscription plans — admin creates and manages these
+export const subscriptionPlans = pgTable(
+  "subscription_plans",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    tier: subscriptionTierEnum("tier").notNull(),
+    name: varchar("name", { length: 100 }).notNull(),         // e.g. "Basic", "Standard", "Premium"
+    description: text("description"),
+    duration: subscriptionDurationEnum("duration").notNull().default("monthly"),
+
+    // Pricing — cutoff = strike-through original, price = actual amount
+    price: decimal("price", { precision: 10, scale: 2 }).notNull(),          // actual selling price
+    cutoffPrice: decimal("cutoff_price", { precision: 10, scale: 2 }),       // strike-through price (optional)
+
+    // Feature limits
+    maxProperties: integer("max_properties").notNull().default(1),           // Basic=1, Standard=3, Premium=999
+    maxPhotosPerProperty: integer("max_photos_per_property").notNull().default(10), // Basic=10, Standard=20, Premium=999
+    bookingManagementEnabled: boolean("booking_management_enabled").notNull().default(true),
+    priorityPlacement: boolean("priority_placement").notNull().default(false), // Premium only
+    analyticsEnabled: boolean("analytics_enabled").notNull().default(false),   // Standard + Premium
+
+    // Admin control
+    isActive: boolean("is_active").notNull().default(true),   // Admin can hide a plan from owners
+    sortOrder: integer("sort_order").notNull().default(0),    // Display order on pricing page
+    createdBy: varchar("created_by").references(() => users.id),
+    createdAt: timestamp("created_at").defaultNow(),
+    updatedAt: timestamp("updated_at").defaultNow(),
+  },
+  (table) => [
+    index("IDX_sub_plan_tier").on(table.tier),
+    index("IDX_sub_plan_active").on(table.isActive),
+  ],
+);
+
+export type SubscriptionPlan = typeof subscriptionPlans.$inferSelect;
+export type InsertSubscriptionPlan = typeof subscriptionPlans.$inferInsert;
+export const insertSubscriptionPlanSchema = createInsertSchema(subscriptionPlans).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertSubscriptionPlanData = z.infer<typeof insertSubscriptionPlanSchema>;
+
+// Owner subscriptions — one active row per owner at a time
+export const ownerSubscriptions = pgTable(
+  "owner_subscriptions",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    ownerId: varchar("owner_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    planId: varchar("plan_id").notNull().references(() => subscriptionPlans.id),
+    tier: subscriptionTierEnum("tier").notNull(),
+    status: subscriptionStatusEnum("status").notNull().default("pending_payment"),
+    duration: subscriptionDurationEnum("duration").notNull().default("monthly"),
+
+    // Dates
+    startDate: timestamp("start_date"),
+    endDate: timestamp("end_date"),
+
+    // Pricing at time of purchase (snapshot — plan price may change later)
+    pricePaid: decimal("price_paid", { precision: 10, scale: 2 }),
+    cutoffPriceSnapshot: decimal("cutoff_price_snapshot", { precision: 10, scale: 2 }), // for display
+
+    // Payment reference (for future gateway integration)
+    paymentReference: varchar("payment_reference", { length: 255 }),
+    paymentMethod: varchar("payment_method", { length: 50 }),  // "manual", "razorpay" etc
+
+    // Admin override
+    activatedBy: varchar("activated_by").references(() => users.id), // admin who activated
+    activationNote: text("activation_note"),                          // reason if waived
+    isWaived: boolean("is_waived").notNull().default(false),          // true = fee waived by admin
+
+    createdAt: timestamp("created_at").defaultNow(),
+    updatedAt: timestamp("updated_at").defaultNow(),
+  },
+  (table) => [
+    index("IDX_owner_sub_owner").on(table.ownerId),
+    index("IDX_owner_sub_status").on(table.status),
+    index("IDX_owner_sub_end_date").on(table.endDate),
+    index("IDX_owner_sub_tier").on(table.tier),
+  ],
+);
+
+export type OwnerSubscription = typeof ownerSubscriptions.$inferSelect;
+export type InsertOwnerSubscription = typeof ownerSubscriptions.$inferInsert;
+export const insertOwnerSubscriptionSchema = createInsertSchema(ownerSubscriptions).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertOwnerSubscriptionData = z.infer<typeof insertOwnerSubscriptionSchema>;
+
+// Relations
+export const subscriptionPlansRelations = relations(subscriptionPlans, ({ one, many }) => ({
+  createdByUser: one(users, {
+    fields: [subscriptionPlans.createdBy],
+    references: [users.id],
+  }),
+  subscriptions: many(ownerSubscriptions),
+}));
+
+export const ownerSubscriptionsRelations = relations(ownerSubscriptions, ({ one }) => ({
+  owner: one(users, {
+    fields: [ownerSubscriptions.ownerId],
+    references: [users.id],
+  }),
+  plan: one(subscriptionPlans, {
+    fields: [ownerSubscriptions.planId],
+    references: [subscriptionPlans.id],
+  }),
+  activatedByUser: one(users, {
+    fields: [ownerSubscriptions.activatedBy],
+    references: [users.id],
+  }),
+}));
