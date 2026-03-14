@@ -12,6 +12,7 @@ import {
   callLogs,
 } from "@shared/schema";
 import { setupAuth, isAuthenticated } from "./replitAuth";
+import subscriptionRoutes from "./subscriptions.ts";
 import {
   insertPropertySchema,
   insertRoomSchema,
@@ -101,6 +102,7 @@ export async function registerRoutes(
 ): Promise<Server> {
   // Auth middleware
   await setupAuth(app);
+  app.use("/api", subscriptionRoutes);
 
   // Auth routes
   app.get("/api/auth/user", isAuthenticated, async (req: any, res) => {
@@ -11292,11 +11294,9 @@ export async function registerRoutes(
         const user = await storage.getUser(userId);
 
         if (!user || !userHasRole(user, "owner")) {
-          return res
-            .status(403)
-            .json({
-              message: "Only owners can access communication analytics",
-            });
+          return res.status(403).json({
+            message: "Only owners can access communication analytics",
+          });
         }
 
         // Get real message stats from conversations table
@@ -11656,78 +11656,93 @@ export async function registerRoutes(
   // ==================== PRICING CALENDAR ROUTES ====================
 
   // GET /api/properties/:id/pricing-calendar?startDate=YYYY-MM-DD&endDate=YYYY-MM-DD
-  app.get(
-    "/api/properties/:id/pricing-calendar",
-    async (req: any, res) => {
-      try {
-        const propertyId = req.params.id;
-        const { startDate, endDate } = req.query as { startDate?: string; endDate?: string };
+  app.get("/api/properties/:id/pricing-calendar", async (req: any, res) => {
+    try {
+      const propertyId = req.params.id;
+      const { startDate, endDate } = req.query as {
+        startDate?: string;
+        endDate?: string;
+      };
 
-        if (!startDate || !endDate) {
-          return res.status(400).json({ message: "startDate and endDate query params are required (YYYY-MM-DD)" });
-        }
-
-        const property = await storage.getProperty(propertyId);
-        if (!property) return res.status(404).json({ message: "Property not found" });
-
-        const roomTypes = await storage.getRoomTypes(propertyId);
-
-        // Room price overrides — keyed by roomTypeId → date → price
-        const roomPriceData = await Promise.all(
-          roomTypes.map(async (rt) => {
-            const overrides = await storage.getRoomPriceOverrides(rt.id, startDate, endDate);
-            const overrideMap: Record<string, number> = {};
-            for (const o of overrides) {
-              overrideMap[o.date] = parseFloat(o.roomPrice);
-            }
-            return {
-              roomTypeId: rt.id,
-              roomTypeName: rt.name,
-              defaultPrice: parseFloat(rt.basePrice),
-              overrides: overrideMap,
-            };
-          })
-        );
-
-        // Meal plan price overrides — collect all roomOption IDs across all room types
-        const allRoomOptions = await Promise.all(
-          roomTypes.map((rt) => storage.getRoomOptions(rt.id))
-        );
-        const roomOptionsList = allRoomOptions.flat();
-        const roomOptionIds = roomOptionsList.map((o: any) => o.id);
-
-        const mealOverrides = await storage.getMealPlanPriceOverrides(roomOptionIds, startDate, endDate);
-        // Group by date → roomOptionId → price
-        const mealPlanData: Record<string, Record<string, number>> = {};
-        for (const o of mealOverrides) {
-          if (!mealPlanData[o.date]) mealPlanData[o.date] = {};
-          mealPlanData[o.date][o.roomOptionId] = parseFloat(o.price);
-        }
-
-        // Also include roomOptions metadata so client can resolve names
-        const roomOptionsIndex: Record<string, { name: string; roomTypeId: string; defaultPrice: number }> = {};
-        for (const opt of roomOptionsList as any[]) {
-          roomOptionsIndex[opt.id] = {
-            name: opt.name,
-            roomTypeId: opt.roomTypeId,
-            defaultPrice: parseFloat(opt.priceAdjustment),
-          };
-        }
-
-        res.json({
-          propertyId,
-          startDate,
-          endDate,
-          roomTypes: roomPriceData,
-          mealPlanOverrides: mealPlanData,
-          roomOptions: roomOptionsIndex,
+      if (!startDate || !endDate) {
+        return res.status(400).json({
+          message:
+            "startDate and endDate query params are required (YYYY-MM-DD)",
         });
-      } catch (error) {
-        console.error("Error fetching pricing calendar:", error);
-        res.status(500).json({ message: "Failed to fetch pricing calendar" });
       }
+
+      const property = await storage.getProperty(propertyId);
+      if (!property)
+        return res.status(404).json({ message: "Property not found" });
+
+      const roomTypes = await storage.getRoomTypes(propertyId);
+
+      // Room price overrides — keyed by roomTypeId → date → price
+      const roomPriceData = await Promise.all(
+        roomTypes.map(async (rt) => {
+          const overrides = await storage.getRoomPriceOverrides(
+            rt.id,
+            startDate,
+            endDate,
+          );
+          const overrideMap: Record<string, number> = {};
+          for (const o of overrides) {
+            overrideMap[o.date] = parseFloat(o.roomPrice);
+          }
+          return {
+            roomTypeId: rt.id,
+            roomTypeName: rt.name,
+            defaultPrice: parseFloat(rt.basePrice),
+            overrides: overrideMap,
+          };
+        }),
+      );
+
+      // Meal plan price overrides — collect all roomOption IDs across all room types
+      const allRoomOptions = await Promise.all(
+        roomTypes.map((rt) => storage.getRoomOptions(rt.id)),
+      );
+      const roomOptionsList = allRoomOptions.flat();
+      const roomOptionIds = roomOptionsList.map((o: any) => o.id);
+
+      const mealOverrides = await storage.getMealPlanPriceOverrides(
+        roomOptionIds,
+        startDate,
+        endDate,
+      );
+      // Group by date → roomOptionId → price
+      const mealPlanData: Record<string, Record<string, number>> = {};
+      for (const o of mealOverrides) {
+        if (!mealPlanData[o.date]) mealPlanData[o.date] = {};
+        mealPlanData[o.date][o.roomOptionId] = parseFloat(o.price);
+      }
+
+      // Also include roomOptions metadata so client can resolve names
+      const roomOptionsIndex: Record<
+        string,
+        { name: string; roomTypeId: string; defaultPrice: number }
+      > = {};
+      for (const opt of roomOptionsList as any[]) {
+        roomOptionsIndex[opt.id] = {
+          name: opt.name,
+          roomTypeId: opt.roomTypeId,
+          defaultPrice: parseFloat(opt.priceAdjustment),
+        };
+      }
+
+      res.json({
+        propertyId,
+        startDate,
+        endDate,
+        roomTypes: roomPriceData,
+        mealPlanOverrides: mealPlanData,
+        roomOptions: roomOptionsIndex,
+      });
+    } catch (error) {
+      console.error("Error fetching pricing calendar:", error);
+      res.status(500).json({ message: "Failed to fetch pricing calendar" });
     }
-  );
+  });
 
   // PUT /api/owner/room-types/:roomTypeId/price-overrides
   // Body: { startDate, endDate, price }
@@ -11741,16 +11756,21 @@ export async function registerRoutes(
         const { startDate, endDate, price } = req.body;
 
         if (!startDate || !endDate || price === undefined) {
-          return res.status(400).json({ message: "startDate, endDate, and price are required" });
+          return res
+            .status(400)
+            .json({ message: "startDate, endDate, and price are required" });
         }
 
         const parsedPrice = parseFloat(price);
         if (isNaN(parsedPrice) || parsedPrice < 0) {
-          return res.status(400).json({ message: "price must be a non-negative number" });
+          return res
+            .status(400)
+            .json({ message: "price must be a non-negative number" });
         }
 
         const roomType = await storage.getRoomType(roomTypeId);
-        if (!roomType) return res.status(404).json({ message: "Room type not found" });
+        if (!roomType)
+          return res.status(404).json({ message: "Room type not found" });
 
         const property = await storage.getProperty(roomType.propertyId);
         if (!property || property.ownerId !== userId) {
@@ -11772,12 +11792,15 @@ export async function registerRoutes(
           current.setDate(current.getDate() + 1);
         }
 
-        res.json({ message: `${results.length} date(s) updated`, overrides: results });
+        res.json({
+          message: `${results.length} date(s) updated`,
+          overrides: results,
+        });
       } catch (error) {
         console.error("Error setting room price overrides:", error);
         res.status(500).json({ message: "Failed to set price overrides" });
       }
-    }
+    },
   );
 
   // DELETE /api/owner/price-overrides/:id?type=room|mealplan
@@ -11798,7 +11821,7 @@ export async function registerRoutes(
         console.error("Error deleting price override:", error);
         res.status(500).json({ message: "Failed to delete price override" });
       }
-    }
+    },
   );
 
   // PUT /api/owner/room-options/:roomOptionId/meal-plan-price-overrides
@@ -11813,19 +11836,25 @@ export async function registerRoutes(
         const { startDate, endDate, price } = req.body;
 
         if (!startDate || !endDate || price === undefined) {
-          return res.status(400).json({ message: "startDate, endDate, and price are required" });
+          return res
+            .status(400)
+            .json({ message: "startDate, endDate, and price are required" });
         }
 
         const parsedPrice = parseFloat(price);
         if (isNaN(parsedPrice) || parsedPrice < 0) {
-          return res.status(400).json({ message: "price must be a non-negative number" });
+          return res
+            .status(400)
+            .json({ message: "price must be a non-negative number" });
         }
 
         // Verify ownership: roomOption → roomType → property → owner
         const roomOption = await storage.getRoomOption(roomOptionId);
-        if (!roomOption) return res.status(404).json({ message: "Room option not found" });
+        if (!roomOption)
+          return res.status(404).json({ message: "Room option not found" });
         const roomType = await storage.getRoomType(roomOption.roomTypeId);
-        if (!roomType) return res.status(404).json({ message: "Room type not found" });
+        if (!roomType)
+          return res.status(404).json({ message: "Room type not found" });
         const property = await storage.getProperty(roomType.propertyId);
         if (!property || property.ownerId !== userId) {
           return res.status(403).json({ message: "Not authorized" });
@@ -11836,17 +11865,26 @@ export async function registerRoutes(
         const last = new Date(endDate);
         while (current <= last) {
           const dateStr = current.toISOString().split("T")[0];
-          const override = await storage.upsertMealPlanPriceOverride(roomOptionId, dateStr, parsedPrice);
+          const override = await storage.upsertMealPlanPriceOverride(
+            roomOptionId,
+            dateStr,
+            parsedPrice,
+          );
           results.push(override);
           current.setDate(current.getDate() + 1);
         }
 
-        res.json({ message: `${results.length} date(s) updated`, overrides: results });
+        res.json({
+          message: `${results.length} date(s) updated`,
+          overrides: results,
+        });
       } catch (error) {
         console.error("Error setting meal plan price overrides:", error);
-        res.status(500).json({ message: "Failed to set meal plan price overrides" });
+        res
+          .status(500)
+          .json({ message: "Failed to set meal plan price overrides" });
       }
-    }
+    },
   );
 
   const httpServer = existingServer || createServer(app);

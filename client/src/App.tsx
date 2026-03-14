@@ -16,11 +16,11 @@ import { usePreLoginBooking } from "@/hooks/usePreLoginBooking";
 
 function ScrollToTop() {
   const [location] = useLocation();
-  
+
   useEffect(() => {
     window.scrollTo(0, 0);
   }, [location]);
-  
+
   return null;
 }
 
@@ -28,7 +28,7 @@ function PreLoginBookingRedirect() {
   const { isAuthenticated } = useAuth();
   const [location, setLocation] = useLocation();
   const { getRedirectUrl, clearBookingIntent } = usePreLoginBooking();
-  
+
   useEffect(() => {
     if (isAuthenticated) {
       const redirectUrl = getRedirectUrl();
@@ -37,8 +37,14 @@ function PreLoginBookingRedirect() {
         setLocation(redirectUrl);
       }
     }
-  }, [isAuthenticated, location, getRedirectUrl, clearBookingIntent, setLocation]);
-  
+  }, [
+    isAuthenticated,
+    location,
+    getRedirectUrl,
+    clearBookingIntent,
+    setLocation,
+  ]);
+
   return null;
 }
 import { Header } from "@/components/Header";
@@ -92,6 +98,7 @@ import OwnerEarnings from "@/pages/owner-earnings";
 import OwnerReviews from "@/pages/owner-reviews";
 import OwnerSettings from "@/pages/owner-settings";
 import OwnerKyc from "@/pages/owner-kyc";
+import OwnerSubscriptionPage from "@/pages/owner/SubscriptionPage";
 import ChooseListingMode from "@/pages/choose-listing-mode";
 import WriteReview from "@/pages/write-review";
 import Terms from "@/pages/terms";
@@ -116,16 +123,22 @@ function Router() {
       <Route path="/owner/property" component={OwnerProperty} />
       <Route path="/owner/properties" component={OwnerProperties} />
       <Route path="/owner/properties/new" component={AddProperty} />
-      <Route path="/owner/properties/:id/edit" component={OwnerPropertyManage} />
+      <Route
+        path="/owner/properties/:id/edit"
+        component={OwnerPropertyManage}
+      />
       <Route path="/owner/earnings" component={OwnerEarnings} />
       <Route path="/owner/reviews" component={OwnerReviews} />
       <Route path="/owner/settings" component={OwnerSettings} />
+      <Route path="/owner/subscription" component={OwnerSubscriptionPage} />
       <Route path="/owner/kyc" component={OwnerKyc} />
       <Route path="/owner/choose-mode" component={ChooseListingMode} />
-      <Route path="/owner/:rest*">{() => {
-        window.location.href = "/owner/dashboard";
-        return null;
-      }}</Route>
+      <Route path="/owner/:rest*">
+        {() => {
+          window.location.href = "/owner/dashboard";
+          return null;
+        }}
+      </Route>
       <Route path="/wishlist" component={Wishlist} />
       <Route path="/search-history" component={SearchHistoryPage} />
       <Route path="/messages" component={Messages} />
@@ -180,7 +193,9 @@ function AppContent() {
   const [location, setLocation] = useLocation();
 
   // Global urgent alert state — fires regardless of which owner page is active
-  const [urgentAlert, setUrgentAlert] = useState<UrgentBookingAlert | null>(null);
+  const [urgentAlert, setUrgentAlert] = useState<UrgentBookingAlert | null>(
+    null,
+  );
 
   const handleUrgentBooking = useCallback((data: UrgentBookingAlert) => {
     setUrgentAlert(data);
@@ -190,7 +205,8 @@ function AppContent() {
   usePushNotifications(isAuthenticated);
 
   // Mount WebSocket at app root — handles notification_update events AND urgent booking alerts globally
-  const isOwner = user?.userRole === "owner" || user?.additionalRoles?.includes("owner");
+  const isOwner =
+    user?.userRole === "owner" || user?.additionalRoles?.includes("owner");
   useBookingUpdates({
     userId: user?.id,
     onUrgentBooking: isOwner ? handleUrgentBooking : undefined,
@@ -199,10 +215,15 @@ function AppContent() {
   // Coming Soon gate — always fetch fresh on mount; don't wait for auth to resolve.
   // The session cookie on the server determines whether access is granted.
   // staleTime:0 ensures we never serve a cached "denied" result after a login redirect.
-  const { data: accessCheck } = useQuery<{ comingSoonMode: boolean; canAccess: boolean }>({
+  const { data: accessCheck } = useQuery<{
+    comingSoonMode: boolean;
+    canAccess: boolean;
+  }>({
     queryKey: ["/api/coming-soon/access"],
     queryFn: async () => {
-      const res = await fetch("/api/coming-soon/access", { credentials: "include" });
+      const res = await fetch("/api/coming-soon/access", {
+        credentials: "include",
+      });
       return res.json();
     },
     staleTime: 0,
@@ -222,16 +243,23 @@ function AppContent() {
   }, [accessCheck, location, setLocation]);
 
   // Fetch current policy versions to check if user needs to re-consent
-  const { data: policyVersions } = useQuery<{ termsVersion: number | null; privacyVersion: number | null }>({
+  const { data: policyVersions } = useQuery<{
+    termsVersion: number | null;
+    privacyVersion: number | null;
+  }>({
     queryKey: ["/api/policies/versions/current"],
     enabled: isAuthenticated && !!user,
     staleTime: 60000,
   });
 
   // Fetch current owner agreement version
-  const isOwnerRoute = location.startsWith("/owner/") || location === "/list-property";
-  const isOwnerOrSwitching = user?.userRole === "owner" || user?.additionalRoles?.includes("owner") || isOwnerRoute;
-  
+  const isOwnerRoute =
+    location.startsWith("/owner/") || location === "/list-property";
+  const isOwnerOrSwitching =
+    user?.userRole === "owner" ||
+    user?.additionalRoles?.includes("owner") ||
+    isOwnerRoute;
+
   const { data: ownerAgreementVersion } = useQuery<{ version: number | null }>({
     queryKey: ["/api/owner-agreement/version/current"],
     enabled: isAuthenticated && !!user && isOwnerOrSwitching,
@@ -241,54 +269,61 @@ function AppContent() {
   // Hide header/nav on the standalone Coming Soon page
   const isComingSoonPage = location === "/coming-soon";
   const showHeader = !isComingSoonPage;
-  
+
   // Check if user needs to accept consent (authenticated but hasn't accepted terms/privacy)
-  const hasNeverAccepted = !!(isAuthenticated && user && (!user.termsAccepted || !user.privacyAccepted));
-  
+  const hasNeverAccepted = !!(
+    isAuthenticated &&
+    user &&
+    (!user.termsAccepted || !user.privacyAccepted)
+  );
+
   // Check if user needs to re-consent due to policy version update
   const needsVersionUpdate = !!(
-    isAuthenticated && 
-    user && 
-    user.termsAccepted && 
+    isAuthenticated &&
+    user &&
+    user.termsAccepted &&
     user.privacyAccepted &&
     policyVersions &&
-    (
-      (policyVersions.termsVersion !== null && (user.termsAcceptedVersion || 0) < policyVersions.termsVersion) ||
-      (policyVersions.privacyVersion !== null && (user.privacyAcceptedVersion || 0) < policyVersions.privacyVersion)
-    )
+    ((policyVersions.termsVersion !== null &&
+      (user.termsAcceptedVersion || 0) < policyVersions.termsVersion) ||
+      (policyVersions.privacyVersion !== null &&
+        (user.privacyAcceptedVersion || 0) < policyVersions.privacyVersion))
   );
-  
+
   const needsConsent = hasNeverAccepted || needsVersionUpdate;
-  
+
   // Don't show consent modal on terms/privacy pages so users can read them
   const isConsentPage = location === "/terms" || location === "/privacy";
   const showConsentModal = needsConsent && !isConsentPage;
 
   // Check if owner needs to accept owner agreement
   const ownerHasNeverAccepted = !!(
-    isAuthenticated && 
-    user && 
+    isAuthenticated &&
+    user &&
     isOwnerRoute &&
     ownerAgreementVersion?.version !== null &&
     !user.ownerAgreementAccepted
   );
-  
+
   const ownerNeedsVersionUpdate = !!(
-    isAuthenticated && 
-    user && 
+    isAuthenticated &&
+    user &&
     isOwnerRoute &&
     user.ownerAgreementAccepted &&
     ownerAgreementVersion?.version !== null &&
     ownerAgreementVersion?.version !== undefined &&
-    (user.ownerAgreementAcceptedVersion || 0) < (ownerAgreementVersion?.version || 0)
+    (user.ownerAgreementAcceptedVersion || 0) <
+      (ownerAgreementVersion?.version || 0)
   );
-  
-  const needsOwnerAgreementConsent = ownerHasNeverAccepted || ownerNeedsVersionUpdate;
-  
+
+  const needsOwnerAgreementConsent =
+    ownerHasNeverAccepted || ownerNeedsVersionUpdate;
+
   // Don't show owner agreement modal on the agreement page so users can read it
   const isOwnerAgreementPage = location === "/owner-agreement";
   // Only show owner agreement modal if general consent is not needed (prioritize general consent first)
-  const showOwnerAgreementModal = needsOwnerAgreementConsent && !isOwnerAgreementPage && !showConsentModal;
+  const showOwnerAgreementModal =
+    needsOwnerAgreementConsent && !isOwnerAgreementPage && !showConsentModal;
 
   return (
     <CompareProvider>
@@ -297,7 +332,11 @@ function AppContent() {
           <ScrollToTop />
           <PreLoginBookingRedirect />
           {showHeader && <Header />}
-          <div className={isComingSoonPage ? "flex-1" : "flex-1 pt-14 md:pt-0 pb-12 md:pb-0"}>
+          <div
+            className={
+              isComingSoonPage ? "flex-1" : "flex-1 pt-14 md:pt-0 pb-12 md:pb-0"
+            }
+          >
             <Router />
           </div>
           {location === "/" && !isComingSoonPage && <Footer />}
@@ -305,8 +344,8 @@ function AppContent() {
           {!isComingSoonPage && <MobileBottomNav />}
           {user && !isComingSoonPage && <SupportChat />}
           <Toaster />
-          <ConsentModal 
-            open={showConsentModal} 
+          <ConsentModal
+            open={showConsentModal}
             userName={user?.firstName || undefined}
             isVersionUpdate={needsVersionUpdate && !hasNeverAccepted}
           />

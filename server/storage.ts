@@ -97,10 +97,16 @@ import {
   type InsertTesterWhitelist,
   roomPriceOverrides,
   mealPlanPriceOverrides,
+  subscriptionPlans,
+  ownerSubscriptions,
   type RoomPriceOverride,
   type InsertRoomPriceOverride,
   type MealPlanPriceOverride,
   type InsertMealPlanPriceOverride,
+  type SubscriptionPlan,
+  type InsertSubscriptionPlan,
+  type OwnerSubscription,
+  type InsertOwnerSubscription,
 } from "@shared/schema";
 import { db } from "./db";
 import {
@@ -118,9 +124,8 @@ import {
   count,
 } from "drizzle-orm";
 
-// Helper function to generate random alphanumeric code
 function generateRandomCode(length: number = 6): string {
-  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // Avoid confusing chars like 0/O, 1/I
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
   let result = "";
   for (let i = 0; i < length; i++) {
     result += chars.charAt(Math.floor(Math.random() * chars.length));
@@ -128,51 +133,36 @@ function generateRandomCode(length: number = 6): string {
   return result;
 }
 
-// Helper function to generate unique property code (PROP-XXXXXX)
 async function generatePropertyCode(): Promise<string> {
-  // Use random alphanumeric to avoid race conditions and reuse issues
   for (let attempt = 0; attempt < 10; attempt++) {
     const code = `PROP-${generateRandomCode(6)}`;
-    // Check if code already exists
     const [existing] = await db
       .select({ id: properties.id })
       .from(properties)
       .where(eq(properties.propertyCode, code));
-    if (!existing) {
-      return code;
-    }
+    if (!existing) return code;
   }
-  // Fallback to timestamp-based if random fails
   return `PROP-${Date.now().toString(36).toUpperCase().slice(-6)}`;
 }
 
-// Helper function to generate unique booking code (BKG-XXXXXX)
 async function generateBookingCode(): Promise<string> {
-  // Use random alphanumeric to avoid race conditions and reuse issues
   for (let attempt = 0; attempt < 10; attempt++) {
     const code = `BKG-${generateRandomCode(6)}`;
-    // Check if code already exists
     const [existing] = await db
       .select({ id: bookings.id })
       .from(bookings)
       .where(eq(bookings.bookingCode, code));
-    if (!existing) {
-      return code;
-    }
+    if (!existing) return code;
   }
-  // Fallback to timestamp-based if random fails
   return `BKG-${Date.now().toString(36).toUpperCase().slice(-6)}`;
 }
 
-// Interface for storage operations
 export interface IStorage {
-  // User operations (mandatory for Replit Auth)
   getUser(id: string): Promise<User | undefined>;
   upsertUser(user: UpsertUser): Promise<User>;
   promoteUserToAdmin(email: string): Promise<User | undefined>;
   getAdminUsers(): Promise<User[]>;
 
-  // Property operations
   getProperties(filters?: {
     destination?: string;
     propertyType?: string;
@@ -184,6 +174,10 @@ export interface IStorage {
     hourlyBookingAllowed?: boolean;
     foreignGuestsAllowed?: boolean;
     coupleFriendly?: boolean;
+    status?: string;
+    includeAllStatuses?: boolean;
+    search?: string;
+    adminView?: boolean;
   }): Promise<Property[]>;
   getProperty(id: string): Promise<Property | undefined>;
   createProperty(property: InsertProperty): Promise<Property>;
@@ -193,7 +187,6 @@ export interface IStorage {
   ): Promise<Property | undefined>;
   deleteProperty(id: string): Promise<void>;
 
-  // Room Type operations (hotel-style room management)
   getRoomsByProperty(propertyId: string): Promise<Room[]>;
   createRoom(room: InsertRoom): Promise<Room>;
   updateRoom(id: string, room: Partial<InsertRoom>): Promise<Room | undefined>;
@@ -201,7 +194,6 @@ export interface IStorage {
   getRoomType(id: string): Promise<RoomType | undefined>;
   getRoomTypes(propertyId: string): Promise<RoomType[]>;
 
-  // Room Option operations (meal plans, amenity packages)
   getRoomOptions(roomTypeId: string): Promise<RoomOption[]>;
   getRoomOption(id: string): Promise<RoomOption | undefined>;
   createRoomOption(option: InsertRoomOption): Promise<RoomOption>;
@@ -211,25 +203,21 @@ export interface IStorage {
   ): Promise<RoomOption | undefined>;
   deleteRoomOption(id: string): Promise<void>;
 
-  // Wishlist operations
   getWishlists(userId: string): Promise<Wishlist[]>;
   createWishlist(wishlist: InsertWishlist): Promise<Wishlist>;
   deleteWishlist(id: string): Promise<void>;
 
-  // User preferences operations
   getUserPreferences(userId: string): Promise<UserPreferences | undefined>;
   upsertUserPreferences(
     preferences: InsertUserPreferences,
   ): Promise<UserPreferences>;
 
-  // Amenity operations
   getAllAmenities(): Promise<Amenity[]>;
   createAmenity(amenity: InsertAmenity): Promise<Amenity>;
   createAmenitiesIgnoreDuplicates(amenities: InsertAmenity[]): Promise<void>;
   getPropertyAmenities(propertyId: string): Promise<Amenity[]>;
   setPropertyAmenities(propertyId: string, amenityIds: string[]): Promise<void>;
 
-  // Booking operations
   createBooking(booking: InsertBooking): Promise<Booking>;
   getBooking(id: string): Promise<Booking | undefined>;
   getBookingsByProperty(propertyId: string): Promise<Booking[]>;
@@ -280,7 +268,6 @@ export interface IStorage {
   ): Promise<Booking | undefined>;
   deleteBooking(id: string): Promise<void>;
 
-  // Conversation operations
   getConversationsByUser(userId: string): Promise<
     (Conversation & {
       property: Property;
@@ -295,14 +282,12 @@ export interface IStorage {
   ): Promise<Conversation>;
   getConversation(id: string): Promise<Conversation | undefined>;
 
-  // Message operations
   createMessage(message: InsertMessage): Promise<Message>;
   getMessagesByConversation(
     conversationId: string,
   ): Promise<(Message & { sender: User })[]>;
   markMessagesAsRead(conversationId: string, userId: string): Promise<void>;
 
-  // Review operations
   createReview(review: InsertReview): Promise<Review>;
   getReviewsByProperty(
     propertyId: string,
@@ -315,7 +300,6 @@ export interface IStorage {
   ): Promise<Review | undefined>;
   getAverageRating(propertyId: string): Promise<number>;
 
-  // Destination operations
   getAllDestinations(): Promise<Destination[]>;
   getFeaturedDestinations(): Promise<Destination[]>;
   getDestination(id: string): Promise<Destination | undefined>;
@@ -335,7 +319,6 @@ export interface IStorage {
     limit?: number,
   ): Promise<{ id: string; name: string; state: string }[]>;
 
-  // Search history operations
   createSearchHistory(
     userId: string,
     search: InsertSearchHistory,
@@ -346,7 +329,6 @@ export interface IStorage {
   ): Promise<SearchHistory[]>;
   deleteSearchHistory(id: string): Promise<void>;
 
-  // KYC Application operations
   createKycApplication(
     userId: string,
     application: KycApplicationFormData,
@@ -369,7 +351,6 @@ export interface IStorage {
   ): Promise<KycApplication | undefined>;
   deleteKycApplication(id: string): Promise<void>;
 
-  // OTP operations
   createOtpCode(email: string, code: string, expiresAt: Date): Promise<OtpCode>;
   getValidOtpCode(email: string, code: string): Promise<OtpCode | undefined>;
   incrementOtpAttempts(id: string): Promise<void>;
@@ -378,7 +359,6 @@ export interface IStorage {
   getUserByEmail(email: string): Promise<User | undefined>;
   createUserFromEmail(email: string): Promise<User>;
 
-  // Password-based auth operations
   createLocalUser(data: {
     firstName: string;
     lastName: string;
@@ -396,7 +376,6 @@ export interface IStorage {
     passwordHash: string,
   ): Promise<User | undefined>;
 
-  // Owner dashboard operations
   getOwnerProperties(userId: string): Promise<Property[]>;
   getBookingsForProperties(propertyIds: string[]): Promise<Booking[]>;
   getReviewsForProperties(
@@ -431,7 +410,6 @@ export interface IStorage {
     }[]
   >;
 
-  // Availability Override operations
   getAvailabilityOverrides(propertyId: string): Promise<AvailabilityOverride[]>;
   createAvailabilityOverride(
     override: InsertAvailabilityOverride,
@@ -451,7 +429,6 @@ export interface IStorage {
     }[]
   >;
 
-  // Price Override operations
   getRoomPriceOverrides(
     roomTypeId: string,
     startDate: string,
@@ -476,7 +453,6 @@ export interface IStorage {
   ): Promise<MealPlanPriceOverride>;
   deleteMealPlanPriceOverride(id: string): Promise<void>;
 
-  // Property Deactivation Request operations
   createDeactivationRequest(
     propertyId: string,
     ownerId: string,
@@ -504,7 +480,6 @@ export interface IStorage {
   cancelDeactivationRequest(id: string): Promise<void>;
   fixMisclassifiedReactivationRequests(): Promise<number>;
 
-  // Policy operations
   getAllPolicies(): Promise<Policy[]>;
   getPolicy(id: string): Promise<Policy | undefined>;
   getPolicyByTypeAndVersion(
@@ -529,7 +504,6 @@ export interface IStorage {
     consentCommunication?: boolean,
   ): Promise<User | undefined>;
 
-  // Owner Agreement operations
   getAllOwnerAgreements(): Promise<OwnerAgreement[]>;
   getOwnerAgreement(id: string): Promise<OwnerAgreement | undefined>;
   getOwnerAgreementByVersion(
@@ -551,7 +525,6 @@ export interface IStorage {
     version: number,
   ): Promise<User | undefined>;
 
-  // About Us operations
   getAllAboutUs(): Promise<AboutUs[]>;
   getAboutUs(id: string): Promise<AboutUs | undefined>;
   getAboutUsByVersion(version: number): Promise<AboutUs | undefined>;
@@ -567,24 +540,20 @@ export interface IStorage {
   publishAboutUs(id: string): Promise<AboutUs | undefined>;
   archiveAboutUs(id: string): Promise<AboutUs | undefined>;
 
-  // Contact Settings operations
   getContactSettings(): Promise<ContactSettings | undefined>;
   upsertContactSettings(
     settings: Partial<InsertContactSettings>,
   ): Promise<ContactSettings>;
 
-  // Site Settings operations (singleton row — logo, branding)
   getSiteSettings(): Promise<SiteSettings | undefined>;
   upsertSiteSettings(
     settings: Partial<InsertSiteSettings>,
   ): Promise<SiteSettings>;
 
-  // Contact Interaction logging
   logContactInteraction(
     data: InsertContactInteraction,
   ): Promise<ContactInteraction>;
 
-  // Admin Audit Log operations
   createAdminAuditLog(data: InsertAdminAuditLogData): Promise<AdminAuditLog>;
   getAdminAuditLogs(filters?: {
     adminId?: string;
@@ -592,7 +561,6 @@ export interface IStorage {
     limit?: number;
   }): Promise<AdminAuditLog[]>;
 
-  // Owner Suspension operations
   suspendOwner(
     ownerId: string,
     adminId: string,
@@ -603,7 +571,6 @@ export interface IStorage {
   suspendOwnerProperties(ownerId: string): Promise<void>;
   reinstateOwnerProperties(ownerId: string): Promise<void>;
 
-  // User Deactivation operations (soft delete)
   deactivateUser(
     userId: string,
     adminId: string,
@@ -618,7 +585,6 @@ export interface IStorage {
     limit?: number;
   }): Promise<User[]>;
 
-  // Admin Booking operations
   adminCancelBooking(
     bookingId: string,
     adminId: string,
@@ -638,7 +604,6 @@ export interface IStorage {
     adminId: string,
   ): Promise<Booking | undefined>;
 
-  // Inventory Health operations
   getInventoryHealth(propertyId?: string): Promise<
     {
       propertyId: string;
@@ -657,12 +622,8 @@ export interface IStorage {
     startDate?: Date,
     endDate?: Date,
     dryRun?: boolean,
-  ): Promise<{
-    fixed: number;
-    details: string[];
-  }>;
+  ): Promise<{ fixed: number; details: string[] }>;
 
-  // Admin Dashboard Stats
   getBookingManagementStats(): Promise<{
     totalBookings: number;
     pendingBookings: number;
@@ -682,7 +643,6 @@ export interface IStorage {
     limit?: number;
   }): Promise<(Booking & { property: Property; guest: User })[]>;
 
-  // Push subscription operations
   createPushSubscription(subscription: {
     userId: string;
     endpoint: string;
@@ -696,7 +656,6 @@ export interface IStorage {
   deletePushSubscription(endpoint: string): Promise<void>;
   deletePushSubscriptionsByUser(userId: string): Promise<void>;
 
-  // Notification log operations
   createNotificationLog(log: InsertNotificationLog): Promise<NotificationLog>;
   updateNotificationLog(
     id: string,
@@ -704,41 +663,92 @@ export interface IStorage {
   ): Promise<void>;
   getNotificationLogsByBooking(bookingId: string): Promise<NotificationLog[]>;
 
-  // Waitlist operations
   addToWaitlist(entry: InsertWaitlist): Promise<Waitlist>;
   getWaitlist(): Promise<Waitlist[]>;
   deleteWaitlistEntry(id: string): Promise<void>;
   isEmailInWaitlist(email: string): Promise<boolean>;
 
-  // Tester whitelist operations
   addToTesterWhitelist(entry: InsertTesterWhitelist): Promise<TesterWhitelist>;
   getTesterWhitelist(): Promise<TesterWhitelist[]>;
   removeTesterWhitelistEntry(id: string): Promise<void>;
   isEmailWhitelisted(email: string): Promise<boolean>;
+
+  // Subscription Plan operations
+  getAllSubscriptionPlans(
+    includeInactive?: boolean,
+  ): Promise<SubscriptionPlan[]>;
+  getSubscriptionPlan(id: string): Promise<SubscriptionPlan | undefined>;
+  createSubscriptionPlan(
+    plan: InsertSubscriptionPlan,
+  ): Promise<SubscriptionPlan>;
+  updateSubscriptionPlan(
+    id: string,
+    updates: Partial<InsertSubscriptionPlan>,
+  ): Promise<SubscriptionPlan | undefined>;
+  deleteSubscriptionPlan(id: string): Promise<void>;
+
+  // Owner Subscription operations
+  getOwnerActiveSubscription(
+    ownerId: string,
+  ): Promise<OwnerSubscription | undefined>;
+  getOwnerSubscriptionHistory(ownerId: string): Promise<OwnerSubscription[]>;
+  createOwnerSubscription(
+    data: InsertOwnerSubscription,
+  ): Promise<OwnerSubscription>;
+  activateOwnerSubscription(
+    id: string,
+    adminId: string,
+    note?: string,
+  ): Promise<OwnerSubscription | undefined>;
+  cancelOwnerSubscription(
+    id: string,
+    reason?: string,
+  ): Promise<OwnerSubscription | undefined>;
+  waiveOwnerSubscription(
+    id: string,
+    adminId: string,
+    note: string,
+  ): Promise<OwnerSubscription | undefined>;
+  getAllOwnerSubscriptionsForAdmin(): Promise<
+    (OwnerSubscription & { owner: User; plan: SubscriptionPlan })[]
+  >;
+  checkOwnerSubscriptionStatus(ownerId: string): Promise<{
+    isActive: boolean;
+    tier: string | null;
+    expiresAt: Date | null;
+    daysLeft: number | null;
+  }>;
+  expireStaleSubscriptions(): Promise<number>;
+  updateOwnerSubscriptionDates(
+    id: string,
+    startDate: Date,
+    endDate: Date,
+  ): Promise<OwnerSubscription | undefined>;
+  canOwnerAddProperty(ownerId: string): Promise<{
+    allowed: boolean;
+    reason?: string;
+    currentCount: number;
+    maxAllowed: number;
+  }>;
 }
 
 export class DatabaseStorage implements IStorage {
-  // User operations
   async getUser(id: string): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.id, id));
     return user;
   }
 
   async upsertUser(userData: UpsertUser): Promise<User> {
-    // First check if a user with this email already exists (handles case where user
-    // registered with email/password but now logs in with OIDC)
     if (userData.email) {
       const existingUserByEmail = await db
         .select()
         .from(users)
         .where(eq(users.email, userData.email.toLowerCase()))
         .limit(1);
-
       if (
         existingUserByEmail.length > 0 &&
         existingUserByEmail[0].id !== userData.id
       ) {
-        // User exists with same email but different ID - update existing user with OIDC data
         const [updatedUser] = await db
           .update(users)
           .set({
@@ -754,14 +764,9 @@ export class DatabaseStorage implements IStorage {
         return updatedUser;
       }
     }
-
-    // Standard upsert by ID
     const [user] = await db
       .insert(users)
-      .values({
-        ...userData,
-        email: userData.email?.toLowerCase(),
-      })
+      .values({ ...userData, email: userData.email?.toLowerCase() })
       .onConflictDoUpdate({
         target: users.id,
         set: {
@@ -787,7 +792,7 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(users).where(eq(users.userRole, "admin"));
   }
 
-  // Property operations
+  // ── UPDATED: getProperties with subscription gating ──
   async getProperties(filters?: {
     destination?: string;
     propertyType?: string;
@@ -798,23 +803,19 @@ export class DatabaseStorage implements IStorage {
     status?: string;
     includeAllStatuses?: boolean;
     search?: string;
+    adminView?: boolean;
   }): Promise<Property[]> {
     let query = db.select().from(properties);
+    const conditions: any[] = [];
 
-    const conditions = [];
-
-    // By default, only show published properties for public search
-    // Unless explicitly requesting all statuses (for admin/owner views)
     if (!filters?.includeAllStatuses) {
       if (filters?.status) {
         conditions.push(eq(properties.status, filters.status as any));
       } else if (!filters?.ownerId) {
-        // For public searches (no ownerId), only show published
         conditions.push(eq(properties.status, "published"));
       }
     }
 
-    // Search by property title OR destination
     if (filters?.search) {
       conditions.push(
         or(
@@ -825,7 +826,6 @@ export class DatabaseStorage implements IStorage {
         ),
       );
     } else if (filters?.destination) {
-      // Legacy: search destination only
       conditions.push(
         or(
           sql`${properties.destination} ILIKE ${`%${filters.destination}%`}`,
@@ -833,49 +833,53 @@ export class DatabaseStorage implements IStorage {
         ),
       );
     }
-    if (filters?.propertyType) {
+    if (filters?.propertyType)
       conditions.push(eq(properties.propertyType, filters.propertyType as any));
-    }
-    if (filters?.minPrice !== undefined) {
+    if (filters?.minPrice !== undefined)
       conditions.push(
         gte(properties.pricePerNight, filters.minPrice.toString()),
       );
-    }
-    if (filters?.maxPrice !== undefined) {
+    if (filters?.maxPrice !== undefined)
       conditions.push(
         lte(properties.pricePerNight, filters.maxPrice.toString()),
       );
-    }
-    if (filters?.minGuests !== undefined) {
+    if (filters?.minGuests !== undefined)
       conditions.push(gte(properties.maxGuests, filters.minGuests));
-    }
-    if (filters?.ownerId) {
+    if (filters?.ownerId)
       conditions.push(eq(properties.ownerId, filters.ownerId));
-    }
-
-    // Guest policy filters
-    if (filters?.localIdAllowed !== undefined) {
-      conditions.push(eq(properties.localIdAllowed, filters.localIdAllowed));
-    }
-    if (filters?.hourlyBookingAllowed !== undefined) {
-      conditions.push(
-        eq(properties.hourlyBookingAllowed, filters.hourlyBookingAllowed),
-      );
-    }
-    if (filters?.foreignGuestsAllowed !== undefined) {
-      conditions.push(
-        eq(properties.foreignGuestsAllowed, filters.foreignGuestsAllowed),
-      );
-    }
-    if (filters?.coupleFriendly !== undefined) {
-      conditions.push(eq(properties.coupleFriendly, filters.coupleFriendly));
-    }
 
     if (conditions.length > 0) {
-      return await query.where(and(...conditions));
+      query = query.where(and(...conditions)) as any;
     }
 
-    return await query;
+    let allProps = await query;
+
+    // Skip subscription gating for admin views or owner's own properties
+    if (filters?.adminView || filters?.ownerId) {
+      return allProps;
+    }
+
+    // For public listing: only show properties whose owner has an active subscription
+    const now = new Date();
+    const ownerIds = [...new Set(allProps.map((p) => p.ownerId))];
+    if (ownerIds.length === 0) return [];
+
+    const activeSubs = await db
+      .select({ ownerId: ownerSubscriptions.ownerId })
+      .from(ownerSubscriptions)
+      .where(
+        and(
+          inArray(ownerSubscriptions.ownerId, ownerIds),
+          eq(ownerSubscriptions.status, "active"),
+          or(
+            sql`${ownerSubscriptions.endDate} IS NULL`,
+            gt(ownerSubscriptions.endDate, now),
+          ),
+        ),
+      );
+
+    const subscribedOwnerIds = new Set(activeSubs.map((s) => s.ownerId));
+    return allProps.filter((p) => subscribedOwnerIds.has(p.ownerId));
   }
 
   async getProperty(id: string): Promise<Property | undefined> {
@@ -899,9 +903,7 @@ export class DatabaseStorage implements IStorage {
     id: string,
     propertyData: Partial<InsertProperty>,
   ): Promise<Property | undefined> {
-    // Remove fields that shouldn't be updated
     const { ownerId, ...updateData } = propertyData as any;
-
     const [property] = await db
       .update(properties)
       .set({ ...updateData, updatedAt: new Date() })
@@ -914,7 +916,6 @@ export class DatabaseStorage implements IStorage {
     await db.delete(properties).where(eq(properties.id, id));
   }
 
-  // Room operations
   async getRoomsByProperty(propertyId: string): Promise<Room[]> {
     return await db
       .select()
@@ -958,7 +959,6 @@ export class DatabaseStorage implements IStorage {
       .where(eq(roomTypes.propertyId, propertyId));
   }
 
-  // Room Option operations
   async getRoomOptions(roomTypeId: string): Promise<RoomOption[]> {
     return await db
       .select()
@@ -999,7 +999,6 @@ export class DatabaseStorage implements IStorage {
     await db.delete(roomOptions).where(eq(roomOptions.id, id));
   }
 
-  // Wishlist operations
   async getWishlists(userId: string): Promise<Wishlist[]> {
     return await db
       .select()
@@ -1027,7 +1026,6 @@ export class DatabaseStorage implements IStorage {
     await db.delete(wishlists).where(eq(wishlists.id, id));
   }
 
-  // User preferences operations
   async getUserPreferences(
     userId: string,
   ): Promise<UserPreferences | undefined> {
@@ -1046,16 +1044,12 @@ export class DatabaseStorage implements IStorage {
       .values(preferencesData)
       .onConflictDoUpdate({
         target: userPreferences.userId,
-        set: {
-          ...preferencesData,
-          updatedAt: new Date(),
-        },
+        set: { ...preferencesData, updatedAt: new Date() },
       })
       .returning();
     return prefs;
   }
 
-  // Amenity operations
   async getAllAmenities(): Promise<Amenity[]> {
     return await db.select().from(amenities);
   }
@@ -1072,7 +1066,6 @@ export class DatabaseStorage implements IStorage {
     amenitiesData: InsertAmenity[],
   ): Promise<void> {
     if (amenitiesData.length === 0) return;
-
     await db
       .insert(amenities)
       .values(amenitiesData)
@@ -1098,33 +1091,21 @@ export class DatabaseStorage implements IStorage {
     propertyId: string,
     amenityIds: string[],
   ): Promise<void> {
-    // Delete existing amenities
     await db
       .delete(propertyAmenities)
       .where(eq(propertyAmenities.propertyId, propertyId));
-
-    // Insert new amenities
     if (amenityIds.length > 0) {
-      await db.insert(propertyAmenities).values(
-        amenityIds.map((amenityId) => ({
-          propertyId,
-          amenityId,
-        })),
-      );
+      await db
+        .insert(propertyAmenities)
+        .values(amenityIds.map((amenityId) => ({ propertyId, amenityId })));
     }
   }
 
-  // Booking operations
   async createBooking(bookingData: InsertBooking): Promise<Booking> {
     const bookingCode = await generateBookingCode();
-    // Explicitly set bookingCreatedAt to server time (immutable after creation)
     const [booking] = await db
       .insert(bookings)
-      .values({
-        ...bookingData,
-        bookingCode,
-        bookingCreatedAt: new Date(),
-      })
+      .values({ ...bookingData, bookingCode, bookingCreatedAt: new Date() })
       .returning();
     return booking;
   }
@@ -1159,34 +1140,20 @@ export class DatabaseStorage implements IStorage {
     endDate: Date,
     roomTypeId?: string | null,
   ): Promise<{ checkIn: Date; checkOut: Date }[]> {
-    // ONLY count ACTIVE bookings: confirmed (owner_accepted), customer_confirmed, checked_in
-    // Do NOT count: pending, rejected, cancelled, checked_out, completed
-    // This allows multiple pending bookings for the same date - inventory locks only after owner accepts
     const ACTIVE_BOOKING_STATUSES: (
       | "confirmed"
       | "customer_confirmed"
       | "checked_in"
     )[] = ["confirmed", "customer_confirmed", "checked_in"];
-
-    // Build where conditions
-    const conditions = [
+    const conditions: any[] = [
       eq(bookings.propertyId, propertyId),
       inArray(bookings.status, ACTIVE_BOOKING_STATUSES),
       gt(bookings.checkOut, startDate),
       lt(bookings.checkIn, endDate),
     ];
-
-    // If roomTypeId is provided, only check bookings for that specific room type
-    // This allows different room types to be booked on overlapping dates
-    if (roomTypeId) {
-      conditions.push(eq(bookings.roomTypeId, roomTypeId));
-    }
-
+    if (roomTypeId) conditions.push(eq(bookings.roomTypeId, roomTypeId));
     const results = await db
-      .select({
-        checkIn: bookings.checkIn,
-        checkOut: bookings.checkOut,
-      })
+      .select({ checkIn: bookings.checkIn, checkOut: bookings.checkOut })
       .from(bookings)
       .where(and(...conditions));
     return results.map((r) => ({
@@ -1288,74 +1255,54 @@ export class DatabaseStorage implements IStorage {
     reason?: string,
   ): Promise<Booking | undefined> {
     const now = new Date();
-
-    // Get booking with property info to calculate refund
     const booking = await db.query.bookings.findFirst({
       where: eq(bookings.id, bookingId),
     });
-
     if (!booking) return undefined;
-
-    // Get property cancellation policy
     const property = await db.query.properties.findFirst({
       where: eq(properties.id, booking.propertyId),
     });
-
     if (!property) return undefined;
 
-    // Calculate refund based on cancellation policy
     let refundPercentage = 0;
-    let refundAmount = "0.00";
     const totalPrice = parseFloat(booking.totalPrice);
     const hoursUntilCheckIn =
       (new Date(booking.checkIn).getTime() - now.getTime()) / (1000 * 60 * 60);
     const freeCancellationHours = property.freeCancellationHours || 24;
     const partialRefundPercent = property.partialRefundPercent || 50;
 
-    // Owner/admin cancellations always get full refund for the guest
     if (cancelledBy === "owner" || cancelledBy === "admin") {
       refundPercentage = 100;
     } else {
-      // Guest cancellation - apply property policy
       const policyType = property.cancellationPolicyType || "flexible";
-
       if (policyType === "flexible") {
-        // Free cancellation until X hours before check-in
-        if (hoursUntilCheckIn >= freeCancellationHours) {
-          refundPercentage = 100;
-        } else {
-          refundPercentage = partialRefundPercent;
-        }
+        refundPercentage =
+          hoursUntilCheckIn >= freeCancellationHours
+            ? 100
+            : partialRefundPercent;
       } else if (policyType === "moderate") {
-        // Partial refund based on timing
-        if (hoursUntilCheckIn >= freeCancellationHours) {
-          refundPercentage = 100;
-        } else if (hoursUntilCheckIn >= freeCancellationHours / 2) {
+        if (hoursUntilCheckIn >= freeCancellationHours) refundPercentage = 100;
+        else if (hoursUntilCheckIn >= freeCancellationHours / 2)
           refundPercentage = partialRefundPercent;
-        } else {
-          refundPercentage = 0;
-        }
+        else refundPercentage = 0;
       } else if (policyType === "strict") {
-        // Non-refundable (or very limited refund)
-        if (hoursUntilCheckIn >= freeCancellationHours * 2) {
-          refundPercentage = partialRefundPercent;
-        } else {
-          refundPercentage = 0;
-        }
+        refundPercentage =
+          hoursUntilCheckIn >= freeCancellationHours * 2
+            ? partialRefundPercent
+            : 0;
       }
     }
 
-    refundAmount = ((totalPrice * refundPercentage) / 100).toFixed(2);
-
+    const refundAmount = ((totalPrice * refundPercentage) / 100).toFixed(2);
     const [updated] = await db
       .update(bookings)
       .set({
         status: "cancelled",
         cancelledAt: now,
-        cancelledBy: cancelledBy,
+        cancelledBy,
         cancellationReason: reason || null,
-        refundAmount: refundAmount,
-        refundPercentage: refundPercentage,
+        refundAmount,
+        refundPercentage,
         updatedAt: now,
       })
       .where(eq(bookings.id, bookingId))
@@ -1387,7 +1334,6 @@ export class DatabaseStorage implements IStorage {
     await db.delete(bookings).where(eq(bookings.id, id));
   }
 
-  // Conversation operations
   async getConversationsByUser(userId: string): Promise<
     (Conversation & {
       property: Property;
@@ -1396,13 +1342,9 @@ export class DatabaseStorage implements IStorage {
       unreadCount: number;
     })[]
   > {
-    const guestAlias = sql`guest_user`;
-    const ownerAlias = sql`owner_user`;
-
     const userConversations = await db.execute(sql`
-      SELECT 
-        c.*,
-        p.id as property_id, p.property_code as property_code, p.title as property_title, p.destination as property_destination, 
+      SELECT c.*,
+        p.id as property_id, p.property_code as property_code, p.title as property_title, p.destination as property_destination,
         p.price_per_night as property_price_per_night, p.images as property_images, p.videos as property_videos,
         p.property_type as property_type, p.max_guests as property_max_guests,
         p.owner_id as property_owner_id, p.status as property_status, p.rating as property_rating,
@@ -1510,10 +1452,7 @@ export class DatabaseStorage implements IStorage {
     guestId: string,
   ): Promise<Conversation> {
     const property = await this.getProperty(propertyId);
-    if (!property) {
-      throw new Error("Property not found");
-    }
-
+    if (!property) throw new Error("Property not found");
     const [existing] = await db
       .select()
       .from(conversations)
@@ -1523,20 +1462,11 @@ export class DatabaseStorage implements IStorage {
           eq(conversations.guestId, guestId),
         ),
       );
-
-    if (existing) {
-      return existing;
-    }
-
+    if (existing) return existing;
     const [conversation] = await db
       .insert(conversations)
-      .values({
-        propertyId,
-        guestId,
-        ownerId: property.ownerId,
-      })
+      .values({ propertyId, guestId, ownerId: property.ownerId })
       .returning();
-
     return conversation;
   }
 
@@ -1548,23 +1478,18 @@ export class DatabaseStorage implements IStorage {
     return conversation;
   }
 
-  // Message operations
   async createMessage(messageData: InsertMessage): Promise<Message> {
     console.log(
       "[MESSAGE CREATE] Starting message creation:",
       JSON.stringify(messageData),
     );
-
     const [message] = await db.insert(messages).values(messageData).returning();
     console.log("[MESSAGE CREATE] Message inserted with ID:", message.id);
-
     await db
       .update(conversations)
       .set({ lastMessageAt: new Date() })
       .where(eq(conversations.id, messageData.conversationId));
     console.log("[MESSAGE CREATE] Conversation lastMessageAt updated");
-
-    // Verify the message was saved
     const [verifyMessage] = await db
       .select()
       .from(messages)
@@ -1573,7 +1498,6 @@ export class DatabaseStorage implements IStorage {
       "[MESSAGE CREATE] Verification - message exists:",
       !!verifyMessage,
     );
-
     return message;
   }
 
@@ -1581,19 +1505,12 @@ export class DatabaseStorage implements IStorage {
     conversationId: string,
   ): Promise<(Message & { sender: User })[]> {
     const results = await db
-      .select({
-        message: messages,
-        sender: users,
-      })
+      .select({ message: messages, sender: users })
       .from(messages)
       .leftJoin(users, eq(messages.senderId, users.id))
       .where(eq(messages.conversationId, conversationId))
       .orderBy(messages.createdAt);
-
-    return results.map((r) => ({
-      ...r.message,
-      sender: r.sender!,
-    }));
+    return results.map((r) => ({ ...r.message, sender: r.sender! }));
   }
 
   async markMessagesAsRead(
@@ -1602,12 +1519,10 @@ export class DatabaseStorage implements IStorage {
   ): Promise<void> {
     const conversation = await this.getConversation(conversationId);
     if (!conversation) return;
-
     const otherParticipantId =
       conversation.guestId === userId
         ? conversation.ownerId
         : conversation.guestId;
-
     await db
       .update(messages)
       .set({ read: true })
@@ -1620,7 +1535,6 @@ export class DatabaseStorage implements IStorage {
       );
   }
 
-  // Review operations
   async createReview(reviewData: InsertReview): Promise<Review> {
     if (reviewData.bookingId) {
       const [existingReview] = await db
@@ -1628,14 +1542,10 @@ export class DatabaseStorage implements IStorage {
         .from(reviews)
         .where(eq(reviews.bookingId, reviewData.bookingId))
         .limit(1);
-
-      if (existingReview) {
+      if (existingReview)
         throw new Error("A review already exists for this booking");
-      }
     }
-
     const [review] = await db.insert(reviews).values(reviewData).returning();
-
     const stats = await db
       .select({
         avg: sql<number>`COALESCE(AVG(${reviews.rating}), 0)`,
@@ -1643,18 +1553,11 @@ export class DatabaseStorage implements IStorage {
       })
       .from(reviews)
       .where(eq(reviews.propertyId, reviewData.propertyId));
-
     const avgRating = Math.round((stats[0]?.avg || 0) * 10) / 10;
-    const reviewCount = stats[0]?.count || 0;
-
     await db
       .update(properties)
-      .set({
-        rating: avgRating.toString(),
-        reviewCount,
-      })
+      .set({ rating: avgRating.toString(), reviewCount: stats[0]?.count || 0 })
       .where(eq(properties.id, reviewData.propertyId));
-
     return review;
   }
 
@@ -1662,19 +1565,12 @@ export class DatabaseStorage implements IStorage {
     propertyId: string,
   ): Promise<(Review & { guest: User })[]> {
     const results = await db
-      .select({
-        review: reviews,
-        guest: users,
-      })
+      .select({ review: reviews, guest: users })
       .from(reviews)
       .leftJoin(users, eq(reviews.guestId, users.id))
       .where(eq(reviews.propertyId, propertyId))
       .orderBy(sql`${reviews.createdAt} DESC`);
-
-    return results.map((r) => ({
-      ...r.review,
-      guest: r.guest!,
-    }));
+    return results.map((r) => ({ ...r.review, guest: r.guest! }));
   }
 
   async getReview(id: string): Promise<Review | undefined> {
@@ -1697,13 +1593,9 @@ export class DatabaseStorage implements IStorage {
   ): Promise<Review | undefined> {
     const [updated] = await db
       .update(reviews)
-      .set({
-        ownerResponse: response,
-        ownerResponseAt: new Date(),
-      })
+      .set({ ownerResponse: response, ownerResponseAt: new Date() })
       .where(eq(reviews.id, reviewId))
       .returning();
-
     return updated;
   }
 
@@ -1712,27 +1604,16 @@ export class DatabaseStorage implements IStorage {
   ): Promise<(Review & { guest: User }) | undefined> {
     await db
       .update(reviews)
-      .set({
-        helpful: sql`${reviews.helpful} + 1`,
-      })
+      .set({ helpful: sql`${reviews.helpful} + 1` })
       .where(eq(reviews.id, reviewId));
-
     const result = await db
-      .select({
-        review: reviews,
-        guest: users,
-      })
+      .select({ review: reviews, guest: users })
       .from(reviews)
       .leftJoin(users, eq(reviews.guestId, users.id))
       .where(eq(reviews.id, reviewId))
       .limit(1);
-
     if (result.length === 0) return undefined;
-
-    return {
-      ...result[0].review,
-      guest: result[0].guest!,
-    };
+    return { ...result[0].review, guest: result[0].guest! };
   }
 
   async getAverageRating(propertyId: string): Promise<number> {
@@ -1740,27 +1621,23 @@ export class DatabaseStorage implements IStorage {
       .select({ avg: sql<number>`COALESCE(AVG(${reviews.rating}), 0)` })
       .from(reviews)
       .where(eq(reviews.propertyId, propertyId));
-
     return Math.round((result[0]?.avg || 0) * 10) / 10;
   }
 
-  // Destination operations
   async getAllDestinations(): Promise<Destination[]> {
-    const results = await db
+    return await db
       .select()
       .from(destinations)
       .orderBy(sql`${destinations.createdAt} DESC`);
-    return results;
   }
 
   async getFeaturedDestinations(): Promise<Destination[]> {
-    const results = await db
+    return await db
       .select()
       .from(destinations)
       .where(eq(destinations.isFeatured, true))
       .orderBy(sql`${destinations.featuredDate} DESC`)
       .limit(3);
-    return results;
   }
 
   async getDestination(id: string): Promise<Destination | undefined> {
@@ -1787,10 +1664,7 @@ export class DatabaseStorage implements IStorage {
   ): Promise<Destination | undefined> {
     const [updated] = await db
       .update(destinations)
-      .set({
-        ...destinationData,
-        updatedAt: new Date(),
-      })
+      .set({ ...destinationData, updatedAt: new Date() })
       .where(eq(destinations.id, id))
       .returning();
     return updated;
@@ -1809,7 +1683,7 @@ export class DatabaseStorage implements IStorage {
     limit: number = 10,
   ): Promise<{ id: string; name: string; state: string }[]> {
     const searchLower = query.toLowerCase();
-    const results = await db
+    return await db
       .select({
         id: destinations.id,
         name: destinations.name,
@@ -1823,7 +1697,6 @@ export class DatabaseStorage implements IStorage {
         ),
       )
       .limit(limit);
-    return results;
   }
 
   async setFeaturedDestination(
@@ -1842,17 +1715,13 @@ export class DatabaseStorage implements IStorage {
     return updated;
   }
 
-  // Search history operations
   async createSearchHistory(
     userId: string,
     search: InsertSearchHistory,
   ): Promise<SearchHistory> {
     const [history] = await db
       .insert(searchHistory)
-      .values({
-        ...search,
-        userId,
-      })
+      .values({ ...search, userId })
       .returning();
     return history;
   }
@@ -1873,17 +1742,13 @@ export class DatabaseStorage implements IStorage {
     await db.delete(searchHistory).where(eq(searchHistory.id, id));
   }
 
-  // KYC Application operations
   async createKycApplication(
     userId: string,
     applicationData: KycApplicationFormData,
   ): Promise<KycApplication> {
     const [application] = await db
       .insert(kycApplications)
-      .values({
-        ...applicationData,
-        userId,
-      })
+      .values({ ...applicationData, userId })
       .returning();
     return application;
   }
@@ -1919,11 +1784,10 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getAllKycApplications(): Promise<KycApplication[]> {
-    const applications = await db
+    return await db
       .select()
       .from(kycApplications)
       .orderBy(desc(kycApplications.createdAt));
-    return applications;
   }
 
   async updateKycApplicationStatus(
@@ -1970,22 +1834,15 @@ export class DatabaseStorage implements IStorage {
     await db.delete(kycApplications).where(eq(kycApplications.id, id));
   }
 
-  // OTP operations
   async createOtpCode(
     email: string,
     code: string,
     expiresAt: Date,
   ): Promise<OtpCode> {
-    // Delete any existing OTP codes for this email first
     await db.delete(otpCodes).where(eq(otpCodes.email, email.toLowerCase()));
-
     const [otp] = await db
       .insert(otpCodes)
-      .values({
-        email: email.toLowerCase(),
-        code,
-        expiresAt,
-      })
+      .values({ email: email.toLowerCase(), code, expiresAt })
       .returning();
     return otp;
   }
@@ -2003,7 +1860,7 @@ export class DatabaseStorage implements IStorage {
           eq(otpCodes.code, code),
           eq(otpCodes.verified, false),
           gt(otpCodes.expiresAt, new Date()),
-          lt(otpCodes.attempts, 5), // Max 5 attempts
+          lt(otpCodes.attempts, 5),
         ),
       )
       .limit(1);
@@ -2039,15 +1896,11 @@ export class DatabaseStorage implements IStorage {
   async createUserFromEmail(email: string): Promise<User> {
     const [user] = await db
       .insert(users)
-      .values({
-        email: email.toLowerCase(),
-        userRole: "guest",
-      })
+      .values({ email: email.toLowerCase(), userRole: "guest" })
       .returning();
     return user;
   }
 
-  // Password-based auth operations
   async createLocalUser(data: {
     firstName: string;
     lastName: string;
@@ -2084,10 +1937,7 @@ export class DatabaseStorage implements IStorage {
   async updateUserEmailVerified(userId: string): Promise<User | undefined> {
     const [user] = await db
       .update(users)
-      .set({
-        emailVerifiedAt: new Date(),
-        updatedAt: new Date(),
-      })
+      .set({ emailVerifiedAt: new Date(), updatedAt: new Date() })
       .where(eq(users.id, userId))
       .returning();
     return user;
@@ -2099,16 +1949,12 @@ export class DatabaseStorage implements IStorage {
   ): Promise<User | undefined> {
     const [user] = await db
       .update(users)
-      .set({
-        passwordHash,
-        updatedAt: new Date(),
-      })
+      .set({ passwordHash, updatedAt: new Date() })
       .where(eq(users.id, userId))
       .returning();
     return user;
   }
 
-  // Owner dashboard operations
   async getOwnerProperties(userId: string): Promise<Property[]> {
     return await db
       .select()
@@ -2130,19 +1976,12 @@ export class DatabaseStorage implements IStorage {
   ): Promise<(Review & { guest: User })[]> {
     if (propertyIds.length === 0) return [];
     const results = await db
-      .select({
-        review: reviews,
-        guest: users,
-      })
+      .select({ review: reviews, guest: users })
       .from(reviews)
       .leftJoin(users, eq(reviews.guestId, users.id))
       .where(inArray(reviews.propertyId, propertyIds))
       .orderBy(desc(reviews.createdAt));
-
-    return results.map((r) => ({
-      ...r.review,
-      guest: r.guest as User,
-    }));
+    return results.map((r) => ({ ...r.review, guest: r.guest as User }));
   }
 
   async getRoomUtilization(
@@ -2159,16 +1998,11 @@ export class DatabaseStorage implements IStorage {
       availableRooms: number;
     }[]
   > {
-    // Get all room types for this property
     const propertyRoomTypes = await db
       .select()
       .from(roomTypes)
       .where(eq(roomTypes.propertyId, propertyId));
-
     if (propertyRoomTypes.length === 0) return [];
-
-    // Get all bookings that overlap with the date range
-    // Overlap: booking.checkIn < endDate AND booking.checkOut > startDate
     const overlappingBookings = await db
       .select()
       .from(bookings)
@@ -2179,40 +2013,30 @@ export class DatabaseStorage implements IStorage {
           gt(bookings.checkOut, startDate),
         ),
       );
-
-    // CONFIRMED statuses: confirmed (owner_accepted), customer_confirmed, checked_in
     const CONFIRMED_STATUSES = [
       "confirmed",
       "customer_confirmed",
       "checked_in",
     ];
-    // PENDING statuses: pending (awaiting owner response)
     const PENDING_STATUSES = ["pending"];
-
     return propertyRoomTypes.map((rt) => {
       const roomTypeBookings = overlappingBookings.filter(
         (b) => b.roomTypeId === rt.id,
       );
-
       const confirmedRooms = roomTypeBookings
         .filter((b) => CONFIRMED_STATUSES.includes(b.status))
         .reduce((sum, b) => sum + (b.rooms || 1), 0);
-
       const pendingRooms = roomTypeBookings
         .filter((b) => PENDING_STATUSES.includes(b.status))
         .reduce((sum, b) => sum + (b.rooms || 1), 0);
-
       const totalRooms = rt.totalRooms || 1;
-      // Available = Total - Confirmed (pending does NOT reduce available)
-      const availableRooms = Math.max(0, totalRooms - confirmedRooms);
-
       return {
         roomTypeId: rt.id,
         roomTypeName: rt.name,
         totalRooms,
         confirmedRooms,
         pendingRooms,
-        availableRooms,
+        availableRooms: Math.max(0, totalRooms - confirmedRooms),
       };
     });
   }
@@ -2231,19 +2055,14 @@ export class DatabaseStorage implements IStorage {
       totalRooms: number;
     }[]
   > {
-    // Get the room type to get total rooms
     const [roomType] = await db
       .select()
       .from(roomTypes)
       .where(
         and(eq(roomTypes.propertyId, propertyId), eq(roomTypes.id, roomTypeId)),
       );
-
     if (!roomType) return [];
-
     const totalRooms = roomType.totalRooms || 1;
-
-    // Get all bookings that overlap with the date range for this room type
     const overlappingBookings = await db
       .select()
       .from(bookings)
@@ -2255,15 +2074,12 @@ export class DatabaseStorage implements IStorage {
           gt(bookings.checkOut, startDate),
         ),
       );
-
     const CONFIRMED_STATUSES = [
       "confirmed",
       "customer_confirmed",
       "checked_in",
     ];
     const PENDING_STATUSES = ["pending"];
-
-    // Generate date-by-date utilization
     const result: {
       date: string;
       confirmedRooms: number;
@@ -2271,52 +2087,38 @@ export class DatabaseStorage implements IStorage {
       availableRooms: number;
       totalRooms: number;
     }[] = [];
-
     const currentDate = new Date(startDate);
-    currentDate.setHours(0, 0, 0, 0); // Normalize to start of day
-
+    currentDate.setHours(0, 0, 0, 0);
     while (currentDate < endDate) {
       const dateStr = currentDate.toISOString().split("T")[0];
       const dayStart = new Date(currentDate);
       const dayEnd = new Date(currentDate);
       dayEnd.setDate(dayEnd.getDate() + 1);
-
-      // Find bookings that overlap with this specific day/night
-      // A booking occupies the night if checkIn < dayEnd (next day start) AND checkOut > dayStart
-      // This correctly counts a room as "occupied" for the night of dayStart
       const dayBookings = overlappingBookings.filter((b) => {
-        const checkIn = new Date(b.checkIn);
-        const checkOut = new Date(b.checkOut);
-        checkIn.setHours(0, 0, 0, 0);
-        checkOut.setHours(0, 0, 0, 0);
-        return checkIn < dayEnd && checkOut > dayStart;
+        const ci = new Date(b.checkIn);
+        ci.setHours(0, 0, 0, 0);
+        const co = new Date(b.checkOut);
+        co.setHours(0, 0, 0, 0);
+        return ci < dayEnd && co > dayStart;
       });
-
       const confirmedRooms = dayBookings
         .filter((b) => CONFIRMED_STATUSES.includes(b.status))
         .reduce((sum, b) => sum + (b.rooms || 1), 0);
-
       const pendingRooms = dayBookings
         .filter((b) => PENDING_STATUSES.includes(b.status))
         .reduce((sum, b) => sum + (b.rooms || 1), 0);
-
-      const availableRooms = Math.max(0, totalRooms - confirmedRooms);
-
       result.push({
         date: dateStr,
         confirmedRooms,
         pendingRooms,
-        availableRooms,
+        availableRooms: Math.max(0, totalRooms - confirmedRooms),
         totalRooms,
       });
-
       currentDate.setDate(currentDate.getDate() + 1);
     }
-
     return result;
   }
 
-  // Availability Override operations
   async getAvailabilityOverrides(
     propertyId: string,
   ): Promise<AvailabilityOverride[]> {
@@ -2356,9 +2158,6 @@ export class DatabaseStorage implements IStorage {
       roomTypeId: string | null;
     }[]
   > {
-    // Overlap with exclusive end date semantics:
-    // Override blocks [startDate, endDate), booking occupies [checkIn, checkOut)
-    // Overlap exists when: overrideStart < checkOut AND overrideEnd > checkIn
     const overrides = await db
       .select()
       .from(availabilityOverrides)
@@ -2369,16 +2168,11 @@ export class DatabaseStorage implements IStorage {
           gt(availabilityOverrides.endDate, checkIn),
         ),
       );
-
-    // Filter by roomTypeId if provided:
-    // - If roomTypeId is provided, return blocks that apply to ALL rooms (roomTypeId is null) OR to the specific room type
-    // - If roomTypeId is not provided, return all blocks (property-wide check)
     const filteredOverrides = roomTypeId
       ? overrides.filter(
           (o) => o.roomTypeId === null || o.roomTypeId === roomTypeId,
         )
       : overrides;
-
     return filteredOverrides.map((o) => ({
       startDate: o.startDate,
       endDate: o.endDate,
@@ -2387,7 +2181,6 @@ export class DatabaseStorage implements IStorage {
     }));
   }
 
-  // Property Deactivation Request operations
   async createDeactivationRequest(
     propertyId: string,
     ownerId: string,
@@ -2396,13 +2189,7 @@ export class DatabaseStorage implements IStorage {
   ): Promise<PropertyDeactivationRequest> {
     const [created] = await db
       .insert(propertyDeactivationRequests)
-      .values({
-        propertyId,
-        ownerId,
-        reason,
-        requestType,
-        status: "pending",
-      })
+      .values({ propertyId, ownerId, reason, requestType, status: "pending" })
       .returning();
     return created;
   }
@@ -2450,8 +2237,6 @@ export class DatabaseStorage implements IStorage {
       .from(propertyDeactivationRequests)
       .where(eq(propertyDeactivationRequests.status, "pending"))
       .orderBy(desc(propertyDeactivationRequests.createdAt));
-
-    // Fetch related property and owner data
     const result: (PropertyDeactivationRequest & {
       property: Property;
       owner: User;
@@ -2465,9 +2250,7 @@ export class DatabaseStorage implements IStorage {
         .select()
         .from(users)
         .where(eq(users.id, request.ownerId));
-      if (property && owner) {
-        result.push({ ...request, property, owner });
-      }
+      if (property && owner) result.push({ ...request, property, owner });
     }
     return result;
   }
@@ -2498,8 +2281,6 @@ export class DatabaseStorage implements IStorage {
   }
 
   async fixMisclassifiedReactivationRequests(): Promise<number> {
-    // Find pending "deactivate" requests where the property is already deactivated
-    // These are actually reactivation requests that were incorrectly stored due to the bug
     const misclassifiedRequests = await db
       .select({
         requestId: propertyDeactivationRequests.id,
@@ -2518,22 +2299,15 @@ export class DatabaseStorage implements IStorage {
           eq(properties.status, "deactivated"),
         ),
       );
-
-    if (misclassifiedRequests.length === 0) {
-      return 0;
-    }
-
-    // Update all misclassified requests to have requestType = "reactivate"
+    if (misclassifiedRequests.length === 0) return 0;
     const requestIds = misclassifiedRequests.map((r) => r.requestId);
     await db
       .update(propertyDeactivationRequests)
       .set({ requestType: "reactivate" })
       .where(inArray(propertyDeactivationRequests.id, requestIds));
-
     return misclassifiedRequests.length;
   }
 
-  // Policy operations
   async getAllPolicies(): Promise<Policy[]> {
     return await db
       .select()
@@ -2602,19 +2376,14 @@ export class DatabaseStorage implements IStorage {
   }
 
   async publishPolicy(id: string): Promise<Policy | undefined> {
-    // First, get the policy to be published
     const policy = await this.getPolicy(id);
     if (!policy) return undefined;
-
-    // Archive any existing published policy of the same type
     await db
       .update(policies)
       .set({ status: "archived", updatedAt: new Date() })
       .where(
         and(eq(policies.type, policy.type), eq(policies.status, "published")),
       );
-
-    // Publish the new policy
     const [updated] = await db
       .update(policies)
       .set({
@@ -2652,11 +2421,8 @@ export class DatabaseStorage implements IStorage {
       privacyAcceptedVersion: privacyVersion,
       updatedAt: now,
     };
-
-    if (consentCommunication !== undefined) {
+    if (consentCommunication !== undefined)
       updateData.consentCommunication = consentCommunication;
-    }
-
     const [user] = await db
       .update(users)
       .set(updateData)
@@ -2665,7 +2431,6 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
-  // Owner Agreement operations
   async getAllOwnerAgreements(): Promise<OwnerAgreement[]> {
     return await db
       .select()
@@ -2733,13 +2498,10 @@ export class DatabaseStorage implements IStorage {
   }
 
   async publishOwnerAgreement(id: string): Promise<OwnerAgreement | undefined> {
-    // Archive any currently published agreement first
     await db
       .update(ownerAgreements)
       .set({ status: "archived", updatedAt: new Date() })
       .where(eq(ownerAgreements.status, "published"));
-
-    // Publish the new agreement
     const [updated] = await db
       .update(ownerAgreements)
       .set({
@@ -2789,7 +2551,7 @@ export class DatabaseStorage implements IStorage {
       ownerAgreementAcceptedVersion: number | null;
     }>
   > {
-    const acceptances = await db
+    return await db
       .select({
         userId: users.id,
         firstName: users.firstName,
@@ -2801,10 +2563,8 @@ export class DatabaseStorage implements IStorage {
       .from(users)
       .where(eq(users.ownerAgreementAccepted, true))
       .orderBy(desc(users.ownerAgreementAcceptedAt));
-    return acceptances;
   }
 
-  // About Us operations
   async getAllAboutUs(): Promise<AboutUs[]> {
     return await db.select().from(aboutUs).orderBy(desc(aboutUs.version));
   }
@@ -2859,13 +2619,10 @@ export class DatabaseStorage implements IStorage {
   }
 
   async publishAboutUs(id: string): Promise<AboutUs | undefined> {
-    // Archive any currently published about us first
     await db
       .update(aboutUs)
       .set({ status: "archived", updatedAt: new Date() })
       .where(eq(aboutUs.status, "published"));
-
-    // Publish the new about us
     const [updated] = await db
       .update(aboutUs)
       .set({
@@ -2887,7 +2644,6 @@ export class DatabaseStorage implements IStorage {
     return updated;
   }
 
-  // Contact Settings operations
   async getContactSettings(): Promise<ContactSettings | undefined> {
     const [settings] = await db.select().from(contactSettings).limit(1);
     return settings;
@@ -2897,7 +2653,6 @@ export class DatabaseStorage implements IStorage {
     settings: Partial<InsertContactSettings>,
   ): Promise<ContactSettings> {
     const existing = await this.getContactSettings();
-
     if (existing) {
       const [updated] = await db
         .update(contactSettings)
@@ -2914,7 +2669,6 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
-  // Site Settings operations
   async getSiteSettings(): Promise<SiteSettings | undefined> {
     const [settings] = await db.select().from(siteSettings).limit(1);
     return settings;
@@ -2940,7 +2694,6 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
-  // Contact Interaction logging
   async logContactInteraction(
     data: InsertContactInteraction,
   ): Promise<ContactInteraction> {
@@ -2951,7 +2704,6 @@ export class DatabaseStorage implements IStorage {
     return interaction;
   }
 
-  // Admin Audit Log operations
   async createAdminAuditLog(
     data: InsertAdminAuditLogData,
   ): Promise<AdminAuditLog> {
@@ -2965,27 +2717,17 @@ export class DatabaseStorage implements IStorage {
     limit?: number;
   }): Promise<AdminAuditLog[]> {
     let query = db.select().from(adminAuditLogs);
-
     const conditions: any[] = [];
-    if (filters?.adminId) {
+    if (filters?.adminId)
       conditions.push(eq(adminAuditLogs.adminId, filters.adminId));
-    }
-    if (filters?.action) {
+    if (filters?.action)
       conditions.push(eq(adminAuditLogs.action, filters.action as any));
-    }
-
-    if (conditions.length > 0) {
-      query = query.where(and(...conditions)) as any;
-    }
-
-    const results = await query
+    if (conditions.length > 0) query = query.where(and(...conditions)) as any;
+    return await query
       .orderBy(desc(adminAuditLogs.createdAt))
       .limit(filters?.limit || 100);
-
-    return results;
   }
 
-  // Owner Suspension operations
   async suspendOwner(
     ownerId: string,
     adminId: string,
@@ -3002,12 +2744,8 @@ export class DatabaseStorage implements IStorage {
       })
       .where(eq(users.id, ownerId))
       .returning();
-
     if (updated) {
-      // Suspend all owner's properties
       await this.suspendOwnerProperties(ownerId);
-
-      // Log the action
       await this.createAdminAuditLog({
         adminId,
         action: "suspend_owner",
@@ -3015,7 +2753,6 @@ export class DatabaseStorage implements IStorage {
         reason,
       });
     }
-
     return updated;
   }
 
@@ -3034,19 +2771,14 @@ export class DatabaseStorage implements IStorage {
       })
       .where(eq(users.id, ownerId))
       .returning();
-
     if (updated) {
-      // Reinstate all owner's properties
       await this.reinstateOwnerProperties(ownerId);
-
-      // Log the action
       await this.createAdminAuditLog({
         adminId,
         action: "reinstate_owner",
         ownerId,
       });
     }
-
     return updated;
   }
 
@@ -3060,37 +2792,24 @@ export class DatabaseStorage implements IStorage {
   async suspendOwnerProperties(ownerId: string): Promise<void> {
     await db
       .update(properties)
-      .set({
-        suspended: true,
-        suspendedAt: new Date(),
-        updatedAt: new Date(),
-      })
+      .set({ suspended: true, suspendedAt: new Date(), updatedAt: new Date() })
       .where(eq(properties.ownerId, ownerId));
   }
 
   async reinstateOwnerProperties(ownerId: string): Promise<void> {
     await db
       .update(properties)
-      .set({
-        suspended: false,
-        suspendedAt: null,
-        updatedAt: new Date(),
-      })
+      .set({ suspended: false, suspendedAt: null, updatedAt: new Date() })
       .where(eq(properties.ownerId, ownerId));
   }
 
-  // User Deactivation operations (soft delete)
   async deactivateUser(
     userId: string,
     adminId: string,
     reason: string,
   ): Promise<User | undefined> {
-    // Don't allow deactivating admins
     const targetUser = await this.getUser(userId);
-    if (!targetUser || targetUser.userRole === "admin") {
-      return undefined;
-    }
-
+    if (!targetUser || targetUser.userRole === "admin") return undefined;
     const [updated] = await db
       .update(users)
       .set({
@@ -3102,13 +2821,11 @@ export class DatabaseStorage implements IStorage {
       })
       .where(eq(users.id, userId))
       .returning();
-
-    if (updated) {
-      // Log the action
+    if (updated)
       await this.createAdminAuditLog({
         adminId,
         action: "deactivate_user",
-        ownerId: userId, // Using ownerId field for user ID
+        ownerId: userId,
         reason,
         metadata: {
           userEmail: updated.email,
@@ -3116,8 +2833,6 @@ export class DatabaseStorage implements IStorage {
           userRole: updated.userRole,
         },
       });
-    }
-
     return updated;
   }
 
@@ -3136,9 +2851,7 @@ export class DatabaseStorage implements IStorage {
       })
       .where(eq(users.id, userId))
       .returning();
-
-    if (updated) {
-      // Log the action
+    if (updated)
       await this.createAdminAuditLog({
         adminId,
         action: "restore_user",
@@ -3149,8 +2862,6 @@ export class DatabaseStorage implements IStorage {
           userRole: updated.userRole,
         },
       });
-    }
-
     return updated;
   }
 
@@ -3185,19 +2896,11 @@ export class DatabaseStorage implements IStorage {
     status?: "active" | "deactivated" | "all";
     limit?: number;
   }): Promise<User[]> {
-    const conditions: any[] = [];
-
-    // Exclude admin users from the list
-    conditions.push(sql`${users.userRole} != 'admin'`);
-
-    // Filter by deactivation status
-    if (filters?.status === "active") {
+    const conditions: any[] = [sql`${users.userRole} != 'admin'`];
+    if (filters?.status === "active")
       conditions.push(eq(users.isDeactivated, false));
-    } else if (filters?.status === "deactivated") {
+    else if (filters?.status === "deactivated")
       conditions.push(eq(users.isDeactivated, true));
-    }
-
-    // Search by name or email
     if (filters?.search) {
       const searchTerm = `%${filters.search.toLowerCase()}%`;
       conditions.push(
@@ -3208,29 +2911,20 @@ export class DatabaseStorage implements IStorage {
         ),
       );
     }
-
     let query = db.select().from(users);
-    if (conditions.length > 0) {
-      query = query.where(and(...conditions)) as any;
-    }
-
+    if (conditions.length > 0) query = query.where(and(...conditions)) as any;
     return await query
       .orderBy(desc(users.createdAt))
       .limit(filters?.limit || 100);
   }
 
-  // Admin Booking operations
   async adminCancelBooking(
     bookingId: string,
     adminId: string,
     reason?: string,
   ): Promise<Booking | undefined> {
     const booking = await this.getBooking(bookingId);
-    if (!booking || booking.status === "completed") {
-      return undefined;
-    }
-
-    // Full refund for admin cancellations
+    if (!booking || booking.status === "completed") return undefined;
     const [updated] = await db
       .update(bookings)
       .set({
@@ -3244,16 +2938,13 @@ export class DatabaseStorage implements IStorage {
       })
       .where(eq(bookings.id, bookingId))
       .returning();
-
-    if (updated) {
+    if (updated)
       await this.createAdminAuditLog({
         adminId,
         action: "cancel_booking",
         bookingId,
         reason,
       });
-    }
-
     return updated;
   }
 
@@ -3263,10 +2954,7 @@ export class DatabaseStorage implements IStorage {
     reason: string,
   ): Promise<Booking | undefined> {
     const booking = await this.getBooking(bookingId);
-    if (!booking) {
-      return undefined;
-    }
-
+    if (!booking) return undefined;
     const [updated] = await db
       .update(bookings)
       .set({
@@ -3278,16 +2966,13 @@ export class DatabaseStorage implements IStorage {
       })
       .where(eq(bookings.id, bookingId))
       .returning();
-
-    if (updated) {
+    if (updated)
       await this.createAdminAuditLog({
         adminId,
         action: "mark_no_show",
         bookingId,
         reason,
       });
-    }
-
     return updated;
   }
 
@@ -3296,10 +2981,7 @@ export class DatabaseStorage implements IStorage {
     adminId: string,
   ): Promise<Booking | undefined> {
     const booking = await this.getBooking(bookingId);
-    if (!booking) {
-      return undefined;
-    }
-
+    if (!booking) return undefined;
     const [updated] = await db
       .update(bookings)
       .set({
@@ -3309,15 +2991,12 @@ export class DatabaseStorage implements IStorage {
       })
       .where(eq(bookings.id, bookingId))
       .returning();
-
-    if (updated) {
+    if (updated)
       await this.createAdminAuditLog({
         adminId,
         action: "force_check_in",
         bookingId,
       });
-    }
-
     return updated;
   }
 
@@ -3326,10 +3005,7 @@ export class DatabaseStorage implements IStorage {
     adminId: string,
   ): Promise<Booking | undefined> {
     const booking = await this.getBooking(bookingId);
-    if (!booking) {
-      return undefined;
-    }
-
+    if (!booking) return undefined;
     const [updated] = await db
       .update(bookings)
       .set({
@@ -3339,19 +3015,15 @@ export class DatabaseStorage implements IStorage {
       })
       .where(eq(bookings.id, bookingId))
       .returning();
-
-    if (updated) {
+    if (updated)
       await this.createAdminAuditLog({
         adminId,
         action: "force_check_out",
         bookingId,
       });
-    }
-
     return updated;
   }
 
-  // Inventory Health operations
   async getInventoryHealth(propertyId?: string): Promise<
     {
       propertyId: string;
@@ -3367,14 +3039,10 @@ export class DatabaseStorage implements IStorage {
     const today = new Date();
     const endDate = new Date();
     endDate.setDate(endDate.getDate() + 30);
-
-    // Get all properties (or specific property)
     let propsQuery = db.select().from(properties);
-    if (propertyId) {
+    if (propertyId)
       propsQuery = propsQuery.where(eq(properties.id, propertyId)) as any;
-    }
     const allProperties = await propsQuery;
-
     const results: {
       propertyId: string;
       propertyTitle: string;
@@ -3385,15 +3053,12 @@ export class DatabaseStorage implements IStorage {
       availableRooms: number;
       hasNegativeInventory: boolean;
     }[] = [];
-
     for (const prop of allProperties) {
       const roomTypesList = await db
         .select()
         .from(roomTypes)
         .where(eq(roomTypes.propertyId, prop.id));
-
       for (const rt of roomTypesList) {
-        // Count active bookings for this room type
         const activeBookings = await db
           .select({ count: count() })
           .from(bookings)
@@ -3409,11 +3074,9 @@ export class DatabaseStorage implements IStorage {
               lte(bookings.checkIn, endDate),
             ),
           );
-
         const bookedRooms = Number(activeBookings[0]?.count || 0);
         const totalRooms = rt.totalRooms || 0;
         const availableRooms = totalRooms - bookedRooms;
-
         results.push({
           propertyId: prop.id,
           propertyTitle: prop.title,
@@ -3426,7 +3089,6 @@ export class DatabaseStorage implements IStorage {
         });
       }
     }
-
     return results;
   }
 
@@ -3436,31 +3098,22 @@ export class DatabaseStorage implements IStorage {
     startDate?: Date,
     endDate?: Date,
     dryRun: boolean = false,
-  ): Promise<{
-    fixed: number;
-    details: string[];
-  }> {
+  ): Promise<{ fixed: number; details: string[] }> {
     const details: string[] = [];
     let fixed = 0;
-
-    // Get room types for the property
     let roomTypesQuery = db
       .select()
       .from(roomTypes)
       .where(eq(roomTypes.propertyId, propertyId));
-    if (roomTypeId) {
+    if (roomTypeId)
       roomTypesQuery = roomTypesQuery.where(
         eq(roomTypes.id, roomTypeId),
       ) as any;
-    }
     const roomTypesList = await roomTypesQuery;
-
     const checkStartDate = startDate || new Date();
     const checkEndDate =
-      endDate || new Date(Date.now() + 90 * 24 * 60 * 60 * 1000); // 90 days
-
+      endDate || new Date(Date.now() + 90 * 24 * 60 * 60 * 1000);
     for (const rt of roomTypesList) {
-      // Count concurrent bookings that exceed capacity
       const overlappingBookings = await db
         .select()
         .from(bookings)
@@ -3476,33 +3129,18 @@ export class DatabaseStorage implements IStorage {
             gt(bookings.checkOut, checkStartDate),
           ),
         );
-
-      // Simple check: if we have more active bookings than rooms, flag it
       const totalRooms = rt.totalRooms || 0;
       if (overlappingBookings.length > totalRooms) {
         details.push(
           `Room type "${rt.name}" has ${overlappingBookings.length} active bookings but only ${totalRooms} rooms`,
         );
-
-        if (!dryRun) {
-          // In a real implementation, you might want to:
-          // 1. Cancel excess bookings
-          // 2. Increase room count
-          // 3. Flag for manual review
-          // For now, we just log the issue
-          fixed++;
-        }
+        if (!dryRun) fixed++;
       }
     }
-
-    if (details.length === 0) {
-      details.push("No inventory issues found");
-    }
-
+    if (details.length === 0) details.push("No inventory issues found");
     return { fixed, details };
   }
 
-  // Admin Dashboard Stats
   async getBookingManagementStats(): Promise<{
     totalBookings: number;
     pendingBookings: number;
@@ -3519,7 +3157,6 @@ export class DatabaseStorage implements IStorage {
         noShowBookings: sql<number>`COUNT(*) FILTER (WHERE ${bookings.status} = 'no_show')`,
       })
       .from(bookings);
-
     return {
       totalBookings: Number(stats?.totalBookings || 0),
       pendingBookings: Number(stats?.pendingBookings || 0),
@@ -3543,7 +3180,6 @@ export class DatabaseStorage implements IStorage {
         pendingKyc: sql<number>`COUNT(*) FILTER (WHERE ${users.userRole} = 'owner' AND ${users.kycStatus} = 'pending')`,
       })
       .from(users);
-
     return {
       totalOwners: Number(stats?.totalOwners || 0),
       activeOwners: Number(stats?.activeOwners || 0),
@@ -3558,42 +3194,25 @@ export class DatabaseStorage implements IStorage {
     limit?: number;
   }): Promise<(Booking & { property: Property; guest: User })[]> {
     const conditions: any[] = [];
-
-    if (filters?.status) {
+    if (filters?.status)
       conditions.push(eq(bookings.status, filters.status as any));
-    }
-    if (filters?.propertyId) {
+    if (filters?.propertyId)
       conditions.push(eq(bookings.propertyId, filters.propertyId));
-    }
-
     let query = db
-      .select({
-        booking: bookings,
-        property: properties,
-        guest: users,
-      })
+      .select({ booking: bookings, property: properties, guest: users })
       .from(bookings)
       .innerJoin(properties, eq(bookings.propertyId, properties.id))
       .innerJoin(users, eq(bookings.guestId, users.id));
-
-    if (conditions.length > 0) {
-      query = query.where(and(...conditions)) as any;
-    }
-
+    if (conditions.length > 0) query = query.where(and(...conditions)) as any;
     const results = await query
       .orderBy(desc(bookings.createdAt))
       .limit(filters?.limit || 100);
-
     return results.map((r) => ({
       ...r.booking,
       property: r.property,
       guest: r.guest,
     }));
   }
-
-  // ============================================
-  // Support Chat Methods
-  // ============================================
 
   async createSupportConversation(data: {
     userId: string;
@@ -3674,11 +3293,8 @@ export class DatabaseStorage implements IStorage {
       status: "escalated",
       escalatedAt: new Date(),
     });
-
     if (!conversation) return null;
-
     const ticketNumber = `ZS${Date.now().toString(36).toUpperCase()}${Math.random().toString(36).substring(2, 5).toUpperCase()}`;
-
     const [ticket] = await db
       .insert(supportTickets)
       .values({
@@ -3689,7 +3305,6 @@ export class DatabaseStorage implements IStorage {
         priority: "medium",
       })
       .returning();
-
     return { conversation, ticket };
   }
 
@@ -3719,13 +3334,10 @@ export class DatabaseStorage implements IStorage {
         metadata: data.metadata || null,
       })
       .returning();
-
-    // Update conversation last activity
     await db
       .update(supportConversations)
       .set({ lastActivityAt: new Date() })
       .where(eq(supportConversations.id, data.conversationId));
-
     return message;
   }
 
@@ -3741,18 +3353,17 @@ export class DatabaseStorage implements IStorage {
     conversationId: string,
     senderType?: "user" | "ai" | "admin",
   ): Promise<void> {
-    const conditions = [eq(supportMessages.conversationId, conversationId)];
-    if (senderType) {
+    const conditions: any[] = [
+      eq(supportMessages.conversationId, conversationId),
+    ];
+    if (senderType)
       conditions.push(not(eq(supportMessages.senderType, senderType)));
-    }
-
     await db
       .update(supportMessages)
       .set({ isRead: true })
       .where(and(...conditions));
   }
 
-  // Admin support methods
   async getAllSupportConversations(filters?: {
     status?: string;
     assignedTo?: string;
@@ -3765,34 +3376,21 @@ export class DatabaseStorage implements IStorage {
     })[]
   > {
     const conditions: any[] = [];
-
-    if (filters?.status) {
+    if (filters?.status)
       conditions.push(eq(supportConversations.status, filters.status as any));
-    }
-    if (filters?.assignedTo) {
+    if (filters?.assignedTo)
       conditions.push(
         eq(supportConversations.assignedAdminId, filters.assignedTo),
       );
-    }
-
     let query = db
-      .select({
-        conversation: supportConversations,
-        user: users,
-      })
+      .select({ conversation: supportConversations, user: users })
       .from(supportConversations)
       .innerJoin(users, eq(supportConversations.userId, users.id));
-
-    if (conditions.length > 0) {
-      query = query.where(and(...conditions)) as any;
-    }
-
+    if (conditions.length > 0) query = query.where(and(...conditions)) as any;
     const results = await query
       .orderBy(desc(supportConversations.lastActivityAt))
       .limit(filters?.limit || 50);
-
-    // Get unread counts and last messages
-    const enriched = await Promise.all(
+    return await Promise.all(
       results.map(async (r) => {
         const [countResult] = await db
           .select({ count: count() })
@@ -3804,14 +3402,12 @@ export class DatabaseStorage implements IStorage {
               eq(supportMessages.isRead, false),
             ),
           );
-
         const [lastMessage] = await db
           .select()
           .from(supportMessages)
           .where(eq(supportMessages.conversationId, r.conversation.id))
           .orderBy(desc(supportMessages.createdAt))
           .limit(1);
-
         return {
           ...r.conversation,
           user: r.user,
@@ -3820,8 +3416,6 @@ export class DatabaseStorage implements IStorage {
         };
       }),
     );
-
-    return enriched;
   }
 
   async assignSupportConversation(
@@ -3833,7 +3427,6 @@ export class DatabaseStorage implements IStorage {
     });
   }
 
-  // Support tickets
   async getSupportTickets(filters?: {
     status?: string;
     priority?: string;
@@ -3841,14 +3434,10 @@ export class DatabaseStorage implements IStorage {
     (SupportTicket & { conversation: SupportConversation; user: User })[]
   > {
     const conditions: any[] = [];
-
-    if (filters?.status) {
+    if (filters?.status)
       conditions.push(eq(supportTickets.status, filters.status as any));
-    }
-    if (filters?.priority) {
+    if (filters?.priority)
       conditions.push(eq(supportTickets.priority, filters.priority as any));
-    }
-
     let query = db
       .select({
         ticket: supportTickets,
@@ -3861,13 +3450,8 @@ export class DatabaseStorage implements IStorage {
         eq(supportTickets.conversationId, supportConversations.id),
       )
       .innerJoin(users, eq(supportConversations.userId, users.id));
-
-    if (conditions.length > 0) {
-      query = query.where(and(...conditions)) as any;
-    }
-
+    if (conditions.length > 0) query = query.where(and(...conditions)) as any;
     const results = await query.orderBy(desc(supportTickets.createdAt));
-
     return results.map((r) => ({
       ...r.ticket,
       conversation: r.conversation,
@@ -3898,7 +3482,6 @@ export class DatabaseStorage implements IStorage {
     });
   }
 
-  // Push subscription operations
   async createPushSubscription(subscription: {
     userId: string;
     endpoint: string;
@@ -3930,7 +3513,7 @@ export class DatabaseStorage implements IStorage {
   async getPushSubscriptions(
     userId: string,
   ): Promise<{ endpoint: string; p256dh: string; auth: string }[]> {
-    const subs = await db
+    return await db
       .select({
         endpoint: pushSubscriptions.endpoint,
         p256dh: pushSubscriptions.p256dh,
@@ -3938,7 +3521,6 @@ export class DatabaseStorage implements IStorage {
       })
       .from(pushSubscriptions)
       .where(eq(pushSubscriptions.userId, userId));
-    return subs;
   }
 
   async deletePushSubscription(endpoint: string): Promise<void> {
@@ -3979,7 +3561,6 @@ export class DatabaseStorage implements IStorage {
       .where(eq(notificationLogs.bookingId, bookingId));
   }
 
-  // Waitlist operations
   async addToWaitlist(entry: InsertWaitlist): Promise<Waitlist> {
     const [row] = await db.insert(waitlist).values(entry).returning();
     return row;
@@ -4002,7 +3583,6 @@ export class DatabaseStorage implements IStorage {
     return !!row;
   }
 
-  // Tester whitelist operations
   async addToTesterWhitelist(
     entry: InsertTesterWhitelist,
   ): Promise<TesterWhitelist> {
@@ -4032,8 +3612,6 @@ export class DatabaseStorage implements IStorage {
       .limit(1);
     return !!row;
   }
-
-  // ─── Price Override operations ───────────────────────────────────────────────
 
   async getRoomPriceOverrides(
     roomTypeId: string,
@@ -4074,7 +3652,6 @@ export class DatabaseStorage implements IStorage {
     await db.delete(roomPriceOverrides).where(eq(roomPriceOverrides.id, id));
   }
 
-  // roomOptionIds: array of roomOption IDs to fetch overrides for
   async getMealPlanPriceOverrides(
     roomOptionIds: string[],
     startDate: string,
@@ -4117,6 +3694,263 @@ export class DatabaseStorage implements IStorage {
     await db
       .delete(mealPlanPriceOverrides)
       .where(eq(mealPlanPriceOverrides.id, id));
+  }
+
+  async getAllSubscriptionPlans(
+    includeInactive = false,
+  ): Promise<SubscriptionPlan[]> {
+    if (includeInactive) return db.select().from(subscriptionPlans);
+    return db
+      .select()
+      .from(subscriptionPlans)
+      .where(eq(subscriptionPlans.isActive, true));
+  }
+
+  async getSubscriptionPlan(id: string): Promise<SubscriptionPlan | undefined> {
+    const [plan] = await db
+      .select()
+      .from(subscriptionPlans)
+      .where(eq(subscriptionPlans.id, id));
+    return plan;
+  }
+
+  async createSubscriptionPlan(
+    plan: InsertSubscriptionPlan,
+  ): Promise<SubscriptionPlan> {
+    const [created] = await db
+      .insert(subscriptionPlans)
+      .values(plan)
+      .returning();
+    return created;
+  }
+
+  async updateSubscriptionPlan(
+    id: string,
+    updates: Partial<InsertSubscriptionPlan>,
+  ): Promise<SubscriptionPlan | undefined> {
+    const [updated] = await db
+      .update(subscriptionPlans)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(subscriptionPlans.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteSubscriptionPlan(id: string): Promise<void> {
+    await db.delete(subscriptionPlans).where(eq(subscriptionPlans.id, id));
+  }
+
+  async getOwnerActiveSubscription(
+    ownerId: string,
+  ): Promise<OwnerSubscription | undefined> {
+    const [sub] = await db
+      .select()
+      .from(ownerSubscriptions)
+      .where(
+        and(
+          eq(ownerSubscriptions.ownerId, ownerId),
+          eq(ownerSubscriptions.status, "active"),
+        ),
+      )
+      .limit(1);
+    return sub;
+  }
+
+  async getOwnerSubscriptionHistory(
+    ownerId: string,
+  ): Promise<OwnerSubscription[]> {
+    return db
+      .select()
+      .from(ownerSubscriptions)
+      .where(eq(ownerSubscriptions.ownerId, ownerId))
+      .orderBy(desc(ownerSubscriptions.createdAt));
+  }
+
+  async createOwnerSubscription(
+    data: InsertOwnerSubscription,
+  ): Promise<OwnerSubscription> {
+    const [created] = await db
+      .insert(ownerSubscriptions)
+      .values(data)
+      .returning();
+    return created;
+  }
+
+  async activateOwnerSubscription(
+    id: string,
+    adminId: string,
+    note?: string,
+  ): Promise<OwnerSubscription | undefined> {
+    const [updated] = await db
+      .update(ownerSubscriptions)
+      .set({
+        status: "active",
+        activatedBy: adminId,
+        activationNote: note,
+        activatedAt: new Date(),
+      })
+      .where(eq(ownerSubscriptions.id, id))
+      .returning();
+    return updated;
+  }
+
+  async cancelOwnerSubscription(
+    id: string,
+    reason?: string,
+  ): Promise<OwnerSubscription | undefined> {
+    const [updated] = await db
+      .update(ownerSubscriptions)
+      .set({
+        status: "cancelled",
+        cancellationReason: reason,
+        cancelledAt: new Date(),
+      })
+      .where(eq(ownerSubscriptions.id, id))
+      .returning();
+    return updated;
+  }
+
+  async waiveOwnerSubscription(
+    id: string,
+    adminId: string,
+    note: string,
+  ): Promise<OwnerSubscription | undefined> {
+    const [updated] = await db
+      .update(ownerSubscriptions)
+      .set({
+        status: "waived",
+        waivedBy: adminId,
+        waiverNote: note,
+        waivedAt: new Date(),
+      })
+      .where(eq(ownerSubscriptions.id, id))
+      .returning();
+    return updated;
+  }
+
+  async getAllOwnerSubscriptionsForAdmin(): Promise<
+    (OwnerSubscription & { owner: User; plan: SubscriptionPlan })[]
+  > {
+    const results = await db
+      .select({
+        sub: ownerSubscriptions,
+        owner: users,
+        plan: subscriptionPlans,
+      })
+      .from(ownerSubscriptions)
+      .innerJoin(users, eq(ownerSubscriptions.ownerId, users.id))
+      .innerJoin(
+        subscriptionPlans,
+        eq(ownerSubscriptions.planId, subscriptionPlans.id),
+      );
+    return results.map((r) => ({ ...r.sub, owner: r.owner, plan: r.plan }));
+  }
+
+  // ── FIXED: uses endDate (not expiresAt) ──
+  async checkOwnerSubscriptionStatus(ownerId: string): Promise<{
+    isActive: boolean;
+    tier: string | null;
+    expiresAt: Date | null;
+    daysLeft: number | null;
+  }> {
+    const sub = await this.getOwnerActiveSubscription(ownerId);
+    if (!sub)
+      return { isActive: false, tier: null, expiresAt: null, daysLeft: null };
+    const now = new Date();
+    const expires = sub.endDate ? new Date(sub.endDate) : null;
+    if (expires && expires < now) {
+      await db
+        .update(ownerSubscriptions)
+        .set({ status: "expired" })
+        .where(eq(ownerSubscriptions.id, sub.id));
+      return { isActive: false, tier: null, expiresAt: expires, daysLeft: 0 };
+    }
+    const daysLeft = expires
+      ? Math.ceil((expires.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+      : null;
+    return { isActive: true, tier: sub.tier, expiresAt: expires, daysLeft };
+  }
+
+  // ── FIXED: uses endDate (not expiresAt) ──
+  async expireStaleSubscriptions(): Promise<number> {
+    const result = await db
+      .update(ownerSubscriptions)
+      .set({ status: "expired" })
+      .where(
+        and(
+          eq(ownerSubscriptions.status, "active"),
+          lt(ownerSubscriptions.endDate, new Date()),
+        ),
+      )
+      .returning();
+    return result.length;
+  }
+
+  // ── NEW ──
+  async updateOwnerSubscriptionDates(
+    id: string,
+    startDate: Date,
+    endDate: Date,
+  ): Promise<OwnerSubscription | undefined> {
+    const [updated] = await db
+      .update(ownerSubscriptions)
+      .set({ startDate, endDate, updatedAt: new Date() })
+      .where(eq(ownerSubscriptions.id, id))
+      .returning();
+    return updated;
+  }
+
+  // ── NEW ──
+  async canOwnerAddProperty(ownerId: string): Promise<{
+    allowed: boolean;
+    reason?: string;
+    currentCount: number;
+    maxAllowed: number;
+  }> {
+    const sub = await this.getOwnerActiveSubscription(ownerId);
+    if (!sub)
+      return {
+        allowed: false,
+        reason:
+          "No active subscription. Please subscribe to a plan to list properties.",
+        currentCount: 0,
+        maxAllowed: 0,
+      };
+    if (sub.endDate && new Date(sub.endDate) < new Date())
+      return {
+        allowed: false,
+        reason:
+          "Your subscription has expired. Please renew to continue listing.",
+        currentCount: 0,
+        maxAllowed: 0,
+      };
+    const plan = await this.getSubscriptionPlan(sub.planId);
+    if (!plan)
+      return {
+        allowed: false,
+        reason: "Subscription plan not found.",
+        currentCount: 0,
+        maxAllowed: 0,
+      };
+    const [countResult] = await db
+      .select({ count: count() })
+      .from(properties)
+      .where(
+        and(
+          eq(properties.ownerId, ownerId),
+          not(eq(properties.status, "deactivated")),
+        ),
+      );
+    const currentCount = Number(countResult?.count || 0);
+    const maxAllowed = plan.maxProperties;
+    if (currentCount >= maxAllowed)
+      return {
+        allowed: false,
+        reason: `Your ${plan.name} plan allows up to ${maxAllowed} propert${maxAllowed === 1 ? "y" : "ies"}. Upgrade to add more.`,
+        currentCount,
+        maxAllowed,
+      };
+    return { allowed: true, currentCount, maxAllowed };
   }
 }
 
