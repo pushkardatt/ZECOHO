@@ -36,6 +36,7 @@ import {
   Calendar,
   Users,
   Package,
+  CreditCard,
 } from "lucide-react";
 import { Logo } from "@/components/Logo";
 import { NotificationBell } from "@/components/NotificationBell";
