@@ -42,7 +42,11 @@ import {
   MessageCircle,
 } from "lucide-react";
 import { useState, useEffect } from "react";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import { format } from "date-fns";
 import { usePropertyUpdates } from "@/hooks/usePropertyUpdates";
 import { useBookingUpdates } from "@/hooks/useBookingUpdates";
@@ -70,7 +74,12 @@ interface OwnerStats {
   propertyStatus: string;
   avgRating: number;
   reviewCount: number;
-  properties: { id: string; title: string; status: string; pricePerNight: string }[];
+  properties: {
+    id: string;
+    title: string;
+    status: string;
+    pricePerNight: string;
+  }[];
   hasDraftProperty?: boolean;
   draftPropertyId?: string;
   // Action-focused stats
@@ -117,11 +126,10 @@ interface RoomUtilization {
 }
 
 interface CommunicationAnalytics {
-  chats: any[];
-  calls: any[];
   summary: {
     totalChats: number;
     totalCalls: number;
+    totalWhatsapp: number;
     totalMessages: number;
     totalCallDuration: number;
   };
@@ -140,26 +148,43 @@ interface DateUtilization {
   }[];
 }
 
-function RoomTypeUtilizationRow({ 
-  propertyId, 
-  rt 
-}: { 
-  propertyId: string; 
-  rt: { roomTypeId: string; roomTypeName: string; totalRooms: number; confirmedRooms: number; pendingRooms: number; availableRooms: number }
+function RoomTypeUtilizationRow({
+  propertyId,
+  rt,
+}: {
+  propertyId: string;
+  rt: {
+    roomTypeId: string;
+    roomTypeName: string;
+    totalRooms: number;
+    confirmedRooms: number;
+    pendingRooms: number;
+    availableRooms: number;
+  };
 }) {
   const [isOpen, setIsOpen] = useState(false);
-  
-  const { data: dateUtilization, isLoading: dateLoading } = useQuery<DateUtilization>({
-    queryKey: ["/api/owner/properties", propertyId, "rooms", rt.roomTypeId, "utilization"],
-    queryFn: async () => {
-      const response = await fetch(`/api/owner/properties/${propertyId}/rooms/${rt.roomTypeId}/utilization`, {
-        credentials: "include",
-      });
-      if (!response.ok) throw new Error("Failed to fetch date utilization");
-      return response.json();
-    },
-    enabled: isOpen,
-  });
+
+  const { data: dateUtilization, isLoading: dateLoading } =
+    useQuery<DateUtilization>({
+      queryKey: [
+        "/api/owner/properties",
+        propertyId,
+        "rooms",
+        rt.roomTypeId,
+        "utilization",
+      ],
+      queryFn: async () => {
+        const response = await fetch(
+          `/api/owner/properties/${propertyId}/rooms/${rt.roomTypeId}/utilization`,
+          {
+            credentials: "include",
+          },
+        );
+        if (!response.ok) throw new Error("Failed to fetch date utilization");
+        return response.json();
+      },
+      enabled: isOpen,
+    });
 
   return (
     <Collapsible open={isOpen} onOpenChange={setIsOpen}>
@@ -170,12 +195,22 @@ function RoomTypeUtilizationRow({
         <CollapsibleTrigger className="w-full">
           <div className="flex items-center justify-between gap-2 cursor-pointer hover-elevate rounded p-1 -m-1">
             <div className="flex items-center gap-2">
-              {isOpen ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
-              <span className="font-medium truncate" data-testid={`text-roomtype-${rt.roomTypeId}`}>
+              {isOpen ? (
+                <ChevronUp className="h-4 w-4 text-muted-foreground" />
+              ) : (
+                <ChevronDown className="h-4 w-4 text-muted-foreground" />
+              )}
+              <span
+                className="font-medium truncate"
+                data-testid={`text-roomtype-${rt.roomTypeId}`}
+              >
                 {rt.roomTypeName}
               </span>
             </div>
-            <Badge variant="secondary" data-testid={`badge-total-${rt.roomTypeId}`}>
+            <Badge
+              variant="secondary"
+              data-testid={`badge-total-${rt.roomTypeId}`}
+            >
               {rt.totalRooms} total
             </Badge>
           </div>
@@ -205,7 +240,9 @@ function RoomTypeUtilizationRow({
         </div>
         <CollapsibleContent>
           <div className="mt-3 pt-3 border-t">
-            <p className="text-xs text-muted-foreground mb-2 font-medium">Date-wise Availability</p>
+            <p className="text-xs text-muted-foreground mb-2 font-medium">
+              Date-wise Availability
+            </p>
             {dateLoading ? (
               <div className="space-y-1">
                 <Skeleton className="h-6 w-full" />
@@ -223,32 +260,54 @@ function RoomTypeUtilizationRow({
                 </div>
                 {dateUtilization.dates.map((d) => {
                   const isFull = d.availableRooms === 0;
-                  const hasBookings = d.confirmedRooms > 0 || d.pendingRooms > 0;
+                  const hasBookings =
+                    d.confirmedRooms > 0 || d.pendingRooms > 0;
                   return (
-                    <div 
-                      key={d.date} 
-                      className={`grid grid-cols-5 gap-2 text-xs py-1 ${isFull ? 'bg-red-50 dark:bg-red-900/20' : hasBookings ? 'bg-amber-50/50 dark:bg-amber-900/10' : ''}`}
+                    <div
+                      key={d.date}
+                      className={`grid grid-cols-5 gap-2 text-xs py-1 ${isFull ? "bg-red-50 dark:bg-red-900/20" : hasBookings ? "bg-amber-50/50 dark:bg-amber-900/10" : ""}`}
                       data-testid={`date-row-${d.date}`}
                     >
                       <span className="font-medium">
                         {format(new Date(d.date), "EEE, MMM d")}
                       </span>
-                      <span className={`text-center ${d.confirmedRooms > 0 ? 'text-green-600 dark:text-green-400 font-medium' : 'text-muted-foreground'}`}>
+                      <span
+                        className={`text-center ${d.confirmedRooms > 0 ? "text-green-600 dark:text-green-400 font-medium" : "text-muted-foreground"}`}
+                      >
                         {d.confirmedRooms}
                       </span>
-                      <span className={`text-center ${d.pendingRooms > 0 ? 'text-amber-600 dark:text-amber-400 font-medium' : 'text-muted-foreground'}`}>
+                      <span
+                        className={`text-center ${d.pendingRooms > 0 ? "text-amber-600 dark:text-amber-400 font-medium" : "text-muted-foreground"}`}
+                      >
                         {d.pendingRooms}
                       </span>
-                      <span className={`text-center ${d.availableRooms > 0 ? 'text-blue-600 dark:text-blue-400 font-medium' : 'text-red-600 dark:text-red-400 font-medium'}`}>
+                      <span
+                        className={`text-center ${d.availableRooms > 0 ? "text-blue-600 dark:text-blue-400 font-medium" : "text-red-600 dark:text-red-400 font-medium"}`}
+                      >
                         {d.availableRooms}
                       </span>
                       <span className="text-center">
                         {isFull ? (
-                          <Badge variant="destructive" className="text-[10px] px-1 py-0">Full</Badge>
+                          <Badge
+                            variant="destructive"
+                            className="text-[10px] px-1 py-0"
+                          >
+                            Full
+                          </Badge>
                         ) : d.availableRooms < d.totalRooms ? (
-                          <Badge variant="secondary" className="text-[10px] px-1 py-0">Partial</Badge>
+                          <Badge
+                            variant="secondary"
+                            className="text-[10px] px-1 py-0"
+                          >
+                            Partial
+                          </Badge>
                         ) : (
-                          <Badge variant="outline" className="text-[10px] px-1 py-0">Open</Badge>
+                          <Badge
+                            variant="outline"
+                            className="text-[10px] px-1 py-0"
+                          >
+                            Open
+                          </Badge>
                         )}
                       </span>
                     </div>
@@ -269,9 +328,12 @@ function RoomUtilizationCard({ propertyId }: { propertyId: string }) {
   const { data: utilization, isLoading } = useQuery<RoomUtilization>({
     queryKey: ["/api/owner/properties", propertyId, "utilization"],
     queryFn: async () => {
-      const response = await fetch(`/api/owner/properties/${propertyId}/utilization`, {
-        credentials: "include",
-      });
+      const response = await fetch(
+        `/api/owner/properties/${propertyId}/utilization`,
+        {
+          credentials: "include",
+        },
+      );
       if (!response.ok) throw new Error("Failed to fetch utilization");
       return response.json();
     },
@@ -289,7 +351,10 @@ function RoomUtilizationCard({ propertyId }: { propertyId: string }) {
 
   if (!utilization?.roomTypes || utilization.roomTypes.length === 0) {
     return (
-      <div className="text-center py-4 text-muted-foreground" data-testid="no-room-types">
+      <div
+        className="text-center py-4 text-muted-foreground"
+        data-testid="no-room-types"
+      >
         <BedDouble className="mx-auto h-8 w-8 mb-2" />
         <p className="text-sm">No room types configured</p>
       </div>
@@ -299,7 +364,11 @@ function RoomUtilizationCard({ propertyId }: { propertyId: string }) {
   return (
     <div className="space-y-3" data-testid="room-utilization-list">
       {utilization.roomTypes.map((rt) => (
-        <RoomTypeUtilizationRow key={rt.roomTypeId} propertyId={propertyId} rt={rt} />
+        <RoomTypeUtilizationRow
+          key={rt.roomTypeId}
+          propertyId={propertyId}
+          rt={rt}
+        />
       ))}
     </div>
   );
@@ -308,42 +377,57 @@ function RoomUtilizationCard({ propertyId }: { propertyId: string }) {
 export default function OwnerDashboard() {
   const { user } = useAuth();
   const { toast } = useToast();
-  
+
   // Cache invalidation via WebSocket (urgent alert is handled globally in App.tsx)
   useBookingUpdates({ userId: user?.id });
 
   // Listen for service worker messages (push action buttons)
   useEffect(() => {
     const handleSwMessage = (event: MessageEvent) => {
-      if (event.data?.type === 'BOOKING_ACTION') {
+      if (event.data?.type === "BOOKING_ACTION") {
         const { action, bookingId } = event.data;
-        if (action === 'accept') {
+        if (action === "accept") {
           apiRequest("POST", `/api/bookings/${bookingId}/confirm`, {})
             .then(() => {
-              queryClient.invalidateQueries({ queryKey: ["/api/owner/bookings"] });
+              queryClient.invalidateQueries({
+                queryKey: ["/api/owner/bookings"],
+              });
               queryClient.invalidateQueries({ queryKey: ["/api/owner/stats"] });
-              queryClient.invalidateQueries({ queryKey: ["/api/bookings", bookingId] });
+              queryClient.invalidateQueries({
+                queryKey: ["/api/bookings", bookingId],
+              });
             })
             .catch(console.error);
-        } else if (action === 'reject') {
-          apiRequest("POST", `/api/bookings/${bookingId}/reject`, { responseMessage: "Unable to accommodate." })
+        } else if (action === "reject") {
+          apiRequest("POST", `/api/bookings/${bookingId}/reject`, {
+            responseMessage: "Unable to accommodate.",
+          })
             .then(() => {
-              queryClient.invalidateQueries({ queryKey: ["/api/owner/bookings"] });
+              queryClient.invalidateQueries({
+                queryKey: ["/api/owner/bookings"],
+              });
               queryClient.invalidateQueries({ queryKey: ["/api/owner/stats"] });
-              queryClient.invalidateQueries({ queryKey: ["/api/bookings", bookingId] });
+              queryClient.invalidateQueries({
+                queryKey: ["/api/bookings", bookingId],
+              });
             })
             .catch(console.error);
         }
         // Log the push action
-        apiRequest("POST", "/api/push/log-action", { bookingId, action, channel: 'web_push' }).catch(console.error);
+        apiRequest("POST", "/api/push/log-action", {
+          bookingId,
+          action,
+          channel: "web_push",
+        }).catch(console.error);
         setUrgentAlert(null);
         setShowBanner(null);
       }
     };
 
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.addEventListener('message', handleSwMessage);
-      return () => navigator.serviceWorker.removeEventListener('message', handleSwMessage);
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.addEventListener("message", handleSwMessage);
+      return () =>
+        navigator.serviceWorker.removeEventListener("message", handleSwMessage);
     }
   }, []);
 
@@ -351,30 +435,35 @@ export default function OwnerDashboard() {
   const now = new Date();
   const [selectedYear, setSelectedYear] = useState(now.getFullYear());
   const [selectedMonth, setSelectedMonth] = useState(now.getMonth() + 1); // 1-indexed
-  
+
   const { data: stats, isLoading } = useQuery<OwnerStats>({
     queryKey: ["/api/owner/stats"],
     refetchInterval: 30000, // Refresh every 30 seconds for real-time updates
   });
 
   // Separate query for monthly summary with month selection
-  const { data: monthlySummary, isLoading: isLoadingMonthlySummary } = useQuery<MonthlySummary>({
-    queryKey: ["/api/owner/monthly-summary", selectedYear, selectedMonth],
-    queryFn: async () => {
-      const response = await fetch(`/api/owner/monthly-summary?year=${selectedYear}&month=${selectedMonth}`, {
-        credentials: "include",
-      });
-      if (!response.ok) throw new Error("Failed to fetch monthly summary");
-      return response.json();
-    },
-    refetchInterval: 30000,
-  });
+  const { data: monthlySummary, isLoading: isLoadingMonthlySummary } =
+    useQuery<MonthlySummary>({
+      queryKey: ["/api/owner/monthly-summary", selectedYear, selectedMonth],
+      queryFn: async () => {
+        const response = await fetch(
+          `/api/owner/monthly-summary?year=${selectedYear}&month=${selectedMonth}`,
+          {
+            credentials: "include",
+          },
+        );
+        if (!response.ok) throw new Error("Failed to fetch monthly summary");
+        return response.json();
+      },
+      refetchInterval: 30000,
+    });
 
   // Communication analytics query
-  const { data: commAnalytics, isLoading: isLoadingCommAnalytics } = useQuery<CommunicationAnalytics>({
-    queryKey: ["/api/communication/owner"],
-    refetchInterval: 60000, // Refresh every minute
-  });
+  const { data: commAnalytics, isLoading: isLoadingCommAnalytics } =
+    useQuery<CommunicationAnalytics>({
+      queryKey: ["/api/communication/owner"],
+      refetchInterval: 60000, // Refresh every minute
+    });
 
   // Real-time property status updates via WebSocket
   usePropertyUpdates({ userId: user?.id });
@@ -385,10 +474,17 @@ export default function OwnerDashboard() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/owner/stats"] });
-      toast({ title: "Property paused", description: "Your property is now hidden from search results." });
+      toast({
+        title: "Property paused",
+        description: "Your property is now hidden from search results.",
+      });
     },
     onError: () => {
-      toast({ title: "Error", description: "Failed to pause property", variant: "destructive" });
+      toast({
+        title: "Error",
+        description: "Failed to pause property",
+        variant: "destructive",
+      });
     },
   });
 
@@ -398,10 +494,17 @@ export default function OwnerDashboard() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/owner/stats"] });
-      toast({ title: "Property resumed", description: "Your property is now visible in search results." });
+      toast({
+        title: "Property resumed",
+        description: "Your property is now visible in search results.",
+      });
     },
     onError: () => {
-      toast({ title: "Error", description: "Failed to resume property", variant: "destructive" });
+      toast({
+        title: "Error",
+        description: "Failed to resume property",
+        variant: "destructive",
+      });
     },
   });
 
@@ -411,10 +514,17 @@ export default function OwnerDashboard() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/owner/stats"] });
-      toast({ title: "Property deactivated", description: "Your property has been deactivated." });
+      toast({
+        title: "Property deactivated",
+        description: "Your property has been deactivated.",
+      });
     },
     onError: () => {
-      toast({ title: "Error", description: "Failed to deactivate property", variant: "destructive" });
+      toast({
+        title: "Error",
+        description: "Failed to deactivate property",
+        variant: "destructive",
+      });
     },
   });
 
@@ -438,7 +548,13 @@ export default function OwnerDashboard() {
   };
 
   const getStatusBadge = (status: string) => {
-    const statusConfig: Record<string, { variant: "default" | "secondary" | "destructive" | "outline"; label: string }> = {
+    const statusConfig: Record<
+      string,
+      {
+        variant: "default" | "secondary" | "destructive" | "outline";
+        label: string;
+      }
+    > = {
       published: { variant: "default", label: "Published" },
       draft: { variant: "secondary", label: "Draft" },
       pending: { variant: "outline", label: "Pending Review" },
@@ -447,46 +563,77 @@ export default function OwnerDashboard() {
       deactivated: { variant: "destructive", label: "Deactivated" },
       none: { variant: "secondary", label: "No Property" },
     };
-    const config = statusConfig[status] || { variant: "secondary", label: status };
+    const config = statusConfig[status] || {
+      variant: "secondary",
+      label: status,
+    };
     return <Badge variant={config.variant}>{config.label}</Badge>;
   };
 
-  const hasPublishedProperty = stats?.properties?.some(p => p.status === "published");
-  const hasDraftProperty = stats?.properties?.some(p => p.status === "draft");
-  const hasPausedProperty = stats?.properties?.some(p => p.status === "paused");
-  const draftProperty = stats?.properties?.find(p => p.status === "draft");
+  const hasPublishedProperty = stats?.properties?.some(
+    (p) => p.status === "published",
+  );
+  const hasDraftProperty = stats?.properties?.some((p) => p.status === "draft");
+  const hasPausedProperty = stats?.properties?.some(
+    (p) => p.status === "paused",
+  );
+  const draftProperty = stats?.properties?.find((p) => p.status === "draft");
 
   return (
     <OwnerLayout>
       <div className="space-y-6" data-testid="owner-dashboard">
         {hasPublishedProperty && (
-          <Alert className="bg-green-50 dark:bg-green-950/30 border-green-200 dark:border-green-800" data-testid="banner-property-live">
+          <Alert
+            className="bg-green-50 dark:bg-green-950/30 border-green-200 dark:border-green-800"
+            data-testid="banner-property-live"
+          >
             <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />
-            <AlertTitle className="text-green-800 dark:text-green-200">Your property is live!</AlertTitle>
+            <AlertTitle className="text-green-800 dark:text-green-200">
+              Your property is live!
+            </AlertTitle>
             <AlertDescription className="text-green-700 dark:text-green-300">
-              Guests can now discover and book your property. Make sure your calendar and pricing are up to date.
+              Guests can now discover and book your property. Make sure your
+              calendar and pricing are up to date.
             </AlertDescription>
           </Alert>
         )}
 
         {hasPausedProperty && (
-          <Alert className="bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800" data-testid="banner-property-paused">
+          <Alert
+            className="bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800"
+            data-testid="banner-property-paused"
+          >
             <Pause className="h-4 w-4 text-amber-600 dark:text-amber-400" />
-            <AlertTitle className="text-amber-800 dark:text-amber-200">Property paused</AlertTitle>
+            <AlertTitle className="text-amber-800 dark:text-amber-200">
+              Property paused
+            </AlertTitle>
             <AlertDescription className="text-amber-700 dark:text-amber-300">
-              Your property is currently hidden from search results. Resume listing to start receiving bookings again.
+              Your property is currently hidden from search results. Resume
+              listing to start receiving bookings again.
             </AlertDescription>
           </Alert>
         )}
 
         {hasDraftProperty && draftProperty && (
-          <Alert className="bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-800" data-testid="banner-resume-draft">
+          <Alert
+            className="bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-800"
+            data-testid="banner-resume-draft"
+          >
             <FileEdit className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-            <AlertTitle className="text-blue-800 dark:text-blue-200">Complete your property listing</AlertTitle>
+            <AlertTitle className="text-blue-800 dark:text-blue-200">
+              Complete your property listing
+            </AlertTitle>
             <AlertDescription className="text-blue-700 dark:text-blue-300 flex flex-col sm:flex-row sm:items-center gap-2">
-              <span>You have an incomplete property draft: "{draftProperty.title}"</span>
+              <span>
+                You have an incomplete property draft: "{draftProperty.title}"
+              </span>
               <Link href="/list-property">
-                <Button size="sm" variant="outline" className="border-blue-300 dark:border-blue-700 text-blue-700 dark:text-blue-300 hover-elevate" data-testid="btn-resume-draft">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="border-blue-300 dark:border-blue-700 text-blue-700 dark:text-blue-300 hover-elevate"
+                  data-testid="btn-resume-draft"
+                >
                   Resume <ArrowRight className="h-4 w-4 ml-1" />
                 </Button>
               </Link>
@@ -498,32 +645,45 @@ export default function OwnerDashboard() {
         {stats?.alerts && stats.alerts.length > 0 && (
           <div className="space-y-2">
             {stats.alerts.map((alert, index) => (
-              <Alert 
+              <Alert
                 key={`${alert.type}-${index}`}
                 variant={alert.type === "kyc" ? "destructive" : "default"}
                 className={
-                  alert.type === "location" 
+                  alert.type === "location"
                     ? "bg-orange-50 dark:bg-orange-950/30 border-orange-200 dark:border-orange-800"
                     : alert.type === "inventory"
-                    ? "bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800"
-                    : ""
+                      ? "bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800"
+                      : ""
                 }
                 data-testid={`alert-${alert.type}-${index}`}
               >
-                {alert.type === "location" && <MapPin className="h-4 w-4 text-orange-600 dark:text-orange-400" />}
-                {alert.type === "inventory" && <Package className="h-4 w-4 text-amber-600 dark:text-amber-400" />}
+                {alert.type === "location" && (
+                  <MapPin className="h-4 w-4 text-orange-600 dark:text-orange-400" />
+                )}
+                {alert.type === "inventory" && (
+                  <Package className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                )}
                 {alert.type === "kyc" && <AlertTriangle className="h-4 w-4" />}
                 <AlertDescription className="flex items-center justify-between gap-2 flex-wrap">
-                  <span className={
-                    alert.type === "location" ? "text-orange-700 dark:text-orange-300" 
-                    : alert.type === "inventory" ? "text-amber-700 dark:text-amber-300" 
-                    : ""
-                  }>
+                  <span
+                    className={
+                      alert.type === "location"
+                        ? "text-orange-700 dark:text-orange-300"
+                        : alert.type === "inventory"
+                          ? "text-amber-700 dark:text-amber-300"
+                          : ""
+                    }
+                  >
                     {alert.message}
                   </span>
                   {alert.link && (
                     <Link href={alert.link}>
-                      <Button size="sm" variant="outline" className="hover-elevate" data-testid={`btn-fix-${alert.type}-${index}`}>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="hover-elevate"
+                        data-testid={`btn-fix-${alert.type}-${index}`}
+                      >
                         Fix Now <ArrowRight className="h-3 w-3 ml-1" />
                       </Button>
                     </Link>
@@ -537,9 +697,14 @@ export default function OwnerDashboard() {
         {/* Action-focused Summary Cards */}
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           <Link href="/owner/bookings?tab=pending">
-            <Card className="hover-elevate cursor-pointer transition-all" data-testid="card-pending-requests">
+            <Card
+              className="hover-elevate cursor-pointer transition-all"
+              data-testid="card-pending-requests"
+            >
               <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Pending Requests</CardTitle>
+                <CardTitle className="text-sm font-medium">
+                  Pending Requests
+                </CardTitle>
                 <Clock className="h-4 w-4 text-amber-500" />
               </CardHeader>
               <CardContent>
@@ -547,7 +712,10 @@ export default function OwnerDashboard() {
                   <Skeleton className="h-8 w-20" />
                 ) : (
                   <>
-                    <div className="text-2xl font-bold" data-testid="count-pending-requests">
+                    <div
+                      className="text-2xl font-bold"
+                      data-testid="count-pending-requests"
+                    >
                       {stats?.pendingRequests || 0}
                     </div>
                     <p className="text-xs text-muted-foreground">
@@ -560,9 +728,14 @@ export default function OwnerDashboard() {
           </Link>
 
           <Link href="/owner/bookings?tab=ongoing">
-            <Card className="hover-elevate cursor-pointer transition-all" data-testid="card-ongoing-stays">
+            <Card
+              className="hover-elevate cursor-pointer transition-all"
+              data-testid="card-ongoing-stays"
+            >
               <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Ongoing Stays</CardTitle>
+                <CardTitle className="text-sm font-medium">
+                  Ongoing Stays
+                </CardTitle>
                 <UserCheck className="h-4 w-4 text-green-500" />
               </CardHeader>
               <CardContent>
@@ -570,7 +743,10 @@ export default function OwnerDashboard() {
                   <Skeleton className="h-8 w-20" />
                 ) : (
                   <>
-                    <div className="text-2xl font-bold" data-testid="count-ongoing-stays">
+                    <div
+                      className="text-2xl font-bold"
+                      data-testid="count-ongoing-stays"
+                    >
                       {stats?.ongoingStays || 0}
                     </div>
                     <p className="text-xs text-muted-foreground">
@@ -583,9 +759,14 @@ export default function OwnerDashboard() {
           </Link>
 
           <Link href="/owner/bookings?tab=upcoming&filter=today-checkin">
-            <Card className="hover-elevate cursor-pointer transition-all" data-testid="card-todays-checkins">
+            <Card
+              className="hover-elevate cursor-pointer transition-all"
+              data-testid="card-todays-checkins"
+            >
               <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Today's Check-ins</CardTitle>
+                <CardTitle className="text-sm font-medium">
+                  Today's Check-ins
+                </CardTitle>
                 <LogIn className="h-4 w-4 text-blue-500" />
               </CardHeader>
               <CardContent>
@@ -593,7 +774,10 @@ export default function OwnerDashboard() {
                   <Skeleton className="h-8 w-20" />
                 ) : (
                   <>
-                    <div className="text-2xl font-bold" data-testid="count-todays-checkins">
+                    <div
+                      className="text-2xl font-bold"
+                      data-testid="count-todays-checkins"
+                    >
                       {stats?.todaysCheckIns || 0}
                     </div>
                     <p className="text-xs text-muted-foreground">
@@ -606,9 +790,14 @@ export default function OwnerDashboard() {
           </Link>
 
           <Link href="/owner/bookings?tab=ongoing&filter=today-checkout">
-            <Card className="hover-elevate cursor-pointer transition-all" data-testid="card-todays-checkouts">
+            <Card
+              className="hover-elevate cursor-pointer transition-all"
+              data-testid="card-todays-checkouts"
+            >
               <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Today's Check-outs</CardTitle>
+                <CardTitle className="text-sm font-medium">
+                  Today's Check-outs
+                </CardTitle>
                 <LogOut className="h-4 w-4 text-purple-500" />
               </CardHeader>
               <CardContent>
@@ -616,7 +805,10 @@ export default function OwnerDashboard() {
                   <Skeleton className="h-8 w-20" />
                 ) : (
                   <>
-                    <div className="text-2xl font-bold" data-testid="count-todays-checkouts">
+                    <div
+                      className="text-2xl font-bold"
+                      data-testid="count-todays-checkouts"
+                    >
                       {stats?.todaysCheckOuts || 0}
                     </div>
                     <p className="text-xs text-muted-foreground">
@@ -640,7 +832,7 @@ export default function OwnerDashboard() {
               <Select
                 value={`${selectedYear}-${selectedMonth}`}
                 onValueChange={(value) => {
-                  const [year, month] = value.split('-').map(Number);
+                  const [year, month] = value.split("-").map(Number);
                   setSelectedYear(year);
                   setSelectedMonth(month);
                 }}
@@ -661,12 +853,24 @@ export default function OwnerDashboard() {
                         m += 12;
                         y -= 1;
                       }
-                      const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 
-                                          'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                      const monthNames = [
+                        "Jan",
+                        "Feb",
+                        "Mar",
+                        "Apr",
+                        "May",
+                        "Jun",
+                        "Jul",
+                        "Aug",
+                        "Sep",
+                        "Oct",
+                        "Nov",
+                        "Dec",
+                      ];
                       months.push(
                         <SelectItem key={`${y}-${m}`} value={`${y}-${m}`}>
                           {monthNames[m - 1]} {y}
-                        </SelectItem>
+                        </SelectItem>,
                       );
                     }
                     return months;
@@ -678,42 +882,73 @@ export default function OwnerDashboard() {
           <CardContent>
             {isLoadingMonthlySummary ? (
               <div className="grid gap-3 md:grid-cols-3 lg:grid-cols-6">
-                {[1, 2, 3, 4, 5, 6].map(i => <Skeleton key={i} className="h-16" />)}
+                {[1, 2, 3, 4, 5, 6].map((i) => (
+                  <Skeleton key={i} className="h-16" />
+                ))}
               </div>
             ) : (
               <div className="grid gap-3 md:grid-cols-3 lg:grid-cols-6">
                 <div className="p-3 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800">
-                  <div className="text-lg font-bold text-green-700 dark:text-green-300" data-testid="monthly-confirmed">
+                  <div
+                    className="text-lg font-bold text-green-700 dark:text-green-300"
+                    data-testid="monthly-confirmed"
+                  >
                     {monthlySummary?.confirmed || 0}
                   </div>
-                  <p className="text-xs text-green-600 dark:text-green-400">Confirmed</p>
+                  <p className="text-xs text-green-600 dark:text-green-400">
+                    Confirmed
+                  </p>
                 </div>
                 <div className="p-3 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
-                  <div className="text-lg font-bold text-blue-700 dark:text-blue-300" data-testid="monthly-completed">
+                  <div
+                    className="text-lg font-bold text-blue-700 dark:text-blue-300"
+                    data-testid="monthly-completed"
+                  >
                     {monthlySummary?.completed || 0}
                   </div>
-                  <p className="text-xs text-blue-600 dark:text-blue-400">Completed</p>
+                  <p className="text-xs text-blue-600 dark:text-blue-400">
+                    Completed
+                  </p>
                 </div>
                 <div className="p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
-                  <div className="text-lg font-bold text-amber-700 dark:text-amber-300" data-testid="monthly-pending">
+                  <div
+                    className="text-lg font-bold text-amber-700 dark:text-amber-300"
+                    data-testid="monthly-pending"
+                  >
                     {monthlySummary?.pending || 0}
                   </div>
-                  <p className="text-xs text-amber-600 dark:text-amber-400">Pending</p>
+                  <p className="text-xs text-amber-600 dark:text-amber-400">
+                    Pending
+                  </p>
                 </div>
                 <div className="p-3 rounded-lg bg-gray-50 dark:bg-gray-900/20 border border-gray-200 dark:border-gray-700">
-                  <div className="text-lg font-bold text-gray-700 dark:text-gray-300" data-testid="monthly-cancelled">
+                  <div
+                    className="text-lg font-bold text-gray-700 dark:text-gray-300"
+                    data-testid="monthly-cancelled"
+                  >
                     {monthlySummary?.cancelled || 0}
                   </div>
-                  <p className="text-xs text-gray-600 dark:text-gray-400">Cancelled</p>
+                  <p className="text-xs text-gray-600 dark:text-gray-400">
+                    Cancelled
+                  </p>
                 </div>
                 <div className="p-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800">
-                  <div className="text-lg font-bold text-red-700 dark:text-red-300" data-testid="monthly-noshow">
-                    {(monthlySummary?.noShow || 0) + (monthlySummary?.rejected || 0)}
+                  <div
+                    className="text-lg font-bold text-red-700 dark:text-red-300"
+                    data-testid="monthly-noshow"
+                  >
+                    {(monthlySummary?.noShow || 0) +
+                      (monthlySummary?.rejected || 0)}
                   </div>
-                  <p className="text-xs text-red-600 dark:text-red-400">No-show/Rejected</p>
+                  <p className="text-xs text-red-600 dark:text-red-400">
+                    No-show/Rejected
+                  </p>
                 </div>
                 <div className="p-3 rounded-lg bg-primary/10 border border-primary/20">
-                  <div className="text-lg font-bold text-primary" data-testid="monthly-revenue">
+                  <div
+                    className="text-lg font-bold text-primary"
+                    data-testid="monthly-revenue"
+                  >
                     {formatCurrency(monthlySummary?.totalRevenue || 0)}
                   </div>
                   <p className="text-xs text-primary/70">Total Revenue</p>
@@ -734,53 +969,81 @@ export default function OwnerDashboard() {
           <CardContent>
             {isLoadingCommAnalytics ? (
               <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
-                {[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-16" />)}
+                {[1, 2, 3, 4].map((i) => (
+                  <Skeleton key={i} className="h-16" />
+                ))}
               </div>
             ) : (
               <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
                 <div className="p-3 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
                   <div className="flex items-center gap-2 mb-1">
                     <MessageSquare className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                    <span className="text-xs text-blue-600 dark:text-blue-400 font-medium">Chat Sessions</span>
+                    <span className="text-xs text-blue-600 dark:text-blue-400 font-medium">
+                      Chat Sessions
+                    </span>
                   </div>
-                  <div className="text-2xl font-bold text-blue-700 dark:text-blue-300" data-testid="comm-total-chats">
+                  <div
+                    className="text-2xl font-bold text-blue-700 dark:text-blue-300"
+                    data-testid="comm-total-chats"
+                  >
                     {commAnalytics?.summary?.totalChats || 0}
                   </div>
                 </div>
                 <div className="p-3 rounded-lg bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800">
                   <div className="flex items-center gap-2 mb-1">
                     <MessageCircle className="h-4 w-4 text-purple-600 dark:text-purple-400" />
-                    <span className="text-xs text-purple-600 dark:text-purple-400 font-medium">Total Messages</span>
+                    <span className="text-xs text-purple-600 dark:text-purple-400 font-medium">
+                      Total Messages
+                    </span>
                   </div>
-                  <div className="text-2xl font-bold text-purple-700 dark:text-purple-300" data-testid="comm-total-messages">
+                  <div
+                    className="text-2xl font-bold text-purple-700 dark:text-purple-300"
+                    data-testid="comm-total-messages"
+                  >
                     {commAnalytics?.summary?.totalMessages || 0}
                   </div>
                 </div>
                 <div className="p-3 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800">
                   <div className="flex items-center gap-2 mb-1">
                     <Phone className="h-4 w-4 text-green-600 dark:text-green-400" />
-                    <span className="text-xs text-green-600 dark:text-green-400 font-medium">Total Calls</span>
+                    <span className="text-xs text-green-600 dark:text-green-400 font-medium">
+                      Total Calls
+                    </span>
                   </div>
-                  <div className="text-2xl font-bold text-green-700 dark:text-green-300" data-testid="comm-total-calls">
+                  <div
+                    className="text-2xl font-bold text-green-700 dark:text-green-300"
+                    data-testid="comm-total-calls"
+                  >
                     {commAnalytics?.summary?.totalCalls || 0}
                   </div>
                 </div>
                 <div className="p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
                   <div className="flex items-center gap-2 mb-1">
                     <Clock className="h-4 w-4 text-amber-600 dark:text-amber-400" />
-                    <span className="text-xs text-amber-600 dark:text-amber-400 font-medium">Call Duration</span>
+                    <span className="text-xs text-amber-600 dark:text-amber-400 font-medium">
+                      Call Duration
+                    </span>
                   </div>
-                  <div className="text-2xl font-bold text-amber-700 dark:text-amber-300" data-testid="comm-call-duration">
-                    {Math.round((commAnalytics?.summary?.totalCallDuration || 0) / 60)} min
+                  <div
+                    className="text-2xl font-bold text-amber-700 dark:text-amber-300"
+                    data-testid="comm-call-duration"
+                  >
+                    {Math.round(
+                      (commAnalytics?.summary?.totalCallDuration || 0) / 60,
+                    )}{" "}
+                    min
                   </div>
                 </div>
               </div>
             )}
-            {(!commAnalytics?.summary?.totalChats && !commAnalytics?.summary?.totalCalls && !isLoadingCommAnalytics) && (
-              <p className="text-sm text-muted-foreground text-center mt-4">
-                No communication data yet. Stats will appear as guests interact with you.
-              </p>
-            )}
+            {!commAnalytics?.summary?.totalChats &&
+              !commAnalytics?.summary?.totalCalls &&
+              !isLoadingCommAnalytics && (
+                <p className="text-sm text-muted-foreground text-center mt-4">
+                  No communication data yet. Stats will appear as guests
+                  interact with you.
+                </p>
+              )}
           </CardContent>
         </Card>
 
@@ -791,25 +1054,41 @@ export default function OwnerDashboard() {
             </CardHeader>
             <CardContent className="space-y-3">
               <Link href="/owner/bookings">
-                <Button className="w-full justify-start" variant="outline" data-testid="action-view-bookings">
+                <Button
+                  className="w-full justify-start"
+                  variant="outline"
+                  data-testid="action-view-bookings"
+                >
                   <CalendarCheck className="mr-2 h-4 w-4" />
                   View Bookings
                 </Button>
               </Link>
               <Link href="/owner/messages">
-                <Button className="w-full justify-start" variant="outline" data-testid="action-messages">
+                <Button
+                  className="w-full justify-start"
+                  variant="outline"
+                  data-testid="action-messages"
+                >
                   <MessageSquare className="mr-2 h-4 w-4" />
                   Check Messages
                 </Button>
               </Link>
               <Link href="/owner/property">
-                <Button className="w-full justify-start" variant="outline" data-testid="action-edit-property">
+                <Button
+                  className="w-full justify-start"
+                  variant="outline"
+                  data-testid="action-edit-property"
+                >
                   <Edit className="mr-2 h-4 w-4" />
                   Edit Property
                 </Button>
               </Link>
               <Link href="/owner/reviews">
-                <Button className="w-full justify-start" variant="outline" data-testid="action-view-reviews">
+                <Button
+                  className="w-full justify-start"
+                  variant="outline"
+                  data-testid="action-view-reviews"
+                >
                   <Star className="mr-2 h-4 w-4" />
                   View Reviews
                 </Button>
@@ -838,25 +1117,36 @@ export default function OwnerDashboard() {
                       <div className="min-w-0 flex-1">
                         <p className="font-medium truncate">{property.title}</p>
                         <p className="text-sm text-muted-foreground">
-                          {formatCurrency(parseFloat(property.pricePerNight))} / night
+                          {formatCurrency(parseFloat(property.pricePerNight))} /
+                          night
                         </p>
                       </div>
                       <div className="flex items-center gap-2 ml-2">
                         {getStatusBadge(property.status)}
                         <Link href={`/properties/${property.id}`}>
-                          <Button size="icon" variant="ghost" data-testid={`view-property-${property.id}`}>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            data-testid={`view-property-${property.id}`}
+                          >
                             <Eye className="h-4 w-4" />
                           </Button>
                         </Link>
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <Button size="icon" variant="ghost" data-testid={`property-menu-${property.id}`}>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              data-testid={`property-menu-${property.id}`}
+                            >
                               <MoreVertical className="h-4 w-4" />
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                             <Link href={`/owner/property`}>
-                              <DropdownMenuItem data-testid={`edit-property-${property.id}`}>
+                              <DropdownMenuItem
+                                data-testid={`edit-property-${property.id}`}
+                              >
                                 <Edit className="h-4 w-4 mr-2" />
                                 Edit Property
                               </DropdownMenuItem>
@@ -864,7 +1154,9 @@ export default function OwnerDashboard() {
                             <DropdownMenuSeparator />
                             {property.status === "published" && (
                               <DropdownMenuItem
-                                onClick={() => pauseMutation.mutate(property.id)}
+                                onClick={() =>
+                                  pauseMutation.mutate(property.id)
+                                }
                                 disabled={pauseMutation.isPending}
                                 data-testid={`pause-property-${property.id}`}
                               >
@@ -874,7 +1166,9 @@ export default function OwnerDashboard() {
                             )}
                             {property.status === "paused" && (
                               <DropdownMenuItem
-                                onClick={() => resumeMutation.mutate(property.id)}
+                                onClick={() =>
+                                  resumeMutation.mutate(property.id)
+                                }
                                 disabled={resumeMutation.isPending}
                                 data-testid={`resume-property-${property.id}`}
                               >
@@ -884,7 +1178,9 @@ export default function OwnerDashboard() {
                             )}
                             {property.status !== "deactivated" && (
                               <DropdownMenuItem
-                                onClick={() => deactivateMutation.mutate(property.id)}
+                                onClick={() =>
+                                  deactivateMutation.mutate(property.id)
+                                }
                                 disabled={deactivateMutation.isPending}
                                 className="text-destructive focus:text-destructive"
                                 data-testid={`deactivate-property-${property.id}`}
@@ -902,7 +1198,9 @@ export default function OwnerDashboard() {
               ) : (
                 <div className="text-center py-6">
                   <Building2 className="mx-auto h-12 w-12 text-muted-foreground" />
-                  <p className="mt-2 text-muted-foreground">No properties yet</p>
+                  <p className="mt-2 text-muted-foreground">
+                    No properties yet
+                  </p>
                   <Link href="/list-property">
                     <Button className="mt-4" data-testid="add-property">
                       List Your Property
@@ -926,7 +1224,10 @@ export default function OwnerDashboard() {
             <CardContent>
               <div className="space-y-6">
                 {stats.properties.map((property) => (
-                  <div key={property.id} data-testid={`utilization-property-${property.id}`}>
+                  <div
+                    key={property.id}
+                    data-testid={`utilization-property-${property.id}`}
+                  >
                     {stats.properties.length > 1 && (
                       <h4 className="font-medium text-sm mb-2 text-muted-foreground">
                         {property.title}

@@ -11292,46 +11292,59 @@ export async function registerRoutes(
         const user = await storage.getUser(userId);
 
         if (!user || !userHasRole(user, "owner")) {
-          return res.status(403).json({
-            message: "Only owners can access communication analytics",
-          });
+          return res
+            .status(403)
+            .json({
+              message: "Only owners can access communication analytics",
+            });
         }
 
-        const chats = await db
-          .select()
-          .from(chatLogs)
-          .where(eq(chatLogs.ownerId, userId))
-          .orderBy(desc(chatLogs.createdAt))
-          .limit(100);
+        // Get real message stats from conversations table
+        const conversations = await storage.getConversationsByUser(userId);
+        const totalChats = conversations.length;
 
-        const calls = await db
-          .select()
-          .from(callLogs)
-          .where(eq(callLogs.ownerId, userId))
-          .orderBy(desc(callLogs.createdAt))
-          .limit(100);
+        let totalMessages = 0;
+        for (const conv of conversations) {
+          const msgs = await storage.getMessagesByConversation(conv.id);
+          totalMessages += msgs.length;
+        }
 
-        // Calculate summary stats
-        const totalChats = chats.length;
-        const totalCalls = calls.length;
-        const totalMessages = chats.reduce(
-          (sum, c) => sum + (c.messageCount || 0),
-          0,
-        );
-        const totalCallDuration = calls.reduce(
-          (sum, c) => sum + (c.durationSeconds || 0),
-          0,
-        );
+        // Get real call/whatsapp stats from contactInteractions
+        const properties = await storage.getOwnerProperties(userId);
+        const propertyIds = properties.map((p: any) => p.id);
+
+        const allBookings: any[] = [];
+        for (const propId of propertyIds) {
+          const bookings = await storage.getBookingsByProperty(propId);
+          allBookings.push(...bookings);
+        }
+        const bookingIds = allBookings.map((b: any) => b.id);
+
+        const interactions =
+          bookingIds.length > 0
+            ? await db
+                .select()
+                .from(contactInteractions)
+                .where(inArray(contactInteractions.bookingId, bookingIds))
+                .orderBy(desc(contactInteractions.createdAt))
+            : [];
+
+        const totalCalls = interactions.filter(
+          (i) => i.actionType === "call",
+        ).length;
+        const totalWhatsapp = interactions.filter(
+          (i) => i.actionType === "whatsapp",
+        ).length;
 
         res.json({
-          chats,
-          calls,
           summary: {
             totalChats,
-            totalCalls,
             totalMessages,
-            totalCallDuration,
+            totalCalls,
+            totalWhatsapp,
+            totalCallDuration: 0,
           },
+          recentInteractions: interactions.slice(0, 20),
         });
       } catch (error) {
         console.error("Error fetching owner communication analytics:", error);
@@ -11341,7 +11354,6 @@ export async function registerRoutes(
       }
     },
   );
-
   // Get admin's communication analytics (all owners)
   app.get(
     "/api/communication/admin",
