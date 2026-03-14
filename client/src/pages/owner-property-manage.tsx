@@ -36,10 +36,12 @@ import {
   MapPin,
   RefreshCw,
   FileX,
+  IndianRupee,
 } from "lucide-react";
 import { PropertyLocationPicker, type AddressData } from "@/components/PropertyLocationPicker";
 import { PropertyMap } from "@/components/PropertyMap";
 import type { Property, AvailabilityOverride, RoomType, RoomOption } from "@shared/schema";
+import { PriceCalendar } from "@/components/PriceCalendar";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
@@ -121,10 +123,14 @@ export default function OwnerPropertyManage() {
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <div className="overflow-x-auto -mx-4 px-4 md:mx-0 md:px-0">
-            <TabsList className="inline-flex w-auto min-w-full md:grid md:grid-cols-5 md:w-full md:max-w-3xl gap-1">
+            <TabsList className="inline-flex w-auto min-w-full md:grid md:grid-cols-6 md:w-full md:max-w-4xl gap-1">
               <TabsTrigger value="rooms" data-testid="tab-rooms" className="flex-shrink-0 whitespace-nowrap px-3">
                 <Bed className="h-4 w-4 mr-1 md:mr-2" />
                 <span>Rooms</span>
+              </TabsTrigger>
+              <TabsTrigger value="pricing" data-testid="tab-pricing" className="flex-shrink-0 whitespace-nowrap px-3">
+                <IndianRupee className="h-4 w-4 mr-1 md:mr-2" />
+                <span>Pricing</span>
               </TabsTrigger>
               <TabsTrigger value="cancellation" data-testid="tab-cancellation" className="flex-shrink-0 whitespace-nowrap px-3">
                 <FileX className="h-4 w-4 mr-1 md:mr-2" />
@@ -152,6 +158,13 @@ export default function OwnerPropertyManage() {
               propertyId={id!} 
               roomTypes={roomTypes} 
               isLoading={roomTypesLoading} 
+            />
+          </TabsContent>
+
+          <TabsContent value="pricing" className="mt-6">
+            <PriceCalendar
+              propertyId={id!}
+              roomTypes={roomTypes}
             />
           </TabsContent>
 
@@ -412,7 +425,7 @@ function AvailabilitySection({
       roomTypeId: selectedRoomTypeId || undefined,
     });
   };
-  
+
   // Get room type name by id for display
   const getRoomTypeName = (roomTypeId: string | null | undefined) => {
     if (!roomTypeId) return "All Rooms";
@@ -506,7 +519,7 @@ function AvailabilitySection({
                 </SelectContent>
               </Select>
             </div>
-            
+
             <div className="space-y-2">
               <Label>Room Type (optional)</Label>
               <Select value={selectedRoomTypeId || "all"} onValueChange={(val) => setSelectedRoomTypeId(val === "all" ? "" : val)}>
@@ -1002,7 +1015,7 @@ function StatusSection({ property }: { property: Property }) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-      
+
       <GuestPoliciesCard property={property} />
     </div>
   );
@@ -1030,7 +1043,7 @@ function CancellationSection({ property }: { property: Property }) {
           </CardContent>
         </Card>
       )}
-      
+
       <CancellationPolicyCard property={property} />
     </div>
   );
@@ -1077,7 +1090,7 @@ function CancellationPolicyCard({ property }: { property: Property }) {
   const handleSave = () => {
     const hours = parseInt(freeCancellationHours, 10);
     const percent = parseInt(partialRefundPercent, 10);
-    
+
     if (isNaN(hours) || hours < 1 || hours > 168) {
       toast({
         title: "Invalid Hours",
@@ -1086,7 +1099,7 @@ function CancellationPolicyCard({ property }: { property: Property }) {
       });
       return;
     }
-    
+
     if (isNaN(percent) || percent < 0 || percent > 100) {
       toast({
         title: "Invalid Percentage",
@@ -1107,7 +1120,7 @@ function CancellationPolicyCard({ property }: { property: Property }) {
   const getPolicyDescription = () => {
     const hours = parseInt(freeCancellationHours, 10) || 24;
     const percent = parseInt(partialRefundPercent, 10) || 50;
-    
+
     switch (policyType) {
       case "flexible":
         return `Guests get 100% refund if they cancel at least ${hours} hours before check-in. After that, they get ${percent}% refund.`;
@@ -1219,7 +1232,7 @@ function GuestPoliciesCard({ property }: { property: Property }) {
   const [hourlyBookingAllowed, setHourlyBookingAllowed] = useState(property.hourlyBookingAllowed ?? false);
   const [foreignGuestsAllowed, setForeignGuestsAllowed] = useState(property.foreignGuestsAllowed ?? true);
   const [coupleFriendly, setCoupleFriendly] = useState(property.coupleFriendly ?? true);
-  
+
   const updatePoliciesMutation = useMutation({
     mutationFn: async (data: {
       localIdAllowed?: boolean;
@@ -1253,9 +1266,9 @@ function GuestPoliciesCard({ property }: { property: Property }) {
   const handlePolicyChange = (field: string, value: boolean) => {
     // Don't allow rapid toggles while a mutation is pending
     if (updatePoliciesMutation.isPending) return;
-    
+
     const update: Record<string, boolean> = {};
-    
+
     switch (field) {
       case 'localIdAllowed':
         setLocalIdAllowed(value);
@@ -1274,7 +1287,7 @@ function GuestPoliciesCard({ property }: { property: Property }) {
         update.coupleFriendly = value;
         break;
     }
-    
+
     updatePoliciesMutation.mutate(update);
   };
 
@@ -1300,7 +1313,7 @@ function GuestPoliciesCard({ property }: { property: Property }) {
               data-testid="switch-couple-friendly"
             />
           </div>
-          
+
           <div className="flex items-center justify-between rounded-lg border p-4">
             <div className="space-y-0.5">
               <Label className="text-base">Local ID Allowed</Label>
@@ -1315,7 +1328,7 @@ function GuestPoliciesCard({ property }: { property: Property }) {
               data-testid="switch-local-id"
             />
           </div>
-          
+
           <div className="flex items-center justify-between rounded-lg border p-4">
             <div className="space-y-0.5">
               <Label className="text-base">Foreign Guests Allowed</Label>
@@ -1330,7 +1343,7 @@ function GuestPoliciesCard({ property }: { property: Property }) {
               data-testid="switch-foreign-guests"
             />
           </div>
-          
+
           <div className="flex items-center justify-between rounded-lg border p-4">
             <div className="space-y-0.5">
               <Label className="text-base">Hourly Booking</Label>
@@ -1364,7 +1377,7 @@ function RoomsSection({
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingRoom, setEditingRoom] = useState<RoomType | null>(null);
   const [expandedRooms, setExpandedRooms] = useState<Set<string>>(new Set());
-  
+
   // Add room form state
   const [newRoomName, setNewRoomName] = useState("");
   const [newRoomDescription, setNewRoomDescription] = useState("");
@@ -1638,7 +1651,7 @@ function RoomsSection({
                     />
                   </div>
                 </div>
-                
+
                 <div className="border rounded-lg p-4 space-y-4 bg-muted/20">
                   <div className="flex items-center gap-2">
                     <Label className="text-sm font-medium">Occupancy-Based Pricing</Label>
@@ -1789,7 +1802,7 @@ function RoomTypeCard({
   const [editSingleOccupancyBase, setEditSingleOccupancyBase] = useState(String(room.singleOccupancyBase || 1));
   const [editDoubleOccupancy, setEditDoubleOccupancy] = useState(room.doubleOccupancyAdjustment || "");
   const [editTripleOccupancy, setEditTripleOccupancy] = useState(room.tripleOccupancyAdjustment || "");
-  
+
   // Fetch meal plan count for this room
   const { data: mealOptions = [] } = useQuery<RoomOption[]>({
     queryKey: ["/api/rooms", room.id, "options"],
@@ -1807,7 +1820,7 @@ function RoomTypeCard({
       });
       return;
     }
-    
+
     onSave({
       name: editName,
       description: editDescription || null,
@@ -1945,7 +1958,7 @@ function RoomTypeCard({
                 />
               </div>
             </div>
-            
+
             <div className="border rounded-lg p-4 space-y-4 bg-primary/5">
               <div className="flex items-center gap-2">
                 <Label className="text-sm font-medium">Pricing</Label>
@@ -1997,7 +2010,7 @@ function RoomTypeCard({
                 </div>
               </div>
             </div>
-            
+
             <div className="border rounded-lg p-4 space-y-4 bg-muted/20">
               <div className="flex items-center gap-2">
                 <Label className="text-sm font-medium">Occupancy-Based Pricing</Label>
@@ -2075,7 +2088,7 @@ function RoomOptionsSection({ roomId }: { roomId: string }) {
   const [newOptionName, setNewOptionName] = useState("");
   const [newOptionPrice, setNewOptionPrice] = useState("");
   const [newOptionInclusions, setNewOptionInclusions] = useState("");
-  
+
   // Edit state
   const [editingOptionId, setEditingOptionId] = useState<string | null>(null);
   const [editOptionName, setEditOptionName] = useState("");
@@ -2275,7 +2288,7 @@ function RoomOptionsSection({ roomId }: { roomId: string }) {
                 })}
               </div>
             </div>
-            
+
             <div className="relative">
               <div className="absolute inset-0 flex items-center">
                 <span className="w-full border-t" />

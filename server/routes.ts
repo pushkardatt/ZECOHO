@@ -4156,19 +4156,16 @@ export async function registerRoutes(
       const roomsCount = validatedData.rooms || 1;
       const guestCount = validatedData.guests || 1;
 
-      let basePrice = Number(property.pricePerNight);
-      let mealPrice = 0;
       let occupancyAdjustment = 0;
+      let mealPricePerPersonPerNight = 0;
+      let roomType: Awaited<ReturnType<typeof storage.getRoomType>> | null = null;
+      let mealOption: Awaited<ReturnType<typeof storage.getRoomOption>> | null = null;
 
-      // If room type is selected, use room type pricing
+      // If room type is selected, resolve occupancy adjustments and meal option
       if (validatedData.roomTypeId) {
-        const roomType = await storage.getRoomType(validatedData.roomTypeId);
+        roomType = await storage.getRoomType(validatedData.roomTypeId);
         if (roomType) {
-          basePrice = Number(roomType.basePrice);
-
           // Calculate occupancy-based pricing adjustment
-          // singleOccupancyBase defines how many guests are included in the base price
-          // Adjustments apply when guest count exceeds this base
           const singleOccupancyBase = roomType.singleOccupancyBase || 1;
           const guestsOverBase = guestCount - singleOccupancyBase;
 
@@ -4183,24 +4180,54 @@ export async function registerRoutes(
 
           // If meal option is selected, add meal option price (per person per night)
           if (validatedData.roomOptionId) {
-            const mealOption = await storage.getRoomOption(
-              validatedData.roomOptionId,
-            );
-            if (
-              mealOption &&
-              mealOption.roomTypeId === validatedData.roomTypeId
-            ) {
-              mealPrice = Number(mealOption.priceAdjustment);
+            mealOption = await storage.getRoomOption(validatedData.roomOptionId);
+            if (mealOption && mealOption.roomTypeId === validatedData.roomTypeId) {
+              mealPricePerPersonPerNight = Number(mealOption.priceAdjustment);
             }
           }
         }
       }
 
-      // Room subtotal: (base + occupancy) × nights × rooms
-      // Meal subtotal: mealPrice × guests × nights (per person per night)
-      const roomSubtotal =
-        nights * (basePrice + occupancyAdjustment) * roomsCount;
-      const mealSubtotal = nights * mealPrice * guestCount;
+      // Room subtotal: sum nightly price overrides (falls back to basePrice/pricePerNight)
+      // Meal subtotal: sum nightly meal price overrides (falls back to flat mealOption price)
+      let roomSubtotal = 0;
+      let mealSubtotal = 0;
+      const startDateStr = checkIn.toISOString().split("T")[0];
+      const endDateStr = new Date(checkOut.getTime() - 86400000).toISOString().split("T")[0]; // last night = checkOut - 1 day
+
+      if (roomType) {
+        // Fetch room price overrides for this room type over the stay
+        const roomOverrides = await storage.getRoomPriceOverrides(roomType.id, startDateStr, endDateStr);
+        const roomOverrideMap: Record<string, number> = {};
+        for (const o of roomOverrides) roomOverrideMap[o.date] = parseFloat(o.price);
+
+        // Fetch meal plan price overrides if a meal option is selected
+        const mealOverrideMap: Record<string, number> = {};
+        if (mealOption) {
+          const mealOverrides = await storage.getMealPlanPriceOverrides(property.id, startDateStr, endDateStr);
+          for (const o of mealOverrides) {
+            if (o.mealPlan === mealOption.name) mealOverrideMap[o.date] = parseFloat(o.price);
+          }
+        }
+
+        // Iterate each night and sum per-night prices
+        const nightCursor = new Date(checkIn);
+        while (nightCursor < checkOut) {
+          const dateStr = nightCursor.toISOString().split("T")[0];
+          const nightRoomPrice = roomOverrideMap[dateStr] ?? Number(roomType.basePrice);
+          roomSubtotal += (nightRoomPrice + occupancyAdjustment) * roomsCount;
+
+          if (mealOption) {
+            const nightMealPrice = mealOverrideMap[dateStr] ?? mealPricePerPersonPerNight;
+            mealSubtotal += nightMealPrice * guestCount;
+          }
+
+          nightCursor.setDate(nightCursor.getDate() + 1);
+        }
+      } else {
+        // No room type — fall back to flat property price per night
+        roomSubtotal = nights * Number(property.pricePerNight) * roomsCount;
+      }
 
       // Platform fee: ZERO commission model - no platform fee
       const platformFee = 0;
@@ -11071,52 +11098,72 @@ export async function registerRoutes(
         const roomsCount = rooms || parentBooking.rooms || 1;
         const guestCount = parentBooking.guests || 1;
 
-        let basePrice = Number(property.pricePerNight);
-        let mealPrice = 0;
         let occupancyAdjustment = 0;
+        let mealPricePerPersonPerNight = 0;
+        let extRoomType: Awaited<ReturnType<typeof storage.getRoomType>> | null = null;
+        let extMealOption: Awaited<ReturnType<typeof storage.getRoomOption>> | null = null;
 
         // Use same room type and meal option pricing from parent booking
         if (parentBooking.roomTypeId) {
-          const roomType = await storage.getRoomType(parentBooking.roomTypeId);
-          if (roomType) {
-            basePrice = Number(roomType.basePrice);
-
+          extRoomType = await storage.getRoomType(parentBooking.roomTypeId);
+          if (extRoomType) {
             // Calculate occupancy-based pricing adjustment
-            // singleOccupancyBase defines how many guests are included in the base price
-            const singleOccupancyBase = roomType.singleOccupancyBase || 1;
+            const singleOccupancyBase = extRoomType.singleOccupancyBase || 1;
             const guestsOverBase = guestCount - singleOccupancyBase;
 
-            if (guestsOverBase >= 2 && roomType.tripleOccupancyAdjustment) {
-              // Triple occupancy: 2+ guests over base
-              occupancyAdjustment = Number(roomType.tripleOccupancyAdjustment);
+            if (guestsOverBase >= 2 && extRoomType.tripleOccupancyAdjustment) {
+              occupancyAdjustment = Number(extRoomType.tripleOccupancyAdjustment);
             } else if (
               guestsOverBase >= 1 &&
-              roomType.doubleOccupancyAdjustment
+              extRoomType.doubleOccupancyAdjustment
             ) {
-              // Double occupancy: 1 guest over base
-              occupancyAdjustment = Number(roomType.doubleOccupancyAdjustment);
+              occupancyAdjustment = Number(extRoomType.doubleOccupancyAdjustment);
             }
-            // No adjustment when guestCount <= singleOccupancyBase
 
             if (parentBooking.roomOptionId) {
-              const mealOption = await storage.getRoomOption(
-                parentBooking.roomOptionId,
-              );
-              if (
-                mealOption &&
-                mealOption.roomTypeId === parentBooking.roomTypeId
-              ) {
-                mealPrice = Number(mealOption.priceAdjustment);
+              extMealOption = await storage.getRoomOption(parentBooking.roomOptionId);
+              if (extMealOption && extMealOption.roomTypeId === parentBooking.roomTypeId) {
+                mealPricePerPersonPerNight = Number(extMealOption.priceAdjustment);
               }
             }
           }
         }
 
-        // Room subtotal: (base + occupancy) × nights × rooms
-        // Meal subtotal: mealPrice × guests × nights (per person per night)
-        const roomSubtotal =
-          nights * (basePrice + occupancyAdjustment) * roomsCount;
-        const mealSubtotal = nights * mealPrice * guestCount;
+        // Room subtotal: sum nightly price overrides (falls back to basePrice/pricePerNight)
+        let roomSubtotal = 0;
+        let mealSubtotal = 0;
+        const extStartDateStr = extensionCheckIn.toISOString().split("T")[0];
+        const extEndDateStr = new Date(extensionCheckOut.getTime() - 86400000).toISOString().split("T")[0];
+
+        if (extRoomType) {
+          const roomOverrides = await storage.getRoomPriceOverrides(extRoomType.id, extStartDateStr, extEndDateStr);
+          const roomOverrideMap: Record<string, number> = {};
+          for (const o of roomOverrides) roomOverrideMap[o.date] = parseFloat(o.price);
+
+          const mealOverrideMap: Record<string, number> = {};
+          if (extMealOption) {
+            const mealOverrides = await storage.getMealPlanPriceOverrides(property.id, extStartDateStr, extEndDateStr);
+            for (const o of mealOverrides) {
+              if (o.mealPlan === extMealOption.name) mealOverrideMap[o.date] = parseFloat(o.price);
+            }
+          }
+
+          const nightCursor = new Date(extensionCheckIn);
+          while (nightCursor < extensionCheckOut) {
+            const dateStr = nightCursor.toISOString().split("T")[0];
+            const nightRoomPrice = roomOverrideMap[dateStr] ?? Number(extRoomType.basePrice);
+            roomSubtotal += (nightRoomPrice + occupancyAdjustment) * roomsCount;
+
+            if (extMealOption) {
+              const nightMealPrice = mealOverrideMap[dateStr] ?? mealPricePerPersonPerNight;
+              mealSubtotal += nightMealPrice * guestCount;
+            }
+
+            nightCursor.setDate(nightCursor.getDate() + 1);
+          }
+        } else {
+          roomSubtotal = nights * Number(property.pricePerNight) * roomsCount;
+        }
         const totalPrice = roomSubtotal + mealSubtotal;
 
         // Create extension booking (payment at hotel)
@@ -11651,6 +11698,189 @@ export async function registerRoutes(
         res.status(500).json({ message: "Failed to fetch logs" });
       }
     },
+  );
+
+  // ==================== PRICING CALENDAR ROUTES ====================
+
+  // GET /api/properties/:id/pricing-calendar?startDate=YYYY-MM-DD&endDate=YYYY-MM-DD
+  // Returns per-date prices for all room types + meal plans in a date range.
+  // Used by both the owner price calendar and the guest booking page.
+  app.get(
+    "/api/properties/:id/pricing-calendar",
+    async (req: any, res) => {
+      try {
+        const propertyId = req.params.id;
+        const { startDate, endDate } = req.query as { startDate?: string; endDate?: string };
+
+        if (!startDate || !endDate) {
+          return res.status(400).json({ message: "startDate and endDate query params are required (YYYY-MM-DD)" });
+        }
+
+        const property = await storage.getProperty(propertyId);
+        if (!property) {
+          return res.status(404).json({ message: "Property not found" });
+        }
+
+        const roomTypes = await storage.getRoomTypes(propertyId);
+
+        // Fetch room price overrides for all room types in parallel
+        const roomPriceData = await Promise.all(
+          roomTypes.map(async (rt) => {
+            const overrides = await storage.getRoomPriceOverrides(rt.id, startDate, endDate);
+            const overrideMap: Record<string, number> = {};
+            for (const o of overrides) {
+              overrideMap[o.date] = parseFloat(o.price);
+            }
+            return {
+              roomTypeId: rt.id,
+              roomTypeName: rt.name,
+              defaultPrice: parseFloat(rt.basePrice),
+              overrides: overrideMap,
+            };
+          })
+        );
+
+        // Fetch meal plan price overrides for the property
+        const mealPlanOverrides = await storage.getMealPlanPriceOverrides(propertyId, startDate, endDate);
+        // Group by date -> mealPlan -> price
+        const mealPlanData: Record<string, Record<string, number>> = {};
+        for (const o of mealPlanOverrides) {
+          if (!mealPlanData[o.date]) mealPlanData[o.date] = {};
+          mealPlanData[o.date][o.mealPlan] = parseFloat(o.price);
+        }
+
+        res.json({
+          propertyId,
+          startDate,
+          endDate,
+          roomTypes: roomPriceData,
+          mealPlanOverrides: mealPlanData,
+        });
+      } catch (error) {
+        console.error("Error fetching pricing calendar:", error);
+        res.status(500).json({ message: "Failed to fetch pricing calendar" });
+      }
+    }
+  );
+
+  // PUT /api/owner/room-types/:roomTypeId/price-overrides
+  // Bulk-set price overrides for a date range. Body: { startDate, endDate, price }
+  // Iterates every date in the range and upserts an override for each.
+  app.put(
+    "/api/owner/room-types/:roomTypeId/price-overrides",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const userId = req.user.claims.sub;
+        const { roomTypeId } = req.params;
+        const { startDate, endDate, price } = req.body;
+
+        if (!startDate || !endDate || price === undefined) {
+          return res.status(400).json({ message: "startDate, endDate, and price are required" });
+        }
+
+        const parsedPrice = parseFloat(price);
+        if (isNaN(parsedPrice) || parsedPrice < 0) {
+          return res.status(400).json({ message: "price must be a non-negative number" });
+        }
+
+        // Verify the room type belongs to a property owned by this user
+        const roomType = await storage.getRoomType(roomTypeId);
+        if (!roomType) {
+          return res.status(404).json({ message: "Room type not found" });
+        }
+        const property = await storage.getProperty(roomType.propertyId);
+        if (!property || property.ownerId !== userId) {
+          return res.status(403).json({ message: "Not authorized" });
+        }
+
+        // Iterate each date in range and upsert
+        const results = [];
+        const current = new Date(startDate);
+        const last = new Date(endDate);
+
+        while (current <= last) {
+          const dateStr = current.toISOString().split("T")[0];
+          const override = await storage.upsertRoomPriceOverride(roomTypeId, dateStr, parsedPrice);
+          results.push(override);
+          current.setDate(current.getDate() + 1);
+        }
+
+        res.json({ message: `${results.length} date(s) updated`, overrides: results });
+      } catch (error) {
+        console.error("Error setting room price overrides:", error);
+        res.status(500).json({ message: "Failed to set price overrides" });
+      }
+    }
+  );
+
+  // DELETE /api/owner/price-overrides/:id?type=room|mealplan
+  // Remove a single price override by id. type param selects which table.
+  app.delete(
+    "/api/owner/price-overrides/:id",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const { id } = req.params;
+        const type = (req.query.type as string) || "room";
+
+        if (type === "mealplan") {
+          await storage.deleteMealPlanPriceOverride(id);
+        } else {
+          await storage.deleteRoomPriceOverride(id);
+        }
+
+        res.json({ success: true });
+      } catch (error) {
+        console.error("Error deleting price override:", error);
+        res.status(500).json({ message: "Failed to delete price override" });
+      }
+    }
+  );
+
+  // PUT /api/owner/properties/:propertyId/meal-plan-price-overrides
+  // Bulk-set meal plan price overrides for a date range.
+  // Body: { startDate, endDate, mealPlan: "breakfast"|"halfBoard"|"fullBoard", price }
+  app.put(
+    "/api/owner/properties/:propertyId/meal-plan-price-overrides",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const userId = req.user.claims.sub;
+        const { propertyId } = req.params;
+        const { startDate, endDate, mealPlan, price } = req.body;
+
+        if (!startDate || !endDate || !mealPlan || price === undefined) {
+          return res.status(400).json({ message: "startDate, endDate, mealPlan, and price are required" });
+        }
+
+        const parsedPrice = parseFloat(price);
+        if (isNaN(parsedPrice) || parsedPrice < 0) {
+          return res.status(400).json({ message: "price must be a non-negative number" });
+        }
+
+        const property = await storage.getProperty(propertyId);
+        if (!property || property.ownerId !== userId) {
+          return res.status(403).json({ message: "Not authorized" });
+        }
+
+        const results = [];
+        const current = new Date(startDate);
+        const last = new Date(endDate);
+
+        while (current <= last) {
+          const dateStr = current.toISOString().split("T")[0];
+          const override = await storage.upsertMealPlanPriceOverride(propertyId, dateStr, mealPlan, parsedPrice);
+          results.push(override);
+          current.setDate(current.getDate() + 1);
+        }
+
+        res.json({ message: `${results.length} date(s) updated`, overrides: results });
+      } catch (error) {
+        console.error("Error setting meal plan price overrides:", error);
+        res.status(500).json({ message: "Failed to set meal plan price overrides" });
+      }
+    }
   );
 
   const httpServer = existingServer || createServer(app);
