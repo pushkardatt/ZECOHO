@@ -24,6 +24,7 @@ import {
   Palette,
   ImageIcon,
   Radio,
+  CreditCard,
 } from "lucide-react";
 
 interface CommunicationAnalytics {
@@ -88,6 +89,13 @@ const adminSections = [
     testId: "admin-nav-owners",
   },
   {
+    title: "Subscriptions",
+    description: "Manage owner subscription plans",
+    icon: CreditCard,
+    href: "/admin/subscriptions",
+    testId: "admin-nav-subscriptions",
+  },
+  {
     title: "Inventory",
     description: "Monitor room availability",
     icon: Package,
@@ -150,11 +158,12 @@ export default function AdminHome() {
   const [, setLocation] = useLocation();
 
   // Communication analytics query for admin
-  const { data: commAnalytics, isLoading: isLoadingCommAnalytics } = useQuery<CommunicationAnalytics>({
-    queryKey: ["/api/communication/admin"],
-    refetchInterval: 60000,
-    enabled: user?.userRole === "admin",
-  });
+  const { data: commAnalytics, isLoading: isLoadingCommAnalytics } =
+    useQuery<CommunicationAnalytics>({
+      queryKey: ["/api/communication/admin"],
+      refetchInterval: 60000,
+      enabled: user?.userRole === "admin",
+    });
 
   // Check if user is admin
   if (user?.userRole !== "admin") {
@@ -165,7 +174,10 @@ export default function AdminHome() {
           <p className="text-muted-foreground mb-6 text-sm">
             You need admin privileges to access this panel.
           </p>
-          <Button onClick={() => setLocation("/")} data-testid="button-back-home">
+          <Button
+            onClick={() => setLocation("/")}
+            data-testid="button-back-home"
+          >
             Back to Home
           </Button>
         </div>
@@ -216,44 +228,69 @@ export default function AdminHome() {
           <CardContent>
             {isLoadingCommAnalytics ? (
               <div className="grid gap-3 grid-cols-2 md:grid-cols-4">
-                {[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-16" />)}
+                {[1, 2, 3, 4].map((i) => (
+                  <Skeleton key={i} className="h-16" />
+                ))}
               </div>
             ) : (
               <div className="grid gap-3 grid-cols-2 md:grid-cols-4">
                 <div className="p-3 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
                   <div className="flex items-center gap-2 mb-1">
                     <MessageSquare className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                    <span className="text-xs text-blue-600 dark:text-blue-400 font-medium">Chat Sessions</span>
+                    <span className="text-xs text-blue-600 dark:text-blue-400 font-medium">
+                      Chat Sessions
+                    </span>
                   </div>
-                  <div className="text-2xl font-bold text-blue-700 dark:text-blue-300" data-testid="admin-comm-total-chats">
+                  <div
+                    className="text-2xl font-bold text-blue-700 dark:text-blue-300"
+                    data-testid="admin-comm-total-chats"
+                  >
                     {commAnalytics?.summary?.totalChats || 0}
                   </div>
                 </div>
                 <div className="p-3 rounded-lg bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800">
                   <div className="flex items-center gap-2 mb-1">
                     <MessageCircle className="h-4 w-4 text-purple-600 dark:text-purple-400" />
-                    <span className="text-xs text-purple-600 dark:text-purple-400 font-medium">Total Messages</span>
+                    <span className="text-xs text-purple-600 dark:text-purple-400 font-medium">
+                      Total Messages
+                    </span>
                   </div>
-                  <div className="text-2xl font-bold text-purple-700 dark:text-purple-300" data-testid="admin-comm-total-messages">
+                  <div
+                    className="text-2xl font-bold text-purple-700 dark:text-purple-300"
+                    data-testid="admin-comm-total-messages"
+                  >
                     {commAnalytics?.summary?.totalMessages || 0}
                   </div>
                 </div>
                 <div className="p-3 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800">
                   <div className="flex items-center gap-2 mb-1">
                     <Phone className="h-4 w-4 text-green-600 dark:text-green-400" />
-                    <span className="text-xs text-green-600 dark:text-green-400 font-medium">Total Calls</span>
+                    <span className="text-xs text-green-600 dark:text-green-400 font-medium">
+                      Total Calls
+                    </span>
                   </div>
-                  <div className="text-2xl font-bold text-green-700 dark:text-green-300" data-testid="admin-comm-total-calls">
+                  <div
+                    className="text-2xl font-bold text-green-700 dark:text-green-300"
+                    data-testid="admin-comm-total-calls"
+                  >
                     {commAnalytics?.summary?.totalCalls || 0}
                   </div>
                 </div>
                 <div className="p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
                   <div className="flex items-center gap-2 mb-1">
                     <Clock className="h-4 w-4 text-amber-600 dark:text-amber-400" />
-                    <span className="text-xs text-amber-600 dark:text-blue-400 font-medium">Call Duration</span>
+                    <span className="text-xs text-amber-600 dark:text-blue-400 font-medium">
+                      Call Duration
+                    </span>
                   </div>
-                  <div className="text-2xl font-bold text-amber-700 dark:text-amber-300" data-testid="admin-comm-call-duration">
-                    {Math.round((commAnalytics?.summary?.totalCallDuration || 0) / 60)} min
+                  <div
+                    className="text-2xl font-bold text-amber-700 dark:text-amber-300"
+                    data-testid="admin-comm-call-duration"
+                  >
+                    {Math.round(
+                      (commAnalytics?.summary?.totalCallDuration || 0) / 60,
+                    )}{" "}
+                    min
                   </div>
                 </div>
               </div>

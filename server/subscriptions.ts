@@ -92,4 +92,37 @@ router.delete("/admin/subscription-plans/:id", async (req, res) => {
     res.status(500).json({ error: "Failed to delete plan" });
   }
 });
+/* ADMIN — activate */
+router.post("/admin/owner-subscriptions/:id/activate", async (req, res) => {
+  try {
+    const { note, startDate, endDate } = req.body;
+    const adminId = req.user?.claims?.sub || req.user?.id;
+    await storage.updateOwnerSubscriptionDates(req.params.id, new Date(startDate), new Date(endDate));
+    const sub = await storage.activateOwnerSubscription(req.params.id, adminId, note);
+    res.json(sub);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to activate" });
+  }
+});
+
+/* ADMIN — cancel */
+router.post("/admin/owner-subscriptions/:id/cancel", async (req, res) => {
+  try {
+    const sub = await storage.cancelOwnerSubscription(req.params.id, req.body.reason);
+    res.json(sub);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to cancel" });
+  }
+});
+
+/* ADMIN — waive */
+router.post("/admin/owner-subscriptions/:id/waive", async (req, res) => {
+  try {
+    const adminId = req.user?.claims?.sub || req.user?.id;
+    const sub = await storage.waiveOwnerSubscription(req.params.id, adminId, req.body.note);
+    res.json(sub);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to waive" });
+  }
+});
 export default router;

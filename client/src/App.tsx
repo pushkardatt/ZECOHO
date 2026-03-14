@@ -73,6 +73,7 @@ import AdminOwners from "@/pages/admin-owners";
 import AdminInventory from "@/pages/admin-inventory";
 import AdminUsers from "@/pages/admin-users";
 import AdminSupport from "@/pages/admin-support";
+import AdminSubscriptions from "@/pages/admin-subscriptions.tsx";
 import AdminHome from "@/pages/admin-home";
 import AdminLogo from "@/pages/admin-logo";
 import AdminComingSoon from "@/pages/admin-coming-soon";
@@ -155,6 +156,7 @@ function Router() {
       <Route path="/admin/inventory" component={AdminInventory} />
       <Route path="/admin/users" component={AdminUsers} />
       <Route path="/admin/support" component={AdminSupport} />
+      <Route path="/admin/subscriptions" component={AdminSubscriptions} />
       <Route path="/admin/logo" component={AdminLogo} />
       <Route path="/admin/coming-soon" component={AdminComingSoon} />
       <Route path="/admin" component={AdminHome} />
