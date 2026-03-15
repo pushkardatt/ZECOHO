@@ -381,6 +381,13 @@ export default function OwnerDashboard() {
   // Cache invalidation via WebSocket (urgent alert is handled globally in App.tsx)
   useBookingUpdates({ userId: user?.id });
 
+  const { data: subStatus } = useQuery({
+    queryKey: ["/api/owner/subscription-status", user?.id],
+    queryFn: () => apiRequest("GET", `/api/owner/subscription-status/${user?.id}`).then(r => r.json()),
+    enabled: !!user?.id,
+  });
+  const subExpired = subStatus && !subStatus.isActive;
+
   // Listen for service worker messages (push action buttons)
   useEffect(() => {
     const handleSwMessage = (event: MessageEvent) => {
@@ -582,6 +589,14 @@ export default function OwnerDashboard() {
   return (
     <OwnerLayout>
       <div className="space-y-6" data-testid="owner-dashboard">
+        {subExpired && (
+          <Alert className="bg-amber-50 dark:bg-amber-950/30 border-amber-300">
+            <AlertTriangle className="h-4 w-4 text-amber-600" />
+            <AlertTitle className="text-amber-800 dark:text-amber-200">{subStatus?.status === "expired" ? "Your subscription has expired" : "No active subscription"}</AlertTitle>
+            <AlertDescription className="text-amber-700 dark:text-amber-300">Your property listing may be affected.{" "}<Link href="/owner/subscription" className="font-semibold underline hover:text-amber-900">Renew or activate your subscription →</Link></AlertDescription>
+          </Alert>
+        )}
+
         {hasPublishedProperty && (
           <Alert
             className="bg-green-50 dark:bg-green-950/30 border-green-200 dark:border-green-800"
