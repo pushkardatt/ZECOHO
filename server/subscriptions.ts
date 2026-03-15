@@ -63,22 +63,26 @@ router.post("/admin/subscription-plans", async (req, res) => {
   }
 }); // ← this was missing
 
+
 /* ADMIN — update plan */
 router.patch("/admin/subscription-plans/:id", async (req, res) => {
   try {
+    console.log("PATCH plan id:", req.params.id);
+    console.log("PATCH body received:", JSON.stringify(req.body));
     const body = {
       ...req.body,
       price: req.body.price ? String(req.body.price) : undefined,
       cutoffPrice: req.body.cutoffPrice ? String(req.body.cutoffPrice) : undefined,
     };
+    console.log("PATCH body to save:", JSON.stringify(body));
     const plan = await storage.updateSubscriptionPlan(req.params.id, body);
+    console.log("PATCH result:", JSON.stringify(plan));
     res.json(plan);
   } catch (error) {
     console.error("Update plan error:", error instanceof Error ? error.message : String(error));
     res.status(500).json({ error: "Failed to update subscription plan" });
   }
 });
-
 /* ADMIN — list owner subscriptions */
 router.get("/admin/owner-subscriptions", async (req, res) => {
   try {
