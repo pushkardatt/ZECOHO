@@ -13,6 +13,18 @@ router.get("/subscription-plans", async (req, res) => {
   }
 });
 
+/* ADMIN — get all plans including inactive */
+router.get("/admin/subscription-plans", async (req, res) => {
+  try {
+    const includeInactive = req.query.includeInactive === "true";
+    const plans = await storage.getAllSubscriptionPlans(includeInactive);
+    res.json(plans);
+  } catch (error) {
+    console.error("Error fetching admin subscription plans:", error);
+    res.status(500).json({ error: "Failed to fetch subscription plans" });
+  }
+});
+
 /* OWNER — get subscription status */
 router.get("/owner/subscription-status/:ownerId", async (req, res) => {
   try {
