@@ -135,22 +135,6 @@ export default function Landing() {
           </span>
         </div>
       )}
-      {subExpired && (
-        <div className="bg-amber-50 dark:bg-amber-950/30 border-b border-amber-300 px-4 py-3 text-center">
-          <span className="text-amber-800 dark:text-amber-200 text-sm font-medium">
-            <AlertTriangle className="inline h-4 w-4 mr-1" />
-            {subStatus?.status === "expired"
-              ? "Your subscription has expired."
-              : "No active subscription."}{" "}
-            <a
-              href="/owner/subscription"
-              className="font-semibold underline hover:text-amber-900"
-            >
-              Renew or activate your subscription →
-            </a>
-          </span>
-        </div>
-      )}
       {/* Hero Section - Clean Modern Design */}
       <div className="relative min-h-[450px] md:min-h-[480px] flex items-center justify-center overflow-hidden bg-gradient-to-br from-rose-50 via-background to-amber-50 dark:from-rose-950/20 dark:via-background dark:to-amber-950/20">
         <div className="relative z-10 container px-4 md:px-6 text-center py-8">
