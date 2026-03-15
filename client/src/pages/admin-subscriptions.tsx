@@ -358,6 +358,8 @@ export default function AdminSubscriptions() {
 
   const savePlanMutation = useMutation({
     mutationFn: async (data: any) => {
+      console.log("savePlan editingPlan:", editingPlan?.id, "method:", editingPlan ? "PATCH" : "POST");
+      console.log("savePlan data:", JSON.stringify(data));
       const url = editingPlan ? '/api/admin/subscription-plans/' + editingPlan.id : "/api/admin/subscription-plans";
       const method = editingPlan ? "PATCH" : "POST";
       const res = await fetch(url, { method, headers: { "Content-Type": "application/json" }, credentials: "include", body: JSON.stringify(data) });
