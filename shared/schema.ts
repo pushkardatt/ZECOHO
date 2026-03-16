@@ -615,24 +615,66 @@ export const roomTypes = pgTable(
       .references(() => properties.id, { onDelete: "cascade" }),
     name: varchar("name", { length: 255 }).notNull(),
     description: text("description"),
+
+    // ── Pricing ──────────────────────────────────────────────────────────────
+    // basePrice is the fallback / single-occupancy price
     basePrice: decimal("base_price", { precision: 10, scale: 2 }).notNull(),
-    // Original price for strikethrough display (optional - if set and > basePrice, shows discount)
+    // Strike-through price for showing discount
     originalPrice: decimal("original_price", { precision: 10, scale: 2 }),
-    // Occupancy-based pricing adjustments (nullable - if not set, basePrice applies to all occupancy levels)
-    singleOccupancyBase: integer("single_occupancy_base").default(1), // Number of guests included in base price
+    // Separate full-room rates per occupancy level (replaces base+adjustment model)
+    singleOccupancyPrice: decimal("single_occupancy_price", {
+      precision: 10,
+      scale: 2,
+    }),
+    doubleOccupancyPrice: decimal("double_occupancy_price", {
+      precision: 10,
+      scale: 2,
+    }),
+    tripleOccupancyPrice: decimal("triple_occupancy_price", {
+      precision: 10,
+      scale: 2,
+    }),
+    // Legacy adjustment columns kept for backwards compatibility
+    singleOccupancyBase: integer("single_occupancy_base").default(1),
     doubleOccupancyAdjustment: decimal("double_occupancy_adjustment", {
       precision: 10,
       scale: 2,
-    }), // Extra charge per night for 2 guests
+    }),
     tripleOccupancyAdjustment: decimal("triple_occupancy_adjustment", {
       precision: 10,
       scale: 2,
-    }), // Extra charge per night for 3+ guests
+    }),
+
+    // ── Capacity ─────────────────────────────────────────────────────────────
     maxGuests: integer("max_guests").notNull().default(2),
     totalRooms: integer("total_rooms").notNull().default(1),
+
+    // ── Room details ─────────────────────────────────────────────────────────
+    bedType: varchar("bed_type", { length: 50 }), // King / Queen / Twin / Double / Single / Bunk
+    roomSizeSqft: integer("room_size_sqft"), // e.g. 250
+    viewType: varchar("view_type", { length: 50 }), // Pool / Garden / City / Mountain / None
+    bathroomType: varchar("bathroom_type", { length: 50 }), // Attached / Shared / En-suite
+    smokingPolicy: varchar("smoking_policy", { length: 20 }), // Smoking / Non-smoking
+    floorNumber: varchar("floor_number", { length: 20 }), // e.g. "2nd floor", "Ground"
+
+    // ── In-room amenities ────────────────────────────────────────────────────
+    hasAC: boolean("has_ac").notNull().default(true),
+    hasTV: boolean("has_tv").notNull().default(false),
+    hasWifi: boolean("has_wifi").notNull().default(false),
+    hasFridge: boolean("has_fridge").notNull().default(false),
+    hasKettle: boolean("has_kettle").notNull().default(false),
+    hasSafe: boolean("has_safe").notNull().default(false),
+    hasBalcony: boolean("has_balcony").notNull().default(false),
+    hasHeater: boolean("has_heater").notNull().default(false),
+
+    // ── Photos ───────────────────────────────────────────────────────────────
     images: text("images")
       .array()
       .default(sql`ARRAY[]::text[]`),
+
+    // ── Rules & display ──────────────────────────────────────────────────────
+    minimumStay: integer("minimum_stay").notNull().default(1), // min nights
+    sortOrder: integer("sort_order").notNull().default(0), // display ranking
     isActive: boolean("is_active").notNull().default(true),
     createdAt: timestamp("created_at").defaultNow(),
     updatedAt: timestamp("updated_at").defaultNow(),
@@ -1414,6 +1456,40 @@ export const insertRoomSchema = createInsertSchema(rooms)
       .transform((v) => String(v)),
     maxGuests: z.coerce.number().int().min(1).optional(),
     totalRooms: z.coerce.number().int().min(1).optional(),
+    singleOccupancyPrice: z
+      .union([z.string(), z.number()])
+      .pipe(z.coerce.number().min(0))
+      .transform((v) => String(v))
+      .nullable()
+      .optional(),
+    doubleOccupancyPrice: z
+      .union([z.string(), z.number()])
+      .pipe(z.coerce.number().min(0))
+      .transform((v) => String(v))
+      .nullable()
+      .optional(),
+    tripleOccupancyPrice: z
+      .union([z.string(), z.number()])
+      .pipe(z.coerce.number().min(0))
+      .transform((v) => String(v))
+      .nullable()
+      .optional(),
+    bedType: z.string().nullable().optional(),
+    roomSizeSqft: z.coerce.number().int().min(1).nullable().optional(),
+    viewType: z.string().nullable().optional(),
+    bathroomType: z.string().nullable().optional(),
+    smokingPolicy: z.string().nullable().optional(),
+    floorNumber: z.string().nullable().optional(),
+    hasAC: z.boolean().optional(),
+    hasTV: z.boolean().optional(),
+    hasWifi: z.boolean().optional(),
+    hasFridge: z.boolean().optional(),
+    hasKettle: z.boolean().optional(),
+    hasSafe: z.boolean().optional(),
+    hasBalcony: z.boolean().optional(),
+    hasHeater: z.boolean().optional(),
+    minimumStay: z.coerce.number().int().min(1).optional(),
+    sortOrder: z.coerce.number().int().min(0).optional(),
   });
 
 export const insertRoomTypeSchema = createInsertSchema(roomTypes)
@@ -1433,6 +1509,26 @@ export const insertRoomTypeSchema = createInsertSchema(roomTypes)
       .transform((v) => String(v))
       .nullable()
       .optional(),
+    // New separate occupancy prices
+    singleOccupancyPrice: z
+      .union([z.string(), z.number()])
+      .pipe(z.coerce.number().min(0))
+      .transform((v) => String(v))
+      .nullable()
+      .optional(),
+    doubleOccupancyPrice: z
+      .union([z.string(), z.number()])
+      .pipe(z.coerce.number().min(0))
+      .transform((v) => String(v))
+      .nullable()
+      .optional(),
+    tripleOccupancyPrice: z
+      .union([z.string(), z.number()])
+      .pipe(z.coerce.number().min(0))
+      .transform((v) => String(v))
+      .nullable()
+      .optional(),
+    // Legacy fields kept for compatibility
     maxGuests: z.coerce.number().int().min(1).optional(),
     totalRooms: z.coerce.number().int().min(1).optional(),
     singleOccupancyBase: z.coerce.number().int().min(1).optional(),
@@ -1448,6 +1544,23 @@ export const insertRoomTypeSchema = createInsertSchema(roomTypes)
       .transform((v) => String(v))
       .nullable()
       .optional(),
+    // New fields
+    bedType: z.string().nullable().optional(),
+    roomSizeSqft: z.coerce.number().int().min(1).nullable().optional(),
+    viewType: z.string().nullable().optional(),
+    bathroomType: z.string().nullable().optional(),
+    smokingPolicy: z.string().nullable().optional(),
+    floorNumber: z.string().nullable().optional(),
+    hasAC: z.boolean().optional(),
+    hasTV: z.boolean().optional(),
+    hasWifi: z.boolean().optional(),
+    hasFridge: z.boolean().optional(),
+    hasKettle: z.boolean().optional(),
+    hasSafe: z.boolean().optional(),
+    hasBalcony: z.boolean().optional(),
+    hasHeater: z.boolean().optional(),
+    minimumStay: z.coerce.number().int().min(1).optional(),
+    sortOrder: z.coerce.number().int().min(0).optional(),
   });
 
 export const insertRoomOptionSchema = createInsertSchema(roomOptions)

@@ -96,6 +96,36 @@ function userHasRole(user: any, role: string): boolean {
   return user.userRole === role;
 }
 
+// Helper: resolve the correct room rate based on guest count
+// Uses new separate occupancy prices (singleOccupancyPrice / doubleOccupancyPrice / tripleOccupancyPrice)
+// Falls back to legacy basePrice + adjustment model if new prices not set
+function resolveOccupancyPrice(roomType: any, adultsCount: number): number {
+  const adults = Math.max(1, adultsCount || 1);
+
+  // New model: separate full-room rates per occupancy level
+  if (adults >= 3 && roomType.tripleOccupancyPrice) {
+    return Number(roomType.tripleOccupancyPrice);
+  }
+  if (adults >= 2 && roomType.doubleOccupancyPrice) {
+    return Number(roomType.doubleOccupancyPrice);
+  }
+  if (adults === 1 && roomType.singleOccupancyPrice) {
+    return Number(roomType.singleOccupancyPrice);
+  }
+
+  // Legacy fallback: basePrice + adjustment
+  const basePrice = Number(roomType.basePrice);
+  const singleOccupancyBase = roomType.singleOccupancyBase || 1;
+  const guestsOverBase = adults - singleOccupancyBase;
+  if (guestsOverBase >= 2 && roomType.tripleOccupancyAdjustment) {
+    return basePrice + Number(roomType.tripleOccupancyAdjustment);
+  }
+  if (guestsOverBase >= 1 && roomType.doubleOccupancyAdjustment) {
+    return basePrice + Number(roomType.doubleOccupancyAdjustment);
+  }
+  return basePrice;
+}
+
 export async function registerRoutes(
   app: Express,
   existingServer?: Server,
@@ -4150,38 +4180,25 @@ export async function registerRoutes(
       }
 
       // Calculate total price server-side (don't trust client)
-      // Room cost = (roomBasePrice + occupancyAdjustment) × nights × rooms
+      // Room cost = occupancy-resolved price × nights × rooms
       // Meal cost = mealOptionPrice × guests × nights (per person per night)
       const nights = Math.ceil(
         (checkOut.getTime() - checkIn.getTime()) / (1000 * 60 * 60 * 24),
       );
       const roomsCount = validatedData.rooms || 1;
       const guestCount = validatedData.guests || 1;
+      const adultsCount = validatedData.adults || guestCount;
 
-      let basePrice = Number(property.pricePerNight);
+      let pricePerNight = Number(property.pricePerNight);
       let mealPrice = 0;
-      let occupancyAdjustment = 0;
 
       // If room type is selected, use room type pricing
       if (validatedData.roomTypeId) {
         const roomType = await storage.getRoomType(validatedData.roomTypeId);
         if (roomType) {
-          basePrice = Number(roomType.basePrice);
-
-          // Calculate occupancy-based pricing adjustment
-          // singleOccupancyBase defines how many guests are included in the base price
-          // Adjustments apply when guest count exceeds this base
-          const singleOccupancyBase = roomType.singleOccupancyBase || 1;
-          const guestsOverBase = guestCount - singleOccupancyBase;
-
-          if (guestsOverBase >= 2 && roomType.tripleOccupancyAdjustment) {
-            occupancyAdjustment = Number(roomType.tripleOccupancyAdjustment);
-          } else if (
-            guestsOverBase >= 1 &&
-            roomType.doubleOccupancyAdjustment
-          ) {
-            occupancyAdjustment = Number(roomType.doubleOccupancyAdjustment);
-          }
+          // Resolve correct rate based on adult count (single/double/triple)
+          const adultsPerRoom = Math.ceil(adultsCount / roomsCount);
+          pricePerNight = resolveOccupancyPrice(roomType, adultsPerRoom);
 
           // If meal option is selected, add meal option price (per person per night)
           if (validatedData.roomOptionId) {
@@ -4198,10 +4215,9 @@ export async function registerRoutes(
         }
       }
 
-      // Room subtotal: (base + occupancy) × nights × rooms
+      // Room subtotal: price × nights × rooms
       // Meal subtotal: mealPrice × guests × nights (per person per night)
-      const roomSubtotal =
-        nights * (basePrice + occupancyAdjustment) * roomsCount;
+      const roomSubtotal = nights * pricePerNight * roomsCount;
       const mealSubtotal = nights * mealPrice * guestCount;
 
       // Platform fee: ZERO commission model - no platform fee
@@ -11072,33 +11088,18 @@ export async function registerRoutes(
         );
         const roomsCount = rooms || parentBooking.rooms || 1;
         const guestCount = parentBooking.guests || 1;
+        const adultsCount = parentBooking.adults || guestCount;
 
-        let basePrice = Number(property.pricePerNight);
+        let pricePerNight = Number(property.pricePerNight);
         let mealPrice = 0;
-        let occupancyAdjustment = 0;
 
         // Use same room type and meal option pricing from parent booking
         if (parentBooking.roomTypeId) {
           const roomType = await storage.getRoomType(parentBooking.roomTypeId);
           if (roomType) {
-            basePrice = Number(roomType.basePrice);
-
-            // Calculate occupancy-based pricing adjustment
-            // singleOccupancyBase defines how many guests are included in the base price
-            const singleOccupancyBase = roomType.singleOccupancyBase || 1;
-            const guestsOverBase = guestCount - singleOccupancyBase;
-
-            if (guestsOverBase >= 2 && roomType.tripleOccupancyAdjustment) {
-              // Triple occupancy: 2+ guests over base
-              occupancyAdjustment = Number(roomType.tripleOccupancyAdjustment);
-            } else if (
-              guestsOverBase >= 1 &&
-              roomType.doubleOccupancyAdjustment
-            ) {
-              // Double occupancy: 1 guest over base
-              occupancyAdjustment = Number(roomType.doubleOccupancyAdjustment);
-            }
-            // No adjustment when guestCount <= singleOccupancyBase
+            // Resolve correct rate based on adult count (single/double/triple)
+            const adultsPerRoom = Math.ceil(adultsCount / roomsCount);
+            pricePerNight = resolveOccupancyPrice(roomType, adultsPerRoom);
 
             if (parentBooking.roomOptionId) {
               const mealOption = await storage.getRoomOption(
@@ -11114,10 +11115,9 @@ export async function registerRoutes(
           }
         }
 
-        // Room subtotal: (base + occupancy) × nights × rooms
+        // Room subtotal: price × nights × rooms
         // Meal subtotal: mealPrice × guests × nights (per person per night)
-        const roomSubtotal =
-          nights * (basePrice + occupancyAdjustment) * roomsCount;
+        const roomSubtotal = nights * pricePerNight * roomsCount;
         const mealSubtotal = nights * mealPrice * guestCount;
         const totalPrice = roomSubtotal + mealSubtotal;
 
@@ -11693,6 +11693,15 @@ export async function registerRoutes(
             roomTypeId: rt.id,
             roomTypeName: rt.name,
             defaultPrice: parseFloat(rt.basePrice),
+            singleOccupancyPrice: rt.singleOccupancyPrice
+              ? parseFloat(rt.singleOccupancyPrice)
+              : null,
+            doubleOccupancyPrice: rt.doubleOccupancyPrice
+              ? parseFloat(rt.doubleOccupancyPrice)
+              : null,
+            tripleOccupancyPrice: rt.tripleOccupancyPrice
+              ? parseFloat(rt.tripleOccupancyPrice)
+              : null,
             overrides: overrideMap,
           };
         }),

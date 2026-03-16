@@ -951,25 +951,35 @@ export default function PropertyDetails() {
     );
 
     if (nights <= 0) return 0;
-
-    // Room type must be selected for pricing (room-level pricing only)
-    if (!selectedRoomTypeId) {
-      // Return 0 if no room type selected - pricing is now room-level only
-      return 0;
-    }
+    if (!selectedRoomTypeId) return 0;
 
     let pricePerNight = 0;
     let mealOptionPrice = 0;
 
-    const selectedRoomType = roomTypes.find(
-      (rt: any) => rt.id === selectedRoomTypeId,
-    );
-    if (selectedRoomType) {
-      pricePerNight = Number(selectedRoomType.basePrice);
+    const rt = roomTypes.find((rt: any) => rt.id === selectedRoomTypeId);
+    if (rt) {
+      // New model: pick correct rate based on adults per room
+      const adultsPerRoom = Math.ceil(adults / rooms);
+      if (adultsPerRoom >= 3 && rt.tripleOccupancyPrice) {
+        pricePerNight = Number(rt.tripleOccupancyPrice);
+      } else if (adultsPerRoom >= 2 && rt.doubleOccupancyPrice) {
+        pricePerNight = Number(rt.doubleOccupancyPrice);
+      } else if (rt.singleOccupancyPrice) {
+        pricePerNight = Number(rt.singleOccupancyPrice);
+      } else {
+        // Legacy fallback: basePrice + adjustment
+        pricePerNight = Number(rt.basePrice);
+        const singleOccupancyBase = rt.singleOccupancyBase || 1;
+        const guestsOverBase = adultsPerRoom - singleOccupancyBase;
+        if (guestsOverBase >= 2 && rt.tripleOccupancyAdjustment) {
+          pricePerNight += Number(rt.tripleOccupancyAdjustment);
+        } else if (guestsOverBase >= 1 && rt.doubleOccupancyAdjustment) {
+          pricePerNight += Number(rt.doubleOccupancyAdjustment);
+        }
+      }
 
-      // Add meal option price if selected
-      if (selectedMealOptionId && selectedRoomType.mealOptions) {
-        const selectedMealOption = selectedRoomType.mealOptions.find(
+      if (selectedMealOptionId && rt.mealOptions) {
+        const selectedMealOption = rt.mealOptions.find(
           (opt: any) => opt.id === selectedMealOptionId,
         );
         if (selectedMealOption) {
@@ -980,35 +990,10 @@ export default function PropertyDetails() {
 
     if (pricePerNight <= 0) return 0;
 
-    // Calculate occupancy adjustment based on adults per room
-    let occupancyAdjustment = 0;
-    if (selectedRoomType) {
-      const adultsPerRoom = Math.ceil(adults / rooms);
-      const singleOccupancyBase = selectedRoomType.singleOccupancyBase || 1;
-
-      if (adultsPerRoom >= 3 && selectedRoomType.tripleOccupancyAdjustment) {
-        // 3+ adults per room - apply triple occupancy adjustment
-        occupancyAdjustment = Number(
-          selectedRoomType.tripleOccupancyAdjustment,
-        );
-      } else if (
-        adultsPerRoom >= 2 &&
-        adultsPerRoom > singleOccupancyBase &&
-        selectedRoomType.doubleOccupancyAdjustment
-      ) {
-        // 2 adults per room (exceeding single base) - apply double occupancy adjustment
-        occupancyAdjustment = Number(
-          selectedRoomType.doubleOccupancyAdjustment,
-        );
-      }
-    }
-
-    // Calculate base price: room rate (per room per night) + occupancy adjustment + meal cost (per person per night)
-    const roomCost = nights * (pricePerNight + occupancyAdjustment) * rooms;
+    const roomCost = nights * pricePerNight * rooms;
     const mealCost = nights * mealOptionPrice * guests;
     let basePrice = roomCost + mealCost;
 
-    // Apply bulk booking discount if applicable
     if (
       property.bulkBookingEnabled &&
       property.bulkBookingMinRooms &&
@@ -2550,6 +2535,7 @@ export default function PropertyDetails() {
                         ]),
                       )}
                       showDatesContext={!!(checkIn && checkOut)}
+                      adults={adults}
                     />
                   )}
 
@@ -2657,7 +2643,9 @@ export default function PropertyDetails() {
                       </p>
                       <p className="text-xs text-blue-600 dark:text-blue-300 mt-1">
                         Only {selectedRoomInventory.availableRooms} room
-                        {selectedRoomInventory.availableRooms !== 1 ? "s" : ""}{" "}
+                        {selectedRoomInventory.availableRooms !== 1
+                          ? "s"
+                          : ""}{" "}
                         available for this room type. Book now to secure your
                         stay!
                       </p>
@@ -2671,73 +2659,46 @@ export default function PropertyDetails() {
                   selectedRoomTypeId &&
                   bookingStep === "select" &&
                   (() => {
-                    const selectedRoomType = roomTypes.find(
+                    const rt = roomTypes.find(
                       (rt: any) => rt.id === selectedRoomTypeId,
                     );
-                    if (!selectedRoomType) return null;
+                    if (!rt) return null;
 
-                    const basePrice = Number(selectedRoomType.basePrice);
-                    const roomTypeName = selectedRoomType.name;
-                    let originalPrice: number | null = null;
+                    const adultsPerRoom = Math.ceil(adults / rooms);
+                    let pricePerNight = Number(rt.basePrice);
+                    let occupancyLabel = "";
+                    if (adultsPerRoom >= 3 && rt.tripleOccupancyPrice) {
+                      pricePerNight = Number(rt.tripleOccupancyPrice);
+                      occupancyLabel = "Triple occupancy";
+                    } else if (adultsPerRoom >= 2 && rt.doubleOccupancyPrice) {
+                      pricePerNight = Number(rt.doubleOccupancyPrice);
+                      occupancyLabel = "Double occupancy";
+                    } else if (rt.singleOccupancyPrice) {
+                      pricePerNight = Number(rt.singleOccupancyPrice);
+                      occupancyLabel = "Single occupancy";
+                    }
+
                     let mealOptionName = "";
                     let mealOptionPrice = 0;
-
-                    let occupancyAdjustment = 0;
-                    let occupancyLabel = "";
-                    const adultsPerRoom = Math.ceil(adults / rooms);
-                    const singleOccupancyBase =
-                      selectedRoomType.singleOccupancyBase || 1;
-
-                    if (
-                      adultsPerRoom >= 3 &&
-                      selectedRoomType.tripleOccupancyAdjustment
-                    ) {
-                      occupancyAdjustment = Number(
-                        selectedRoomType.tripleOccupancyAdjustment,
+                    if (selectedMealOptionId && rt.mealOptions) {
+                      const sel = rt.mealOptions.find(
+                        (opt: any) => opt.id === selectedMealOptionId,
                       );
-                      occupancyLabel = "Triple occupancy";
-                    } else if (
-                      adultsPerRoom >= 2 &&
-                      adultsPerRoom > singleOccupancyBase &&
-                      selectedRoomType.doubleOccupancyAdjustment
-                    ) {
-                      occupancyAdjustment = Number(
-                        selectedRoomType.doubleOccupancyAdjustment,
-                      );
-                      occupancyLabel = "Double occupancy";
-                    }
-
-                    const effectivePrice = basePrice + occupancyAdjustment;
-
-                    if (
-                      selectedRoomType.originalPrice &&
-                      parseFloat(selectedRoomType.originalPrice) >
-                        parseFloat(selectedRoomType.basePrice)
-                    ) {
-                      originalPrice = Number(selectedRoomType.originalPrice);
-                    }
-
-                    if (selectedMealOptionId && selectedRoomType.mealOptions) {
-                      const selectedMealOption =
-                        selectedRoomType.mealOptions.find(
-                          (opt: any) => opt.id === selectedMealOptionId,
-                        );
-                      if (selectedMealOption) {
-                        mealOptionName = selectedMealOption.name;
-                        mealOptionPrice = Number(
-                          selectedMealOption.priceAdjustment,
-                        );
+                      if (sel) {
+                        mealOptionName = sel.name;
+                        mealOptionPrice = Number(sel.priceAdjustment);
                       }
                     }
 
-                    const roomSubtotal = nights * effectivePrice * rooms;
+                    const roomSubtotal = nights * pricePerNight * rooms;
                     const mealSubtotal = nights * mealOptionPrice * guests;
 
                     return (
                       <div className="mb-4 p-4 bg-muted rounded-lg space-y-2">
                         <div className="flex justify-between text-sm">
                           <span className="text-muted-foreground">
-                            <span className="font-medium">{roomTypeName}</span>
+                            <span className="font-medium">{rt.name}</span>
+                            {occupancyLabel ? ` (${occupancyLabel})` : ""}
                             {" × "}
                             {nights}N × {rooms}R
                           </span>
@@ -2748,7 +2709,7 @@ export default function PropertyDetails() {
                         {mealOptionPrice > 0 && (
                           <div className="flex justify-between text-sm">
                             <span className="text-muted-foreground">
-                              {mealOptionName}
+                              {mealOptionName} × {guests} guests × {nights}N
                             </span>
                             <span className="font-semibold">
                               ₹{mealSubtotal.toLocaleString("en-IN")}
@@ -2769,58 +2730,42 @@ export default function PropertyDetails() {
                   nights > 0 &&
                   selectedRoomTypeId &&
                   (() => {
-                    const selectedRoomType = roomTypes.find(
+                    const rt = roomTypes.find(
                       (rt: any) => rt.id === selectedRoomTypeId,
                     );
-                    if (!selectedRoomType) return null;
+                    if (!rt) return null;
 
-                    const basePrice = Number(selectedRoomType.basePrice);
+                    const adultsPerRoom = Math.ceil(adults / rooms);
+                    let basePrice = Number(rt.basePrice);
+                    let occupancyLabel = "";
+                    if (adultsPerRoom >= 3 && rt.tripleOccupancyPrice) {
+                      basePrice = Number(rt.tripleOccupancyPrice);
+                      occupancyLabel = "Triple occupancy";
+                    } else if (adultsPerRoom >= 2 && rt.doubleOccupancyPrice) {
+                      basePrice = Number(rt.doubleOccupancyPrice);
+                      occupancyLabel = "Double occupancy";
+                    } else if (rt.singleOccupancyPrice) {
+                      basePrice = Number(rt.singleOccupancyPrice);
+                      occupancyLabel = "Single occupancy";
+                    }
+
                     let originalPrice: number | null = null;
+                    if (
+                      rt.originalPrice &&
+                      parseFloat(rt.originalPrice) > parseFloat(rt.basePrice)
+                    ) {
+                      originalPrice = Number(rt.originalPrice);
+                    }
+
                     let mealOptionName = "";
                     let mealOptionPrice = 0;
-                    let occupancyAdjustment = 0;
-                    let occupancyLabel = "";
-                    const adultsPerRoom = Math.ceil(adults / rooms);
-                    const singleOccupancyBase =
-                      selectedRoomType.singleOccupancyBase || 1;
-
-                    if (
-                      adultsPerRoom >= 3 &&
-                      selectedRoomType.tripleOccupancyAdjustment
-                    ) {
-                      occupancyAdjustment = Number(
-                        selectedRoomType.tripleOccupancyAdjustment,
+                    if (selectedMealOptionId && rt.mealOptions) {
+                      const sel = rt.mealOptions.find(
+                        (opt: any) => opt.id === selectedMealOptionId,
                       );
-                      occupancyLabel = "Triple occupancy";
-                    } else if (
-                      adultsPerRoom >= 2 &&
-                      adultsPerRoom > singleOccupancyBase &&
-                      selectedRoomType.doubleOccupancyAdjustment
-                    ) {
-                      occupancyAdjustment = Number(
-                        selectedRoomType.doubleOccupancyAdjustment,
-                      );
-                      occupancyLabel = "Double occupancy";
-                    }
-
-                    if (
-                      selectedRoomType.originalPrice &&
-                      parseFloat(selectedRoomType.originalPrice) >
-                        parseFloat(selectedRoomType.basePrice)
-                    ) {
-                      originalPrice = Number(selectedRoomType.originalPrice);
-                    }
-
-                    if (selectedMealOptionId && selectedRoomType.mealOptions) {
-                      const selectedMealOption =
-                        selectedRoomType.mealOptions.find(
-                          (opt: any) => opt.id === selectedMealOptionId,
-                        );
-                      if (selectedMealOption) {
-                        mealOptionName = selectedMealOption.name;
-                        mealOptionPrice = Number(
-                          selectedMealOption.priceAdjustment,
-                        );
+                      if (sel) {
+                        mealOptionName = sel.name;
+                        mealOptionPrice = Number(sel.priceAdjustment);
                       }
                     }
 
@@ -2843,9 +2788,9 @@ export default function PropertyDetails() {
                         />
                         <BookingPriceSummary
                           breakdown={{
-                            roomTypeName: selectedRoomType.name,
+                            roomTypeName: rt.name,
                             basePrice,
-                            occupancyAdjustment,
+                            occupancyAdjustment: 0,
                             occupancyLabel,
                             mealOptionName,
                             mealOptionPrice,
@@ -3036,46 +2981,37 @@ export default function PropertyDetails() {
         detailsContent={
           bookingStep === "details" && selectedRoomTypeId
             ? (() => {
-                const selectedRoomType = roomTypes.find(
+                const rt = roomTypes.find(
                   (rt: any) => rt.id === selectedRoomTypeId,
                 );
-                if (!selectedRoomType) return null;
-                const basePrice = Number(selectedRoomType.basePrice);
-                let mealOptionName = "";
-                let mealOptionPrice = 0;
-                let occupancyAdjustment = 0;
-                let occupancyLabel = "";
+                if (!rt) return null;
+
                 const adultsPerRoom = Math.ceil(adults / rooms);
-                const singleOccupancyBase =
-                  selectedRoomType.singleOccupancyBase || 1;
-                if (
-                  adultsPerRoom >= 3 &&
-                  selectedRoomType.tripleOccupancyAdjustment
-                ) {
-                  occupancyAdjustment = Number(
-                    selectedRoomType.tripleOccupancyAdjustment,
-                  );
+                let basePrice = Number(rt.basePrice);
+                let occupancyLabel = "";
+                if (adultsPerRoom >= 3 && rt.tripleOccupancyPrice) {
+                  basePrice = Number(rt.tripleOccupancyPrice);
                   occupancyLabel = "Triple occupancy";
-                } else if (
-                  adultsPerRoom >= 2 &&
-                  adultsPerRoom > singleOccupancyBase &&
-                  selectedRoomType.doubleOccupancyAdjustment
-                ) {
-                  occupancyAdjustment = Number(
-                    selectedRoomType.doubleOccupancyAdjustment,
-                  );
+                } else if (adultsPerRoom >= 2 && rt.doubleOccupancyPrice) {
+                  basePrice = Number(rt.doubleOccupancyPrice);
                   occupancyLabel = "Double occupancy";
+                } else if (rt.singleOccupancyPrice) {
+                  basePrice = Number(rt.singleOccupancyPrice);
+                  occupancyLabel = "Single occupancy";
                 }
+
                 let originalPrice: number | null = null;
                 if (
-                  selectedRoomType.originalPrice &&
-                  parseFloat(selectedRoomType.originalPrice) >
-                    parseFloat(selectedRoomType.basePrice)
+                  rt.originalPrice &&
+                  parseFloat(rt.originalPrice) > parseFloat(rt.basePrice)
                 ) {
-                  originalPrice = Number(selectedRoomType.originalPrice);
+                  originalPrice = Number(rt.originalPrice);
                 }
-                if (selectedMealOptionId && selectedRoomType.mealOptions) {
-                  const mo = selectedRoomType.mealOptions.find(
+
+                let mealOptionName = "";
+                let mealOptionPrice = 0;
+                if (selectedMealOptionId && rt.mealOptions) {
+                  const mo = rt.mealOptions.find(
                     (opt: any) => opt.id === selectedMealOptionId,
                   );
                   if (mo) {
@@ -3083,6 +3019,7 @@ export default function PropertyDetails() {
                     mealOptionPrice = Number(mo.priceAdjustment);
                   }
                 }
+
                 const hasBulkDiscount =
                   property.bulkBookingEnabled &&
                   property.bulkBookingMinRooms &&
@@ -3091,6 +3028,7 @@ export default function PropertyDetails() {
                 const discountPercent = hasBulkDiscount
                   ? Number(property.bulkBookingDiscountPercent)
                   : 0;
+
                 return (
                   <>
                     <GuestDetailsForm
@@ -3101,9 +3039,9 @@ export default function PropertyDetails() {
                     />
                     <BookingPriceSummary
                       breakdown={{
-                        roomTypeName: selectedRoomType.name,
+                        roomTypeName: rt.name,
                         basePrice,
-                        occupancyAdjustment,
+                        occupancyAdjustment: 0,
                         occupancyLabel,
                         mealOptionName,
                         mealOptionPrice,

@@ -50,6 +50,17 @@ import {
   RefreshCw,
   FileX,
   IndianRupee,
+  Wifi,
+  Tv,
+  Wind,
+  Refrigerator,
+  Coffee,
+  ShieldCheck,
+  Sunset,
+  Flame,
+  Users,
+  ArrowUpDown,
+  Clock,
 } from "lucide-react";
 import {
   PropertyLocationPicker,
@@ -1670,6 +1681,25 @@ function RoomsSection({
     useState("");
   const [newTripleOccupancyAdjustment, setNewTripleOccupancyAdjustment] =
     useState("");
+  // New occupancy price fields
+  const [newSinglePrice, setNewSinglePrice] = useState("");
+  const [newDoublePrice, setNewDoublePrice] = useState("");
+  const [newTriplePrice, setNewTriplePrice] = useState("");
+  // New room detail fields
+  const [newBedType, setNewBedType] = useState("");
+  const [newViewType, setNewViewType] = useState("");
+  const [newBathroomType, setNewBathroomType] = useState("");
+  const [newSmokingPolicy, setNewSmokingPolicy] = useState("");
+  const [newRoomSize, setNewRoomSize] = useState("");
+  // New amenity fields
+  const [newHasAC, setNewHasAC] = useState(true);
+  const [newHasTV, setNewHasTV] = useState(false);
+  const [newHasWifi, setNewHasWifi] = useState(false);
+  const [newHasFridge, setNewHasFridge] = useState(false);
+  const [newHasKettle, setNewHasKettle] = useState(false);
+  const [newHasSafe, setNewHasSafe] = useState(false);
+  const [newHasBalcony, setNewHasBalcony] = useState(false);
+  const [newHasHeater, setNewHasHeater] = useState(false);
 
   const createRoomMutation = useMutation({
     mutationFn: async (data: {
@@ -1785,6 +1815,22 @@ function RoomsSection({
     setNewSingleOccupancyBase("1");
     setNewDoubleOccupancyAdjustment("");
     setNewTripleOccupancyAdjustment("");
+    setNewSinglePrice("");
+    setNewDoublePrice("");
+    setNewTriplePrice("");
+    setNewBedType("");
+    setNewViewType("");
+    setNewBathroomType("");
+    setNewSmokingPolicy("");
+    setNewRoomSize("");
+    setNewHasAC(true);
+    setNewHasTV(false);
+    setNewHasWifi(false);
+    setNewHasFridge(false);
+    setNewHasKettle(false);
+    setNewHasSafe(false);
+    setNewHasBalcony(false);
+    setNewHasHeater(false);
   };
 
   const handleAddRoom = () => {
@@ -1796,49 +1842,48 @@ function RoomsSection({
       });
       return;
     }
-    if (!newRoomPrice) {
+    // Require at least one occupancy price OR the legacy base price
+    const hasOccupancyPrice =
+      newSinglePrice || newDoublePrice || newTriplePrice;
+    const hasBasePrice = !!newRoomPrice;
+    if (!hasOccupancyPrice && !hasBasePrice) {
       toast({
         title: "Price Required",
-        description: "Please enter a selling price.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    // Validate original price > selling price if original price is set
-    const sellingPrice = parseFloat(newRoomPrice);
-    const originalPrice = newRoomOriginalPrice
-      ? parseFloat(newRoomOriginalPrice)
-      : null;
-    if (originalPrice !== null && originalPrice <= sellingPrice) {
-      toast({
-        title: "Invalid Price",
         description:
-          "Strike-off price must be higher than selling price to show discount.",
+          "Set at least one occupancy price (Single, Double, or Triple).",
         variant: "destructive",
       });
       return;
     }
 
-    const singleOccupancyBase = parseInt(newSingleOccupancyBase) || 1;
-    const doubleAdj = newDoubleOccupancyAdjustment
-      ? parseFloat(newDoubleOccupancyAdjustment)
-      : undefined;
-    const tripleAdj = newTripleOccupancyAdjustment
-      ? parseFloat(newTripleOccupancyAdjustment)
-      : undefined;
+    // basePrice = single price if set, else double, else triple, else legacy
+    const resolvedBasePrice =
+      newSinglePrice || newDoublePrice || newTriplePrice || newRoomPrice;
 
     createRoomMutation.mutate({
       name: newRoomName.trim(),
       description: newRoomDescription.trim() || undefined,
       maxGuests: parseInt(newRoomCapacity),
       totalRooms: parseInt(newRoomCount),
-      basePrice: newRoomPrice,
+      basePrice: resolvedBasePrice,
       originalPrice: newRoomOriginalPrice || null,
-      singleOccupancyBase: singleOccupancyBase,
-      doubleOccupancyAdjustment: doubleAdj,
-      tripleOccupancyAdjustment: tripleAdj,
-    });
+      singleOccupancyPrice: newSinglePrice || null,
+      doubleOccupancyPrice: newDoublePrice || null,
+      tripleOccupancyPrice: newTriplePrice || null,
+      bedType: newBedType || null,
+      roomSizeSqft: newRoomSize ? parseInt(newRoomSize) : null,
+      viewType: newViewType || null,
+      bathroomType: newBathroomType || null,
+      smokingPolicy: newSmokingPolicy || null,
+      hasAC: newHasAC,
+      hasTV: newHasTV,
+      hasWifi: newHasWifi,
+      hasFridge: newHasFridge,
+      hasKettle: newHasKettle,
+      hasSafe: newHasSafe,
+      hasBalcony: newHasBalcony,
+      hasHeater: newHasHeater,
+    } as any);
   };
 
   const toggleExpanded = (roomId: string) => {
@@ -1903,9 +1948,10 @@ function RoomsSection({
               <CardHeader className="pb-2">
                 <CardTitle className="text-lg">New Room Type</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div className="space-y-2">
+              <CardContent className="space-y-5">
+                {/* Row 1: Name + capacity */}
+                <div className="grid gap-4 md:grid-cols-4">
+                  <div className="md:col-span-2 space-y-1.5">
                     <Label htmlFor="roomName">Room Type Name *</Label>
                     <Input
                       id="roomName"
@@ -1915,63 +1961,7 @@ function RoomsSection({
                       data-testid="input-new-room-name"
                     />
                   </div>
-                  <div className="grid gap-4 grid-cols-2">
-                    <div className="space-y-2">
-                      <Label
-                        htmlFor="roomOriginalPrice"
-                        className="flex items-center gap-2"
-                      >
-                        Strike-off Price (₹)
-                        <Badge variant="secondary" className="text-xs">
-                          Optional
-                        </Badge>
-                      </Label>
-                      <Input
-                        id="roomOriginalPrice"
-                        type="number"
-                        min="0"
-                        value={newRoomOriginalPrice}
-                        onChange={(e) =>
-                          setNewRoomOriginalPrice(e.target.value)
-                        }
-                        placeholder="e.g., 3500"
-                        data-testid="input-new-room-original-price"
-                      />
-                      <p className="text-xs text-muted-foreground">
-                        Shown crossed out
-                      </p>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="roomPrice">Selling Price (₹) *</Label>
-                      <Input
-                        id="roomPrice"
-                        type="number"
-                        min="100"
-                        value={newRoomPrice}
-                        onChange={(e) => setNewRoomPrice(e.target.value)}
-                        placeholder="e.g., 2500"
-                        className="border-primary"
-                        data-testid="input-new-room-price"
-                      />
-                      <p className="text-xs text-muted-foreground">
-                        Discounted price guests pay
-                      </p>
-                    </div>
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="roomDescription">Description</Label>
-                  <Textarea
-                    id="roomDescription"
-                    value={newRoomDescription}
-                    onChange={(e) => setNewRoomDescription(e.target.value)}
-                    placeholder="Describe the room features, view, amenities..."
-                    rows={3}
-                    data-testid="input-new-room-description"
-                  />
-                </div>
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div className="space-y-2">
+                  <div className="space-y-1.5">
                     <Label htmlFor="roomCapacity">Max Guests</Label>
                     <Input
                       id="roomCapacity"
@@ -1982,8 +1972,8 @@ function RoomsSection({
                       data-testid="input-new-room-capacity"
                     />
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="roomCount">Total Rooms Available</Label>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="roomCount">Total Rooms</Label>
                     <Input
                       id="roomCount"
                       type="number"
@@ -1995,77 +1985,255 @@ function RoomsSection({
                   </div>
                 </div>
 
-                <div className="border rounded-lg p-4 space-y-4 bg-muted/20">
-                  <div className="flex items-center gap-2">
+                {/* Row 2: Occupancy prices */}
+                <div className="border rounded-lg p-4 space-y-3 bg-primary/5">
+                  <div className="flex items-center justify-between">
                     <Label className="text-sm font-medium">
-                      Occupancy-Based Pricing
+                      Occupancy Pricing *
                     </Label>
-                    <Badge variant="secondary" className="text-xs">
-                      Optional
-                    </Badge>
+                    <span className="text-xs text-muted-foreground">
+                      Full room rate per night — system picks the right rate
+                      based on guest count
+                    </span>
                   </div>
-                  <p className="text-xs text-muted-foreground">
-                    Set extra charges when guest count exceeds the base
-                    occupancy. Base price applies for single occupancy.
-                  </p>
                   <div className="grid gap-4 md:grid-cols-3">
-                    <div className="space-y-2">
-                      <Label className="text-xs">Single Occupancy (Base)</Label>
-                      <div className="flex items-center gap-2">
-                        <Input
-                          type="number"
-                          min="1"
-                          max="3"
-                          value={newSingleOccupancyBase}
-                          onChange={(e) =>
-                            setNewSingleOccupancyBase(e.target.value)
-                          }
-                          className="w-20"
-                          data-testid="input-new-room-single-occupancy"
-                        />
-                        <span className="text-xs text-muted-foreground">
-                          guest(s) at base price
-                        </span>
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="text-xs">Double Occupancy (+₹)</Label>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Single (1 guest) ₹</Label>
                       <Input
                         type="number"
                         min="0"
-                        value={newDoubleOccupancyAdjustment}
-                        onChange={(e) =>
-                          setNewDoubleOccupancyAdjustment(e.target.value)
-                        }
-                        placeholder="e.g., 500"
-                        data-testid="input-new-room-double-occupancy"
+                        value={newSinglePrice}
+                        onChange={(e) => setNewSinglePrice(e.target.value)}
+                        placeholder="e.g. 1200"
+                        className="border-primary"
+                        data-testid="input-new-room-single-price"
                       />
-                      <p className="text-xs text-muted-foreground">
-                        Extra per night for 2 guests
-                      </p>
                     </div>
-                    <div className="space-y-2">
-                      <Label className="text-xs">Triple Occupancy (+₹)</Label>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Double (2 guests) ₹</Label>
                       <Input
                         type="number"
                         min="0"
-                        value={newTripleOccupancyAdjustment}
-                        onChange={(e) =>
-                          setNewTripleOccupancyAdjustment(e.target.value)
-                        }
-                        placeholder="e.g., 1000"
-                        data-testid="input-new-room-triple-occupancy"
+                        value={newDoublePrice}
+                        onChange={(e) => setNewDoublePrice(e.target.value)}
+                        placeholder="e.g. 1500"
+                        data-testid="input-new-room-double-price"
                       />
-                      <p className="text-xs text-muted-foreground">
-                        Extra per night for 3+ guests
-                      </p>
                     </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Triple (3+ guests) ₹</Label>
+                      <Input
+                        type="number"
+                        min="0"
+                        value={newTriplePrice}
+                        onChange={(e) => setNewTriplePrice(e.target.value)}
+                        placeholder="e.g. 1800"
+                        data-testid="input-new-room-triple-price"
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs flex items-center gap-2">
+                      Strike-off Price (₹){" "}
+                      <Badge variant="secondary" className="text-xs">
+                        Optional
+                      </Badge>
+                    </Label>
+                    <Input
+                      type="number"
+                      min="0"
+                      value={newRoomOriginalPrice}
+                      onChange={(e) => setNewRoomOriginalPrice(e.target.value)}
+                      placeholder="e.g. 2000 (shown crossed out)"
+                      className="max-w-xs"
+                      data-testid="input-new-room-original-price"
+                    />
                   </div>
                 </div>
 
+                {/* Row 3: Room details */}
+                <div className="grid gap-4 md:grid-cols-3">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Bed Type</Label>
+                    <Select value={newBedType} onValueChange={setNewBedType}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select bed type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {[
+                          "King",
+                          "Queen",
+                          "Double",
+                          "Twin",
+                          "Single",
+                          "Bunk",
+                          "Sofa Bed",
+                        ].map((b) => (
+                          <SelectItem key={b} value={b}>
+                            {b}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">View</Label>
+                    <Select value={newViewType} onValueChange={setNewViewType}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select view" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {[
+                          "Mountain View",
+                          "Pool View",
+                          "Garden View",
+                          "City View",
+                          "Sea View",
+                          "Courtyard View",
+                          "No View",
+                        ].map((v) => (
+                          <SelectItem key={v} value={v}>
+                            {v}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Bathroom</Label>
+                    <Select
+                      value={newBathroomType}
+                      onValueChange={setNewBathroomType}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select bathroom" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {["Attached", "En-suite", "Shared"].map((b) => (
+                          <SelectItem key={b} value={b}>
+                            {b}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Smoking Policy</Label>
+                    <Select
+                      value={newSmokingPolicy}
+                      onValueChange={setNewSmokingPolicy}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select policy" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Non-smoking">Non-smoking</SelectItem>
+                        <SelectItem value="Smoking">Smoking allowed</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Room Size (sq ft)</Label>
+                    <Input
+                      type="number"
+                      min="1"
+                      value={newRoomSize}
+                      onChange={(e) => setNewRoomSize(e.target.value)}
+                      placeholder="e.g. 250"
+                    />
+                  </div>
+                </div>
+
+                {/* Row 4: Amenities */}
+                <div className="space-y-2">
+                  <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    Amenities — click to toggle
+                  </Label>
+                  <div className="flex flex-wrap gap-2">
+                    {[
+                      {
+                        label: "AC",
+                        icon: Wind,
+                        val: newHasAC,
+                        set: setNewHasAC,
+                      },
+                      {
+                        label: "TV",
+                        icon: Tv,
+                        val: newHasTV,
+                        set: setNewHasTV,
+                      },
+                      {
+                        label: "WiFi",
+                        icon: Wifi,
+                        val: newHasWifi,
+                        set: setNewHasWifi,
+                      },
+                      {
+                        label: "Fridge",
+                        icon: Refrigerator,
+                        val: newHasFridge,
+                        set: setNewHasFridge,
+                      },
+                      {
+                        label: "Kettle",
+                        icon: Coffee,
+                        val: newHasKettle,
+                        set: setNewHasKettle,
+                      },
+                      {
+                        label: "Safe",
+                        icon: ShieldCheck,
+                        val: newHasSafe,
+                        set: setNewHasSafe,
+                      },
+                      {
+                        label: "Balcony",
+                        icon: Sunset,
+                        val: newHasBalcony,
+                        set: setNewHasBalcony,
+                      },
+                      {
+                        label: "Heater",
+                        icon: Flame,
+                        val: newHasHeater,
+                        set: setNewHasHeater,
+                      },
+                    ].map(({ label, icon: Icon, val, set }) => (
+                      <button
+                        key={label}
+                        type="button"
+                        onClick={() => set(!val)}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-medium transition-all ${val ? "bg-primary text-primary-foreground border-primary" : "bg-background text-muted-foreground border-border hover:border-primary/50"}`}
+                      >
+                        <Icon className="h-3 w-3" />
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Row 5: Description */}
+                <div className="space-y-1.5">
+                  <Label htmlFor="roomDescription">
+                    Description{" "}
+                    <span className="text-muted-foreground font-normal">
+                      (optional)
+                    </span>
+                  </Label>
+                  <Textarea
+                    id="roomDescription"
+                    value={newRoomDescription}
+                    onChange={(e) => setNewRoomDescription(e.target.value)}
+                    placeholder="Describe the room features, view, amenities..."
+                    rows={2}
+                    data-testid="input-new-room-description"
+                  />
+                </div>
+
                 <p className="text-sm text-muted-foreground">
-                  After adding the room type, set per-date prices and meal plan
-                  prices from the <strong>Pricing</strong> tab.
+                  After adding, set per-date prices from the{" "}
+                  <strong>Pricing</strong> tab.
                 </p>
                 <div className="flex gap-2">
                   <Button
@@ -2164,6 +2332,8 @@ function RoomTypeCard({
   isDeleting: boolean;
 }) {
   const { toast } = useToast();
+
+  // ── Basic ──────────────────────────────────────────────────────────────────
   const [editName, setEditName] = useState(room.name);
   const [editDescription, setEditDescription] = useState(
     room.description || "",
@@ -2172,66 +2342,184 @@ function RoomTypeCard({
   const [editTotalRooms, setEditTotalRooms] = useState(
     String(room.totalRooms || 1),
   );
-  const [editPrice, setEditPrice] = useState(room.basePrice || "");
+  const [editActive, setEditActive] = useState(room.isActive ?? true);
+  const [editMinimumStay, setEditMinimumStay] = useState(
+    String((room as any).minimumStay || 1),
+  );
+  const [editSortOrder, setEditSortOrder] = useState(
+    String((room as any).sortOrder || 0),
+  );
+
+  // ── Room details ───────────────────────────────────────────────────────────
+  const [editBedType, setEditBedType] = useState((room as any).bedType || "");
+  const [editRoomSize, setEditRoomSize] = useState(
+    String((room as any).roomSizeSqft || ""),
+  );
+  const [editViewType, setEditViewType] = useState(
+    (room as any).viewType || "",
+  );
+  const [editBathroomType, setEditBathroomType] = useState(
+    (room as any).bathroomType || "",
+  );
+  const [editSmokingPolicy, setEditSmokingPolicy] = useState(
+    (room as any).smokingPolicy || "",
+  );
+  const [editFloorNumber, setEditFloorNumber] = useState(
+    (room as any).floorNumber || "",
+  );
+
+  // ── Pricing ────────────────────────────────────────────────────────────────
+  const [editSinglePrice, setEditSinglePrice] = useState(
+    String((room as any).singleOccupancyPrice || ""),
+  );
+  const [editDoublePrice, setEditDoublePrice] = useState(
+    String((room as any).doubleOccupancyPrice || ""),
+  );
+  const [editTriplePrice, setEditTriplePrice] = useState(
+    String((room as any).tripleOccupancyPrice || ""),
+  );
   const [editOriginalPrice, setEditOriginalPrice] = useState(
     room.originalPrice || "",
   );
-  const [editActive, setEditActive] = useState(room.isActive ?? true);
-  const [editSingleOccupancyBase, setEditSingleOccupancyBase] = useState(
-    String(room.singleOccupancyBase || 1),
+
+  // ── Amenities ──────────────────────────────────────────────────────────────
+  const [editHasAC, setEditHasAC] = useState((room as any).hasAC ?? true);
+  const [editHasTV, setEditHasTV] = useState((room as any).hasTV ?? false);
+  const [editHasWifi, setEditHasWifi] = useState(
+    (room as any).hasWifi ?? false,
   );
-  const [editDoubleOccupancy, setEditDoubleOccupancy] = useState(
-    room.doubleOccupancyAdjustment || "",
+  const [editHasFridge, setEditHasFridge] = useState(
+    (room as any).hasFridge ?? false,
   );
-  const [editTripleOccupancy, setEditTripleOccupancy] = useState(
-    room.tripleOccupancyAdjustment || "",
+  const [editHasKettle, setEditHasKettle] = useState(
+    (room as any).hasKettle ?? false,
+  );
+  const [editHasSafe, setEditHasSafe] = useState(
+    (room as any).hasSafe ?? false,
+  );
+  const [editHasBalcony, setEditHasBalcony] = useState(
+    (room as any).hasBalcony ?? false,
+  );
+  const [editHasHeater, setEditHasHeater] = useState(
+    (room as any).hasHeater ?? false,
   );
 
   // meal plans managed from Pricing tab
 
   const handleSave = () => {
-    // Validate original price > selling price if original price is set
-    const sellingPrice = parseFloat(editPrice);
-    const originalPrice = editOriginalPrice
-      ? parseFloat(editOriginalPrice)
-      : null;
-    if (originalPrice !== null && originalPrice <= sellingPrice) {
+    if (!editSinglePrice && !editDoublePrice && !editTriplePrice) {
       toast({
-        title: "Invalid Price",
+        title: "Price Required",
         description:
-          "Strike-off price must be higher than selling price to show discount.",
+          "Set at least one occupancy price (Single, Double, or Triple).",
         variant: "destructive",
       });
       return;
     }
+
+    // Use single price as basePrice fallback for backwards compatibility
+    const basePrice =
+      editSinglePrice || editDoublePrice || editTriplePrice || room.basePrice;
 
     onSave({
       name: editName,
       description: editDescription || null,
       maxGuests: parseInt(editMaxGuests),
       totalRooms: parseInt(editTotalRooms),
-      basePrice: editPrice,
+      basePrice: basePrice,
       originalPrice: editOriginalPrice || null,
       isActive: editActive,
-      singleOccupancyBase: parseInt(editSingleOccupancyBase) || 1,
-      doubleOccupancyAdjustment: editDoubleOccupancy || null,
-      tripleOccupancyAdjustment: editTripleOccupancy || null,
-    });
+      // New occupancy prices
+      singleOccupancyPrice: editSinglePrice || null,
+      doubleOccupancyPrice: editDoublePrice || null,
+      tripleOccupancyPrice: editTriplePrice || null,
+      // Room details
+      bedType: editBedType || null,
+      roomSizeSqft: editRoomSize ? parseInt(editRoomSize) : null,
+      viewType: editViewType || null,
+      bathroomType: editBathroomType || null,
+      smokingPolicy: editSmokingPolicy || null,
+      floorNumber: editFloorNumber || null,
+      // Amenities
+      hasAC: editHasAC,
+      hasTV: editHasTV,
+      hasWifi: editHasWifi,
+      hasFridge: editHasFridge,
+      hasKettle: editHasKettle,
+      hasSafe: editHasSafe,
+      hasBalcony: editHasBalcony,
+      hasHeater: editHasHeater,
+      // Rules
+      minimumStay: parseInt(editMinimumStay) || 1,
+      sortOrder: parseInt(editSortOrder) || 0,
+    } as any);
   };
 
-  // Reset edit form when room changes
   const resetEditForm = () => {
     setEditName(room.name);
     setEditDescription(room.description || "");
     setEditMaxGuests(String(room.maxGuests));
     setEditTotalRooms(String(room.totalRooms || 1));
-    setEditPrice(room.basePrice || "");
-    setEditOriginalPrice(room.originalPrice || "");
     setEditActive(room.isActive ?? true);
-    setEditSingleOccupancyBase(String(room.singleOccupancyBase || 1));
-    setEditDoubleOccupancy(room.doubleOccupancyAdjustment || "");
-    setEditTripleOccupancy(room.tripleOccupancyAdjustment || "");
+    setEditMinimumStay(String((room as any).minimumStay || 1));
+    setEditSortOrder(String((room as any).sortOrder || 0));
+    setEditBedType((room as any).bedType || "");
+    setEditRoomSize(String((room as any).roomSizeSqft || ""));
+    setEditViewType((room as any).viewType || "");
+    setEditBathroomType((room as any).bathroomType || "");
+    setEditSmokingPolicy((room as any).smokingPolicy || "");
+    setEditFloorNumber((room as any).floorNumber || "");
+    setEditSinglePrice(String((room as any).singleOccupancyPrice || ""));
+    setEditDoublePrice(String((room as any).doubleOccupancyPrice || ""));
+    setEditTriplePrice(String((room as any).tripleOccupancyPrice || ""));
+    setEditOriginalPrice(room.originalPrice || "");
+    setEditHasAC((room as any).hasAC ?? true);
+    setEditHasTV((room as any).hasTV ?? false);
+    setEditHasWifi((room as any).hasWifi ?? false);
+    setEditHasFridge((room as any).hasFridge ?? false);
+    setEditHasKettle((room as any).hasKettle ?? false);
+    setEditHasSafe((room as any).hasSafe ?? false);
+    setEditHasBalcony((room as any).hasBalcony ?? false);
+    setEditHasHeater((room as any).hasHeater ?? false);
   };
+
+  // Amenity chip helper
+  const AmenityChip = ({
+    label,
+    icon: Icon,
+    checked,
+    onChange,
+  }: {
+    label: string;
+    icon: any;
+    checked: boolean;
+    onChange: (v: boolean) => void;
+  }) => (
+    <button
+      type="button"
+      onClick={() => onChange(!checked)}
+      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-medium transition-all ${
+        checked
+          ? "bg-primary text-primary-foreground border-primary"
+          : "bg-background text-muted-foreground border-border hover:border-primary/50"
+      }`}
+    >
+      <Icon className="h-3 w-3" />
+      {label}
+    </button>
+  );
+
+  // Summary badges for collapsed view
+  const amenityCount = [
+    editHasAC,
+    editHasTV,
+    editHasWifi,
+    editHasFridge,
+    editHasKettle,
+    editHasSafe,
+    editHasBalcony,
+    editHasHeater,
+  ].filter(Boolean).length;
 
   return (
     <Collapsible open={isExpanded} onOpenChange={onToggleExpand}>
@@ -2239,8 +2527,9 @@ function RoomTypeCard({
         className="border rounded-lg overflow-hidden"
         data-testid={`room-type-${room.id}`}
       >
+        {/* ── Header row ── */}
         <div className="flex items-center justify-between p-4 bg-muted/30">
-          <div className="flex items-center gap-4 flex-wrap">
+          <div className="flex items-center gap-3 flex-wrap">
             <div className="flex items-center gap-2">
               <Bed className="h-5 w-5 text-muted-foreground" />
               {isEditing ? (
@@ -2258,7 +2547,27 @@ function RoomTypeCard({
               <>
                 <Badge variant="secondary">{room.maxGuests} guests</Badge>
                 <Badge variant="outline">{room.totalRooms || 1} rooms</Badge>
-                {room.basePrice && (
+                {(room as any).bedType && (
+                  <Badge variant="outline" className="text-xs">
+                    {(room as any).bedType}
+                  </Badge>
+                )}
+                {(room as any).singleOccupancyPrice ? (
+                  <Badge variant="default" className="gap-1 text-xs">
+                    {room.originalPrice &&
+                      parseFloat(room.originalPrice) >
+                        parseFloat((room as any).singleOccupancyPrice) && (
+                        <span className="line-through opacity-70">
+                          ₹{room.originalPrice}
+                        </span>
+                      )}
+                    <span>
+                      ₹{(room as any).singleOccupancyPrice}/1P · ₹
+                      {(room as any).doubleOccupancyPrice || "—"}/2P · ₹
+                      {(room as any).tripleOccupancyPrice || "—"}/3P
+                    </span>
+                  </Badge>
+                ) : room.basePrice ? (
                   <Badge variant="default" className="gap-1">
                     {room.originalPrice &&
                       parseFloat(room.originalPrice) >
@@ -2268,6 +2577,11 @@ function RoomTypeCard({
                         </span>
                       )}
                     <span>₹{room.basePrice}/night</span>
+                  </Badge>
+                ) : null}
+                {amenityCount > 0 && (
+                  <Badge variant="secondary" className="text-xs">
+                    {amenityCount} amenities
                   </Badge>
                 )}
                 {room.isActive === false && (
@@ -2324,88 +2638,145 @@ function RoomTypeCard({
           </div>
         </div>
 
+        {/* ── Edit form ── */}
         {isEditing && (
-          <div className="p-4 border-t space-y-4">
-            <div className="space-y-2">
-              <Label>Description</Label>
-              <Textarea
-                value={editDescription}
-                onChange={(e) => setEditDescription(e.target.value)}
-                placeholder="Room description..."
-                rows={2}
-                data-testid={`edit-room-description-${room.id}`}
-              />
-            </div>
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-2">
-                <Label>Max Guests</Label>
-                <Input
-                  type="number"
-                  min="1"
-                  value={editMaxGuests}
-                  onChange={(e) => setEditMaxGuests(e.target.value)}
-                  data-testid={`edit-room-capacity-${room.id}`}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Total Rooms Available</Label>
-                <Input
-                  type="number"
-                  min="1"
-                  value={editTotalRooms}
-                  onChange={(e) => setEditTotalRooms(e.target.value)}
-                  data-testid={`edit-room-count-${room.id}`}
-                />
-              </div>
-            </div>
-
-            <div className="border rounded-lg p-4 space-y-4 bg-primary/5">
-              <div className="flex items-center gap-2">
-                <Label className="text-sm font-medium">Pricing</Label>
-                <Badge variant="secondary" className="text-xs">
-                  Discount Display
-                </Badge>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Set a strike-off price higher than selling price to show
-                discount to guests. Leave strike-off empty for regular pricing.
+          <div className="p-4 border-t space-y-5">
+            {/* Section 1: Basic Info */}
+            <div className="space-y-3">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                Basic Info
               </p>
-              <div className="grid gap-4 md:grid-cols-3">
-                <div className="space-y-2">
-                  <Label className="flex items-center gap-2">
-                    Strike-off Price (₹)
-                    <Badge variant="secondary" className="text-xs">
-                      Optional
-                    </Badge>
-                  </Label>
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Max Guests</Label>
                   <Input
                     type="number"
-                    min="0"
-                    value={editOriginalPrice}
-                    onChange={(e) => setEditOriginalPrice(e.target.value)}
-                    placeholder="e.g., 3500"
-                    data-testid={`edit-room-original-price-${room.id}`}
+                    min="1"
+                    value={editMaxGuests}
+                    onChange={(e) => setEditMaxGuests(e.target.value)}
+                    data-testid={`edit-room-capacity-${room.id}`}
                   />
-                  <p className="text-xs text-muted-foreground">
-                    Shown crossed out
-                  </p>
                 </div>
-                <div className="space-y-2">
-                  <Label>Selling Price (₹) *</Label>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Total Rooms</Label>
                   <Input
                     type="number"
-                    min="100"
-                    value={editPrice}
-                    onChange={(e) => setEditPrice(e.target.value)}
-                    className="border-primary"
-                    data-testid={`edit-room-price-${room.id}`}
+                    min="1"
+                    value={editTotalRooms}
+                    onChange={(e) => setEditTotalRooms(e.target.value)}
+                    data-testid={`edit-room-count-${room.id}`}
                   />
-                  <p className="text-xs text-muted-foreground">
-                    Discounted price guests pay
-                  </p>
                 </div>
-                <div className="space-y-2">
-                  <Label>Active</Label>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Min Stay (nights)</Label>
+                  <Input
+                    type="number"
+                    min="1"
+                    value={editMinimumStay}
+                    onChange={(e) => setEditMinimumStay(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Room Size (sq ft)</Label>
+                  <Input
+                    type="number"
+                    min="1"
+                    value={editRoomSize}
+                    onChange={(e) => setEditRoomSize(e.target.value)}
+                    placeholder="e.g. 250"
+                  />
+                </div>
+              </div>
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Bed Type</Label>
+                  <Select value={editBedType} onValueChange={setEditBedType}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select bed type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {[
+                        "King",
+                        "Queen",
+                        "Double",
+                        "Twin",
+                        "Single",
+                        "Bunk",
+                        "Sofa Bed",
+                      ].map((b) => (
+                        <SelectItem key={b} value={b}>
+                          {b}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">View</Label>
+                  <Select value={editViewType} onValueChange={setEditViewType}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select view" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {[
+                        "Mountain View",
+                        "Pool View",
+                        "Garden View",
+                        "City View",
+                        "Sea View",
+                        "Courtyard View",
+                        "No View",
+                      ].map((v) => (
+                        <SelectItem key={v} value={v}>
+                          {v}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Bathroom</Label>
+                  <Select
+                    value={editBathroomType}
+                    onValueChange={setEditBathroomType}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select bathroom" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {["Attached", "En-suite", "Shared"].map((b) => (
+                        <SelectItem key={b} value={b}>
+                          {b}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Smoking Policy</Label>
+                  <Select
+                    value={editSmokingPolicy}
+                    onValueChange={setEditSmokingPolicy}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select policy" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Non-smoking">Non-smoking</SelectItem>
+                      <SelectItem value="Smoking">Smoking allowed</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Floor / Location</Label>
+                  <Input
+                    value={editFloorNumber}
+                    onChange={(e) => setEditFloorNumber(e.target.value)}
+                    placeholder="e.g. Ground Floor, 2nd Floor"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Active</Label>
                   <div className="flex items-center gap-2 pt-2">
                     <Switch
                       checked={editActive}
@@ -2413,77 +2784,156 @@ function RoomTypeCard({
                       data-testid={`edit-room-active-${room.id}`}
                     />
                     <span className="text-sm text-muted-foreground">
-                      {editActive
-                        ? "Accepting bookings"
-                        : "Not accepting bookings"}
+                      {editActive ? "Accepting bookings" : "Not accepting"}
                     </span>
                   </div>
                 </div>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Description</Label>
+                <Textarea
+                  value={editDescription}
+                  onChange={(e) => setEditDescription(e.target.value)}
+                  placeholder="Room description..."
+                  rows={2}
+                  data-testid={`edit-room-description-${room.id}`}
+                />
               </div>
             </div>
 
-            <div className="border rounded-lg p-4 space-y-4 bg-muted/20">
-              <div className="flex items-center gap-2">
-                <Label className="text-sm font-medium">
-                  Occupancy-Based Pricing
+            {/* Section 2: Pricing */}
+            <div className="space-y-3 border rounded-lg p-4 bg-primary/5">
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                  Occupancy Pricing
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Full room rate per night based on guest count
+                </p>
+              </div>
+              <div className="grid gap-4 md:grid-cols-3">
+                <div className="space-y-1.5">
+                  <Label className="text-xs flex items-center gap-1">
+                    <Users className="h-3 w-3" /> Single (1 guest) ₹
+                  </Label>
+                  <Input
+                    type="number"
+                    min="0"
+                    value={editSinglePrice}
+                    onChange={(e) => setEditSinglePrice(e.target.value)}
+                    placeholder="e.g. 1200"
+                    className="border-primary"
+                    data-testid={`edit-room-single-price-${room.id}`}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs flex items-center gap-1">
+                    <Users className="h-3 w-3" /> Double (2 guests) ₹
+                  </Label>
+                  <Input
+                    type="number"
+                    min="0"
+                    value={editDoublePrice}
+                    onChange={(e) => setEditDoublePrice(e.target.value)}
+                    placeholder="e.g. 1500"
+                    data-testid={`edit-room-double-price-${room.id}`}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs flex items-center gap-1">
+                    <Users className="h-3 w-3" /> Triple (3+ guests) ₹
+                  </Label>
+                  <Input
+                    type="number"
+                    min="0"
+                    value={editTriplePrice}
+                    onChange={(e) => setEditTriplePrice(e.target.value)}
+                    placeholder="e.g. 1800"
+                    data-testid={`edit-room-triple-price-${room.id}`}
+                  />
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs flex items-center gap-2">
+                  Strike-off Price (₹)
+                  <Badge variant="secondary" className="text-xs">
+                    Optional — shown crossed out
+                  </Badge>
                 </Label>
-                <Badge variant="secondary" className="text-xs">
-                  Optional
-                </Badge>
+                <Input
+                  type="number"
+                  min="0"
+                  value={editOriginalPrice}
+                  onChange={(e) => setEditOriginalPrice(e.target.value)}
+                  placeholder="e.g. 2000 (leave empty for no discount)"
+                  className="max-w-xs"
+                  data-testid={`edit-room-original-price-${room.id}`}
+                />
               </div>
               <p className="text-xs text-muted-foreground">
-                Set extra charges when guest count exceeds the base occupancy.
-                Base price applies for single occupancy.
+                System picks the rate automatically based on how many adults the
+                guest selects. Set at least 1 price.
               </p>
-              <div className="grid gap-4 md:grid-cols-3">
-                <div className="space-y-2">
-                  <Label className="text-xs">Single Occupancy (Base)</Label>
-                  <div className="flex items-center gap-2">
-                    <Input
-                      type="number"
-                      min="1"
-                      max="3"
-                      value={editSingleOccupancyBase}
-                      onChange={(e) =>
-                        setEditSingleOccupancyBase(e.target.value)
-                      }
-                      className="w-20"
-                      data-testid={`edit-room-single-occupancy-${room.id}`}
-                    />
-                    <span className="text-xs text-muted-foreground">
-                      guest(s) at base price
-                    </span>
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-xs">Double Occupancy (+₹)</Label>
-                  <Input
-                    type="number"
-                    min="0"
-                    value={editDoubleOccupancy}
-                    onChange={(e) => setEditDoubleOccupancy(e.target.value)}
-                    placeholder="e.g., 500"
-                    data-testid={`edit-room-double-occupancy-${room.id}`}
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Extra per night for 2 guests
-                  </p>
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-xs">Triple Occupancy (+₹)</Label>
-                  <Input
-                    type="number"
-                    min="0"
-                    value={editTripleOccupancy}
-                    onChange={(e) => setEditTripleOccupancy(e.target.value)}
-                    placeholder="e.g., 1000"
-                    data-testid={`edit-room-triple-occupancy-${room.id}`}
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Extra per night for 3+ guests
-                  </p>
-                </div>
+            </div>
+
+            {/* Section 3: Amenities */}
+            <div className="space-y-3">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                In-Room Amenities
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <AmenityChip
+                  label="AC"
+                  icon={Wind}
+                  checked={editHasAC}
+                  onChange={setEditHasAC}
+                />
+                <AmenityChip
+                  label="TV"
+                  icon={Tv}
+                  checked={editHasTV}
+                  onChange={setEditHasTV}
+                />
+                <AmenityChip
+                  label="WiFi"
+                  icon={Wifi}
+                  checked={editHasWifi}
+                  onChange={setEditHasWifi}
+                />
+                <AmenityChip
+                  label="Fridge"
+                  icon={Refrigerator}
+                  checked={editHasFridge}
+                  onChange={setEditHasFridge}
+                />
+                <AmenityChip
+                  label="Kettle"
+                  icon={Coffee}
+                  checked={editHasKettle}
+                  onChange={setEditHasKettle}
+                />
+                <AmenityChip
+                  label="Safe"
+                  icon={ShieldCheck}
+                  checked={editHasSafe}
+                  onChange={setEditHasSafe}
+                />
+                <AmenityChip
+                  label="Balcony"
+                  icon={Sunset}
+                  checked={editHasBalcony}
+                  onChange={setEditHasBalcony}
+                />
+                <AmenityChip
+                  label="Heater"
+                  icon={Flame}
+                  checked={editHasHeater}
+                  onChange={setEditHasHeater}
+                />
               </div>
+              <p className="text-xs text-muted-foreground">
+                Click to toggle. Orange = included in this room type.
+              </p>
             </div>
           </div>
         )}

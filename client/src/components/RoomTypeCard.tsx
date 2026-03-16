@@ -6,7 +6,17 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Utensils } from "lucide-react";
+import { Utensils, Wifi, Wind, Tv, Sunset } from "lucide-react";
+
+// Resolve correct room rate based on adults count (new model)
+function resolvePrice(rt: RoomTypeData, adultsPerRoom: number): number {
+  if (adultsPerRoom >= 3 && rt.tripleOccupancyPrice)
+    return Number(rt.tripleOccupancyPrice);
+  if (adultsPerRoom >= 2 && rt.doubleOccupancyPrice)
+    return Number(rt.doubleOccupancyPrice);
+  if (rt.singleOccupancyPrice) return Number(rt.singleOccupancyPrice);
+  return Number(rt.basePrice);
+}
 
 export interface MealOption {
   id: string;
@@ -25,6 +35,21 @@ export interface RoomTypeData {
   maxGuests: number;
   totalRooms?: number;
   mealOptions?: MealOption[];
+  // New occupancy prices
+  singleOccupancyPrice?: string | null;
+  doubleOccupancyPrice?: string | null;
+  tripleOccupancyPrice?: string | null;
+  // Room details
+  bedType?: string | null;
+  viewType?: string | null;
+  bathroomType?: string | null;
+  roomSizeSqft?: number | null;
+  hasAC?: boolean;
+  hasTV?: boolean;
+  hasWifi?: boolean;
+  hasBalcony?: boolean;
+  minimumStay?: number | null;
+  isActive?: boolean;
 }
 
 export interface RoomInventory {
@@ -42,6 +67,7 @@ interface RoomTypeSelectProps {
   onMealOptionSelect: (mealOptionId: string | null) => void;
   inventoryMap?: Record<string, RoomInventory>;
   showDatesContext?: boolean;
+  adults?: number;
 }
 
 /**
@@ -57,6 +83,7 @@ export function RoomTypeSelect({
   onMealOptionSelect,
   inventoryMap = {},
   showDatesContext = false,
+  adults = 1,
 }: RoomTypeSelectProps) {
   const activeRoomTypes = roomTypes.filter((rt) => rt.isActive !== false);
   const selectedRoom =
@@ -78,13 +105,14 @@ export function RoomTypeSelect({
   });
 
   function getRoomLabel(rt: RoomTypeData, inv?: RoomInventory) {
+    const price = resolvePrice(rt, adults);
     const hasDiscount =
       rt.originalPrice &&
       parseFloat(rt.originalPrice) > parseFloat(rt.basePrice);
-    const price = `₹${Number(rt.basePrice).toLocaleString("en-IN")}/night`;
+    const priceStr = `₹${price.toLocaleString("en-IN")}/night`;
     return hasDiscount
-      ? `${rt.name} — ${price} (was ₹${Number(rt.originalPrice).toLocaleString("en-IN")})`
-      : `${rt.name} — ${price}`;
+      ? `${rt.name} — ${priceStr} (was ₹${Number(rt.originalPrice).toLocaleString("en-IN")})`
+      : `${rt.name} — ${priceStr}`;
   }
 
   return (
@@ -130,46 +158,120 @@ export function RoomTypeSelect({
           </SelectContent>
         </Select>
 
-        {/* Sub-line: guests + availability + discount badge */}
+        {/* Sub-line: room details + availability + discount badge */}
         {selectedRoom && (
-          <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-            <span className="text-xs text-muted-foreground">
-              Up to {selectedRoom.maxGuests} guests
-            </span>
-            {selectedInventory && !selectedInventory.isSoldOut && (
-              <span
-                className={`text-xs ${
-                  selectedInventory.isLowStock
-                    ? "text-amber-600 font-medium"
-                    : "text-muted-foreground"
-                }`}
-              >
-                · {selectedInventory.availableRooms} room
-                {selectedInventory.availableRooms !== 1 ? "s" : ""} available
-                {showDatesContext ? " for your dates" : ""}
-                {selectedInventory.isLowStock ? " — low stock!" : ""}
-              </span>
-            )}
-            {selectedRoom.originalPrice &&
-              parseFloat(selectedRoom.originalPrice) >
-                parseFloat(selectedRoom.basePrice) && (
-                <Badge
-                  variant="secondary"
-                  className="text-xs bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300"
-                >
-                  {Math.round(
-                    (1 -
-                      parseFloat(selectedRoom.basePrice) /
-                        parseFloat(selectedRoom.originalPrice)) *
-                      100,
-                  )}
-                  % OFF
-                </Badge>
+          <div className="mt-2 space-y-1.5">
+            {/* Key details */}
+            <div className="flex items-center gap-2 flex-wrap text-xs text-muted-foreground">
+              <span>Up to {selectedRoom.maxGuests} guests</span>
+              {selectedRoom.bedType && (
+                <span>· {selectedRoom.bedType} bed</span>
               )}
+              {selectedRoom.viewType && <span>· {selectedRoom.viewType}</span>}
+              {selectedRoom.roomSizeSqft && (
+                <span>· {selectedRoom.roomSizeSqft} sq ft</span>
+              )}
+              {selectedRoom.bathroomType && (
+                <span>· {selectedRoom.bathroomType} bathroom</span>
+              )}
+              {selectedRoom.minimumStay && selectedRoom.minimumStay > 1 && (
+                <span className="text-amber-600 font-medium">
+                  · Min {selectedRoom.minimumStay} nights
+                </span>
+              )}
+            </div>
+            {/* Amenity icons */}
+            {(selectedRoom.hasAC ||
+              selectedRoom.hasWifi ||
+              selectedRoom.hasTV ||
+              selectedRoom.hasBalcony) && (
+              <div className="flex items-center gap-3 flex-wrap">
+                {selectedRoom.hasAC && (
+                  <span className="text-xs text-muted-foreground flex items-center gap-0.5">
+                    <Wind className="h-3 w-3" /> AC
+                  </span>
+                )}
+                {selectedRoom.hasWifi && (
+                  <span className="text-xs text-muted-foreground flex items-center gap-0.5">
+                    <Wifi className="h-3 w-3" /> WiFi
+                  </span>
+                )}
+                {selectedRoom.hasTV && (
+                  <span className="text-xs text-muted-foreground flex items-center gap-0.5">
+                    <Tv className="h-3 w-3" /> TV
+                  </span>
+                )}
+                {selectedRoom.hasBalcony && (
+                  <span className="text-xs text-muted-foreground flex items-center gap-0.5">
+                    <Sunset className="h-3 w-3" /> Balcony
+                  </span>
+                )}
+              </div>
+            )}
+            {/* Occupancy rates if multiple set */}
+            {(selectedRoom.singleOccupancyPrice ||
+              selectedRoom.doubleOccupancyPrice ||
+              selectedRoom.tripleOccupancyPrice) && (
+              <div className="flex gap-1.5 flex-wrap">
+                {selectedRoom.singleOccupancyPrice && (
+                  <span className="text-xs bg-muted px-2 py-0.5 rounded-full text-muted-foreground">
+                    1 guest: ₹
+                    {Number(selectedRoom.singleOccupancyPrice).toLocaleString(
+                      "en-IN",
+                    )}
+                  </span>
+                )}
+                {selectedRoom.doubleOccupancyPrice && (
+                  <span className="text-xs bg-muted px-2 py-0.5 rounded-full text-muted-foreground">
+                    2 guests: ₹
+                    {Number(selectedRoom.doubleOccupancyPrice).toLocaleString(
+                      "en-IN",
+                    )}
+                  </span>
+                )}
+                {selectedRoom.tripleOccupancyPrice && (
+                  <span className="text-xs bg-muted px-2 py-0.5 rounded-full text-muted-foreground">
+                    3+ guests: ₹
+                    {Number(selectedRoom.tripleOccupancyPrice).toLocaleString(
+                      "en-IN",
+                    )}
+                  </span>
+                )}
+              </div>
+            )}
+            {/* Availability + discount */}
+            <div className="flex items-center gap-2 flex-wrap">
+              {selectedInventory && !selectedInventory.isSoldOut && (
+                <span
+                  className={`text-xs ${selectedInventory.isLowStock ? "text-amber-600 font-medium" : "text-muted-foreground"}`}
+                >
+                  {selectedInventory.availableRooms} room
+                  {selectedInventory.availableRooms !== 1 ? "s" : ""} available
+                  {showDatesContext ? " for your dates" : ""}
+                  {selectedInventory.isLowStock ? " — low stock!" : ""}
+                </span>
+              )}
+              {selectedRoom.originalPrice &&
+                parseFloat(selectedRoom.originalPrice) >
+                  parseFloat(selectedRoom.basePrice) && (
+                  <Badge
+                    variant="secondary"
+                    className="text-xs bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300"
+                  >
+                    {Math.round(
+                      (1 -
+                        parseFloat(selectedRoom.basePrice) /
+                          parseFloat(selectedRoom.originalPrice!)) *
+                        100,
+                    )}
+                    % OFF
+                  </Badge>
+                )}
+            </div>
             {selectedRoom.description && (
-              <span className="text-xs text-muted-foreground truncate max-w-[200px]">
-                · {selectedRoom.description}
-              </span>
+              <p className="text-xs text-muted-foreground">
+                {selectedRoom.description}
+              </p>
             )}
           </div>
         )}
