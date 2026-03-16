@@ -3470,21 +3470,25 @@ export async function registerRoutes(
             name: "Room Only (Best Price)",
             priceAdjustment: "0",
             inclusions: "No meals included",
+            isActive: true,
           },
           {
             name: "Breakfast Included",
             priceAdjustment: "300",
             inclusions: "Daily breakfast buffet",
+            isActive: false,
           },
           {
             name: "Breakfast + Dinner/Lunch",
             priceAdjustment: "600",
             inclusions: "Breakfast and dinner or lunch included",
+            isActive: false,
           },
           {
             name: "All Meals Included",
             priceAdjustment: "900",
             inclusions: "All meals included (breakfast, lunch, dinner)",
+            isActive: false,
           },
         ];
 
@@ -3495,6 +3499,7 @@ export async function registerRoutes(
               name: mealOpt.name,
               priceAdjustment: mealOpt.priceAdjustment,
               inclusions: mealOpt.inclusions,
+              isActive: mealOpt.isActive,
             });
           } catch (mealError) {
             console.error("Error creating default meal option:", mealError);
