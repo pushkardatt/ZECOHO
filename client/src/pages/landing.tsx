@@ -256,16 +256,18 @@ export default function Landing() {
             </div>
           </div>
 
-          {/* Property Owner CTA */}
-          <div className="mt-5">
-            <span
-              className="text-muted-foreground text-sm hover:text-primary cursor-pointer transition-colors underline-offset-2 hover:underline"
-              onClick={() => setLocation("/login?returnTo=/list-property")}
-              data-testid="link-owner-cta-hero"
-            >
-              Are you a hotelier? List your property — 0% commission
-            </span>
-          </div>
+          {/* Property Owner CTA — hidden for existing owners */}
+          {!isOwner && (
+            <div className="mt-5">
+              <span
+                className="text-muted-foreground text-sm hover:text-primary cursor-pointer transition-colors underline-offset-2 hover:underline"
+                onClick={() => setLocation("/login?returnTo=/list-property")}
+                data-testid="link-owner-cta-hero"
+              >
+                Are you a hotelier? List your property — 0% commission
+              </span>
+            </div>
+          )}
         </div>
       </div>
 
