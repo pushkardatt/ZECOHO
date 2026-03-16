@@ -2950,6 +2950,9 @@ function RoomTypeCard({
 }
 function MealOptionsManager({ roomTypeId }: { roomTypeId: string }) {
   const { toast } = useToast();
+  const [editingPriceId, setEditingPriceId] = useState<string | null>(null);
+  const [editPrice, setEditPrice] = useState("");
+
   const { data: mealOptions = [], isLoading } = useQuery<any[]>({
     queryKey: ["/api/rooms", roomTypeId, "options"],
     queryFn: () =>
@@ -2958,18 +2961,18 @@ function MealOptionsManager({ roomTypeId }: { roomTypeId: string }) {
       ),
   });
 
-  const toggleMutation = useMutation({
+  const updateMutation = useMutation({
     mutationFn: async ({
       optionId,
-      isActive,
+      updates,
     }: {
       optionId: string;
-      isActive: boolean;
+      updates: Record<string, any>;
     }) => {
       const res = await apiRequest(
         "PATCH",
         `/api/rooms/${roomTypeId}/options/${optionId}`,
-        { isActive },
+        updates,
       );
       if (!res.ok) throw new Error("Failed to update");
       return res.json();
@@ -2978,6 +2981,7 @@ function MealOptionsManager({ roomTypeId }: { roomTypeId: string }) {
       queryClient.invalidateQueries({
         queryKey: ["/api/rooms", roomTypeId, "options"],
       });
+      setEditingPriceId(null);
     },
     onError: () =>
       toast({
@@ -2998,29 +3002,80 @@ function MealOptionsManager({ roomTypeId }: { roomTypeId: string }) {
       {mealOptions.map((opt: any) => (
         <div
           key={opt.id}
-          className="flex items-center justify-between p-2 bg-muted/30 rounded-md"
+          className="flex items-center justify-between p-2 bg-muted/30 rounded-md gap-3 flex-wrap"
         >
-          <div className="flex items-center gap-3">
-            <span className="text-sm font-medium">{opt.name}</span>
-            <Badge
-              variant={
-                Number(opt.priceAdjustment) === 0 ? "secondary" : "default"
-              }
-              className="text-xs"
-            >
-              {Number(opt.priceAdjustment) === 0
-                ? "Included"
-                : `+₹${Number(opt.priceAdjustment)}/person`}
+          {/* Name */}
+          <span className="text-sm font-medium min-w-[140px]">{opt.name}</span>
+
+          {/* Price edit */}
+          {Number(opt.priceAdjustment) === 0 ? (
+            <Badge variant="secondary" className="text-xs">
+              Included
             </Badge>
-          </div>
-          <div className="flex items-center gap-2">
+          ) : editingPriceId === opt.id ? (
+            <div className="flex items-center gap-1">
+              <span className="text-xs text-muted-foreground">₹</span>
+              <Input
+                type="number"
+                className="h-7 w-24 text-xs"
+                value={editPrice}
+                onChange={(e) => setEditPrice(e.target.value)}
+                autoFocus
+              />
+              <span className="text-xs text-muted-foreground">/person</span>
+              <Button
+                size="sm"
+                className="h-7 px-2 text-xs"
+                onClick={() =>
+                  updateMutation.mutate({
+                    optionId: opt.id,
+                    updates: { priceAdjustment: String(editPrice) },
+                  })
+                }
+                disabled={updateMutation.isPending}
+              >
+                Save
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-7 px-2 text-xs"
+                onClick={() => setEditingPriceId(null)}
+              >
+                Cancel
+              </Button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-1">
+              <Badge variant="default" className="text-xs">
+                +₹{Number(opt.priceAdjustment)}/person
+              </Badge>
+              <Button
+                size="icon"
+                variant="ghost"
+                className="h-6 w-6"
+                onClick={() => {
+                  setEditingPriceId(opt.id);
+                  setEditPrice(String(opt.priceAdjustment));
+                }}
+              >
+                <Edit className="h-3 w-3" />
+              </Button>
+            </div>
+          )}
+
+          {/* Toggle */}
+          <div className="flex items-center gap-2 ml-auto">
             <span className="text-xs text-muted-foreground">
               {opt.isActive ? "Visible" : "Hidden"}
             </span>
             <Switch
               checked={opt.isActive ?? true}
               onCheckedChange={(checked) =>
-                toggleMutation.mutate({ optionId: opt.id, isActive: checked })
+                updateMutation.mutate({
+                  optionId: opt.id,
+                  updates: { isActive: checked },
+                })
               }
             />
           </div>
