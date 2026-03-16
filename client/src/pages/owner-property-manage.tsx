@@ -2935,9 +2935,97 @@ function RoomTypeCard({
                 Click to toggle. Orange = included in this room type.
               </p>
             </div>
+            {/* Section 4: Meal Plans */}
+            <div className="space-y-3">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                Meal Plans
+              </p>
+              <MealOptionsManager roomTypeId={room.id} />
+            </div>
           </div>
         )}
       </div>
     </Collapsible>
+  );
+}
+function MealOptionsManager({ roomTypeId }: { roomTypeId: string }) {
+  const { toast } = useToast();
+  const { data: mealOptions = [], isLoading } = useQuery<any[]>({
+    queryKey: ["/api/rooms", roomTypeId, "options"],
+    queryFn: () =>
+      apiRequest("GET", `/api/rooms/${roomTypeId}/options`).then((r) =>
+        r.json(),
+      ),
+  });
+
+  const toggleMutation = useMutation({
+    mutationFn: async ({
+      optionId,
+      isActive,
+    }: {
+      optionId: string;
+      isActive: boolean;
+    }) => {
+      const res = await apiRequest(
+        "PATCH",
+        `/api/rooms/${roomTypeId}/options/${optionId}`,
+        { isActive },
+      );
+      if (!res.ok) throw new Error("Failed to update");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["/api/rooms", roomTypeId, "options"],
+      });
+    },
+    onError: () =>
+      toast({
+        title: "Error",
+        description: "Failed to update meal option.",
+        variant: "destructive",
+      }),
+  });
+
+  if (isLoading) return <Skeleton className="h-20 w-full" />;
+  if (mealOptions.length === 0)
+    return (
+      <p className="text-xs text-muted-foreground">No meal plans found.</p>
+    );
+
+  return (
+    <div className="space-y-2">
+      {mealOptions.map((opt: any) => (
+        <div
+          key={opt.id}
+          className="flex items-center justify-between p-2 bg-muted/30 rounded-md"
+        >
+          <div className="flex items-center gap-3">
+            <span className="text-sm font-medium">{opt.name}</span>
+            <Badge
+              variant={
+                Number(opt.priceAdjustment) === 0 ? "secondary" : "default"
+              }
+              className="text-xs"
+            >
+              {Number(opt.priceAdjustment) === 0
+                ? "Included"
+                : `+₹${Number(opt.priceAdjustment)}/person`}
+            </Badge>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground">
+              {opt.isActive ? "Visible" : "Hidden"}
+            </span>
+            <Switch
+              checked={opt.isActive ?? true}
+              onCheckedChange={(checked) =>
+                toggleMutation.mutate({ optionId: opt.id, isActive: checked })
+              }
+            />
+          </div>
+        </div>
+      ))}
+    </div>
   );
 }
