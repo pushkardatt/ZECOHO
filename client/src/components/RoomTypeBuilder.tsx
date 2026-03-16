@@ -3,11 +3,32 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Trash2, Edit, Bed, UtensilsCrossed, ChevronDown, ChevronUp, Save, X, Tag } from "lucide-react";
+import {
+  Plus,
+  Trash2,
+  Edit,
+  Bed,
+  UtensilsCrossed,
+  ChevronDown,
+  ChevronUp,
+  Save,
+  X,
+  Tag,
+} from "lucide-react";
 import { Switch } from "@/components/ui/switch";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 
 export interface WizardRoomType {
   id: string;
@@ -27,6 +48,7 @@ export interface WizardMealOption {
   id: string;
   name: string;
   inclusions?: string;
+  isActive?: boolean;
   priceAdjustment: number;
 }
 
@@ -36,20 +58,41 @@ interface RoomTypeBuilderProps {
   propertyType?: string;
 }
 
-const generateId = () => `temp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+const generateId = () =>
+  `temp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
 const DEFAULT_MEAL_OPTIONS: Omit<WizardMealOption, "id">[] = [
-  { name: "Room Only (Best Price)", priceAdjustment: 0, inclusions: "No meals included" },
-  { name: "Breakfast Included", priceAdjustment: 300, inclusions: "Daily breakfast buffet" },
-  { name: "Breakfast + Dinner/Lunch", priceAdjustment: 600, inclusions: "Breakfast and dinner or lunch included" },
-  { name: "All Meals Included", priceAdjustment: 900, inclusions: "All meals included (breakfast, lunch, dinner)" },
+  {
+    name: "Room Only (Best Price)",
+    priceAdjustment: 0,
+    inclusions: "No meals included",
+  },
+  {
+    name: "Breakfast Included",
+    priceAdjustment: 300,
+    inclusions: "Daily breakfast buffet",
+  },
+  {
+    name: "Breakfast + Dinner/Lunch",
+    priceAdjustment: 600,
+    inclusions: "Breakfast and dinner or lunch included",
+  },
+  {
+    name: "All Meals Included",
+    priceAdjustment: 900,
+    inclusions: "All meals included (breakfast, lunch, dinner)",
+  },
 ];
 
-export function RoomTypeBuilder({ value, onChange, propertyType }: RoomTypeBuilderProps) {
+export function RoomTypeBuilder({
+  value,
+  onChange,
+  propertyType,
+}: RoomTypeBuilderProps) {
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingRoom, setEditingRoom] = useState<string | null>(null);
   const [expandedRooms, setExpandedRooms] = useState<Set<string>>(new Set());
-  
+
   const [newRoomName, setNewRoomName] = useState("");
   const [newRoomDescription, setNewRoomDescription] = useState("");
   const [newRoomPrice, setNewRoomPrice] = useState("");
@@ -58,8 +101,10 @@ export function RoomTypeBuilder({ value, onChange, propertyType }: RoomTypeBuild
   const [newRoomMaxGuests, setNewRoomMaxGuests] = useState("2");
   const [newRoomTotalRooms, setNewRoomTotalRooms] = useState("1");
   const [newSingleOccupancyBase, setNewSingleOccupancyBase] = useState("1");
-  const [newDoubleOccupancyAdjustment, setNewDoubleOccupancyAdjustment] = useState("");
-  const [newTripleOccupancyAdjustment, setNewTripleOccupancyAdjustment] = useState("");
+  const [newDoubleOccupancyAdjustment, setNewDoubleOccupancyAdjustment] =
+    useState("");
+  const [newTripleOccupancyAdjustment, setNewTripleOccupancyAdjustment] =
+    useState("");
 
   const resetForm = () => {
     setNewRoomName("");
@@ -76,13 +121,20 @@ export function RoomTypeBuilder({ value, onChange, propertyType }: RoomTypeBuild
 
   const handleAddRoom = () => {
     const price = parseFloat(newRoomPrice);
-    const originalPrice = showStrikeOffPrice && newRoomOriginalPrice ? parseFloat(newRoomOriginalPrice) : undefined;
+    const originalPrice =
+      showStrikeOffPrice && newRoomOriginalPrice
+        ? parseFloat(newRoomOriginalPrice)
+        : undefined;
     const maxGuests = parseInt(newRoomMaxGuests);
     const totalRooms = parseInt(newRoomTotalRooms);
     const singleOccupancyBase = parseInt(newSingleOccupancyBase) || 1;
-    const doubleAdj = newDoubleOccupancyAdjustment ? parseFloat(newDoubleOccupancyAdjustment) : undefined;
-    const tripleAdj = newTripleOccupancyAdjustment ? parseFloat(newTripleOccupancyAdjustment) : undefined;
-    
+    const doubleAdj = newDoubleOccupancyAdjustment
+      ? parseFloat(newDoubleOccupancyAdjustment)
+      : undefined;
+    const tripleAdj = newTripleOccupancyAdjustment
+      ? parseFloat(newTripleOccupancyAdjustment)
+      : undefined;
+
     if (!newRoomName || !newRoomPrice || isNaN(price) || price < 100) return;
     if (isNaN(maxGuests) || maxGuests < 1) return;
     if (isNaN(totalRooms) || totalRooms < 1) return;
@@ -100,54 +152,75 @@ export function RoomTypeBuilder({ value, onChange, propertyType }: RoomTypeBuild
       tripleOccupancyAdjustment: tripleAdj,
       maxGuests: maxGuests,
       totalRooms: totalRooms,
-      mealOptions: DEFAULT_MEAL_OPTIONS.map(opt => ({ ...opt, id: generateId() })),
+      mealOptions: DEFAULT_MEAL_OPTIONS.map((opt) => ({
+        ...opt,
+        id: generateId(),
+      })),
     };
 
     onChange([...value, newRoom]);
     resetForm();
     setShowAddForm(false);
-    setExpandedRooms(prev => new Set([...Array.from(prev), newRoom.id]));
+    setExpandedRooms((prev) => new Set([...Array.from(prev), newRoom.id]));
   };
 
   const handleDeleteRoom = (roomId: string) => {
-    onChange(value.filter(r => r.id !== roomId));
+    onChange(value.filter((r) => r.id !== roomId));
     expandedRooms.delete(roomId);
     setExpandedRooms(new Set(expandedRooms));
   };
 
-  const handleUpdateRoom = (roomId: string, updates: Partial<WizardRoomType>) => {
-    onChange(value.map(r => r.id === roomId ? { ...r, ...updates } : r));
+  const handleUpdateRoom = (
+    roomId: string,
+    updates: Partial<WizardRoomType>,
+  ) => {
+    onChange(value.map((r) => (r.id === roomId ? { ...r, ...updates } : r)));
     setEditingRoom(null);
   };
 
-  const handleAddMealOption = (roomId: string, option: Omit<WizardMealOption, "id">) => {
-    onChange(value.map(r => {
-      if (r.id !== roomId) return r;
-      return {
-        ...r,
-        mealOptions: [...r.mealOptions, { ...option, id: generateId() }]
-      };
-    }));
+  const handleAddMealOption = (
+    roomId: string,
+    option: Omit<WizardMealOption, "id">,
+  ) => {
+    onChange(
+      value.map((r) => {
+        if (r.id !== roomId) return r;
+        return {
+          ...r,
+          mealOptions: [...r.mealOptions, { ...option, id: generateId() }],
+        };
+      }),
+    );
   };
 
   const handleDeleteMealOption = (roomId: string, optionId: string) => {
-    onChange(value.map(r => {
-      if (r.id !== roomId) return r;
-      return {
-        ...r,
-        mealOptions: r.mealOptions.filter(o => o.id !== optionId)
-      };
-    }));
+    onChange(
+      value.map((r) => {
+        if (r.id !== roomId) return r;
+        return {
+          ...r,
+          mealOptions: r.mealOptions.filter((o) => o.id !== optionId),
+        };
+      }),
+    );
   };
 
-  const handleUpdateMealOption = (roomId: string, optionId: string, updates: Partial<WizardMealOption>) => {
-    onChange(value.map(r => {
-      if (r.id !== roomId) return r;
-      return {
-        ...r,
-        mealOptions: r.mealOptions.map(o => o.id === optionId ? { ...o, ...updates } : o)
-      };
-    }));
+  const handleUpdateMealOption = (
+    roomId: string,
+    optionId: string,
+    updates: Partial<WizardMealOption>,
+  ) => {
+    onChange(
+      value.map((r) => {
+        if (r.id !== roomId) return r;
+        return {
+          ...r,
+          mealOptions: r.mealOptions.map((o) =>
+            o.id === optionId ? { ...o, ...updates } : o,
+          ),
+        };
+      }),
+    );
   };
 
   const toggleExpand = (roomId: string) => {
@@ -168,7 +241,9 @@ export function RoomTypeBuilder({ value, onChange, propertyType }: RoomTypeBuild
           Room Types & Pricing
         </CardTitle>
         <CardDescription>
-          Add different room categories with their pricing and meal plans. Each room type can have multiple meal options. Meal prices are charged per person per night.
+          Add different room categories with their pricing and meal plans. Each
+          room type can have multiple meal options. Meal prices are charged per
+          person per night.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -213,14 +288,18 @@ export function RoomTypeBuilder({ value, onChange, propertyType }: RoomTypeBuild
                   />
                 </div>
               </div>
-              
+
               {/* Strike-off Price Section */}
               <div className="border rounded-lg p-4 space-y-3 bg-emerald-50/50 dark:bg-emerald-950/20">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <Tag className="h-4 w-4 text-emerald-600" />
-                    <Label className="text-sm font-medium">Show Discount (Strike-off Price)</Label>
-                    <Badge variant="secondary" className="text-xs">Optional</Badge>
+                    <Label className="text-sm font-medium">
+                      Show Discount (Strike-off Price)
+                    </Label>
+                    <Badge variant="secondary" className="text-xs">
+                      Optional
+                    </Badge>
                   </div>
                   <Switch
                     checked={showStrikeOffPrice}
@@ -230,7 +309,9 @@ export function RoomTypeBuilder({ value, onChange, propertyType }: RoomTypeBuild
                 </div>
                 {showStrikeOffPrice && (
                   <div className="space-y-2">
-                    <Label className="text-xs">Original Price (₹) - will be shown struck through</Label>
+                    <Label className="text-xs">
+                      Original Price (₹) - will be shown struck through
+                    </Label>
                     <Input
                       type="number"
                       min="100"
@@ -239,20 +320,43 @@ export function RoomTypeBuilder({ value, onChange, propertyType }: RoomTypeBuild
                       placeholder="e.g., 3500"
                       data-testid="input-new-room-original-price"
                     />
-                    {newRoomOriginalPrice && newRoomPrice && parseFloat(newRoomOriginalPrice) <= parseFloat(newRoomPrice) && (
-                      <p className="text-xs text-destructive">Original price must be higher than selling price</p>
-                    )}
-                    {newRoomOriginalPrice && newRoomPrice && parseFloat(newRoomOriginalPrice) > parseFloat(newRoomPrice) && (
-                      <p className="text-xs text-emerald-600">
-                        Customers will see: <span className="line-through">₹{Number(newRoomOriginalPrice).toLocaleString('en-IN')}</span>{" "}
-                        <span className="font-semibold">₹{Number(newRoomPrice).toLocaleString('en-IN')}</span>{" "}
-                        ({Math.round((1 - parseFloat(newRoomPrice) / parseFloat(newRoomOriginalPrice)) * 100)}% off)
-                      </p>
-                    )}
+                    {newRoomOriginalPrice &&
+                      newRoomPrice &&
+                      parseFloat(newRoomOriginalPrice) <=
+                        parseFloat(newRoomPrice) && (
+                        <p className="text-xs text-destructive">
+                          Original price must be higher than selling price
+                        </p>
+                      )}
+                    {newRoomOriginalPrice &&
+                      newRoomPrice &&
+                      parseFloat(newRoomOriginalPrice) >
+                        parseFloat(newRoomPrice) && (
+                        <p className="text-xs text-emerald-600">
+                          Customers will see:{" "}
+                          <span className="line-through">
+                            ₹
+                            {Number(newRoomOriginalPrice).toLocaleString(
+                              "en-IN",
+                            )}
+                          </span>{" "}
+                          <span className="font-semibold">
+                            ₹{Number(newRoomPrice).toLocaleString("en-IN")}
+                          </span>{" "}
+                          (
+                          {Math.round(
+                            (1 -
+                              parseFloat(newRoomPrice) /
+                                parseFloat(newRoomOriginalPrice)) *
+                              100,
+                          )}
+                          % off)
+                        </p>
+                      )}
                   </div>
                 )}
               </div>
-              
+
               <div className="space-y-2">
                 <Label>Description</Label>
                 <Textarea
@@ -285,14 +389,19 @@ export function RoomTypeBuilder({ value, onChange, propertyType }: RoomTypeBuild
                   />
                 </div>
               </div>
-              
+
               <div className="border rounded-lg p-4 space-y-4 bg-muted/20">
                 <div className="flex items-center gap-2">
-                  <Label className="text-sm font-medium">Occupancy-Based Pricing</Label>
-                  <Badge variant="secondary" className="text-xs">Optional</Badge>
+                  <Label className="text-sm font-medium">
+                    Occupancy-Based Pricing
+                  </Label>
+                  <Badge variant="secondary" className="text-xs">
+                    Optional
+                  </Badge>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Set extra charges when guest count exceeds the base occupancy. Base price applies for single occupancy.
+                  Set extra charges when guest count exceeds the base occupancy.
+                  Base price applies for single occupancy.
                 </p>
                 <div className="grid gap-4 md:grid-cols-3">
                   <div className="space-y-2">
@@ -303,11 +412,15 @@ export function RoomTypeBuilder({ value, onChange, propertyType }: RoomTypeBuild
                         min="1"
                         max="3"
                         value={newSingleOccupancyBase}
-                        onChange={(e) => setNewSingleOccupancyBase(e.target.value)}
+                        onChange={(e) =>
+                          setNewSingleOccupancyBase(e.target.value)
+                        }
                         className="w-20"
                         data-testid="input-new-room-single-occupancy"
                       />
-                      <span className="text-xs text-muted-foreground">guest(s) at base price</span>
+                      <span className="text-xs text-muted-foreground">
+                        guest(s) at base price
+                      </span>
                     </div>
                   </div>
                   <div className="space-y-2">
@@ -316,11 +429,15 @@ export function RoomTypeBuilder({ value, onChange, propertyType }: RoomTypeBuild
                       type="number"
                       min="0"
                       value={newDoubleOccupancyAdjustment}
-                      onChange={(e) => setNewDoubleOccupancyAdjustment(e.target.value)}
+                      onChange={(e) =>
+                        setNewDoubleOccupancyAdjustment(e.target.value)
+                      }
                       placeholder="e.g., 500"
                       data-testid="input-new-room-double-occupancy"
                     />
-                    <p className="text-xs text-muted-foreground">Extra per night for 2 guests</p>
+                    <p className="text-xs text-muted-foreground">
+                      Extra per night for 2 guests
+                    </p>
                   </div>
                   <div className="space-y-2">
                     <Label className="text-xs">Triple Occupancy (+₹)</Label>
@@ -328,17 +445,23 @@ export function RoomTypeBuilder({ value, onChange, propertyType }: RoomTypeBuild
                       type="number"
                       min="0"
                       value={newTripleOccupancyAdjustment}
-                      onChange={(e) => setNewTripleOccupancyAdjustment(e.target.value)}
+                      onChange={(e) =>
+                        setNewTripleOccupancyAdjustment(e.target.value)
+                      }
                       placeholder="e.g., 1000"
                       data-testid="input-new-room-triple-occupancy"
                     />
-                    <p className="text-xs text-muted-foreground">Extra per night for 3+ guests</p>
+                    <p className="text-xs text-muted-foreground">
+                      Extra per night for 3+ guests
+                    </p>
                   </div>
                 </div>
               </div>
-              
+
               <p className="text-sm text-muted-foreground">
-                Default meal options (Room Only, Breakfast Included, Breakfast + Dinner/Lunch, All Meals Included) will be added automatically. You can customize them after adding the room.
+                Default meal options (Room Only, Breakfast Included, Breakfast +
+                Dinner/Lunch, All Meals Included) will be added automatically.
+                You can customize them after adding the room.
               </p>
               <div className="flex gap-2">
                 <Button
@@ -352,7 +475,10 @@ export function RoomTypeBuilder({ value, onChange, propertyType }: RoomTypeBuild
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => { setShowAddForm(false); resetForm(); }}
+                  onClick={() => {
+                    setShowAddForm(false);
+                    resetForm();
+                  }}
                   data-testid="button-cancel-new-room"
                 >
                   Cancel
@@ -366,7 +492,9 @@ export function RoomTypeBuilder({ value, onChange, propertyType }: RoomTypeBuild
           <div className="text-center py-6 text-muted-foreground">
             <Bed className="h-10 w-10 mx-auto mb-3 opacity-50" />
             <p className="text-sm">No room types added yet.</p>
-            <p className="text-xs mt-1">Add at least one room type to define pricing and availability.</p>
+            <p className="text-xs mt-1">
+              Add at least one room type to define pricing and availability.
+            </p>
           </div>
         )}
 
@@ -382,15 +510,20 @@ export function RoomTypeBuilder({ value, onChange, propertyType }: RoomTypeBuild
             onUpdate={(updates) => handleUpdateRoom(room.id, updates)}
             onDelete={() => handleDeleteRoom(room.id)}
             onAddMealOption={(opt) => handleAddMealOption(room.id, opt)}
-            onDeleteMealOption={(optId) => handleDeleteMealOption(room.id, optId)}
-            onUpdateMealOption={(optId, updates) => handleUpdateMealOption(room.id, optId, updates)}
+            onDeleteMealOption={(optId) =>
+              handleDeleteMealOption(room.id, optId)
+            }
+            onUpdateMealOption={(optId, updates) =>
+              handleUpdateMealOption(room.id, optId, updates)
+            }
           />
         ))}
 
         {value.length > 0 && (
           <div className="bg-muted/50 rounded-lg p-3 text-sm text-muted-foreground">
-            <strong>Tip:</strong> Click on a room type to expand and manage its meal options. 
-            The final price shown to customers will be: Room Base Price + Meal Option Price Adjustment.
+            <strong>Tip:</strong> Click on a room type to expand and manage its
+            meal options. The final price shown to customers will be: Room Base
+            Price + Meal Option Price Adjustment.
           </div>
         )}
       </CardContent>
@@ -421,34 +554,60 @@ function RoomTypeCard({
   onDelete: () => void;
   onAddMealOption: (option: Omit<WizardMealOption, "id">) => void;
   onDeleteMealOption: (optionId: string) => void;
-  onUpdateMealOption: (optionId: string, updates: Partial<WizardMealOption>) => void;
+  onUpdateMealOption: (
+    optionId: string,
+    updates: Partial<WizardMealOption>,
+  ) => void;
 }) {
   const [editName, setEditName] = useState(room.name);
-  const [editDescription, setEditDescription] = useState(room.description || "");
+  const [editDescription, setEditDescription] = useState(
+    room.description || "",
+  );
   const [editPrice, setEditPrice] = useState(String(room.basePrice));
-  const [editOriginalPrice, setEditOriginalPrice] = useState(room.originalPrice !== undefined ? String(room.originalPrice) : "");
-  const [editShowStrikeOff, setEditShowStrikeOff] = useState(room.originalPrice !== undefined && room.originalPrice > room.basePrice);
+  const [editOriginalPrice, setEditOriginalPrice] = useState(
+    room.originalPrice !== undefined ? String(room.originalPrice) : "",
+  );
+  const [editShowStrikeOff, setEditShowStrikeOff] = useState(
+    room.originalPrice !== undefined && room.originalPrice > room.basePrice,
+  );
   const [editMaxGuests, setEditMaxGuests] = useState(String(room.maxGuests));
   const [editTotalRooms, setEditTotalRooms] = useState(String(room.totalRooms));
-  const [editSingleOccupancyBase, setEditSingleOccupancyBase] = useState(String(room.singleOccupancyBase || 1));
-  const [editDoubleOccupancy, setEditDoubleOccupancy] = useState(room.doubleOccupancyAdjustment !== undefined ? String(room.doubleOccupancyAdjustment) : "");
-  const [editTripleOccupancy, setEditTripleOccupancy] = useState(room.tripleOccupancyAdjustment !== undefined ? String(room.tripleOccupancyAdjustment) : "");
+  const [editSingleOccupancyBase, setEditSingleOccupancyBase] = useState(
+    String(room.singleOccupancyBase || 1),
+  );
+  const [editDoubleOccupancy, setEditDoubleOccupancy] = useState(
+    room.doubleOccupancyAdjustment !== undefined
+      ? String(room.doubleOccupancyAdjustment)
+      : "",
+  );
+  const [editTripleOccupancy, setEditTripleOccupancy] = useState(
+    room.tripleOccupancyAdjustment !== undefined
+      ? String(room.tripleOccupancyAdjustment)
+      : "",
+  );
 
   const handleSave = () => {
     const price = parseFloat(editPrice);
-    const originalPrice = editShowStrikeOff && editOriginalPrice ? parseFloat(editOriginalPrice) : undefined;
+    const originalPrice =
+      editShowStrikeOff && editOriginalPrice
+        ? parseFloat(editOriginalPrice)
+        : undefined;
     const maxGuests = parseInt(editMaxGuests);
     const totalRooms = parseInt(editTotalRooms);
     const singleOccupancyBase = parseInt(editSingleOccupancyBase) || 1;
-    const doubleAdj = editDoubleOccupancy ? parseFloat(editDoubleOccupancy) : undefined;
-    const tripleAdj = editTripleOccupancy ? parseFloat(editTripleOccupancy) : undefined;
-    
+    const doubleAdj = editDoubleOccupancy
+      ? parseFloat(editDoubleOccupancy)
+      : undefined;
+    const tripleAdj = editTripleOccupancy
+      ? parseFloat(editTripleOccupancy)
+      : undefined;
+
     if (isNaN(price) || price < 100) return;
     if (isNaN(maxGuests) || maxGuests < 1) return;
     if (isNaN(totalRooms) || totalRooms < 1) return;
     // Validate original price must be greater than selling price
     if (originalPrice !== undefined && originalPrice <= price) return;
-    
+
     onUpdate({
       name: editName,
       description: editDescription || undefined,
@@ -466,19 +625,34 @@ function RoomTypeCard({
     setEditName(room.name);
     setEditDescription(room.description || "");
     setEditPrice(String(room.basePrice));
-    setEditOriginalPrice(room.originalPrice !== undefined ? String(room.originalPrice) : "");
-    setEditShowStrikeOff(room.originalPrice !== undefined && room.originalPrice > room.basePrice);
+    setEditOriginalPrice(
+      room.originalPrice !== undefined ? String(room.originalPrice) : "",
+    );
+    setEditShowStrikeOff(
+      room.originalPrice !== undefined && room.originalPrice > room.basePrice,
+    );
     setEditMaxGuests(String(room.maxGuests));
     setEditTotalRooms(String(room.totalRooms));
     setEditSingleOccupancyBase(String(room.singleOccupancyBase || 1));
-    setEditDoubleOccupancy(room.doubleOccupancyAdjustment !== undefined ? String(room.doubleOccupancyAdjustment) : "");
-    setEditTripleOccupancy(room.tripleOccupancyAdjustment !== undefined ? String(room.tripleOccupancyAdjustment) : "");
+    setEditDoubleOccupancy(
+      room.doubleOccupancyAdjustment !== undefined
+        ? String(room.doubleOccupancyAdjustment)
+        : "",
+    );
+    setEditTripleOccupancy(
+      room.tripleOccupancyAdjustment !== undefined
+        ? String(room.tripleOccupancyAdjustment)
+        : "",
+    );
     onCancelEdit();
   };
 
   return (
     <Collapsible open={isExpanded} onOpenChange={onToggleExpand}>
-      <div className="border rounded-lg overflow-hidden" data-testid={`room-type-card-${room.id}`}>
+      <div
+        className="border rounded-lg overflow-hidden"
+        data-testid={`room-type-card-${room.id}`}
+      >
         <div className="flex items-center justify-between p-3 bg-muted/30">
           <div className="flex items-center gap-3 flex-wrap">
             <div className="flex items-center gap-2">
@@ -496,14 +670,29 @@ function RoomTypeCard({
             </div>
             {!isEditing && (
               <>
-                <Badge variant="secondary" className="text-xs">{room.maxGuests} guests</Badge>
-                <Badge variant="outline" className="text-xs">{room.totalRooms} rooms</Badge>
+                <Badge variant="secondary" className="text-xs">
+                  {room.maxGuests} guests
+                </Badge>
+                <Badge variant="outline" className="text-xs">
+                  {room.totalRooms} rooms
+                </Badge>
                 {room.originalPrice && room.originalPrice > room.basePrice ? (
                   <div className="flex items-center gap-1.5">
-                    <Badge variant="outline" className="text-xs line-through text-muted-foreground">₹{room.originalPrice}</Badge>
+                    <Badge
+                      variant="outline"
+                      className="text-xs line-through text-muted-foreground"
+                    >
+                      ₹{room.originalPrice}
+                    </Badge>
                     <Badge className="text-xs">₹{room.basePrice}/night</Badge>
-                    <Badge variant="secondary" className="text-xs bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
-                      {Math.round((1 - room.basePrice / room.originalPrice) * 100)}% off
+                    <Badge
+                      variant="secondary"
+                      className="text-xs bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400"
+                    >
+                      {Math.round(
+                        (1 - room.basePrice / room.originalPrice) * 100,
+                      )}
+                      % off
                     </Badge>
                   </div>
                 ) : (
@@ -519,24 +708,52 @@ function RoomTypeCard({
           <div className="flex items-center gap-1">
             {isEditing ? (
               <>
-                <Button size="sm" variant="ghost" onClick={handleSave} data-testid={`save-room-${room.id}`}>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={handleSave}
+                  data-testid={`save-room-${room.id}`}
+                >
                   <Save className="h-4 w-4" />
                 </Button>
-                <Button size="sm" variant="ghost" onClick={resetEdit} data-testid={`cancel-room-${room.id}`}>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={resetEdit}
+                  data-testid={`cancel-room-${room.id}`}
+                >
                   <X className="h-4 w-4" />
                 </Button>
               </>
             ) : (
               <>
-                <Button size="sm" variant="ghost" onClick={onEdit} data-testid={`edit-room-${room.id}`}>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={onEdit}
+                  data-testid={`edit-room-${room.id}`}
+                >
                   <Edit className="h-4 w-4" />
                 </Button>
-                <Button size="sm" variant="ghost" onClick={onDelete} data-testid={`delete-room-${room.id}`}>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={onDelete}
+                  data-testid={`delete-room-${room.id}`}
+                >
                   <Trash2 className="h-4 w-4 text-destructive" />
                 </Button>
                 <CollapsibleTrigger asChild>
-                  <Button size="sm" variant="ghost" data-testid={`expand-room-${room.id}`}>
-                    {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    data-testid={`expand-room-${room.id}`}
+                  >
+                    {isExpanded ? (
+                      <ChevronUp className="h-4 w-4" />
+                    ) : (
+                      <ChevronDown className="h-4 w-4" />
+                    )}
                   </Button>
                 </CollapsibleTrigger>
               </>
@@ -588,14 +805,18 @@ function RoomTypeCard({
                 />
               </div>
             </div>
-            
+
             {/* Strike-off Price Section */}
             <div className="border rounded-lg p-3 space-y-3 bg-emerald-50/50 dark:bg-emerald-950/20">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Tag className="h-4 w-4 text-emerald-600" />
-                  <Label className="text-xs font-medium">Show Discount (Strike-off Price)</Label>
-                  <Badge variant="secondary" className="text-xs">Optional</Badge>
+                  <Label className="text-xs font-medium">
+                    Show Discount (Strike-off Price)
+                  </Label>
+                  <Badge variant="secondary" className="text-xs">
+                    Optional
+                  </Badge>
                 </div>
                 <Switch
                   checked={editShowStrikeOff}
@@ -614,24 +835,46 @@ function RoomTypeCard({
                     placeholder="e.g., 3500"
                     data-testid={`edit-room-original-price-${room.id}`}
                   />
-                  {editOriginalPrice && editPrice && parseFloat(editOriginalPrice) <= parseFloat(editPrice) && (
-                    <p className="text-xs text-destructive">Original price must be higher than selling price</p>
-                  )}
-                  {editOriginalPrice && editPrice && parseFloat(editOriginalPrice) > parseFloat(editPrice) && (
-                    <p className="text-xs text-emerald-600">
-                      Customers see: <span className="line-through">₹{Number(editOriginalPrice).toLocaleString('en-IN')}</span>{" "}
-                      <span className="font-semibold">₹{Number(editPrice).toLocaleString('en-IN')}</span>{" "}
-                      ({Math.round((1 - parseFloat(editPrice) / parseFloat(editOriginalPrice)) * 100)}% off)
-                    </p>
-                  )}
+                  {editOriginalPrice &&
+                    editPrice &&
+                    parseFloat(editOriginalPrice) <= parseFloat(editPrice) && (
+                      <p className="text-xs text-destructive">
+                        Original price must be higher than selling price
+                      </p>
+                    )}
+                  {editOriginalPrice &&
+                    editPrice &&
+                    parseFloat(editOriginalPrice) > parseFloat(editPrice) && (
+                      <p className="text-xs text-emerald-600">
+                        Customers see:{" "}
+                        <span className="line-through">
+                          ₹{Number(editOriginalPrice).toLocaleString("en-IN")}
+                        </span>{" "}
+                        <span className="font-semibold">
+                          ₹{Number(editPrice).toLocaleString("en-IN")}
+                        </span>{" "}
+                        (
+                        {Math.round(
+                          (1 -
+                            parseFloat(editPrice) /
+                              parseFloat(editOriginalPrice)) *
+                            100,
+                        )}
+                        % off)
+                      </p>
+                    )}
                 </div>
               )}
             </div>
-            
+
             <div className="border rounded-lg p-3 space-y-3 bg-muted/20">
               <div className="flex items-center gap-2">
-                <Label className="text-xs font-medium">Occupancy-Based Pricing</Label>
-                <Badge variant="secondary" className="text-xs">Optional</Badge>
+                <Label className="text-xs font-medium">
+                  Occupancy-Based Pricing
+                </Label>
+                <Badge variant="secondary" className="text-xs">
+                  Optional
+                </Badge>
               </div>
               <div className="grid gap-3 md:grid-cols-3">
                 <div className="space-y-1">
@@ -642,11 +885,15 @@ function RoomTypeCard({
                       min="1"
                       max="3"
                       value={editSingleOccupancyBase}
-                      onChange={(e) => setEditSingleOccupancyBase(e.target.value)}
+                      onChange={(e) =>
+                        setEditSingleOccupancyBase(e.target.value)
+                      }
                       className="w-20"
                       data-testid={`edit-room-single-occupancy-${room.id}`}
                     />
-                    <span className="text-xs text-muted-foreground">guest(s)</span>
+                    <span className="text-xs text-muted-foreground">
+                      guest(s)
+                    </span>
                   </div>
                 </div>
                 <div className="space-y-1">
@@ -692,10 +939,26 @@ function RoomTypeCard({
 }
 
 const PRESET_MEAL_OPTIONS_WIZARD = [
-  { name: "Room Only (Best Price)", priceAdjustment: 0, inclusions: "No meals included" },
-  { name: "Breakfast Included", priceAdjustment: 300, inclusions: "Daily breakfast buffet" },
-  { name: "Breakfast + Dinner/Lunch", priceAdjustment: 600, inclusions: "Breakfast and dinner or lunch included" },
-  { name: "All Meals Included", priceAdjustment: 900, inclusions: "All meals included (breakfast, lunch, dinner)" },
+  {
+    name: "Room Only (Best Price)",
+    priceAdjustment: 0,
+    inclusions: "No meals included",
+  },
+  {
+    name: "Breakfast Included",
+    priceAdjustment: 300,
+    inclusions: "Daily breakfast buffet",
+  },
+  {
+    name: "Breakfast + Dinner/Lunch",
+    priceAdjustment: 600,
+    inclusions: "Breakfast and dinner or lunch included",
+  },
+  {
+    name: "All Meals Included",
+    priceAdjustment: 900,
+    inclusions: "All meals included (breakfast, lunch, dinner)",
+  },
 ];
 
 function MealOptionsSection({
@@ -728,7 +991,7 @@ function MealOptionsSection({
     setShowAddForm(false);
   };
 
-  const handleQuickAdd = (preset: typeof PRESET_MEAL_OPTIONS_WIZARD[0]) => {
+  const handleQuickAdd = (preset: (typeof PRESET_MEAL_OPTIONS_WIZARD)[0]) => {
     onAdd({
       name: preset.name,
       priceAdjustment: preset.priceAdjustment,
@@ -760,10 +1023,14 @@ function MealOptionsSection({
       {showAddForm && (
         <div className="p-3 bg-muted/30 rounded-lg space-y-3 border border-dashed border-primary/30">
           <div className="space-y-2">
-            <Label className="text-xs font-medium">Quick Add Preset Plans</Label>
+            <Label className="text-xs font-medium">
+              Quick Add Preset Plans
+            </Label>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
               {PRESET_MEAL_OPTIONS_WIZARD.map((preset) => {
-                const alreadyExists = options.some(o => o.name === preset.name);
+                const alreadyExists = options.some(
+                  (o) => o.name === preset.name,
+                );
                 return (
                   <Button
                     key={preset.name}
@@ -773,12 +1040,14 @@ function MealOptionsSection({
                     className="justify-start h-auto py-2 px-3"
                     onClick={() => !alreadyExists && handleQuickAdd(preset)}
                     disabled={alreadyExists}
-                    data-testid={`quick-add-${preset.name.toLowerCase().replace(/\s+/g, '-')}`}
+                    data-testid={`quick-add-${preset.name.toLowerCase().replace(/\s+/g, "-")}`}
                   >
                     <div className="text-left">
                       <div className="font-medium text-xs">{preset.name}</div>
                       <div className="text-xs text-muted-foreground">
-                        {preset.priceAdjustment === 0 ? "Included" : `+₹${preset.priceAdjustment}/person`}
+                        {preset.priceAdjustment === 0
+                          ? "Included"
+                          : `+₹${preset.priceAdjustment}/person`}
                       </div>
                     </div>
                   </Button>
@@ -786,13 +1055,15 @@ function MealOptionsSection({
               })}
             </div>
           </div>
-          
+
           <div className="relative">
             <div className="absolute inset-0 flex items-center">
               <span className="w-full border-t" />
             </div>
             <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-muted/30 px-2 text-muted-foreground">Or add custom plan</span>
+              <span className="bg-muted/30 px-2 text-muted-foreground">
+                Or add custom plan
+              </span>
             </div>
           </div>
 
@@ -827,10 +1098,22 @@ function MealOptionsSection({
             </div>
           </div>
           <div className="flex gap-2">
-            <Button type="button" size="sm" onClick={handleAdd} disabled={!newName} data-testid="button-save-meal">
+            <Button
+              type="button"
+              size="sm"
+              onClick={handleAdd}
+              disabled={!newName}
+              data-testid="button-save-meal"
+            >
               Add Custom Plan
             </Button>
-            <Button type="button" size="sm" variant="outline" onClick={() => setShowAddForm(false)} data-testid="button-cancel-meal">
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() => setShowAddForm(false)}
+              data-testid="button-cancel-meal"
+            >
               Done
             </Button>
           </div>
@@ -838,7 +1121,9 @@ function MealOptionsSection({
       )}
 
       {options.length === 0 ? (
-        <p className="text-xs text-muted-foreground text-center py-2">No meal plans added</p>
+        <p className="text-xs text-muted-foreground text-center py-2">
+          No meal plans added
+        </p>
       ) : (
         <div className="space-y-2">
           {options.map((option) => (
@@ -848,7 +1133,10 @@ function MealOptionsSection({
               isEditing={editingOption === option.id}
               onEdit={() => setEditingOption(option.id)}
               onCancelEdit={() => setEditingOption(null)}
-              onUpdate={(updates) => { onUpdate(option.id, updates); setEditingOption(null); }}
+              onUpdate={(updates) => {
+                onUpdate(option.id, updates);
+                setEditingOption(null);
+              }}
               onDelete={() => onDelete(option.id)}
             />
           ))}
@@ -910,29 +1198,73 @@ function MealOptionRow({
           />
         </div>
         <div className="flex gap-2">
-          <Button type="button" size="sm" onClick={handleSave} data-testid={`save-meal-${option.id}`}>Save</Button>
-          <Button type="button" size="sm" variant="outline" onClick={onCancelEdit} data-testid={`cancel-meal-${option.id}`}>Cancel</Button>
+          <Button
+            type="button"
+            size="sm"
+            onClick={handleSave}
+            data-testid={`save-meal-${option.id}`}
+          >
+            Save
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            onClick={onCancelEdit}
+            data-testid={`cancel-meal-${option.id}`}
+          >
+            Cancel
+          </Button>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="flex items-center justify-between p-2 bg-muted/30 rounded-md" data-testid={`meal-option-${option.id}`}>
+    <div
+      className="flex items-center justify-between p-2 bg-muted/30 rounded-md"
+      data-testid={`meal-option-${option.id}`}
+    >
       <div className="flex items-center gap-3 flex-wrap">
         <span className="text-sm font-medium">{option.name}</span>
-        <Badge variant={option.priceAdjustment === 0 ? "secondary" : "default"} className="text-xs">
-          {option.priceAdjustment === 0 ? "Included" : `+₹${option.priceAdjustment}/person`}
+        <Badge
+          variant={option.priceAdjustment === 0 ? "secondary" : "default"}
+          className="text-xs"
+        >
+          {option.priceAdjustment === 0
+            ? "Included"
+            : `+₹${option.priceAdjustment}/person`}
         </Badge>
         {option.inclusions && (
-          <span className="text-xs text-muted-foreground">{option.inclusions}</span>
+          <span className="text-xs text-muted-foreground">
+            {option.inclusions}
+          </span>
         )}
       </div>
-      <div className="flex items-center gap-1">
-        <Button size="icon" variant="ghost" className="h-7 w-7" onClick={onEdit} data-testid={`edit-meal-${option.id}`}>
+      <div className="flex items-center gap-2">
+        <span className="text-xs text-muted-foreground">
+          {option.isActive !== false ? "Visible" : "Hidden"}
+        </span>
+        <Switch
+          checked={option.isActive !== false}
+          onCheckedChange={(checked) => onUpdate({ isActive: checked })}
+        />
+        <Button
+          size="icon"
+          variant="ghost"
+          className="h-7 w-7"
+          onClick={onEdit}
+          data-testid={`edit-meal-${option.id}`}
+        >
           <Edit className="h-3 w-3" />
         </Button>
-        <Button size="icon" variant="ghost" className="h-7 w-7" onClick={onDelete} data-testid={`delete-meal-${option.id}`}>
+        <Button
+          size="icon"
+          variant="ghost"
+          className="h-7 w-7"
+          onClick={onDelete}
+          data-testid={`delete-meal-${option.id}`}
+        >
           <Trash2 className="h-3 w-3 text-destructive" />
         </Button>
       </div>
