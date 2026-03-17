@@ -1,18 +1,25 @@
 import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { 
-  Sheet, 
-  SheetContent, 
-  SheetHeader, 
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
   SheetTitle,
-  SheetTrigger 
+  SheetTrigger,
 } from "@/components/ui/sheet";
 import { Star, ChevronDown, ChevronUp, Minus, Plus } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { format } from "date-fns";
-import { RoomTypeCard, RoomTypeData, RoomInventory } from "@/components/RoomTypeCard";
-
+import {
+  RoomTypeSelect,
+  RoomTypeData,
+  RoomInventory,
+} from "@/components/RoomTypeCard";
 interface MobileBookingBarProps {
   property: {
     id: string;
@@ -53,7 +60,7 @@ interface MobileBookingBarProps {
 }
 
 const parseLocalDate = (dateStr: string): Date => {
-  const [year, month, day] = dateStr.split('-').map(Number);
+  const [year, month, day] = dateStr.split("-").map(Number);
   return new Date(year, month - 1, day);
 };
 
@@ -95,7 +102,7 @@ export function MobileBookingBar({
   const [guestsExpanded, setGuestsExpanded] = useState(false);
 
   const guests = adults + children;
-  const selectedRoomType = roomTypes.find(rt => rt.id === selectedRoomTypeId);
+  const selectedRoomType = roomTypes.find((rt) => rt.id === selectedRoomTypeId);
 
   // Close sheet only when booking completes (parent resets bookingStep "details" → "select")
   const prevBookingStepRef = useRef(bookingStep);
@@ -122,8 +129,15 @@ export function MobileBookingBar({
         <div className="flex items-center justify-between px-4 py-3">
           <div className="flex flex-col">
             <div className="flex items-baseline gap-1">
-              <span className="text-lg font-semibold" data-testid="mobile-base-price">
-                ₹{(selectedRoomType ? Number(selectedRoomType.basePrice) : property.minPrice).toLocaleString('en-IN')}
+              <span
+                className="text-lg font-semibold"
+                data-testid="mobile-base-price"
+              >
+                ₹
+                {(selectedRoomType
+                  ? Number(selectedRoomType.basePrice)
+                  : property.minPrice
+                ).toLocaleString("en-IN")}
               </span>
               <span className="text-sm text-muted-foreground">/ night</span>
               {rooms > 1 && (
@@ -140,20 +154,20 @@ export function MobileBookingBar({
               </div>
             )}
           </div>
-          
+
           <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
             <SheetTrigger asChild>
-              <Button 
-                size="lg" 
+              <Button
+                size="lg"
                 className="px-8"
                 data-testid="button-mobile-reserve"
               >
                 Reserve
               </Button>
             </SheetTrigger>
-            
-            <SheetContent 
-              side="bottom" 
+
+            <SheetContent
+              side="bottom"
               className="h-[85vh] overflow-y-auto rounded-t-xl"
             >
               <SheetHeader className="text-left pb-4 border-b">
@@ -162,16 +176,23 @@ export function MobileBookingBar({
                 </div>
                 <div className="flex items-baseline gap-2">
                   <span className="text-2xl font-bold">
-                    ₹{(selectedRoomType ? Number(selectedRoomType.basePrice) : property.minPrice).toLocaleString('en-IN')}
+                    ₹
+                    {(selectedRoomType
+                      ? Number(selectedRoomType.basePrice)
+                      : property.minPrice
+                    ).toLocaleString("en-IN")}
                   </span>
                   <span className="text-muted-foreground">/ night</span>
                   {selectedRoomType && (
-                    <span className="text-sm text-primary">({selectedRoomType.name})</span>
+                    <span className="text-sm text-primary">
+                      ({selectedRoomType.name})
+                    </span>
                   )}
                 </div>
                 {guests > 0 && (
                   <div className="text-sm text-muted-foreground">
-                    {guests} guest{guests !== 1 ? 's' : ''} · {rooms} room{rooms !== 1 ? 's' : ''}
+                    {guests} guest{guests !== 1 ? "s" : ""} · {rooms} room
+                    {rooms !== 1 ? "s" : ""}
                   </div>
                 )}
               </SheetHeader>
@@ -181,7 +202,10 @@ export function MobileBookingBar({
                 <div className="space-y-3">
                   <h3 className="font-semibold">Select Dates</h3>
                   <div className="grid grid-cols-2 gap-3">
-                    <Popover open={checkInPopoverOpen} onOpenChange={setCheckInPopoverOpen}>
+                    <Popover
+                      open={checkInPopoverOpen}
+                      onOpenChange={setCheckInPopoverOpen}
+                    >
                       <PopoverTrigger asChild>
                         <Button
                           variant="outline"
@@ -189,9 +213,13 @@ export function MobileBookingBar({
                           data-testid="mobile-input-checkin"
                         >
                           <div className="flex flex-col items-start">
-                            <span className="text-xs text-muted-foreground">Check-in</span>
+                            <span className="text-xs text-muted-foreground">
+                              Check-in
+                            </span>
                             <span className="text-sm">
-                              {checkIn ? format(parseLocalDate(checkIn), "MMM d, yyyy") : "Add date"}
+                              {checkIn
+                                ? format(parseLocalDate(checkIn), "MMM d, yyyy")
+                                : "Add date"}
                             </span>
                           </div>
                         </Button>
@@ -199,7 +227,9 @@ export function MobileBookingBar({
                       <PopoverContent className="w-auto p-0" align="start">
                         <Calendar
                           mode="single"
-                          selected={checkIn ? parseLocalDate(checkIn) : undefined}
+                          selected={
+                            checkIn ? parseLocalDate(checkIn) : undefined
+                          }
                           onSelect={(date) => {
                             if (date) {
                               onCheckInChange(format(date, "yyyy-MM-dd"));
@@ -209,8 +239,18 @@ export function MobileBookingBar({
                           }}
                           disabled={(date) => {
                             if (date < today) return true;
-                            if (bookedDates.some(bd => bd.getTime() === date.getTime())) return true;
-                            if (blockedDates.some(bd => bd.getTime() === date.getTime())) return true;
+                            if (
+                              bookedDates.some(
+                                (bd) => bd.getTime() === date.getTime(),
+                              )
+                            )
+                              return true;
+                            if (
+                              blockedDates.some(
+                                (bd) => bd.getTime() === date.getTime(),
+                              )
+                            )
+                              return true;
                             return false;
                           }}
                           initialFocus
@@ -218,7 +258,10 @@ export function MobileBookingBar({
                       </PopoverContent>
                     </Popover>
 
-                    <Popover open={checkOutPopoverOpen} onOpenChange={setCheckOutPopoverOpen}>
+                    <Popover
+                      open={checkOutPopoverOpen}
+                      onOpenChange={setCheckOutPopoverOpen}
+                    >
                       <PopoverTrigger asChild>
                         <Button
                           variant="outline"
@@ -226,9 +269,16 @@ export function MobileBookingBar({
                           data-testid="mobile-input-checkout"
                         >
                           <div className="flex flex-col items-start">
-                            <span className="text-xs text-muted-foreground">Check-out</span>
+                            <span className="text-xs text-muted-foreground">
+                              Check-out
+                            </span>
                             <span className="text-sm">
-                              {checkOut ? format(parseLocalDate(checkOut), "MMM d, yyyy") : "Add date"}
+                              {checkOut
+                                ? format(
+                                    parseLocalDate(checkOut),
+                                    "MMM d, yyyy",
+                                  )
+                                : "Add date"}
                             </span>
                           </div>
                         </Button>
@@ -236,7 +286,9 @@ export function MobileBookingBar({
                       <PopoverContent className="w-auto p-0" align="start">
                         <Calendar
                           mode="single"
-                          selected={checkOut ? parseLocalDate(checkOut) : undefined}
+                          selected={
+                            checkOut ? parseLocalDate(checkOut) : undefined
+                          }
                           onSelect={(date) => {
                             if (date) {
                               onCheckOutChange(format(date, "yyyy-MM-dd"));
@@ -244,10 +296,21 @@ export function MobileBookingBar({
                             setCheckOutPopoverOpen(false);
                           }}
                           disabled={(date) => {
-                            if (checkIn && date <= parseLocalDate(checkIn)) return true;
+                            if (checkIn && date <= parseLocalDate(checkIn))
+                              return true;
                             if (date < today) return true;
-                            if (bookedDates.some(bd => bd.getTime() === date.getTime())) return true;
-                            if (blockedDates.some(bd => bd.getTime() === date.getTime())) return true;
+                            if (
+                              bookedDates.some(
+                                (bd) => bd.getTime() === date.getTime(),
+                              )
+                            )
+                              return true;
+                            if (
+                              blockedDates.some(
+                                (bd) => bd.getTime() === date.getTime(),
+                              )
+                            )
+                              return true;
                             return false;
                           }}
                           initialFocus
@@ -266,26 +329,35 @@ export function MobileBookingBar({
                     <h3 className="font-semibold">Guests</h3>
                     <div className="flex items-center gap-2">
                       <span className="text-sm text-muted-foreground">
-                        {guests} guest{guests !== 1 ? 's' : ''}, {rooms} room{rooms !== 1 ? 's' : ''}
+                        {guests} guest{guests !== 1 ? "s" : ""}, {rooms} room
+                        {rooms !== 1 ? "s" : ""}
                       </span>
-                      {guestsExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                      {guestsExpanded ? (
+                        <ChevronUp className="h-4 w-4" />
+                      ) : (
+                        <ChevronDown className="h-4 w-4" />
+                      )}
                     </div>
                   </button>
-                  
+
                   {guestsExpanded && (
                     <div className="space-y-4 pt-2">
                       {/* Adults */}
                       <div className="flex items-center justify-between">
                         <div>
                           <p className="font-medium">Adults</p>
-                          <p className="text-sm text-muted-foreground">Age 13+</p>
+                          <p className="text-sm text-muted-foreground">
+                            Age 13+
+                          </p>
                         </div>
                         <div className="flex items-center gap-3">
                           <Button
                             variant="outline"
                             size="icon"
                             className="h-8 w-8 rounded-full"
-                            onClick={() => onAdultsChange(Math.max(1, adults - 1))}
+                            onClick={() =>
+                              onAdultsChange(Math.max(1, adults - 1))
+                            }
                             disabled={adults <= 1}
                             data-testid="mobile-btn-adults-minus"
                           >
@@ -308,14 +380,18 @@ export function MobileBookingBar({
                       <div className="flex items-center justify-between">
                         <div>
                           <p className="font-medium">Children</p>
-                          <p className="text-sm text-muted-foreground">Ages 2-12</p>
+                          <p className="text-sm text-muted-foreground">
+                            Ages 2-12
+                          </p>
                         </div>
                         <div className="flex items-center gap-3">
                           <Button
                             variant="outline"
                             size="icon"
                             className="h-8 w-8 rounded-full"
-                            onClick={() => onChildrenChange(Math.max(0, children - 1))}
+                            onClick={() =>
+                              onChildrenChange(Math.max(0, children - 1))
+                            }
                             disabled={children <= 0}
                             data-testid="mobile-btn-children-minus"
                           >
@@ -344,7 +420,9 @@ export function MobileBookingBar({
                             variant="outline"
                             size="icon"
                             className="h-8 w-8 rounded-full"
-                            onClick={() => onRoomsChange(Math.max(1, rooms - 1))}
+                            onClick={() =>
+                              onRoomsChange(Math.max(1, rooms - 1))
+                            }
                             disabled={rooms <= 1}
                             data-testid="mobile-btn-rooms-minus"
                           >
@@ -369,33 +447,27 @@ export function MobileBookingBar({
                 {/* Room Type Selection with integrated Meal Options */}
                 <div className="space-y-3">
                   <h3 className="font-semibold">Select Room Type</h3>
-                  <div className="space-y-3">
-                    {roomTypes.map((roomType) => {
-                      const inventory = roomInventory.find(ri => ri.roomTypeId === roomType.id);
-                      return (
-                        <RoomTypeCard
-                          key={roomType.id}
-                          roomType={roomType}
-                          isSelected={selectedRoomTypeId === roomType.id}
-                          selectedMealOptionId={selectedMealOptionId}
-                          onSelect={(id) => {
-                            onRoomTypeSelect(id);
-                            onMealOptionSelect(null);
-                          }}
-                          onMealOptionSelect={onMealOptionSelect}
-                          inventory={inventory}
-                          showDatesContext={!!(checkIn && checkOut)}
-                        />
-                      );
-                    })}
-                  </div>
+                  <RoomTypeSelect
+                    roomTypes={roomTypes}
+                    selectedRoomTypeId={selectedRoomTypeId}
+                    selectedMealOptionId={selectedMealOptionId}
+                    onRoomTypeSelect={(id) => {
+                      onRoomTypeSelect(id);
+                      onMealOptionSelect(null);
+                    }}
+                    onMealOptionSelect={onMealOptionSelect}
+                    inventoryMap={Object.fromEntries(
+                      roomInventory.map((ri) => [ri.roomTypeId, ri]),
+                    )}
+                    showDatesContext={!!(checkIn && checkOut)}
+                  />
                 </div>
-
                 {/* Errors */}
                 {hasDateOverlap && (
                   <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
                     <p className="text-sm text-destructive font-medium">
-                      Selected dates are not available. Please choose different dates.
+                      Selected dates are not available. Please choose different
+                      dates.
                     </p>
                   </div>
                 )}
@@ -409,27 +481,41 @@ export function MobileBookingBar({
                 )}
 
                 {/* Price Summary - shown on select step */}
-                {bookingStep === "select" && nights > 0 && totalPrice > 0 && selectedRoomTypeId && !hasDateOverlap && !hasBlockedDateOverlap && (
-                  <div className="p-4 bg-muted rounded-lg space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">
-                        ₹{selectedRoomType ? Number(selectedRoomType.basePrice).toLocaleString('en-IN') : 0} × {nights}N × {rooms}R
-                      </span>
-                      <span className="font-medium">
-                        ₹{(Number(selectedRoomType?.basePrice || 0) * nights * rooms).toLocaleString('en-IN')}
-                      </span>
+                {bookingStep === "select" &&
+                  nights > 0 &&
+                  totalPrice > 0 &&
+                  selectedRoomTypeId &&
+                  !hasDateOverlap &&
+                  !hasBlockedDateOverlap && (
+                    <div className="p-4 bg-muted rounded-lg space-y-2">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">
+                          ₹
+                          {selectedRoomType
+                            ? Number(selectedRoomType.basePrice).toLocaleString(
+                                "en-IN",
+                              )
+                            : 0}{" "}
+                          × {nights}N × {rooms}R
+                        </span>
+                        <span className="font-medium">
+                          ₹
+                          {(
+                            Number(selectedRoomType?.basePrice || 0) *
+                            nights *
+                            rooms
+                          ).toLocaleString("en-IN")}
+                        </span>
+                      </div>
+                      <div className="flex justify-between text-base font-semibold pt-2 border-t">
+                        <span>Total</span>
+                        <span>₹{totalPrice.toLocaleString("en-IN")}</span>
+                      </div>
                     </div>
-                    <div className="flex justify-between text-base font-semibold pt-2 border-t">
-                      <span>Total</span>
-                      <span>₹{totalPrice.toLocaleString('en-IN')}</span>
-                    </div>
-                  </div>
-                )}
+                  )}
 
                 {bookingStep === "details" && detailsContent && (
-                  <div className="space-y-4">
-                    {detailsContent}
-                  </div>
+                  <div className="space-y-4">{detailsContent}</div>
                 )}
               </div>
 
@@ -456,7 +542,9 @@ export function MobileBookingBar({
                   {isReserving ? "Processing..." : disabledReason || "Reserve"}
                 </Button>
                 <p className="text-center text-sm text-muted-foreground mt-2">
-                  {bookingStep === "details" ? "Pay directly at the hotel" : "No payment required now"}
+                  {bookingStep === "details"
+                    ? "Pay directly at the hotel"
+                    : "No payment required now"}
                 </p>
               </div>
             </SheetContent>
