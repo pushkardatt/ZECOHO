@@ -887,9 +887,16 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(properties)
       .where(eq(properties.id, id));
+
+    if (!property) return undefined;
+
+    const sub = await this.checkOwnerSubscriptionStatus(property.ownerId);
+
+    // 🔴 BLOCK if no active subscription
+    if (!sub.isActive) return undefined;
+
     return property;
   }
-
   async createProperty(propertyData: InsertProperty): Promise<Property> {
     const propertyCode = await generatePropertyCode();
     const [property] = await db

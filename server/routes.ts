@@ -1005,7 +1005,14 @@ export async function registerRoutes(
   app.post("/api/kyc/submit", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
+      // 🔴 SUBSCRIPTION CHECK
+      const check = await storage.canOwnerAddProperty(userId);
 
+      if (!check.allowed) {
+        return res.status(403).json({
+          message: check.reason,
+        });
+      }
       // Check if user already has a KYC application
       const existingKyc = await storage.getUserKycApplication(userId);
       if (existingKyc) {
