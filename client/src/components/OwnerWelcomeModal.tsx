@@ -11,7 +11,14 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Building2, Users, MessageSquare, TrendingUp, Home, LayoutDashboard } from "lucide-react";
+import {
+  Building2,
+  Users,
+  MessageSquare,
+  TrendingUp,
+  Home,
+  LayoutDashboard,
+} from "lucide-react";
 
 interface OwnerWelcomeModalProps {
   open: boolean;
@@ -25,9 +32,7 @@ export function OwnerWelcomeModal({ open, onClose }: OwnerWelcomeModalProps) {
     mutationFn: async () => {
       await apiRequest("PATCH", "/api/user/dismiss-owner-modal");
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
-    },
+    onSuccess: () => {},
   });
 
   const handleGoToDashboard = () => {
@@ -53,8 +58,9 @@ export function OwnerWelcomeModal({ open, onClose }: OwnerWelcomeModalProps) {
             You're now a ZECOHO Property Owner
           </DialogTitle>
           <DialogDescription className="text-base">
-            Welcome to the ZECOHO Owner Portal! As a property owner, you can manage your listings, 
-            connect with guests, and grow your business with zero commission fees.
+            Welcome to the ZECOHO Owner Portal! As a property owner, you can
+            manage your listings, connect with guests, and grow your business
+            with zero commission fees.
           </DialogDescription>
         </DialogHeader>
 
@@ -90,7 +96,8 @@ export function OwnerWelcomeModal({ open, onClose }: OwnerWelcomeModalProps) {
             <div>
               <h4 className="font-medium text-sm">Real-time Messaging</h4>
               <p className="text-sm text-muted-foreground">
-                Chat with guests instantly to answer questions and confirm details
+                Chat with guests instantly to answer questions and confirm
+                details
               </p>
             </div>
           </div>
@@ -109,8 +116,8 @@ export function OwnerWelcomeModal({ open, onClose }: OwnerWelcomeModalProps) {
         </div>
 
         <DialogFooter className="flex flex-col sm:flex-row gap-2">
-          <Button 
-            variant="outline" 
+          <Button
+            variant="outline"
             onClick={handleSwitchToCustomer}
             className="flex-1"
             data-testid="button-switch-customer"
@@ -118,7 +125,7 @@ export function OwnerWelcomeModal({ open, onClose }: OwnerWelcomeModalProps) {
             <Home className="h-4 w-4 mr-2" />
             Switch to Customer View
           </Button>
-          <Button 
+          <Button
             onClick={handleGoToDashboard}
             className="flex-1"
             data-testid="button-go-dashboard"

@@ -1,6 +1,12 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
@@ -16,7 +22,11 @@ interface OwnerAgreementConsentModalProps {
   isVersionUpdate?: boolean;
 }
 
-export function OwnerAgreementConsentModal({ open, userName, isVersionUpdate = false }: OwnerAgreementConsentModalProps) {
+export function OwnerAgreementConsentModal({
+  open,
+  userName,
+  isVersionUpdate = false,
+}: OwnerAgreementConsentModalProps) {
   const [agreementAccepted, setAgreementAccepted] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -26,21 +36,29 @@ export function OwnerAgreementConsentModal({ open, userName, isVersionUpdate = f
     enabled: open,
   });
 
-  const { data: agreement, isLoading: isLoadingAgreement } = useQuery<{ title: string; content: string; version: number }>({
+  const { data: agreement, isLoading: isLoadingAgreement } = useQuery<{
+    title: string;
+    content: string;
+    version: number;
+  }>({
     queryKey: ["/api/owner-agreement"],
     enabled: open,
   });
 
   const consentMutation = useMutation({
     mutationFn: async () => {
-      const response = await apiRequest("POST", "/api/auth/owner-agreement-consent");
+      const response = await apiRequest(
+        "POST",
+        "/api/auth/owner-agreement-consent",
+      );
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
       toast({
-        title: isVersionUpdate ? "Agreement Accepted" : "Welcome to ZECOHO Owners!",
-        description: isVersionUpdate 
+        title: isVersionUpdate
+          ? "Agreement Accepted"
+          : "Welcome to ZECOHO Owners!",
+        description: isVersionUpdate
           ? "Thank you for reviewing and accepting the updated Owner Agreement."
           : "You can now list and manage your properties.",
       });
@@ -48,7 +66,8 @@ export function OwnerAgreementConsentModal({ open, userName, isVersionUpdate = f
     onError: (error: Error) => {
       toast({
         title: "Error",
-        description: error.message || "Failed to accept agreement. Please try again.",
+        description:
+          error.message || "Failed to accept agreement. Please try again.",
         variant: "destructive",
       });
     },
@@ -68,13 +87,16 @@ export function OwnerAgreementConsentModal({ open, userName, isVersionUpdate = f
 
   return (
     <Dialog open={open}>
-      <DialogContent 
-        className="sm:max-w-2xl max-h-[90vh] overflow-hidden flex flex-col" 
+      <DialogContent
+        className="sm:max-w-2xl max-h-[90vh] overflow-hidden flex flex-col"
         onPointerDownOutside={(e) => e.preventDefault()}
         onEscapeKeyDown={(e) => e.preventDefault()}
       >
         <DialogHeader className="flex-shrink-0">
-          <DialogTitle className="flex items-center gap-2 text-xl" data-testid="text-owner-agreement-title">
+          <DialogTitle
+            className="flex items-center gap-2 text-xl"
+            data-testid="text-owner-agreement-title"
+          >
             {isVersionUpdate ? (
               <>
                 <AlertCircle className="h-5 w-5 text-amber-500" />
@@ -88,17 +110,17 @@ export function OwnerAgreementConsentModal({ open, userName, isVersionUpdate = f
             )}
           </DialogTitle>
           <DialogDescription>
-            {isVersionUpdate 
+            {isVersionUpdate
               ? "We've updated the Property Owner Agreement. Please review and accept to continue managing your properties."
-              : `Welcome${userName ? `, ${userName}` : ""}! Before you can list and manage properties, please review and accept our Owner Agreement.`
-            }
+              : `Welcome${userName ? `, ${userName}` : ""}! Before you can list and manage properties, please review and accept our Owner Agreement.`}
           </DialogDescription>
         </DialogHeader>
 
         {isVersionUpdate && (
           <div className="bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-lg p-3 text-sm flex-shrink-0">
             <p className="text-amber-800 dark:text-amber-200">
-              The Owner Agreement has been updated. Please review the changes before continuing.
+              The Owner Agreement has been updated. Please review the changes
+              before continuing.
             </p>
           </div>
         )}
@@ -114,7 +136,9 @@ export function OwnerAgreementConsentModal({ open, userName, isVersionUpdate = f
           <div className="flex-1 overflow-hidden border rounded-lg">
             <div className="bg-muted/30 px-4 py-2 border-b flex items-center justify-between">
               <span className="text-sm font-medium">{agreement.title}</span>
-              <span className="text-xs text-muted-foreground">Version {agreement.version}</span>
+              <span className="text-xs text-muted-foreground">
+                Version {agreement.version}
+              </span>
             </div>
             <ScrollArea className="h-[250px]">
               <div className="p-4 text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed">
@@ -129,7 +153,9 @@ export function OwnerAgreementConsentModal({ open, userName, isVersionUpdate = f
             <Checkbox
               id="owner-agreement"
               checked={agreementAccepted}
-              onCheckedChange={(checked) => setAgreementAccepted(checked === true)}
+              onCheckedChange={(checked) =>
+                setAgreementAccepted(checked === true)
+              }
               data-testid="checkbox-owner-agreement"
             />
             <div className="space-y-1.5 leading-none">
@@ -137,19 +163,27 @@ export function OwnerAgreementConsentModal({ open, userName, isVersionUpdate = f
                 htmlFor="owner-agreement"
                 className="text-sm font-medium cursor-pointer flex items-center gap-2"
               >
-                <FileCheck className="h-4 w-4 text-muted-foreground" />
-                I accept the Property Owner Agreement
+                <FileCheck className="h-4 w-4 text-muted-foreground" />I accept
+                the Property Owner Agreement
                 <span className="text-destructive">*</span>
               </Label>
               <p className="text-xs text-muted-foreground">
                 By checking this box, you agree to the{" "}
-                <Link href="/owner-agreement" className="text-primary hover:underline" target="_blank" data-testid="link-owner-agreement">
+                <Link
+                  href="/owner-agreement"
+                  className="text-primary hover:underline"
+                  target="_blank"
+                  data-testid="link-owner-agreement"
+                >
                   Property Owner Agreement
                 </Link>
                 {agreementVersion?.version && (
-                  <span className="ml-1">(Version {agreementVersion.version})</span>
-                )}
-                {" "}governing your relationship with ZECOHO as a property owner/hotelier.
+                  <span className="ml-1">
+                    (Version {agreementVersion.version})
+                  </span>
+                )}{" "}
+                governing your relationship with ZECOHO as a property
+                owner/hotelier.
               </p>
             </div>
           </div>
@@ -157,7 +191,12 @@ export function OwnerAgreementConsentModal({ open, userName, isVersionUpdate = f
           <div className="flex justify-end gap-3">
             <Button
               onClick={handleSubmit}
-              disabled={!agreementAccepted || consentMutation.isPending || isLoadingAgreement || !agreement}
+              disabled={
+                !agreementAccepted ||
+                consentMutation.isPending ||
+                isLoadingAgreement ||
+                !agreement
+              }
               className="min-w-[120px]"
               data-testid="button-accept-owner-agreement"
             >

@@ -1139,7 +1139,6 @@ export default function ListPropertyWizard() {
           "Your updated KYC information has been submitted for review.",
       });
       queryClient.invalidateQueries({ queryKey: ["/api/kyc/status"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
       setLocation("/");
     },
     onError: (error: Error) => {
@@ -1293,7 +1292,6 @@ export default function ListPropertyWizard() {
         description:
           "Your KYC and property listing have been submitted for review. You'll be notified once approved.",
       });
-      queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
       setLocation("/");
     },
     onError: (error: Error) => {
@@ -1366,7 +1364,6 @@ export default function ListPropertyWizard() {
         description:
           "Your property listing has been saved as a draft. Complete KYC verification to publish it.",
       });
-      queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
       queryClient.invalidateQueries({
         queryKey: ["/api/properties/my-properties"],
       });

@@ -118,7 +118,7 @@ export default function Login() {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+      
       toast({
         title: "Welcome to ZECOHO!",
         description: "You have successfully logged in.",
@@ -142,7 +142,6 @@ export default function Login() {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
       toast({
         title: "Welcome to ZECOHO!",
         description: "Your email has been verified.",

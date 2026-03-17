@@ -3,17 +3,24 @@ import { useQuery } from "@tanstack/react-query";
 import type { User } from "@shared/schema";
 
 // Helper function to check if a user has a specific role (single role only from userRole field)
-export function userHasRole(user: User | null | undefined, role: string): boolean {
+export function userHasRole(
+  user: User | null | undefined,
+  role: string,
+): boolean {
   if (!user) return false;
   return user.userRole === role;
 }
 
 export function useAuth() {
-  const { data: user, isLoading, refetch } = useQuery<User>({
+  const { data: user } = useQuery({
     queryKey: ["/api/auth/user"],
+    staleTime: 1000 * 60 * 5, // 5 min cache
+    gcTime: 1000 * 60 * 10, // 10 min memory
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+    refetchOnMount: false,
     retry: false,
-    refetchInterval: 5000, // More frequent refresh to catch role changes quickly
-    staleTime: 0, // Always refetch to ensure fresh role data
+    enabled: true,
   });
 
   // Helper to check if user has a specific role (single role only)

@@ -1,4 +1,5 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { OwnerLayout } from "@/components/OwnerLayout";
 import { PreApprovalDashboard } from "@/components/PreApprovalDashboard";
@@ -41,7 +42,6 @@ import {
   Phone,
   MessageCircle,
 } from "lucide-react";
-import { useState, useEffect } from "react";
 import {
   Collapsible,
   CollapsibleContent,
@@ -375,10 +375,10 @@ function RoomUtilizationCard({ propertyId }: { propertyId: string }) {
 }
 
 export default function OwnerDashboard() {
+  const [timeFilter, setTimeFilter] = useState("monthly");
   const { user } = useAuth();
   const { toast } = useToast();
 
-  // Cache invalidation via WebSocket (urgent alert is handled globally in App.tsx)
   useBookingUpdates({ userId: user?.id });
 
   const { data: subStatus } = useQuery({
@@ -389,13 +389,16 @@ export default function OwnerDashboard() {
       ),
     enabled: !!user?.id,
   });
+
   const isSubscriptionActive = subStatus?.status === "active";
   const subExpired = subStatus?.status === "expired";
-  // Listen for service worker messages (push action buttons)
+
+  // ✅ MOVE HERE (IMPORTANT)
   useEffect(() => {
     const handleSwMessage = (event: MessageEvent) => {
       if (event.data?.type === "BOOKING_ACTION") {
         const { action, bookingId } = event.data;
+
         if (action === "accept") {
           apiRequest("POST", `/api/bookings/${bookingId}/confirm`, {})
             .then(() => {
@@ -423,14 +426,12 @@ export default function OwnerDashboard() {
             })
             .catch(console.error);
         }
-        // Log the push action
+
         apiRequest("POST", "/api/push/log-action", {
           bookingId,
           action,
           channel: "web_push",
         }).catch(console.error);
-        setUrgentAlert(null);
-        setShowBanner(null);
       }
     };
 
@@ -441,6 +442,7 @@ export default function OwnerDashboard() {
     }
   }, []);
 
+  // ✅ ONLY JSX BELOW
   // Month selection state for monthly summary (defaults to current month)
   const now = new Date();
   const [selectedYear, setSelectedYear] = useState(now.getFullYear());
@@ -471,8 +473,12 @@ export default function OwnerDashboard() {
   // Communication analytics query
   const { data: commAnalytics, isLoading: isLoadingCommAnalytics } =
     useQuery<CommunicationAnalytics>({
-      queryKey: ["/api/communication/owner"],
-      refetchInterval: 60000, // Refresh every minute
+      queryKey: ["/api/communication/owner", timeFilter],
+      queryFn: () =>
+        apiRequest("GET", `/api/communication/owner?range=${timeFilter}`).then(
+          (r) => r.json(),
+        ),
+      refetchInterval: 60000,
     });
 
   // Real-time property status updates via WebSocket
@@ -985,12 +991,22 @@ export default function OwnerDashboard() {
         </Card>
 
         {/* Communication Analytics */}
+
         <Card data-testid="card-communication-analytics">
           <CardHeader className="flex flex-row items-center justify-between gap-2 flex-wrap">
             <CardTitle className="flex items-center gap-2">
               <MessageCircle className="h-5 w-5" />
               Communication Analytics
             </CardTitle>
+            <select
+              value={timeFilter}
+              onChange={(e) => setTimeFilter(e.target.value)}
+              className="border rounded px-3 py-1 text-sm ml-auto"
+            >
+              <option value="daily">Daily</option>
+              <option value="weekly">Weekly</option>
+              <option value="monthly">Monthly</option>
+            </select>
           </CardHeader>
           <CardContent>
             {isLoadingCommAnalytics ? (

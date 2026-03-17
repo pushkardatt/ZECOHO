@@ -4,7 +4,13 @@ import { useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Mail, Phone, ArrowLeft, Loader2, Shield } from "lucide-react";
@@ -16,10 +22,10 @@ export default function OtpLogin() {
   const [, setLocation] = useLocation();
   const search = useSearch();
   const { toast } = useToast();
-  
+
   const urlParams = new URLSearchParams(search);
   const initialMethod = urlParams.get("method") === "phone" ? "phone" : "email";
-  
+
   const [step, setStep] = useState<LoginStep>("input");
   const [loginMethod, setLoginMethod] = useState<LoginMethod>(initialMethod);
   const [email, setEmail] = useState("");
@@ -35,11 +41,12 @@ export default function OtpLogin() {
     }
   }, [countdown]);
 
-  const getContact = () => loginMethod === "email" ? email : phone;
+  const getContact = () => (loginMethod === "email" ? email : phone);
 
   const sendOtpMutation = useMutation({
     mutationFn: async (contact: string) => {
-      const payload = loginMethod === "email" ? { email: contact } : { phone: contact };
+      const payload =
+        loginMethod === "email" ? { email: contact } : { phone: contact };
       const response = await apiRequest("POST", "/api/auth/send-otp", payload);
       return response.json();
     },
@@ -48,9 +55,10 @@ export default function OtpLogin() {
       setCountdown(60);
       toast({
         title: "OTP Sent",
-        description: loginMethod === "email" 
-          ? `We've sent a 6-digit code to ${data.email}`
-          : `We've sent a 6-digit code to ${phone}`,
+        description:
+          loginMethod === "email"
+            ? `We've sent a 6-digit code to ${data.email}`
+            : `We've sent a 6-digit code to ${phone}`,
       });
     },
     onError: (error: any) => {
@@ -64,14 +72,18 @@ export default function OtpLogin() {
 
   const verifyOtpMutation = useMutation({
     mutationFn: async ({ contact, otp }: { contact: string; otp: string }) => {
-      const payload = loginMethod === "email" 
-        ? { email: contact, otp } 
-        : { phone: contact, otp };
-      const response = await apiRequest("POST", "/api/auth/verify-otp", payload);
+      const payload =
+        loginMethod === "email"
+          ? { email: contact, otp }
+          : { phone: contact, otp };
+      const response = await apiRequest(
+        "POST",
+        "/api/auth/verify-otp",
+        payload,
+      );
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
       toast({
         title: "Welcome to ZECOHO!",
         description: "You have successfully logged in.",
@@ -98,7 +110,7 @@ export default function OtpLogin() {
 
   const handleOtpChange = (index: number, value: string) => {
     if (!/^\d*$/.test(value)) return;
-    
+
     const newOtp = [...otp];
     newOtp[index] = value.slice(-1);
     setOtp(newOtp);
@@ -107,7 +119,7 @@ export default function OtpLogin() {
       otpRefs.current[index + 1]?.focus();
     }
 
-    if (newOtp.every(digit => digit) && newOtp.join("").length === 6) {
+    if (newOtp.every((digit) => digit) && newOtp.join("").length === 6) {
       verifyOtpMutation.mutate({ contact: getContact(), otp: newOtp.join("") });
     }
   };
@@ -120,7 +132,10 @@ export default function OtpLogin() {
 
   const handleOtpPaste = (e: React.ClipboardEvent) => {
     e.preventDefault();
-    const pastedData = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 6);
+    const pastedData = e.clipboardData
+      .getData("text")
+      .replace(/\D/g, "")
+      .slice(0, 6);
     if (pastedData.length === 6) {
       const newOtp = pastedData.split("");
       setOtp(newOtp);
@@ -154,12 +169,11 @@ export default function OtpLogin() {
             {step === "input" ? "Login to ZECOHO" : "Enter Verification Code"}
           </CardTitle>
           <CardDescription>
-            {step === "input" 
+            {step === "input"
               ? loginMethod === "email"
                 ? "Enter your email to receive a one-time password"
                 : "Enter your phone number to receive a one-time password"
-              : `We've sent a 6-digit code to ${loginMethod === "email" ? email : phone}`
-            }
+              : `We've sent a 6-digit code to ${loginMethod === "email" ? email : phone}`}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -218,9 +232,9 @@ export default function OtpLogin() {
                 </div>
               )}
 
-              <Button 
-                type="submit" 
-                className="w-full" 
+              <Button
+                type="submit"
+                className="w-full"
                 disabled={sendOtpMutation.isPending || !getContact().trim()}
                 data-testid="button-send-otp"
               >
@@ -240,10 +254,10 @@ export default function OtpLogin() {
                   </>
                 )}
               </Button>
-              
+
               <div className="text-center pt-4">
-                <Button 
-                  variant="ghost" 
+                <Button
+                  variant="ghost"
                   onClick={() => setLocation("/")}
                   data-testid="button-back-home"
                 >
@@ -254,7 +268,10 @@ export default function OtpLogin() {
             </form>
           ) : (
             <div className="space-y-6">
-              <div className="flex justify-center gap-2" onPaste={handleOtpPaste}>
+              <div
+                className="flex justify-center gap-2"
+                onPaste={handleOtpPaste}
+              >
                 {otp.map((digit, index) => (
                   <Input
                     key={index}
@@ -297,8 +314,8 @@ export default function OtpLogin() {
                   )}
                 </p>
 
-                <Button 
-                  variant="ghost" 
+                <Button
+                  variant="ghost"
                   onClick={() => {
                     setStep("input");
                     setOtp(["", "", "", "", "", ""]);
