@@ -12,7 +12,7 @@ export function userHasRole(
 }
 
 export function useAuth() {
-  const { data: user } = useQuery({
+  const { data: user, isLoading, refetch } = useQuery({
     queryKey: ["/api/auth/user"],
     staleTime: 1000 * 60 * 5, // 5 min cache
     gcTime: 1000 * 60 * 10, // 10 min memory
