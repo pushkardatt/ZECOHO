@@ -1193,14 +1193,18 @@ export default function PropertyDetails() {
       return;
     }
 
-    // On details step, validate guest details and confirm booking
-    if (!guestDetailsValid || !guestDetailsData) {
-      toast({
-        title: "Traveller Details Required",
-        description: "Please fill in all required traveller details",
-        variant: "destructive",
+    // On details step, use prefilled data if guestDetailsData is null
+    if (!guestDetailsData && user) {
+      setGuestDetailsData({
+        guestName: [user.firstName, user.lastName].filter(Boolean).join(" "),
+        guestMobile: user.phone?.replace(/^\+91\s?/, "") || "",
+        guestEmail: user.email || "",
+        hasGst: false,
+        gstNumber: "",
+        specialRequests: "",
+        adults: adults,
+        childrenCount: children,
       });
-      return;
     }
 
     bookingMutation.mutate();
