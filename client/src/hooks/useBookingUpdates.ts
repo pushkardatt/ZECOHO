@@ -171,12 +171,22 @@ export function useBookingUpdates(options: BookingUpdateOptions = {}) {
     }
   }, [userId, handleBookingUpdate, handleUrgentBookingAlert, startPolling, stopPolling]);
 
-  useEffect(() => {
-    if (userId) {
-      connectWebSocket();
-      startPolling();
-    }
-
+    useEffect(() => {
+      if (userId) {
+        connectWebSocket();
+        // Don't start polling here — WebSocket onclose handles it
+      }
+      return () => {
+        if (wsRef.current) {
+          wsRef.current.close();
+          wsRef.current = null;
+        }
+        if (reconnectTimeoutRef.current) {
+          clearTimeout(reconnectTimeoutRef.current);
+        }
+        stopPolling();
+      };
+    }, [userId, connectWebSocket, startPolling, stopPolling]);
     return () => {
       if (wsRef.current) {
         wsRef.current.close();

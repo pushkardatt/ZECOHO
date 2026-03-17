@@ -11296,6 +11296,25 @@ export async function registerRoutes(
 
   // ==================== COMMUNICATION ANALYTICS ROUTES ====================
 
+  function getDateRangeBoundary(range: string): Date {
+    const now = new Date();
+    if (range === "daily") {
+      const start = new Date(now);
+      start.setHours(0, 0, 0, 0);
+      return start;
+    }
+    if (range === "weekly") {
+      const start = new Date(now);
+      start.setDate(now.getDate() - 6);
+      start.setHours(0, 0, 0, 0);
+      return start;
+    }
+    const start = new Date(now);
+    start.setDate(now.getDate() - 29);
+    start.setHours(0, 0, 0, 0);
+    return start;
+  }
+
   // Get owner's chat and call analytics
   app.get(
     "/api/communication/owner",
@@ -11311,17 +11330,24 @@ export async function registerRoutes(
           });
         }
 
-        // Get real message stats from conversations table
-        const conversations = await storage.getConversationsByUser(userId);
+        const range = (req.query.range as string) || "monthly";
+        const since = getDateRangeBoundary(range);
+
+        const allConversations = await storage.getConversationsByUser(userId);
+        const conversations = allConversations.filter(
+          (c: any) => c.createdAt && new Date(c.createdAt) >= since,
+        );
         const totalChats = conversations.length;
 
         let totalMessages = 0;
         for (const conv of conversations) {
           const msgs = await storage.getMessagesByConversation(conv.id);
-          totalMessages += msgs.length;
+          const filteredMsgs = msgs.filter(
+            (m: any) => m.createdAt && new Date(m.createdAt) >= since,
+          );
+          totalMessages += filteredMsgs.length;
         }
 
-        // Get real call/whatsapp stats from contactInteractions
         const properties = await storage.getOwnerProperties(userId);
         const propertyIds = properties.map((p: any) => p.id);
 
@@ -11337,7 +11363,12 @@ export async function registerRoutes(
             ? await db
                 .select()
                 .from(contactInteractions)
-                .where(inArray(contactInteractions.bookingId, bookingIds))
+                .where(
+                  and(
+                    inArray(contactInteractions.bookingId, bookingIds),
+                    gte(contactInteractions.createdAt, since),
+                  ),
+                )
                 .orderBy(desc(contactInteractions.createdAt))
             : [];
 
@@ -11379,18 +11410,25 @@ export async function registerRoutes(
           return res.status(403).json({ message: "Admin access required" });
         }
 
+        const range = (req.query.range as string) || "monthly";
+        const since = getDateRangeBoundary(range);
+
+        const range = (req.query.range as string) || "monthly";
+        const since = getDateRangeBoundary(range);
+
         const chats = await db
           .select()
           .from(chatLogs)
+          .where(gte(chatLogs.createdAt, since))
           .orderBy(desc(chatLogs.createdAt))
           .limit(500);
 
         const calls = await db
           .select()
           .from(callLogs)
+          .where(gte(callLogs.createdAt, since))
           .orderBy(desc(callLogs.createdAt))
           .limit(500);
-
         // Calculate summary stats
         const totalChats = chats.length;
         const totalCalls = calls.length;
