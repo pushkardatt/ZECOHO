@@ -383,11 +383,14 @@ export default function OwnerDashboard() {
 
   const { data: subStatus } = useQuery({
     queryKey: ["/api/owner/subscription-status", user?.id],
-    queryFn: () => apiRequest("GET", `/api/owner/subscription-status/${user?.id}`).then(r => r.json()),
+    queryFn: () =>
+      apiRequest("GET", `/api/owner/subscription-status/${user?.id}`).then(
+        (r) => r.json(),
+      ),
     enabled: !!user?.id,
   });
-  const subExpired = subStatus && !subStatus.isActive;
-
+  const isSubscriptionActive = subStatus?.status === "active";
+  const subExpired = subStatus?.status === "expired";
   // Listen for service worker messages (push action buttons)
   useEffect(() => {
     const handleSwMessage = (event: MessageEvent) => {
@@ -592,16 +595,25 @@ export default function OwnerDashboard() {
         {subExpired && (
           <Alert className="bg-amber-50 dark:bg-amber-950/30 border-amber-300">
             <AlertTriangle className="h-4 w-4 text-amber-600" />
-            <AlertTitle className="text-amber-800 dark:text-amber-200">{subStatus?.status === "expired" ? "Your subscription has expired" : "No active subscription"}</AlertTitle>
-            <AlertDescription className="text-amber-700 dark:text-amber-300">Your property listing may be affected.{" "}<Link href="/owner/subscription" className="font-semibold underline hover:text-amber-900">Renew or activate your subscription →</Link></AlertDescription>
+            <AlertTitle className="text-amber-800 dark:text-amber-200">
+              {subStatus?.status === "expired"
+                ? "Your subscription has expired"
+                : "No active subscription"}
+            </AlertTitle>
+            <AlertDescription className="text-amber-700 dark:text-amber-300">
+              Your property listing may be affected.{" "}
+              <Link
+                href="/owner/subscription"
+                className="font-semibold underline hover:text-amber-900"
+              >
+                Renew or activate your subscription →
+              </Link>
+            </AlertDescription>
           </Alert>
         )}
 
-        {hasPublishedProperty && (
-          <Alert
-            className="bg-green-50 dark:bg-green-950/30 border-green-200 dark:border-green-800"
-            data-testid="banner-property-live"
-          >
+        {hasPublishedProperty && property?.isLive && isSubscriptionActive && (
+          <Alert className="bg-green-50 border-green-200 dark:border-green-800">
             <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />
             <AlertTitle className="text-green-800 dark:text-green-200">
               Your property is live!
@@ -612,7 +624,6 @@ export default function OwnerDashboard() {
             </AlertDescription>
           </Alert>
         )}
-
         {hasPausedProperty && (
           <Alert
             className="bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800"
