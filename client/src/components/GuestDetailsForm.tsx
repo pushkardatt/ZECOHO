@@ -76,7 +76,12 @@ export function GuestDetailsForm({
   }, [adults, children, form]);
 
   useEffect(() => {
-    form.trigger(); // validate prefilled values on mount
+    setTimeout(() => {
+      form.trigger().then(() => {
+        const isValid = form.formState.isValid;
+        onValidChange(isValid, isValid ? form.getValues() : null);
+      });
+    }, 100);
     const subscription = form.watch(() => {
       const isValid = form.formState.isValid;
       if (isValid) {
