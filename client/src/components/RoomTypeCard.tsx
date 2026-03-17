@@ -85,7 +85,9 @@ export function RoomTypeSelect({
   showDatesContext = false,
   adults = 1,
 }: RoomTypeSelectProps) {
-  const activeRoomTypes = roomTypes.filter((rt) => rt.isActive !== false);
+  const activeRoomTypes = (roomTypes ?? []).filter(
+    (rt) => rt.isActive !== false,
+  );
   const selectedRoom =
     activeRoomTypes.find((rt) => rt.id === selectedRoomTypeId) ?? null;
   const selectedInventory = selectedRoomTypeId
