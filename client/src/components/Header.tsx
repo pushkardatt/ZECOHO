@@ -84,7 +84,6 @@ export function Header() {
   useNotificationSound(totalUnreadCount, !!isAuthenticated, true);
 
   // Check if KYC is rejected - from either user.kycStatus OR kycApplication.status
-  // This handles cases where user.kycStatus wasn't synced with the application status
   const isKycRejected = hasRejectedKyc || kycApplication?.status === "rejected";
 
   // All users go to the same List Property flow
@@ -199,7 +198,6 @@ export function Header() {
               )}
 
               {/* Show Owner Portal for owners OR users who have engaged with KYC (pending/rejected) */}
-              {/* Hidden on mobile for owners except on property detail pages where bottom nav is hidden */}
               {(isOwner || isKycRejected || isKycPending) && (
                 <Link
                   href="/owner/dashboard"
@@ -361,6 +359,17 @@ export function Header() {
                           Support Inbox
                         </Link>
                       </DropdownMenuItem>
+                      {/* ✅ Communication Analytics — added for admin desktop nav */}
+                      <DropdownMenuItem
+                        asChild
+                        data-testid="link-admin-communication-analytics"
+                      >
+                        <Link href="/admin">
+                          <MessageCircle className="h-4 w-4 mr-2" />
+                          Communication Analytics
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
                       <DropdownMenuItem asChild data-testid="link-admin-logo">
                         <Link href="/admin/logo">
                           <Settings className="h-4 w-4 mr-2" />
@@ -375,13 +384,6 @@ export function Header() {
                           <Clock className="h-4 w-4 mr-2" />
                           Coming Soon Mode
                         </Link>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem asChild>
-                        {/* 
-                        <Link href="/admin/subscription-plans">
-                          Subscription Plans
-                        </Link>
-                        */}
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>

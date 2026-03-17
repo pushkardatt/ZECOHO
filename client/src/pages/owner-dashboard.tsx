@@ -41,6 +41,7 @@ import {
   XCircle,
   Phone,
   MessageCircle,
+  Download,
 } from "lucide-react";
 import {
   Collapsible,
@@ -998,15 +999,72 @@ export default function OwnerDashboard() {
               <MessageCircle className="h-5 w-5" />
               Communication Analytics
             </CardTitle>
-            <select
-              value={timeFilter}
-              onChange={(e) => setTimeFilter(e.target.value)}
-              className="border rounded px-3 py-1 text-sm ml-auto"
-            >
-              <option value="daily">Daily</option>
-              <option value="weekly">Weekly</option>
-              <option value="monthly">Monthly</option>
-            </select>
+            <div className="flex items-center gap-2 ml-auto flex-wrap">
+              {/* Daily / Weekly / Monthly toggle */}
+              <div className="flex rounded-lg border overflow-hidden text-sm">
+                {(["daily", "weekly", "monthly"] as const).map((f) => (
+                  <button
+                    key={f}
+                    onClick={() => setTimeFilter(f)}
+                    className={`px-3 py-1 capitalize transition-colors ${
+                      timeFilter === f
+                        ? "bg-primary text-primary-foreground font-medium"
+                        : "bg-background text-muted-foreground hover:bg-muted"
+                    }`}
+                    data-testid={`comm-filter-${f}`}
+                  >
+                    {f.charAt(0).toUpperCase() + f.slice(1)}
+                  </button>
+                ))}
+              </div>
+              {/* Download button — admin only */}
+              {user?.userRole === "admin" && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="flex items-center gap-1.5"
+                  data-testid="comm-download-btn"
+                  onClick={() => {
+                    if (!commAnalytics?.summary) return;
+                    const rows = [
+                      ["Metric", "Value"],
+                      ["Period", timeFilter],
+                      [
+                        "Chat Sessions",
+                        String(commAnalytics.summary.totalChats ?? 0),
+                      ],
+                      [
+                        "Total Messages",
+                        String(commAnalytics.summary.totalMessages ?? 0),
+                      ],
+                      [
+                        "Total Calls",
+                        String(commAnalytics.summary.totalCalls ?? 0),
+                      ],
+                      [
+                        "Call Duration (min)",
+                        String(
+                          Math.round(
+                            (commAnalytics.summary.totalCallDuration ?? 0) / 60,
+                          ),
+                        ),
+                      ],
+                    ];
+                    const csv = rows.map((r) => r.join(",")).join("\n");
+                    const blob = new Blob([csv], { type: "text/csv" });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement("a");
+                    a.href = url;
+                    a.download = `communication-analytics-${timeFilter}.csv`;
+                    a.click();
+                    URL.revokeObjectURL(url);
+                  }}
+                >
+                  <Download className="h-4 w-4" />
+                  Download
+                </Button>
+              )}
+            </div>
           </CardHeader>
           <CardContent>
             {isLoadingCommAnalytics ? (

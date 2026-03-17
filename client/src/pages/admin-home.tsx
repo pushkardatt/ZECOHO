@@ -1,6 +1,7 @@
 import { useAuth } from "@/hooks/useAuth";
 import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -25,6 +26,7 @@ import {
   ImageIcon,
   Radio,
   CreditCard,
+  Download,
 } from "lucide-react";
 
 interface CommunicationAnalytics {
@@ -156,14 +158,44 @@ const adminSections = [
 export default function AdminHome() {
   const { user } = useAuth();
   const [, setLocation] = useLocation();
+  const [timeFilter, setTimeFilter] = useState<"daily" | "weekly" | "monthly">(
+    "monthly",
+  );
 
   // Communication analytics query for admin
   const { data: commAnalytics, isLoading: isLoadingCommAnalytics } =
     useQuery<CommunicationAnalytics>({
-      queryKey: ["/api/communication/admin"],
+      queryKey: ["/api/communication/admin", timeFilter],
+      queryFn: () =>
+        fetch(`/api/communication/admin?range=${timeFilter}`, {
+          credentials: "include",
+        }).then((r) => r.json()),
       refetchInterval: 60000,
       enabled: user?.userRole === "admin",
     });
+
+  const handleDownload = () => {
+    if (!commAnalytics?.summary) return;
+    const rows = [
+      ["Metric", "Value"],
+      ["Period", timeFilter],
+      ["Chat Sessions", String(commAnalytics.summary.totalChats ?? 0)],
+      ["Total Messages", String(commAnalytics.summary.totalMessages ?? 0)],
+      ["Total Calls", String(commAnalytics.summary.totalCalls ?? 0)],
+      [
+        "Call Duration (min)",
+        String(Math.round((commAnalytics.summary.totalCallDuration ?? 0) / 60)),
+      ],
+    ];
+    const csv = rows.map((r) => r.join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `admin-communication-analytics-${timeFilter}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
   // Check if user is admin
   if (user?.userRole !== "admin") {
@@ -219,11 +251,41 @@ export default function AdminHome() {
 
         {/* Communication Analytics */}
         <Card data-testid="card-admin-communication-analytics">
-          <CardHeader className="pb-3">
+          <CardHeader className="flex flex-row items-center justify-between gap-2 flex-wrap pb-3">
             <CardTitle className="flex items-center gap-2 text-lg">
               <MessageCircle className="h-5 w-5" />
               Platform Communication Analytics
             </CardTitle>
+            <div className="flex items-center gap-2 ml-auto flex-wrap">
+              {/* Daily / Weekly / Monthly toggle */}
+              <div className="flex rounded-lg border overflow-hidden text-sm">
+                {(["daily", "weekly", "monthly"] as const).map((f) => (
+                  <button
+                    key={f}
+                    onClick={() => setTimeFilter(f)}
+                    className={`px-3 py-1 capitalize transition-colors ${
+                      timeFilter === f
+                        ? "bg-primary text-primary-foreground font-medium"
+                        : "bg-background text-muted-foreground hover:bg-muted"
+                    }`}
+                    data-testid={`admin-comm-filter-${f}`}
+                  >
+                    {f.charAt(0).toUpperCase() + f.slice(1)}
+                  </button>
+                ))}
+              </div>
+              {/* Download button */}
+              <Button
+                size="sm"
+                variant="outline"
+                className="flex items-center gap-1.5"
+                data-testid="admin-comm-download-btn"
+                onClick={handleDownload}
+              >
+                <Download className="h-4 w-4" />
+                Download
+              </Button>
+            </div>
           </CardHeader>
           <CardContent>
             {isLoadingCommAnalytics ? (
@@ -279,7 +341,7 @@ export default function AdminHome() {
                 <div className="p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
                   <div className="flex items-center gap-2 mb-1">
                     <Clock className="h-4 w-4 text-amber-600 dark:text-amber-400" />
-                    <span className="text-xs text-amber-600 dark:text-blue-400 font-medium">
+                    <span className="text-xs text-amber-600 dark:text-amber-400 font-medium">
                       Call Duration
                     </span>
                   </div>
@@ -295,6 +357,14 @@ export default function AdminHome() {
                 </div>
               </div>
             )}
+            {!commAnalytics?.summary?.totalChats &&
+              !commAnalytics?.summary?.totalCalls &&
+              !isLoadingCommAnalytics && (
+                <p className="text-sm text-muted-foreground text-center mt-4">
+                  No communication data yet. Stats will appear as guests
+                  interact with owners.
+                </p>
+              )}
           </CardContent>
         </Card>
       </div>
