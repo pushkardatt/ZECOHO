@@ -3,6 +3,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
+import { OwnerLayout } from "@/components/OwnerLayout";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
@@ -431,73 +432,80 @@ export default function OwnerSubscriptionPage() {
   const sortedPlans = [...plans].sort((a, b) => a.sortOrder - b.sortOrder);
 
   return (
-    <div className="max-w-5xl mx-auto px-4 py-8 space-y-8">
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">
-          Subscription Plans
-        </h1>
-        <p className="text-muted-foreground mt-1">
-          Choose a plan to start listing your properties on ZECOHO. Zero
-          commission on bookings.
-        </p>
+    <OwnerLayout>
+      <div className="max-w-5xl mx-auto px-4 py-8 space-y-8">
+        {/* Header */}
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">
+            Subscription Plans
+          </h1>
+          <p className="text-muted-foreground mt-1">
+            Choose a plan to start listing your properties on ZECOHO. Zero
+            commission on bookings.
+          </p>
+        </div>
+
+        {/* Status Banner */}
+        {statusLoading ? (
+          <div className="h-16 rounded-xl bg-muted animate-pulse" />
+        ) : status ? (
+          <StatusBanner status={status} />
+        ) : null}
+
+        {/* Plan Cards */}
+        {plansLoading ? (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {[1, 2, 3].map((i) => (
+              <div
+                key={i}
+                className="h-96 rounded-2xl bg-muted animate-pulse"
+              />
+            ))}
+          </div>
+        ) : sortedPlans.length === 0 ? (
+          <div className="text-center py-16 text-muted-foreground">
+            <Building2 className="h-10 w-10 mx-auto mb-3 opacity-30" />
+            <p>No plans available at the moment. Please check back soon.</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-4">
+            {sortedPlans.map((plan) => (
+              <PlanCard
+                key={plan.id}
+                plan={plan}
+                currentTier={status?.isActive ? status.tier : null}
+                onSelect={handleSelectPlan}
+                isLoading={subscribeMutation.isPending}
+              />
+            ))}
+          </div>
+        )}
+
+        {/* FAQ note */}
+        <div className="rounded-xl border border-dashed p-5 text-sm text-muted-foreground space-y-1">
+          <p className="font-medium text-foreground">
+            How does activation work?
+          </p>
+          <p>
+            After selecting a plan, our team reviews your request and activates
+            it manually within 24 hours once payment is confirmed. You'll be
+            notified once your plan is live.
+          </p>
+          <p className="mt-2">
+            Need help? Contact us at{" "}
+            <span className="text-primary font-medium">support@zecoho.com</span>
+          </p>
+        </div>
+
+        {/* Confirm Dialog */}
+        <ConfirmDialog
+          plan={selectedPlan}
+          open={confirmOpen}
+          onClose={() => setConfirmOpen(false)}
+          onConfirm={handleConfirm}
+          isLoading={subscribeMutation.isPending}
+        />
       </div>
-
-      {/* Status Banner */}
-      {statusLoading ? (
-        <div className="h-16 rounded-xl bg-muted animate-pulse" />
-      ) : status ? (
-        <StatusBanner status={status} />
-      ) : null}
-
-      {/* Plan Cards */}
-      {plansLoading ? (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="h-96 rounded-2xl bg-muted animate-pulse" />
-          ))}
-        </div>
-      ) : sortedPlans.length === 0 ? (
-        <div className="text-center py-16 text-muted-foreground">
-          <Building2 className="h-10 w-10 mx-auto mb-3 opacity-30" />
-          <p>No plans available at the moment. Please check back soon.</p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-4">
-          {sortedPlans.map((plan) => (
-            <PlanCard
-              key={plan.id}
-              plan={plan}
-              currentTier={status?.isActive ? status.tier : null}
-              onSelect={handleSelectPlan}
-              isLoading={subscribeMutation.isPending}
-            />
-          ))}
-        </div>
-      )}
-
-      {/* FAQ note */}
-      <div className="rounded-xl border border-dashed p-5 text-sm text-muted-foreground space-y-1">
-        <p className="font-medium text-foreground">How does activation work?</p>
-        <p>
-          After selecting a plan, our team reviews your request and activates it
-          manually within 24 hours once payment is confirmed. You'll be notified
-          once your plan is live.
-        </p>
-        <p className="mt-2">
-          Need help? Contact us at{" "}
-          <span className="text-primary font-medium">support@zecoho.com</span>
-        </p>
-      </div>
-
-      {/* Confirm Dialog */}
-      <ConfirmDialog
-        plan={selectedPlan}
-        open={confirmOpen}
-        onClose={() => setConfirmOpen(false)}
-        onConfirm={handleConfirm}
-        isLoading={subscribeMutation.isPending}
-      />
-    </div>
+    </OwnerLayout>
   );
 }

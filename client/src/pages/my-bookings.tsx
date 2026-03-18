@@ -420,7 +420,7 @@ export default function MyBookings() {
         label: "Awaiting Confirmation",
         icon: Clock,
         explanation:
-          "The hotel is reviewing your request. Usually responds within 30 minutes.",
+          "The hotel is reviewing your request. They typically respond within 15–30 minutes.",
         bgColor: "bg-amber-100 dark:bg-amber-900/50",
         textColor: "text-amber-800 dark:text-amber-200",
         borderColor: "border-amber-300 dark:border-amber-700",
@@ -865,25 +865,6 @@ export default function MyBookings() {
               {booking.status === "pending" && (
                 <div className="space-y-3">
                   {/* Booking Request Status Banner */}
-                  <div className="p-4 bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-950/40 dark:to-orange-950/40 border border-amber-200 dark:border-amber-800 rounded-lg">
-                    <div className="flex items-start gap-3">
-                      <div className="p-2 bg-amber-100 dark:bg-amber-900/50 rounded-full">
-                        <Clock className="h-5 w-5 text-amber-600 dark:text-amber-400" />
-                      </div>
-                      <div className="flex-1">
-                        <h4 className="font-semibold text-amber-900 dark:text-amber-100 text-base">
-                          Waiting for Hotel Response
-                        </h4>
-                        <p className="text-amber-700 dark:text-amber-300 text-sm mt-1">
-                          The hotel is reviewing your request. They typically
-                          respond within 15–30 minutes.
-                        </p>
-                        <p className="text-amber-600 dark:text-amber-400 text-xs mt-1">
-                          You'll receive a notification once they respond.
-                        </p>
-                      </div>
-                    </div>
-                  </div>
 
                   {/* What happens next */}
                   <div className="p-3 bg-muted/50 rounded-lg text-sm">
