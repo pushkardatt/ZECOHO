@@ -87,6 +87,14 @@ export function Footer() {
             </Link>
             <span className="text-muted-foreground/40">|</span>
             <Link
+              href="/blog"
+              className="text-muted-foreground hover:text-primary transition-colors whitespace-nowrap"
+              data-testid="link-footer-blog"
+            >
+              Blog
+            </Link>
+            <span className="text-muted-foreground/40">|</span>
+            <Link
               href="/about-us"
               className="text-muted-foreground hover:text-primary transition-colors whitespace-nowrap"
               data-testid="link-footer-about"

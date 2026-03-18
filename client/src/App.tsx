@@ -13,6 +13,8 @@ import type { UrgentBookingAlert } from "@/hooks/useBookingUpdates";
 import { UrgentBookingAlertModal } from "@/components/UrgentBookingAlert";
 import { KycRouteGuard } from "@/lib/KycRouteGuard";
 import { usePreLoginBooking } from "@/hooks/usePreLoginBooking";
+import Blog from "@/pages/blog";
+import BlogPost from "@/pages/blog-post";
 
 function ScrollToTop() {
   const [location] = useLocation();
@@ -180,6 +182,8 @@ function Router() {
       <Route path="/terms" component={Terms} />
       <Route path="/privacy" component={Privacy} />
       <Route path="/compare" component={ComparePage} />
+      <Route path="/blog" component={Blog} />
+      <Route path="/blog/:slug" component={BlogPost} />
       <Route path="/logo-gallery" component={LogoGallery} />
       <Route path="/auth-error" component={AuthError} />
       <Route component={NotFound} />
