@@ -3,13 +3,15 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { db } from "./db";
-import { eq, sql, inArray, desc, and } from "drizzle-orm";
+import { eq, sql, inArray, desc, and, gte } from "drizzle-orm";
 import {
   users,
   contactInteractions,
   notifications,
   chatLogs,
   callLogs,
+  conversations,
+  messages,
 } from "@shared/schema";
 import { setupAuth, isAuthenticated } from "./replitAuth";
 import subscriptionRoutes from "./subscriptions.ts";
@@ -11327,19 +11329,33 @@ export async function registerRoutes(
         const range = (req.query.range as string) || "monthly";
         const since = getDateRangeBoundary(range);
 
-        const allConversations = await storage.getConversationsByUser(userId);
-        const conversations = allConversations.filter(
-          (c: any) => c.createdAt && new Date(c.createdAt) >= since,
-        );
-        const totalChats = conversations.length;
-
-        let totalMessages = 0;
-        for (const conv of conversations) {
-          const msgs = await storage.getMessagesByConversation(conv.id);
-          const filteredMsgs = msgs.filter(
-            (m: any) => m.createdAt && new Date(m.createdAt) >= since,
+        // Count conversations where this owner had activity in the period
+        // Use lastMessageAt so conversations started before the window but still active are included
+        const activeConvs = await db
+          .select({ id: conversations.id })
+          .from(conversations)
+          .where(
+            and(
+              eq(conversations.ownerId, userId),
+              gte(conversations.lastMessageAt, since),
+            ),
           );
-          totalMessages += filteredMsgs.length;
+        const totalChats = activeConvs.length;
+        const activeConvIds = activeConvs.map((c) => c.id);
+
+        // Count messages sent in these conversations within the period
+        let totalMessages = 0;
+        if (activeConvIds.length > 0) {
+          const msgResult = await db
+            .select({ count: sql<number>`count(*)::int` })
+            .from(messages)
+            .where(
+              and(
+                inArray(messages.conversationId, activeConvIds),
+                gte(messages.createdAt, since),
+              ),
+            );
+          totalMessages = msgResult[0]?.count ?? 0;
         }
 
         const properties = await storage.getOwnerProperties(userId);
@@ -11407,39 +11423,38 @@ export async function registerRoutes(
         const range = (req.query.range as string) || "monthly";
         const since = getDateRangeBoundary(range);
 
-        const chats = await db
-          .select()
-          .from(chatLogs)
-          .where(gte(chatLogs.createdAt, since))
-          .orderBy(desc(chatLogs.createdAt))
-          .limit(500);
+        // Count all platform conversations that had activity in the period
+        const activeConvsResult = await db
+          .select({ count: sql<number>`count(*)::int` })
+          .from(conversations)
+          .where(gte(conversations.lastMessageAt, since));
+        const totalChats = activeConvsResult[0]?.count ?? 0;
 
-        const calls = await db
-          .select()
-          .from(callLogs)
-          .where(gte(callLogs.createdAt, since))
-          .orderBy(desc(callLogs.createdAt))
-          .limit(500);
-        // Calculate summary stats
-        const totalChats = chats.length;
-        const totalCalls = calls.length;
-        const totalMessages = chats.reduce(
-          (sum, c) => sum + (c.messageCount || 0),
-          0,
-        );
-        const totalCallDuration = calls.reduce(
-          (sum, c) => sum + (c.durationSeconds || 0),
-          0,
-        );
+        // Count all messages sent in the period
+        const messagesResult = await db
+          .select({ count: sql<number>`count(*)::int` })
+          .from(messages)
+          .where(gte(messages.createdAt, since));
+        const totalMessages = messagesResult[0]?.count ?? 0;
+
+        // Count call-type contact interactions in the period
+        const callsResult = await db
+          .select({ count: sql<number>`count(*)::int` })
+          .from(contactInteractions)
+          .where(
+            and(
+              eq(contactInteractions.actionType, "call"),
+              gte(contactInteractions.createdAt, since),
+            ),
+          );
+        const totalCalls = callsResult[0]?.count ?? 0;
 
         res.json({
-          chats,
-          calls,
           summary: {
             totalChats,
             totalCalls,
             totalMessages,
-            totalCallDuration,
+            totalCallDuration: 0,
           },
         });
       } catch (error) {
