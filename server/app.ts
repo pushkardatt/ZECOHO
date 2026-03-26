@@ -8,6 +8,7 @@ import express, {
 } from "express";
 
 import { registerRoutes } from "./routes";
+import rateLimit from "express-rate-limit";
 import { seedAmenities } from "./seed-amenities";
 import { seedDestinations } from "./seed-destinations";
 import { seedOwnerAgreement } from "./seed-owner-agreement";
