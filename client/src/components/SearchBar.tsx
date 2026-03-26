@@ -740,16 +740,7 @@ export function SearchBar({
             style={{ zIndex: 9999 }}
           >
             {/* NEW LINE ADDED */}
-            <div
-              className="px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer flex items-center gap-2 border-b border-gray-100 dark:border-gray-700"
-              onClick={() => {
-                setShowSuggestions(false);
-                handleUseCurrentLocation();
-              }}
-            >
-              <Navigation className="h-4 w-4 text-primary" />
-              <span>Hotels Near Me</span>
-            </div>
+
             {/* Popular Cities - show when no text typed */}
             {!destination && (
               <div>
@@ -1420,129 +1411,134 @@ export function SearchBar({
                 data-testid="input-destination-full"
               />
               {/* Desktop suggestions dropdown */}
-              {showSuggestions && createPortal(
-                <div
-                  className="fixed bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-2xl max-h-[400px] overflow-y-auto"
-                  style={{
-                    zIndex: 99999,
-                    top: suggestionsRef.current?.getBoundingClientRect().bottom
-                      ? suggestionsRef.current.getBoundingClientRect().bottom + 12
-                      : 0,
-                    left: suggestionsRef.current?.getBoundingClientRect().left ?? 0,
-                    width: "320px",
-                  }}
-                >
-                  <button
-                    type="button"
-                    className="w-full px-4 py-3 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-3 border-b border-gray-200 dark:border-gray-700 text-left"
-                    onClick={() => {
-                      setDestination("Near Me");
-                      setShowSuggestions(false);
-                      handleUseCurrentLocation();
+              {showSuggestions &&
+                createPortal(
+                  <div
+                    className="fixed bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-2xl max-h-[400px] overflow-y-auto"
+                    style={{
+                      zIndex: 99999,
+                      top: suggestionsRef.current?.getBoundingClientRect()
+                        .bottom
+                        ? suggestionsRef.current.getBoundingClientRect()
+                            .bottom + 12
+                        : 0,
+                      left:
+                        suggestionsRef.current?.getBoundingClientRect().left ??
+                        0,
+                      width: "320px",
                     }}
                   >
-                    <Navigation className="h-4 w-4 text-primary flex-shrink-0" />
-                    <div>
-                      <div className="text-sm font-medium text-gray-900 dark:text-white">
-                        Use your location
+                    <button
+                      type="button"
+                      className="w-full px-4 py-3 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-3 border-b border-gray-200 dark:border-gray-700 text-left"
+                      onClick={() => {
+                        setDestination("Near Me");
+                        setShowSuggestions(false);
+                        handleUseCurrentLocation();
+                      }}
+                    >
+                      <Navigation className="h-4 w-4 text-primary flex-shrink-0" />
+                      <div>
+                        <div className="text-sm font-medium text-gray-900 dark:text-white">
+                          Use your location
+                        </div>
+                        <div className="text-xs text-gray-500">
+                          Properties near me
+                        </div>
                       </div>
-                      <div className="text-xs text-gray-500">
-                        Properties near me
-                      </div>
-                    </div>
-                  </button>
-                  {!destination && (
-                    <div>
-                      <div className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wide bg-gray-50 dark:bg-gray-900/50">
-                        Popular Cities
-                      </div>
-                      {[
-                        "Goa",
-                        "Bangalore",
-                        "New Delhi",
-                        "Mumbai",
-                        "Pune",
-                        "Chennai",
-                        "Hyderabad",
-                        "Jaipur",
-                      ].map((city) => (
-                        <button
-                          key={city}
-                          type="button"
-                          onClick={() => {
-                            setDestination(city);
-                            setShowSuggestions(false);
-                            navigate(
-                              `/search?destination=${encodeURIComponent(city)}`,
-                            );
-                          }}
-                          className="w-full text-left px-4 py-3 hover:bg-gray-100 dark:hover:bg-gray-700 text-sm flex items-center gap-3 border-b border-gray-100 dark:border-gray-700 last:border-b-0"
-                        >
-                          <MapPin className="h-4 w-4 text-gray-400 flex-shrink-0" />
-                          <span className="font-medium text-gray-900 dark:text-white">
-                            {city}
-                          </span>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                  {(isLoading || isGoogleLoading) && (
-                    <div className="px-4 py-2 text-sm text-muted-foreground flex items-center gap-2">
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      Searching...
-                    </div>
-                  )}
-                  {groupedSuggestions.cities.length > 0 && (
-                    <div>
-                      <div className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wide bg-gray-50 dark:bg-gray-900/50">
-                        Destinations
-                      </div>
-                      {groupedSuggestions.cities.map((dest: any) => (
-                        <button
-                          key={dest.id}
-                          type="button"
-                          onClick={() => handleSelectDestination(dest)}
-                          className="w-full text-left px-4 py-3 hover:bg-gray-100 dark:hover:bg-gray-700 text-sm flex items-center gap-3 border-b border-gray-100 dark:border-gray-700 last:border-b-0"
-                        >
-                          <MapPin className="h-4 w-4 text-primary flex-shrink-0" />
-                          <span className="font-medium text-gray-900 dark:text-white">
-                            {dest.name}
-                          </span>
-                          {dest.state && (
-                            <span className="text-gray-400 text-xs">
-                              , {dest.state}
-                            </span>
-                          )}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                  {groupedSuggestions.topHotelsInCity.length > 0 &&
-                    groupedSuggestions.matchedCity && (
+                    </button>
+                    {!destination && (
                       <div>
                         <div className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wide bg-gray-50 dark:bg-gray-900/50">
-                          Top Hotels in {groupedSuggestions.matchedCity}
+                          Popular Cities
                         </div>
-                        {groupedSuggestions.topHotelsInCity.map(
-                          (hotel: any) => (
-                            <button
-                              key={hotel.id}
-                              type="button"
-                              onClick={() => handleSelectDestination(hotel)}
-                              className="w-full text-left px-4 py-3 hover:bg-gray-100 dark:hover:bg-gray-700 text-sm flex items-center gap-3 border-b border-gray-100 dark:border-gray-700 last:border-b-0"
-                            >
-                              <Building2 className="h-4 w-4 text-primary flex-shrink-0" />
-                              <span className="font-medium text-gray-900 dark:text-white truncate">
-                                {hotel.name}
-                              </span>
-                            </button>
-                          ),
-                        )}
+                        {[
+                          "Goa",
+                          "Bangalore",
+                          "New Delhi",
+                          "Mumbai",
+                          "Pune",
+                          "Chennai",
+                          "Hyderabad",
+                          "Jaipur",
+                        ].map((city) => (
+                          <button
+                            key={city}
+                            type="button"
+                            onClick={() => {
+                              setDestination(city);
+                              setShowSuggestions(false);
+                              navigate(
+                                `/search?destination=${encodeURIComponent(city)}`,
+                              );
+                            }}
+                            className="w-full text-left px-4 py-3 hover:bg-gray-100 dark:hover:bg-gray-700 text-sm flex items-center gap-3 border-b border-gray-100 dark:border-gray-700 last:border-b-0"
+                          >
+                            <MapPin className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                            <span className="font-medium text-gray-900 dark:text-white">
+                              {city}
+                            </span>
+                          </button>
+                        ))}
                       </div>
                     )}
-                </div>,
-                document.body
-              )}
+                    {(isLoading || isGoogleLoading) && (
+                      <div className="px-4 py-2 text-sm text-muted-foreground flex items-center gap-2">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Searching...
+                      </div>
+                    )}
+                    {groupedSuggestions.cities.length > 0 && (
+                      <div>
+                        <div className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wide bg-gray-50 dark:bg-gray-900/50">
+                          Destinations
+                        </div>
+                        {groupedSuggestions.cities.map((dest: any) => (
+                          <button
+                            key={dest.id}
+                            type="button"
+                            onClick={() => handleSelectDestination(dest)}
+                            className="w-full text-left px-4 py-3 hover:bg-gray-100 dark:hover:bg-gray-700 text-sm flex items-center gap-3 border-b border-gray-100 dark:border-gray-700 last:border-b-0"
+                          >
+                            <MapPin className="h-4 w-4 text-primary flex-shrink-0" />
+                            <span className="font-medium text-gray-900 dark:text-white">
+                              {dest.name}
+                            </span>
+                            {dest.state && (
+                              <span className="text-gray-400 text-xs">
+                                , {dest.state}
+                              </span>
+                            )}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                    {groupedSuggestions.topHotelsInCity.length > 0 &&
+                      groupedSuggestions.matchedCity && (
+                        <div>
+                          <div className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wide bg-gray-50 dark:bg-gray-900/50">
+                            Top Hotels in {groupedSuggestions.matchedCity}
+                          </div>
+                          {groupedSuggestions.topHotelsInCity.map(
+                            (hotel: any) => (
+                              <button
+                                key={hotel.id}
+                                type="button"
+                                onClick={() => handleSelectDestination(hotel)}
+                                className="w-full text-left px-4 py-3 hover:bg-gray-100 dark:hover:bg-gray-700 text-sm flex items-center gap-3 border-b border-gray-100 dark:border-gray-700 last:border-b-0"
+                              >
+                                <Building2 className="h-4 w-4 text-primary flex-shrink-0" />
+                                <span className="font-medium text-gray-900 dark:text-white truncate">
+                                  {hotel.name}
+                                </span>
+                              </button>
+                            ),
+                          )}
+                        </div>
+                      )}
+                  </div>,
+                  document.body,
+                )}
             </div>
           </div>
 
