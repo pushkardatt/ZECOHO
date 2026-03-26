@@ -736,7 +736,7 @@ export function SearchBar({
         {/* Swiggy-style grouped suggestions dropdown */}
         {showSuggestions && (
           <div
-            className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-2xl max-h-[400px] overflow-y-auto"
+            className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-2xl max-h-[400px] overflow-y-auto hidden md:block"
             style={{ zIndex: 9999 }}
           >
             {/* NEW LINE ADDED */}
