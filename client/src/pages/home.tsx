@@ -158,7 +158,10 @@ export default function Home() {
             {/* Search Bar - First on Mobile */}
             <div className="mb-6">
               <div className="max-w-4xl mx-auto">
-                <div className="bg-background rounded-2xl shadow-xl border p-3 overflow-visible">
+                <div
+                  className="bg-background rounded-2xl shadow-xl border p-3 overflow-visible"
+                  style={{ overflow: "visible" }}
+                >
                   <SearchBar
                     onSearch={handleSearch}
                     compact={false}
@@ -232,7 +235,10 @@ export default function Home() {
 
             {/* Desktop: Search Bar */}
             <div className="max-w-4xl mx-auto mb-4">
-              <div className="bg-background rounded-2xl shadow-xl border p-4 overflow-visible">
+              <div
+                className="bg-background rounded-2xl shadow-xl border p-4 overflow-visible"
+                style={{ overflow: "visible" }}
+              >
                 <SearchBar
                   onSearch={handleSearch}
                   compact={false}
