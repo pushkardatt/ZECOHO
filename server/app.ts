@@ -48,6 +48,22 @@ app.get('/__healthcheck', (_req, res) => {
   res.status(200).send('ok');
 });
 
+
+// Bot blocker - drops junk traffic instantly
+app.use((req, res, next) => {
+  const blockedPaths = ['/wp-login.php', '/wp-admin', '/xmlrpc.php', '/.env', '/admin.php'];
+  if (blockedPaths.some(path => req.path.startsWith(path))) {
+    return res.status(404).end();
+  }
+  next();
+});
+
+// Rate limiter - max 100 requests per IP per 15 mins
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 100,
+});
+app.use(limiter);
 // NOW add middleware after health checks
 app.use(express.json({
   verify: (req, _res, buf) => {
