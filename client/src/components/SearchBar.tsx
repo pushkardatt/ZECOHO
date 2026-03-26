@@ -122,6 +122,7 @@ export function SearchBar({
   const [matchedCity, setMatchedCity] = useState<string | null>(null);
   const [isGettingLocation, setIsGettingLocation] = useState(false);
   const suggestionsRef = useRef<HTMLDivElement>(null);
+  const portalRef = useRef<HTMLDivElement>(null);
   const autocompleteServiceRef = useRef<any>(null);
   const lastQueryRef = useRef<string>("");
   const guestsInputRef = useRef<HTMLInputElement>(null);
@@ -570,7 +571,9 @@ export function SearchBar({
     const handleClickOutside = (e: MouseEvent) => {
       if (
         suggestionsRef.current &&
-        !suggestionsRef.current.contains(e.target as Node)
+        !suggestionsRef.current.contains(e.target as Node) &&
+        portalRef.current &&
+        !portalRef.current.contains(e.target as Node)
       ) {
         setShowSuggestions(false);
       }
@@ -737,6 +740,7 @@ export function SearchBar({
         {showSuggestions && (
           <div
             className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-2xl max-h-[400px] overflow-y-auto hidden md:block"
+            onMouseDown={(e) => e.preventDefault()}
             style={{ zIndex: 9999 }}
           >
             {/* NEW LINE ADDED */}
@@ -793,6 +797,7 @@ export function SearchBar({
                 {groupedSuggestions.cities.map((dest: any) => (
                   <button
                     key={dest.id}
+                    onMouseDown={(e) => e.preventDefault()}
                     onClick={() => handleSelectDestination(dest)}
                     className="w-full text-left px-4 py-3 hover:bg-gray-100 dark:hover:bg-gray-700 text-sm transition-colors border-b border-gray-100 dark:border-gray-700 last:border-b-0 text-gray-900 dark:text-white flex items-center gap-2"
                     data-testid={`suggestion-city-compact-${dest.id}`}
@@ -821,6 +826,7 @@ export function SearchBar({
                   {groupedSuggestions.topHotelsInCity.map((hotel: any) => (
                     <button
                       key={hotel.id}
+                      onMouseDown={(e) => e.preventDefault()}
                       onClick={() => handleSelectDestination(hotel)}
                       className="w-full text-left px-4 py-3 hover:bg-gray-100 dark:hover:bg-gray-700 text-sm transition-colors border-b border-gray-100 dark:border-gray-700 last:border-b-0 text-gray-900 dark:text-white flex items-center gap-3"
                       data-testid={`suggestion-hotel-compact-${hotel.id}`}
@@ -890,6 +896,7 @@ export function SearchBar({
                   .map((dest: any) => (
                     <button
                       key={dest.id || dest.propertyId}
+                      onMouseDown={(e) => e.preventDefault()}
                       onClick={() => handleSelectDestination(dest)}
                       className="w-full text-left px-4 py-3 hover:bg-gray-100 dark:hover:bg-gray-700 text-sm transition-colors border-b border-gray-100 dark:border-gray-700 last:border-b-0 text-gray-900 dark:text-white flex items-center gap-3"
                       data-testid={`suggestion-property-compact-${dest.id || dest.propertyId}`}
@@ -1041,6 +1048,7 @@ export function SearchBar({
                     <button
                       key={dest.id}
                       type="button"
+                      onMouseDown={(e) => e.preventDefault()}
                       onClick={() => handleSelectDestination(dest)}
                       className="w-full text-left px-4 py-3 hover:bg-gray-100 dark:hover:bg-gray-700 text-sm flex items-center gap-3 border-b border-gray-100 dark:border-gray-700 last:border-b-0"
                     >
@@ -1071,6 +1079,7 @@ export function SearchBar({
                       <button
                         key={hotel.id}
                         type="button"
+                        onMouseDown={(e) => e.preventDefault()}
                         onClick={() => handleSelectDestination(hotel)}
                         className="w-full text-left px-4 py-3 hover:bg-gray-100 dark:hover:bg-gray-700 text-sm flex items-center gap-3 border-b border-gray-100 dark:border-gray-700 last:border-b-0"
                       >
@@ -1095,6 +1104,7 @@ export function SearchBar({
                       <button
                         key={dest.id || dest.propertyId}
                         type="button"
+                        onMouseDown={(e) => e.preventDefault()}
                         onClick={() => handleSelectDestination(dest)}
                         className="w-full text-left px-4 py-3 hover:bg-gray-100 dark:hover:bg-gray-700 text-sm flex items-center gap-3 border-b border-gray-100 dark:border-gray-700 last:border-b-0"
                       >
@@ -1414,6 +1424,7 @@ export function SearchBar({
               {showSuggestions &&
                 createPortal(
                   <div
+                    ref={portalRef}
                     className="fixed bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-2xl max-h-[400px] overflow-y-auto"
                     style={{
                       zIndex: 99999,
@@ -1497,6 +1508,7 @@ export function SearchBar({
                           <button
                             key={dest.id}
                             type="button"
+                            onMouseDown={(e) => e.preventDefault()}
                             onClick={() => handleSelectDestination(dest)}
                             className="w-full text-left px-4 py-3 hover:bg-gray-100 dark:hover:bg-gray-700 text-sm flex items-center gap-3 border-b border-gray-100 dark:border-gray-700 last:border-b-0"
                           >
@@ -1524,6 +1536,7 @@ export function SearchBar({
                               <button
                                 key={hotel.id}
                                 type="button"
+                                onMouseDown={(e) => e.preventDefault()}
                                 onClick={() => handleSelectDestination(hotel)}
                                 className="w-full text-left px-4 py-3 hover:bg-gray-100 dark:hover:bg-gray-700 text-sm flex items-center gap-3 border-b border-gray-100 dark:border-gray-700 last:border-b-0"
                               >
