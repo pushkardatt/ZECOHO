@@ -577,12 +577,11 @@ export function SearchBar({
   // Close suggestions when clicking outside
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
-      if (
-        suggestionsRef.current &&
-        !suggestionsRef.current.contains(e.target as Node) &&
-        portalRef.current &&
-        !portalRef.current.contains(e.target as Node)
-      ) {
+      const clickedInsideSuggestions = suggestionsRef.current?.contains(
+        e.target as Node,
+      );
+      const clickedInsidePortal = portalRef.current?.contains(e.target as Node);
+      if (!clickedInsideSuggestions && !clickedInsidePortal) {
         setShowSuggestions(false);
       }
     };
