@@ -597,12 +597,25 @@ export function SearchBar({
       document.removeEventListener("keydown", markInteracted);
     };
   }, []);
-  // Capture dropdown position once when it opens (prevents jitter on cursor move)
+  // Capture and continuously sync dropdown position while open (handles scroll/resize/hover jitter)
   useEffect(() => {
-    if (showDesktopDropdown && destSectionRef.current) {
-      const rect = destSectionRef.current.getBoundingClientRect();
-      setDropdownPos({ top: rect.bottom + 6, left: rect.left });
-    }
+    if (!showDesktopDropdown) return;
+
+    const updatePos = () => {
+      if (destSectionRef.current) {
+        const rect = destSectionRef.current.getBoundingClientRect();
+        setDropdownPos({ top: rect.bottom + 6, left: rect.left });
+      }
+    };
+
+    updatePos();
+    window.addEventListener("scroll", updatePos, { passive: true });
+    window.addEventListener("resize", updatePos, { passive: true });
+
+    return () => {
+      window.removeEventListener("scroll", updatePos);
+      window.removeEventListener("resize", updatePos);
+    };
   }, [showDesktopDropdown]);
 
   // Close suggestions when clicking outside
