@@ -144,6 +144,7 @@ export function SearchBar({
   );
   const [desktopInputActive, setDesktopInputActive] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
+  const [showDesktopDropdown, setShowDesktopDropdown] = useState(false);
   useEffect(() => {
     const t = setTimeout(() => setIsMounted(true), 800);
     return () => clearTimeout(t);
@@ -601,6 +602,7 @@ export function SearchBar({
       const clickedInsidePortal = portalRef.current?.contains(e.target as Node);
       if (!clickedInsideSuggestions && !clickedInsidePortal) {
         setShowSuggestions(false);
+        setShowDesktopDropdown(false);
       }
     };
 
@@ -1447,18 +1449,13 @@ export function SearchBar({
                 value={destination}
                 onChange={(e) => {
                   setDestination(e.target.value);
-                  if (isMounted && desktopInputActive) {
-                    setShowSuggestions(true);
-                  }
+                  setShowDesktopDropdown(true);
                 }}
                 onClick={() => {
-                  if (isMounted) {
-                    setDesktopInputActive(true);
-                    setShowSuggestions(true);
-                  }
+                  setShowDesktopDropdown(true);
                 }}
                 onBlur={() => {
-                  setTimeout(() => setDesktopInputActive(false), 200);
+                  setTimeout(() => setShowDesktopDropdown(false), 200);
                 }}
                 autoComplete="off"
                 autoFocus={false}
@@ -1466,7 +1463,7 @@ export function SearchBar({
                 data-testid="input-destination-full"
               />
               {/* Desktop suggestions dropdown */}
-              {isMounted && showSuggestions && desktopInputActive && (
+              {showDesktopDropdown && (
                 <div
                   ref={portalRef}
                   className="absolute top-full left-0 mt-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-2xl max-h-[400px] overflow-y-auto"
@@ -1479,6 +1476,7 @@ export function SearchBar({
                       setDestination("Near Me");
                       setShowSuggestions(false);
                       setDesktopInputActive(false);
+                      setShowDesktopDropdown(false);
                       handleUseCurrentLocation();
                     }}
                   >
@@ -1514,6 +1512,7 @@ export function SearchBar({
                             setDestination(city);
                             setShowSuggestions(false);
                             setDesktopInputActive(false);
+                            setShowDesktopDropdown(false);
                             navigate(
                               `/search?destination=${encodeURIComponent(city)}`,
                             );
