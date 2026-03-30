@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { useLocation } from "wouter";
-import { Plus, FileCheck, Edit, Eye, Upload, Archive, Users } from "lucide-react";
+import { Plus, FileCheck, Edit, Eye, Upload, Archive, Users, Download } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -123,6 +123,32 @@ export default function AdminOwnerAgreements() {
     setNewContent("");
   };
 
+  const handleDownload = (agreement: OwnerAgreement) => {
+    const dateStr = agreement.publishedAt
+      ? `Published: ${new Date(agreement.publishedAt).toLocaleDateString("en-IN", { day: "2-digit", month: "long", year: "numeric" })}`
+      : `Created: ${new Date(agreement.createdAt!).toLocaleDateString("en-IN", { day: "2-digit", month: "long", year: "numeric" })}`;
+
+    const header = [
+      "=".repeat(70),
+      "ZECOHO - OWNER AGREEMENT",
+      `${agreement.title}`,
+      `Version: ${agreement.version}  |  Status: ${agreement.status.toUpperCase()}`,
+      dateStr,
+      "=".repeat(70),
+      "",
+    ].join("\n");
+
+    const blob = new Blob([header + agreement.content], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `zecoho-owner-agreement-v${agreement.version}.txt`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
   const openEditDialog = (agreement: OwnerAgreement) => {
     setSelectedAgreement(agreement);
     setEditTitle(agreement.title);
@@ -188,6 +214,15 @@ export default function AdminOwnerAgreements() {
           >
             <Eye className="h-4 w-4 mr-1" />
             Preview
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => handleDownload(agreement)}
+            data-testid={`button-download-agreement-${agreement.id}`}
+          >
+            <Download className="h-4 w-4 mr-1" />
+            Download
           </Button>
           {agreement.status === "draft" && (
             <>
@@ -519,6 +554,12 @@ export default function AdminOwnerAgreements() {
             <Button variant="outline" onClick={() => setPreviewDialogOpen(false)}>
               Close
             </Button>
+            {selectedAgreement && (
+              <Button onClick={() => handleDownload(selectedAgreement)} data-testid="button-download-preview-agreement">
+                <Download className="h-4 w-4 mr-2" />
+                Download
+              </Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>

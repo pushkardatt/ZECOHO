@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { useLocation } from "wouter";
-import { Plus, FileText, Shield, Edit, Eye, Upload, Archive } from "lucide-react";
+import { Plus, FileText, Shield, Edit, Eye, Upload, Archive, Download } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -118,6 +118,34 @@ export default function AdminPolicies() {
     setNewPolicyContent("");
   };
 
+  const handleDownload = (policy: Policy) => {
+    const typeLabel = policy.type === "terms" ? "Terms & Conditions" : "Privacy Policy";
+    const dateStr = policy.publishedAt
+      ? `Published: ${new Date(policy.publishedAt).toLocaleDateString("en-IN", { day: "2-digit", month: "long", year: "numeric" })}`
+      : `Created: ${new Date(policy.createdAt!).toLocaleDateString("en-IN", { day: "2-digit", month: "long", year: "numeric" })}`;
+
+    const header = [
+      "=".repeat(70),
+      `ZECOHO - ${typeLabel.toUpperCase()}`,
+      `${policy.title}`,
+      `Version: ${policy.version}  |  Status: ${policy.status.toUpperCase()}`,
+      dateStr,
+      "=".repeat(70),
+      "",
+    ].join("\n");
+
+    const blob = new Blob([header + policy.content], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    const slug = policy.type === "terms" ? "terms-and-conditions" : "privacy-policy";
+    link.download = `zecoho-${slug}-v${policy.version}.txt`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
   const openEditDialog = (policy: Policy) => {
     setSelectedPolicy(policy);
     setEditTitle(policy.title);
@@ -190,6 +218,15 @@ export default function AdminPolicies() {
           >
             <Eye className="h-4 w-4 mr-1" />
             Preview
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => handleDownload(policy)}
+            data-testid={`button-download-policy-${policy.id}`}
+          >
+            <Download className="h-4 w-4 mr-1" />
+            Download
           </Button>
           {policy.status === "draft" && (
             <>
@@ -478,6 +515,12 @@ export default function AdminPolicies() {
             <Button variant="outline" onClick={() => setPreviewDialogOpen(false)}>
               Close
             </Button>
+            {selectedPolicy && (
+              <Button onClick={() => handleDownload(selectedPolicy)} data-testid="button-download-preview-policy">
+                <Download className="h-4 w-4 mr-2" />
+                Download
+              </Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>
