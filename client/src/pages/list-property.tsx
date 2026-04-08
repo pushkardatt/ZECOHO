@@ -131,7 +131,7 @@ export default function ListProperty() {
     },
     onError: (error: Error) => {
       if (isUnauthorizedError(error)) {
-        window.location.href = "/api/login";
+        window.location.href = "/login";
         return;
       }
       toast({
@@ -164,7 +164,7 @@ export default function ListProperty() {
     },
     onError: (error: Error) => {
       if (isUnauthorizedError(error)) {
-        window.location.href = "/api/login";
+        window.location.href = "/login";
         return;
       }
       toast({
@@ -255,7 +255,7 @@ export default function ListProperty() {
               <Button
                 size="lg"
                 onClick={() => {
-                  window.location.href = "/api/login";
+                  window.location.href = "/login";
                 }}
                 className="bg-gradient-to-r from-amber-500 to-rose-500 hover:from-amber-600 hover:to-rose-600 text-white font-bold text-lg px-10 py-6 rounded-2xl shadow-xl group"
               >
@@ -394,7 +394,7 @@ export default function ListProperty() {
               <Button
                 size="lg"
                 onClick={() => {
-                  window.location.href = "/api/login";
+                  window.location.href = "/login";
                 }}
                 className="bg-gradient-to-r from-amber-500 to-rose-500 hover:from-amber-600 hover:to-rose-600 text-white font-bold px-10 py-5 rounded-2xl shadow-lg group"
               >
@@ -514,7 +514,7 @@ export default function ListProperty() {
             <Button
               size="lg"
               onClick={() => {
-                window.location.href = "/api/login";
+                window.location.href = "/login";
               }}
               className="bg-white text-amber-600 hover:bg-white/90 font-bold text-xl px-12 py-7 rounded-2xl shadow-2xl group"
             >

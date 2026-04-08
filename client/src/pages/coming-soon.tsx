@@ -7,7 +7,14 @@ import { apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import { Logo } from "@/components/Logo";
 import { CheckCircle, Clock, MapPin, Star } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -39,7 +46,11 @@ export default function ComingSoon() {
       toast({ title: "You're on the list!", description: body.message });
     },
     onError: () => {
-      toast({ title: "Something went wrong", description: "Please try again.", variant: "destructive" });
+      toast({
+        title: "Something went wrong",
+        description: "Please try again.",
+        variant: "destructive",
+      });
     },
   });
 
@@ -64,12 +75,14 @@ export default function ComingSoon() {
 
           {/* Headline */}
           <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-foreground leading-tight">
-            Zero commissions.<br />
+            Zero commissions.
+            <br />
             <span className="text-primary">Direct stays.</span>
           </h1>
 
           <p className="text-muted-foreground text-lg max-w-md">
-            ZECOHO is launching soon — a hotel booking platform that passes 100% of savings directly to you. No hidden fees. No intermediaries.
+            ZECOHO is launching soon — a hotel booking platform that passes 100%
+            of savings directly to you. No hidden fees. No intermediaries.
           </p>
 
           {/* Features */}
@@ -102,12 +115,17 @@ export default function ComingSoon() {
               </div>
             ) : (
               <>
-                <h2 className="text-lg font-semibold mb-1 text-left">Get early access</h2>
+                <h2 className="text-lg font-semibold mb-1 text-left">
+                  Get early access
+                </h2>
                 <p className="text-sm text-muted-foreground mb-5 text-left">
                   Be the first to know when we go live.
                 </p>
                 <Form {...form}>
-                  <form onSubmit={form.handleSubmit((d) => mutation.mutate(d))} className="space-y-4">
+                  <form
+                    onSubmit={form.handleSubmit((d) => mutation.mutate(d))}
+                    className="space-y-4"
+                  >
                     <FormField
                       control={form.control}
                       name="name"
@@ -115,7 +133,11 @@ export default function ComingSoon() {
                         <FormItem>
                           <FormLabel>Full Name</FormLabel>
                           <FormControl>
-                            <Input placeholder="Your name" data-testid="input-waitlist-name" {...field} />
+                            <Input
+                              placeholder="Your name"
+                              data-testid="input-waitlist-name"
+                              {...field}
+                            />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -128,7 +150,12 @@ export default function ComingSoon() {
                         <FormItem>
                           <FormLabel>Email Address</FormLabel>
                           <FormControl>
-                            <Input type="email" placeholder="you@example.com" data-testid="input-waitlist-email" {...field} />
+                            <Input
+                              type="email"
+                              placeholder="you@example.com"
+                              data-testid="input-waitlist-email"
+                              {...field}
+                            />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -141,7 +168,12 @@ export default function ComingSoon() {
                         <FormItem>
                           <FormLabel>Phone (optional)</FormLabel>
                           <FormControl>
-                            <Input type="tel" placeholder="+91 98765 43210" data-testid="input-waitlist-phone" {...field} />
+                            <Input
+                              type="tel"
+                              placeholder="+91 98765 43210"
+                              data-testid="input-waitlist-phone"
+                              {...field}
+                            />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -172,7 +204,9 @@ export default function ComingSoon() {
                       disabled={mutation.isPending}
                       data-testid="button-waitlist-submit"
                     >
-                      {mutation.isPending ? "Submitting..." : "Notify Me at Launch"}
+                      {mutation.isPending
+                        ? "Submitting..."
+                        : "Notify Me at Launch"}
                     </Button>
                   </form>
                 </Form>
@@ -183,12 +217,18 @@ export default function ComingSoon() {
           {/* Existing user login prompt */}
           <div className="w-full bg-muted/40 border rounded-xl p-4 flex items-center justify-between gap-4 flex-wrap">
             <div className="text-sm text-left">
-              <p className="font-medium text-foreground">Already have an account?</p>
-              <p className="text-muted-foreground text-xs mt-0.5">Existing members can log in to access the platform.</p>
+              <p className="font-medium text-foreground">
+                Already have an account?
+              </p>
+              <p className="text-muted-foreground text-xs mt-0.5">
+                Existing members can log in to access the platform.
+              </p>
             </div>
             <Button
               variant="outline"
-              onClick={() => { window.location.href = "/api/login?returnTo=/"; }}
+              onClick={() => {
+                window.location.href = "/login?returnTo=/";
+              }}
               data-testid="button-coming-soon-login"
             >
               Log In

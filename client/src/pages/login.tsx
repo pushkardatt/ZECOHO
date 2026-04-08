@@ -4,11 +4,25 @@ import { useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import { Mail, Lock, ArrowLeft, Loader2, Shield, Eye, EyeOff } from "lucide-react";
+import {
+  Mail,
+  Lock,
+  ArrowLeft,
+  Loader2,
+  Shield,
+  Eye,
+  EyeOff,
+} from "lucide-react";
 
 type LoginStep = "input" | "otp";
 type LoginMethod = "password" | "otp";
@@ -20,12 +34,16 @@ export default function Login() {
   const [, setLocation] = useLocation();
   const search = useSearch();
   const { toast } = useToast();
-  
+
   const urlParams = new URLSearchParams(search);
   // In development, always default to OTP; in production, respect URL param
-  const initialMethod = isDevMode ? "otp" : (urlParams.get("method") === "otp" ? "otp" : "password");
+  const initialMethod = isDevMode
+    ? "otp"
+    : urlParams.get("method") === "otp"
+      ? "otp"
+      : "password";
   const returnTo = urlParams.get("returnTo") || "/";
-  
+
   const [step, setStep] = useState<LoginStep>("input");
   const [loginMethod, setLoginMethod] = useState<LoginMethod>(initialMethod);
   const [email, setEmail] = useState("");
@@ -52,15 +70,15 @@ export default function Login() {
         credentials: "include",
       });
       const result = await response.json();
-      
+
       if (response.status === 403 && result.requiresVerification) {
         return { requiresVerification: true, email: result.email };
       }
-      
+
       if (!response.ok) {
         throw new Error(result.message || "Invalid email or password");
       }
-      
+
       return result;
     },
     onSuccess: (data) => {
@@ -92,7 +110,9 @@ export default function Login() {
 
   const sendOtpMutation = useMutation({
     mutationFn: async (email: string) => {
-      const response = await apiRequest("POST", "/api/auth/send-otp", { email });
+      const response = await apiRequest("POST", "/api/auth/send-otp", {
+        email,
+      });
       return response.json();
     },
     onSuccess: (data) => {
@@ -114,11 +134,14 @@ export default function Login() {
 
   const verifyOtpMutation = useMutation({
     mutationFn: async ({ email, otp }: { email: string; otp: string }) => {
-      const response = await apiRequest("POST", "/api/auth/verify-otp", { email, otp });
+      const response = await apiRequest("POST", "/api/auth/verify-otp", {
+        email,
+        otp,
+      });
       return response.json();
     },
     onSuccess: () => {
-      
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
       toast({
         title: "Welcome to ZECOHO!",
         description: "You have successfully logged in.",
@@ -138,7 +161,10 @@ export default function Login() {
 
   const verifyRegistrationOtpMutation = useMutation({
     mutationFn: async ({ email, otp }: { email: string; otp: string }) => {
-      const response = await apiRequest("POST", "/api/auth/register/verify", { email, otp });
+      const response = await apiRequest("POST", "/api/auth/register/verify", {
+        email,
+        otp,
+      });
       return response.json();
     },
     onSuccess: () => {
@@ -173,7 +199,7 @@ export default function Login() {
 
   const handleOtpChange = (index: number, value: string) => {
     if (!/^\d*$/.test(value)) return;
-    
+
     const newOtp = [...otp];
     newOtp[index] = value.slice(-1);
     setOtp(newOtp);
@@ -182,10 +208,13 @@ export default function Login() {
       otpRefs.current[index + 1]?.focus();
     }
 
-    if (newOtp.every(digit => digit) && newOtp.join("").length === 6) {
+    if (newOtp.every((digit) => digit) && newOtp.join("").length === 6) {
       const targetEmail = pendingVerificationEmail || email;
       if (pendingVerificationEmail) {
-        verifyRegistrationOtpMutation.mutate({ email: targetEmail, otp: newOtp.join("") });
+        verifyRegistrationOtpMutation.mutate({
+          email: targetEmail,
+          otp: newOtp.join(""),
+        });
       } else {
         verifyOtpMutation.mutate({ email: targetEmail, otp: newOtp.join("") });
       }
@@ -200,13 +229,19 @@ export default function Login() {
 
   const handleOtpPaste = (e: React.ClipboardEvent) => {
     e.preventDefault();
-    const pastedData = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 6);
+    const pastedData = e.clipboardData
+      .getData("text")
+      .replace(/\D/g, "")
+      .slice(0, 6);
     if (pastedData.length === 6) {
       const newOtp = pastedData.split("");
       setOtp(newOtp);
       const targetEmail = pendingVerificationEmail || email;
       if (pendingVerificationEmail) {
-        verifyRegistrationOtpMutation.mutate({ email: targetEmail, otp: pastedData });
+        verifyRegistrationOtpMutation.mutate({
+          email: targetEmail,
+          otp: pastedData,
+        });
       } else {
         verifyOtpMutation.mutate({ email: targetEmail, otp: pastedData });
       }
@@ -219,7 +254,8 @@ export default function Login() {
     sendOtpMutation.mutate(targetEmail);
   };
 
-  const isVerifyingPending = verifyOtpMutation.isPending || verifyRegistrationOtpMutation.isPending;
+  const isVerifyingPending =
+    verifyOtpMutation.isPending || verifyRegistrationOtpMutation.isPending;
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-background to-muted/30 px-4 py-12">
@@ -242,15 +278,18 @@ export default function Login() {
             {step === "input" ? "Login to ZECOHO" : "Enter Verification Code"}
           </CardTitle>
           <CardDescription>
-            {step === "input" 
+            {step === "input"
               ? "Choose your preferred login method"
-              : `We've sent a 6-digit code to ${pendingVerificationEmail || email}`
-            }
+              : `We've sent a 6-digit code to ${pendingVerificationEmail || email}`}
           </CardDescription>
         </CardHeader>
         <CardContent>
           {step === "input" ? (
-            <Tabs value={loginMethod} onValueChange={(v) => setLoginMethod(v as LoginMethod)} className="w-full">
+            <Tabs
+              value={loginMethod}
+              onValueChange={(v) => setLoginMethod(v as LoginMethod)}
+              className="w-full"
+            >
               {!isDevMode && (
                 <TabsList className="grid w-full grid-cols-2 mb-6">
                   <TabsTrigger value="password" data-testid="tab-password">
@@ -299,15 +338,23 @@ export default function Login() {
                         className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                         data-testid="button-toggle-password"
                       >
-                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        {showPassword ? (
+                          <EyeOff className="h-4 w-4" />
+                        ) : (
+                          <Eye className="h-4 w-4" />
+                        )}
                       </button>
                     </div>
                   </div>
 
-                  <Button 
-                    type="submit" 
-                    className="w-full" 
-                    disabled={passwordLoginMutation.isPending || !email.trim() || !password}
+                  <Button
+                    type="submit"
+                    className="w-full"
+                    disabled={
+                      passwordLoginMutation.isPending ||
+                      !email.trim() ||
+                      !password
+                    }
                     data-testid="button-login"
                   >
                     {passwordLoginMutation.isPending ? (
@@ -324,8 +371,8 @@ export default function Login() {
                   </Button>
 
                   <div className="text-center">
-                    <Link 
-                      href="/forgot-password" 
+                    <Link
+                      href="/forgot-password"
                       className="text-sm text-muted-foreground hover:text-primary hover:underline"
                       data-testid="link-forgot-password"
                     >
@@ -351,9 +398,9 @@ export default function Login() {
                     />
                   </div>
 
-                  <Button 
-                    type="submit" 
-                    className="w-full" 
+                  <Button
+                    type="submit"
+                    className="w-full"
                     disabled={sendOtpMutation.isPending || !email.trim()}
                     data-testid="button-send-otp"
                   >
@@ -375,14 +422,18 @@ export default function Login() {
               <div className="mt-6 text-center space-y-4">
                 <p className="text-sm text-muted-foreground">
                   Don't have an account?{" "}
-                  <Link href="/register" className="text-primary hover:underline font-medium" data-testid="link-register">
+                  <Link
+                    href="/register"
+                    className="text-primary hover:underline font-medium"
+                    data-testid="link-register"
+                  >
                     Create one
                   </Link>
                 </p>
 
-                <Button 
+                <Button
                   type="button"
-                  variant="ghost" 
+                  variant="ghost"
                   onClick={() => setLocation("/")}
                   data-testid="button-back-home"
                 >
@@ -393,7 +444,10 @@ export default function Login() {
             </Tabs>
           ) : (
             <div className="space-y-6">
-              <div className="flex justify-center gap-2" onPaste={handleOtpPaste}>
+              <div
+                className="flex justify-center gap-2"
+                onPaste={handleOtpPaste}
+              >
                 {otp.map((digit, index) => (
                   <Input
                     key={index}
@@ -436,8 +490,8 @@ export default function Login() {
                   )}
                 </p>
 
-                <Button 
-                  variant="ghost" 
+                <Button
+                  variant="ghost"
                   onClick={() => {
                     setStep("input");
                     setOtp(["", "", "", "", "", ""]);

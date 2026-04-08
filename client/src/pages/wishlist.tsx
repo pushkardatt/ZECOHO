@@ -21,16 +21,20 @@ export default function Wishlist() {
         variant: "destructive",
       });
       setTimeout(() => {
-        window.location.href = "/api/login";
+        window.location.href = "/login";
       }, 500);
     }
   }, [isAuthenticated, authLoading, toast]);
 
-  const { data: wishlists = [], isLoading: wishlistsLoading } = useQuery<any[]>({
-    queryKey: ["/api/wishlists"],
-  });
+  const { data: wishlists = [], isLoading: wishlistsLoading } = useQuery<any[]>(
+    {
+      queryKey: ["/api/wishlists"],
+    },
+  );
 
-  const { data: properties = [], isLoading: propertiesLoading } = useQuery<Property[]>({
+  const { data: properties = [], isLoading: propertiesLoading } = useQuery<
+    Property[]
+  >({
     queryKey: ["/api/properties"],
   });
 
@@ -52,7 +56,7 @@ export default function Wishlist() {
           variant: "destructive",
         });
         setTimeout(() => {
-          window.location.href = "/api/login";
+          window.location.href = "/login";
         }, 500);
         return;
       }
@@ -64,8 +68,8 @@ export default function Wishlist() {
     },
   });
 
-  const wishlistedProperties = properties.filter(p =>
-    wishlists.some((w: any) => w.propertyId === p.id)
+  const wishlistedProperties = properties.filter((p) =>
+    wishlists.some((w: any) => w.propertyId === p.id),
   );
 
   const handleWishlistToggle = (propertyId: string) => {
@@ -112,7 +116,9 @@ export default function Wishlist() {
             <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mx-auto mb-4">
               <Heart className="h-8 w-8 text-muted-foreground" />
             </div>
-            <h2 className="text-xl font-semibold mb-2">Your wishlist is empty</h2>
+            <h2 className="text-xl font-semibold mb-2">
+              Your wishlist is empty
+            </h2>
             <p className="text-muted-foreground">
               Start exploring and save your favorite properties
             </p>

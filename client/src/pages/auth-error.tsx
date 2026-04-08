@@ -1,16 +1,23 @@
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { AlertCircle, Home, Mail, RefreshCw } from "lucide-react";
 
 export default function AuthError() {
   const [, setLocation] = useLocation();
-  
+
   const params = new URLSearchParams(window.location.search);
-  const errorMessage = params.get("error") || "An unexpected error occurred during login.";
+  const errorMessage =
+    params.get("error") || "An unexpected error occurred during login.";
 
   const handleRetry = () => {
-    setLocation("/api/login");
+    setLocation("/login");
   };
 
   const handleGoHome = () => {
@@ -35,12 +42,13 @@ export default function AuthError() {
             {decodeURIComponent(errorMessage)}
           </p>
           <p className="text-sm text-muted-foreground">
-            If this problem continues, please contact our support team for assistance.
+            If this problem continues, please contact our support team for
+            assistance.
           </p>
         </CardContent>
         <CardFooter className="flex flex-col gap-3">
-          <Button 
-            onClick={handleRetry} 
+          <Button
+            onClick={handleRetry}
             className="w-full"
             data-testid="button-retry-login"
           >
@@ -48,8 +56,8 @@ export default function AuthError() {
             Try Again
           </Button>
           <div className="flex gap-3 w-full">
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               onClick={handleGoHome}
               className="flex-1"
               data-testid="button-go-home"
@@ -57,8 +65,8 @@ export default function AuthError() {
               <Home className="mr-2 h-4 w-4" />
               Home
             </Button>
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               onClick={handleContactSupport}
               className="flex-1"
               data-testid="button-contact-support"

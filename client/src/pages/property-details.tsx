@@ -604,7 +604,7 @@ export default function PropertyDetails() {
           variant: "destructive",
         });
         setTimeout(() => {
-          window.location.href = "/api/login";
+          window.location.href = "/login";
         }, 500);
         return;
       }
@@ -636,7 +636,7 @@ export default function PropertyDetails() {
           variant: "destructive",
         });
         setTimeout(() => {
-          window.location.href = "/api/login";
+          window.location.href = "/login";
         }, 500);
         return;
       }
@@ -928,7 +928,7 @@ export default function PropertyDetails() {
           variant: "destructive",
         });
         setTimeout(() => {
-          window.location.href = "/api/login";
+          window.location.href = "/login";
         }, 500);
         return;
       }
@@ -1141,7 +1141,7 @@ export default function PropertyDetails() {
       });
       setTimeout(() => {
         const returnUrl = encodeURIComponent(`/properties/${propertyId}`);
-        window.location.href = `/api/login?returnTo=${returnUrl}`;
+        window.location.href = `/login?returnTo=${encodeURIComponent(returnUrl)}`;
       }, 500);
       return;
     }
@@ -2907,7 +2907,7 @@ export default function PropertyDetails() {
                             variant: "destructive",
                           });
                           setTimeout(() => {
-                            window.location.href = "/api/login";
+                            window.location.href = "/login";
                           }, 500);
                           return;
                         }

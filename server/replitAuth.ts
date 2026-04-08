@@ -13,10 +13,10 @@ const getOidcConfig = memoize(
   async () => {
     return await client.discovery(
       new URL(process.env.ISSUER_URL ?? "https://replit.com/oidc"),
-      process.env.REPL_ID!
+      process.env.REPL_ID!,
     );
   },
-  { maxAge: 3600 * 1000 }
+  { maxAge: 3600 * 1000 },
 );
 
 export function getSession() {
@@ -43,7 +43,7 @@ export function getSession() {
 
 function updateUserSession(
   user: any,
-  tokens: client.TokenEndpointResponse & client.TokenEndpointResponseHelpers
+  tokens: client.TokenEndpointResponse & client.TokenEndpointResponseHelpers,
 ) {
   user.claims = tokens.claims();
   user.access_token = tokens.access_token;
@@ -51,9 +51,7 @@ function updateUserSession(
   user.expires_at = user.claims?.exp;
 }
 
-async function upsertUser(
-  claims: any,
-) {
+async function upsertUser(claims: any) {
   await storage.upsertUser({
     id: claims["sub"],
     email: claims["email"],
@@ -73,7 +71,7 @@ export async function setupAuth(app: Express) {
 
   const verify: VerifyFunction = async (
     tokens: client.TokenEndpointResponse & client.TokenEndpointResponseHelpers,
-    verified: passport.AuthenticateCallback
+    verified: passport.AuthenticateCallback,
   ) => {
     try {
       const user = {};
@@ -111,15 +109,11 @@ export async function setupAuth(app: Express) {
   passport.deserializeUser((user: Express.User, cb) => cb(null, user));
 
   app.get("/api/login", (req, res, next) => {
-    ensureStrategy(req.hostname);
-    // Store returnTo in session for post-login redirect
-    if (req.query.returnTo && typeof req.query.returnTo === 'string') {
-      (req.session as any).returnTo = req.query.returnTo;
-    }
-    passport.authenticate(`replitauth:${req.hostname}`, {
-      prompt: "login consent",
-      scope: ["openid", "email", "profile", "offline_access"],
-    })(req, res, next);
+    // Redirect to OTP login page — Replit auth is disabled
+    const returnTo = req.query.returnTo || "/";
+    return res.redirect(
+      `/login?returnTo=${encodeURIComponent(returnTo as string)}`,
+    );
   });
 
   app.get("/api/callback", (req, res, next) => {
@@ -132,12 +126,15 @@ export async function setupAuth(app: Express) {
     }
     passport.authenticate(`replitauth:${req.hostname}`, {
       successReturnToOrRedirect: returnTo,
-      failureRedirect: "/api/login",
+      failureRedirect: "/login",
     })(req, res, (err: any) => {
       if (err) {
         console.error("Authentication callback error:", err);
         // Redirect to error page with encoded error message instead of showing raw JSON
-        const errorMessage = encodeURIComponent(err.message || "Authentication failed. Please try again or contact support.");
+        const errorMessage = encodeURIComponent(
+          err.message ||
+            "Authentication failed. Please try again or contact support.",
+        );
         return res.redirect(`/auth-error?error=${errorMessage}`);
       }
       next();
@@ -150,7 +147,7 @@ export async function setupAuth(app: Express) {
         client.buildEndSessionUrl(config, {
           client_id: process.env.REPL_ID!,
           post_logout_redirect_uri: `${req.protocol}://${req.hostname}`,
-        }).href
+        }).href,
       );
     });
   });
@@ -170,9 +167,10 @@ export const isAuthenticated: RequestHandler = async (req, res, next) => {
     if (dbUser?.isDeactivated) {
       // Log out the deactivated user
       req.logout(() => {});
-      return res.status(403).json({ 
-        message: "Your account has been deactivated. Please contact support for assistance.",
-        code: "ACCOUNT_DEACTIVATED"
+      return res.status(403).json({
+        message:
+          "Your account has been deactivated. Please contact support for assistance.",
+        code: "ACCOUNT_DEACTIVATED",
       });
     }
   }
