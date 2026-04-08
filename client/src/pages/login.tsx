@@ -142,11 +142,13 @@ export default function Login() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/coming-soon/access"] });
       toast({
         title: "Welcome to ZECOHO!",
         description: "You have successfully logged in.",
       });
-      setLocation(returnTo);
+      // Small delay to let auth state settle before redirect
+      setTimeout(() => setLocation(returnTo), 300);
     },
     onError: (error: any) => {
       toast({
@@ -168,11 +170,13 @@ export default function Login() {
       return response.json();
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/coming-soon/access"] });
       toast({
         title: "Welcome to ZECOHO!",
         description: "Your email has been verified.",
       });
-      setLocation(returnTo);
+      setTimeout(() => setLocation(returnTo), 300);
     },
     onError: (error: any) => {
       toast({

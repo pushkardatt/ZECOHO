@@ -227,7 +227,7 @@ export default function ComingSoon() {
             <Button
               variant="outline"
               onClick={() => {
-                window.location.href = "/login?returnTo=/";
+                window.location.href = "/login?returnTo=/home";
               }}
               data-testid="button-coming-soon-login"
             >
