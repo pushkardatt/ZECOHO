@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -456,6 +456,24 @@ function PaymentDialog({
   const [screenshotUrl, setScreenshotUrl] = useState("");
   const [uploading, setUploading] = useState(false);
 
+  // Reset state when dialog opens/closes
+  useEffect(() => {
+    if (!open) {
+      setStep("details");
+      setTransactionId("");
+      setScreenshotUrl("");
+      setUploading(false);
+    }
+  }, [open]);
+  useEffect(() => {
+    if (!open) {
+      setStep("details");
+      setTransactionId("");
+      setScreenshotUrl("");
+      setUploading(false);
+    }
+  }, [open]);
+
   const { data: paymentAccounts = [] } = useQuery<any[]>({
     queryKey: ["/api/payment-accounts"],
     queryFn: () => fetch("/api/payment-accounts").then((r) => r.json()),
@@ -592,15 +610,20 @@ function PaymentDialog({
                     </div>
                     {/* UPI Deep Link */}
                     <a
-                    href={`upi://pay?pa=${encodeURIComponent(acc.upiId)}&pn=${encodeURIComponent(acc.accountName)}&am=${plan?.price}&cu=INR&tn=ZECOHO+Subscription`}
+                      href={`upi://pay?pa=${encodeURIComponent(acc.upiId)}&pn=${encodeURIComponent(acc.accountName)}&am=${plan?.price}&cu=INR&tn=ZECOHO+Subscription`}
                       className="inline-flex items-center gap-1.5 mt-2 text-xs bg-primary text-primary-foreground px-3 py-1.5 rounded-lg hover:bg-primary/90 transition-colors"
                     >
                       <ExternalLink className="h-3 w-3" />
-                      📱 Pay ₹{plan ? Number(plan.price).toLocaleString("en-IN") : ""} via UPI App
+                      📱 Pay ₹
+                      {plan
+                        ? Number(plan.price).toLocaleString("en-IN")
+                        : ""}{" "}
+                      via UPI App
                     </a>
                     <p className="text-xs text-muted-foreground mt-1">
-                      Open this page on your <strong>mobile phone</strong> to pay directly via GPay / PhonePe / Paytm.
-                      On desktop, scan the QR code or copy the UPI ID above.
+                      Open this page on your <strong>mobile phone</strong> to
+                      pay directly via GPay / PhonePe / Paytm. On desktop, scan
+                      the QR code or copy the UPI ID above.
                     </p>
                   </div>
                 </div>
@@ -851,33 +874,21 @@ export default function OwnerSubscriptionPage() {
       screenshotUrl: string;
       paymentMethod: string;
     }) => {
-      // Step 1: Create subscription request
+      // Single call — backend validates proof and creates subscription together
       const subRes = await apiRequest("POST", "/api/owner/subscribe", {
         planId: plan.id,
         tier: plan.tier,
         duration: plan.duration,
         pricePaid: plan.price,
+        transactionId,
+        screenshotUrl,
+        paymentMethod,
       });
-      if (!subRes.ok) throw new Error("Failed to submit subscription request");
-      const sub = await subRes.json();
-
-      // Step 2: Submit payment proof
-      try {
-        await apiRequest("POST", "/api/owner/payment-proof", {
-          subscriptionId: sub.id,
-          transactionId,
-          screenshotUrl,
-          paymentMethod,
-          amount: plan.price,
-        });
-      } catch {
-        // Payment proof submission failed silently — subscription still created
-        console.warn(
-          "Payment proof submission failed, but subscription was created",
-        );
+      if (!subRes.ok) {
+        const err = await subRes.json();
+        throw new Error(err.error || "Failed to submit subscription request");
       }
-
-      return sub;
+      return subRes.json();
     },
     onSuccess: () => {
       toast({

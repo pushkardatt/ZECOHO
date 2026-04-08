@@ -100,8 +100,34 @@ router.get("/admin/owner-subscriptions", async (req, res) => {
 /* OWNER — request subscription */
 router.post("/owner/subscribe", async (req, res) => {
   try {
-    const { planId, tier, duration, pricePaid } = req.body;
+    const {
+      planId,
+      tier,
+      duration,
+      pricePaid,
+      transactionId,
+      screenshotUrl,
+      paymentMethod,
+    } = req.body;
     const ownerId = req.user?.claims?.sub || req.user?.id;
+
+    // Block submission if no payment proof provided
+    if (!transactionId || !transactionId.trim()) {
+      return res
+        .status(400)
+        .json({
+          error: "Transaction ID is required. Please complete payment first.",
+        });
+    }
+    if (!screenshotUrl) {
+      return res
+        .status(400)
+        .json({
+          error:
+            "Payment screenshot is required. Please upload proof of payment.",
+        });
+    }
+
     const sub = await storage.createOwnerSubscription({
       ownerId,
       planId,
@@ -110,6 +136,20 @@ router.post("/owner/subscribe", async (req, res) => {
       pricePaid: String(pricePaid),
       status: "pending_payment",
     });
+
+    // Save payment proof linked to this subscription
+    const { db } = await import("./db");
+    const { subscriptionPayments } = await import("../shared/schema");
+    await db.insert(subscriptionPayments).values({
+      subscriptionId: sub.id,
+      ownerId,
+      transactionId: transactionId.trim(),
+      screenshotUrl: screenshotUrl || null,
+      paymentMethod: paymentMethod || "upi",
+      amount: String(pricePaid),
+      status: "pending",
+    });
+
     res.json(sub);
   } catch (error) {
     console.error(
