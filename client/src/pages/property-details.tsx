@@ -103,6 +103,7 @@ import { insertReviewSchema } from "@shared/schema";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { usePreLoginBooking } from "@/hooks/usePreLoginBooking";
+import { Helmet } from "react-helmet-async";
 
 const reviewFormSchema = insertReviewSchema
   .pick({ rating: true, comment: true })
@@ -1278,6 +1279,43 @@ export default function PropertyDetails() {
 
   return (
     <div className="min-h-screen pb-24 md:pb-16">
+      <Helmet>
+        <title>
+          {property.title} in {property.destination} — Book Direct, Save 15-25%
+          | ZECOHO
+        </title>
+        <meta
+          name="description"
+          content={`Book ${property.title} directly on ZECOHO. No commission, no hidden fees. Save 15-25% vs MakeMyTrip & OYO. ${property.description?.slice(0, 100) || ""}`}
+        />
+        <meta
+          property="og:title"
+          content={`${property.title} — Direct Booking | ZECOHO`}
+        />
+        <meta
+          property="og:description"
+          content={`Book ${property.title} in ${property.destination} directly. Zero commission. Save 15-25%.`}
+        />
+        <link
+          rel="canonical"
+          href={`https://www.zecoho.com/properties/${property.id}`}
+        />
+        <script type="application/ld+json">
+          {JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "Hotel",
+            name: property.title,
+            description: property.description,
+            address: {
+              "@type": "PostalAddress",
+              addressLocality: property.destination,
+              addressCountry: "IN",
+            },
+            priceRange: `₹${property.pricePerNight}`,
+            url: `https://www.zecoho.com/properties/${property.id}`,
+          })}
+        </script>
+      </Helmet>
       <div className="container px-4 md:px-6 py-6">
         {/* Title and Actions */}
         <div className="mb-6">

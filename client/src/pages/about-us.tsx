@@ -3,6 +3,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent } from "@/components/ui/card";
 import { Building2, Users, Award, Heart, Shield, Zap } from "lucide-react";
 import type { AboutUs as AboutUsType } from "@shared/schema";
+import { Helmet } from "react-helmet-async";
 
 const STATIC_FALLBACK_CONTENT = `# About ZECOHO
 
@@ -58,7 +59,11 @@ For any queries, please visit our Contact Us page or reach out to our support te
 *ZECOHO – Where Zero Commission Meets Quality Hospitality*`;
 
 export default function AboutUs() {
-  const { data: aboutUs, isLoading, error } = useQuery<AboutUsType>({
+  const {
+    data: aboutUs,
+    isLoading,
+    error,
+  } = useQuery<AboutUsType>({
     queryKey: ["/api/about-us"],
   });
 
@@ -66,12 +71,36 @@ export default function AboutUs() {
   const title = aboutUs?.title || "About ZECOHO";
 
   const features = [
-    { icon: Building2, title: "Zero Commission", description: "Property owners keep 100% of their earnings" },
-    { icon: Users, title: "Direct Connection", description: "Connect directly with property owners" },
-    { icon: Award, title: "Quality Assured", description: "Verified listings and trusted reviews" },
-    { icon: Heart, title: "Guest Focused", description: "Lower prices passed to travelers" },
-    { icon: Shield, title: "Secure Platform", description: "Safe payments and protected bookings" },
-    { icon: Zap, title: "Easy Booking", description: "Simple, fast reservation process" },
+    {
+      icon: Building2,
+      title: "Zero Commission",
+      description: "Property owners keep 100% of their earnings",
+    },
+    {
+      icon: Users,
+      title: "Direct Connection",
+      description: "Connect directly with property owners",
+    },
+    {
+      icon: Award,
+      title: "Quality Assured",
+      description: "Verified listings and trusted reviews",
+    },
+    {
+      icon: Heart,
+      title: "Guest Focused",
+      description: "Lower prices passed to travelers",
+    },
+    {
+      icon: Shield,
+      title: "Secure Platform",
+      description: "Safe payments and protected bookings",
+    },
+    {
+      icon: Zap,
+      title: "Easy Booking",
+      description: "Simple, fast reservation process",
+    },
   ];
 
   if (isLoading) {
@@ -90,10 +119,23 @@ export default function AboutUs() {
 
   return (
     <div className="min-h-screen bg-background">
+      <Helmet>
+        <title>
+          About ZECOHO — India's Zero Commission Hotel Booking Platform
+        </title>
+        <meta
+          name="description"
+          content="Learn how ZECOHO is disrupting India's hotel booking industry by eliminating OTA commissions and connecting guests directly with hotels. Zero commission. 100% savings passed to you."
+        />
+        <link rel="canonical" href="https://www.zecoho.com/about-us" />
+      </Helmet>
       {/* Hero Section */}
       <div className="bg-gradient-to-br from-primary/10 via-background to-background py-16">
         <div className="container mx-auto px-4 text-center">
-          <h1 className="text-4xl md:text-5xl font-bold mb-4" data-testid="text-about-title">
+          <h1
+            className="text-4xl md:text-5xl font-bold mb-4"
+            data-testid="text-about-title"
+          >
             {title}
           </h1>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
@@ -110,7 +152,9 @@ export default function AboutUs() {
               <CardContent className="pt-6">
                 <feature.icon className="h-8 w-8 mx-auto mb-3 text-primary" />
                 <h3 className="font-medium text-sm mb-1">{feature.title}</h3>
-                <p className="text-xs text-muted-foreground">{feature.description}</p>
+                <p className="text-xs text-muted-foreground">
+                  {feature.description}
+                </p>
               </CardContent>
             </Card>
           ))}
@@ -119,35 +163,59 @@ export default function AboutUs() {
         {/* Main Content */}
         <Card className="max-w-4xl mx-auto">
           <CardContent className="py-8 px-6 md:px-10">
-            <div 
+            <div
               className="prose dark:prose-invert max-w-none prose-headings:text-foreground prose-p:text-muted-foreground prose-strong:text-foreground prose-li:text-muted-foreground"
               data-testid="text-about-content"
             >
-              {content.split('\n').map((line, index) => {
-                if (line.startsWith('# ')) {
-                  return <h1 key={index} className="text-3xl font-bold mb-6">{line.slice(2)}</h1>;
+              {content.split("\n").map((line, index) => {
+                if (line.startsWith("# ")) {
+                  return (
+                    <h1 key={index} className="text-3xl font-bold mb-6">
+                      {line.slice(2)}
+                    </h1>
+                  );
                 }
-                if (line.startsWith('## ')) {
-                  return <h2 key={index} className="text-2xl font-semibold mt-8 mb-4">{line.slice(3)}</h2>;
+                if (line.startsWith("## ")) {
+                  return (
+                    <h2
+                      key={index}
+                      className="text-2xl font-semibold mt-8 mb-4"
+                    >
+                      {line.slice(3)}
+                    </h2>
+                  );
                 }
-                if (line.startsWith('### ')) {
-                  return <h3 key={index} className="text-xl font-semibold mt-6 mb-3">{line.slice(4)}</h3>;
+                if (line.startsWith("### ")) {
+                  return (
+                    <h3 key={index} className="text-xl font-semibold mt-6 mb-3">
+                      {line.slice(4)}
+                    </h3>
+                  );
                 }
-                if (line.startsWith('**') && line.endsWith('**')) {
-                  return <p key={index} className="font-semibold my-2">{line.slice(2, -2)}</p>;
+                if (line.startsWith("**") && line.endsWith("**")) {
+                  return (
+                    <p key={index} className="font-semibold my-2">
+                      {line.slice(2, -2)}
+                    </p>
+                  );
                 }
-                if (line.startsWith('- **')) {
+                if (line.startsWith("- **")) {
                   const match = line.match(/- \*\*(.+?)\*\* – (.+)/);
                   if (match) {
                     return (
                       <div key={index} className="flex items-start gap-2 my-2">
                         <span className="text-primary mt-1">•</span>
-                        <p><strong className="text-foreground">{match[1]}</strong> – {match[2]}</p>
+                        <p>
+                          <strong className="text-foreground">
+                            {match[1]}
+                          </strong>{" "}
+                          – {match[2]}
+                        </p>
                       </div>
                     );
                   }
                 }
-                if (line.startsWith('- ')) {
+                if (line.startsWith("- ")) {
                   return (
                     <div key={index} className="flex items-start gap-2 my-1">
                       <span className="text-primary mt-1">•</span>
@@ -155,16 +223,31 @@ export default function AboutUs() {
                     </div>
                   );
                 }
-                if (line.startsWith('---')) {
+                if (line.startsWith("---")) {
                   return <hr key={index} className="my-8 border-border" />;
                 }
-                if (line.startsWith('*') && line.endsWith('*') && !line.startsWith('**')) {
-                  return <p key={index} className="italic text-center text-muted-foreground my-4">{line.slice(1, -1)}</p>;
+                if (
+                  line.startsWith("*") &&
+                  line.endsWith("*") &&
+                  !line.startsWith("**")
+                ) {
+                  return (
+                    <p
+                      key={index}
+                      className="italic text-center text-muted-foreground my-4"
+                    >
+                      {line.slice(1, -1)}
+                    </p>
+                  );
                 }
-                if (line.trim() === '') {
+                if (line.trim() === "") {
                   return <div key={index} className="h-2" />;
                 }
-                return <p key={index} className="my-2">{line}</p>;
+                return (
+                  <p key={index} className="my-2">
+                    {line}
+                  </p>
+                );
               })}
             </div>
           </CardContent>
@@ -173,7 +256,10 @@ export default function AboutUs() {
         {/* Version info (subtle) */}
         {aboutUs && (
           <div className="text-center mt-8 text-xs text-muted-foreground">
-            Last updated: {new Date(aboutUs.publishedAt || aboutUs.createdAt!).toLocaleDateString()}
+            Last updated:{" "}
+            {new Date(
+              aboutUs.publishedAt || aboutUs.createdAt!,
+            ).toLocaleDateString()}
           </div>
         )}
       </div>

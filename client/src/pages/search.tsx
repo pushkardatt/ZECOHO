@@ -25,6 +25,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useKycGuard } from "@/hooks/useKycGuard";
 import { RestrictedAccess } from "@/components/RestrictedAccess";
 import { MultiSelectFilter } from "@/components/MultiSelectFilter";
+import { Helmet } from "react-helmet-async";
 
 export default function Search() {
   const { user, isOwner } = useAuth();
@@ -351,6 +352,35 @@ export default function Search() {
 
   return (
     <div className="min-h-screen bg-background">
+      <Helmet>
+        <title>
+          {searchDestination
+            ? `Hotels in ${searchDestination} — Zero Commission Booking | ZECOHO`
+            : "Search Hotels in India — Zero Commission | ZECOHO"}
+        </title>
+        <meta
+          name="description"
+          content={
+            searchDestination
+              ? `Find verified hotels in ${searchDestination}. Book directly with zero commission. Save 15-25% on every stay. No hidden fees.`
+              : "Search and book verified hotels across India. Zero commission, no hidden fees. Save 15-25% vs other booking sites."
+          }
+        />
+        <meta
+          property="og:title"
+          content={
+            searchDestination
+              ? `Hotels in ${searchDestination} | ZECOHO`
+              : "Search Hotels | ZECOHO"
+          }
+        />
+        {searchDestination && (
+          <link
+            rel="canonical"
+            href={`https://www.zecoho.com/search?destination=${encodeURIComponent(searchDestination)}`}
+          />
+        )}
+      </Helmet>
       {/* MakeMyTrip-style Sticky Search Summary with Edit Option */}
       <StickySearchSummary
         destination={initialSearchValues.destination}

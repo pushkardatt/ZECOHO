@@ -84,6 +84,7 @@ import {
 import { INDIAN_STATES, INDIAN_CITIES } from "@/data/locations";
 import type { KycSectionId, KycRejectionDetails } from "@shared/schema";
 import { useEffect, useMemo, useRef, useCallback } from "react";
+import { Helmet } from "react-helmet-async";
 
 const WIZARD_STORAGE_KEY = "zecoho_list_property_wizard_draft";
 
@@ -2207,6 +2208,22 @@ export default function ListPropertyWizard() {
 
   return (
     <div className="min-h-screen bg-muted/30 pb-16">
+      <Helmet>
+        <title>List Your Hotel Free — 0% Commission Forever | ZECOHO</title>
+        <meta
+          name="description"
+          content="Join ZECOHO and list your hotel for free. Zero commission on every booking. Keep 100% of your revenue. Direct guest communication. India's fastest growing zero-commission hotel platform."
+        />
+        <meta
+          property="og:title"
+          content="List Your Hotel Free on ZECOHO — 0% Commission"
+        />
+        <meta
+          property="og:description"
+          content="No commission. No listing fee. Keep 100% of every booking. Join India's zero-commission hotel platform."
+        />
+        <link rel="canonical" href="https://www.zecoho.com/list-property" />
+      </Helmet>
       <div className="container px-4 md:px-6 py-8 max-w-4xl mx-auto">
         {/* Header - minimal to save space */}
 

@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import type { Policy } from "@shared/schema";
+import { Helmet } from "react-helmet-async";
 
 const DEFAULT_PRIVACY_CONTENT = `1. Introduction
 
@@ -107,31 +108,58 @@ export default function Privacy() {
 
   const formatDate = (date: Date | string | null) => {
     if (!date) return "January 2026";
-    return new Date(date).toLocaleDateString("en-US", { month: "long", year: "numeric" });
+    return new Date(date).toLocaleDateString("en-US", {
+      month: "long",
+      year: "numeric",
+    });
   };
 
   const formatContent = (content: string) => {
-    return content.split('\n').map((paragraph, index) => {
+    return content.split("\n").map((paragraph, index) => {
       if (!paragraph.trim()) return <br key={index} />;
-      
+
       if (/^\d+\./.test(paragraph.trim())) {
-        return <h2 key={index} className="text-xl font-semibold mt-6 mb-3">{paragraph}</h2>;
+        return (
+          <h2 key={index} className="text-xl font-semibold mt-6 mb-3">
+            {paragraph}
+          </h2>
+        );
       }
-      
-      if (paragraph.trim().startsWith('•')) {
-        return <li key={index} className="ml-6">{paragraph.replace('•', '').trim()}</li>;
+
+      if (paragraph.trim().startsWith("•")) {
+        return (
+          <li key={index} className="ml-6">
+            {paragraph.replace("•", "").trim()}
+          </li>
+        );
       }
-      
-      if (paragraph.trim().endsWith(':') && paragraph.length < 60) {
-        return <h3 key={index} className="text-lg font-medium mt-4 mb-2">{paragraph}</h3>;
+
+      if (paragraph.trim().endsWith(":") && paragraph.length < 60) {
+        return (
+          <h3 key={index} className="text-lg font-medium mt-4 mb-2">
+            {paragraph}
+          </h3>
+        );
       }
-      
-      return <p key={index} className="mb-2">{paragraph}</p>;
+
+      return (
+        <p key={index} className="mb-2">
+          {paragraph}
+        </p>
+      );
     });
   };
 
   return (
     <div className="min-h-screen bg-background">
+      <Helmet>
+        <title>Privacy Policy | ZECOHO</title>
+        <meta
+          name="description"
+          content="ZECOHO's privacy policy. Learn how we collect, use, and protect your personal data on India's zero commission hotel booking platform."
+        />
+        <link rel="canonical" href="https://www.zecoho.com/privacy" />
+      </Helmet>
       <div className="container max-w-4xl px-4 py-8 md:py-12">
         <div className="mb-8">
           <Link href="/">
@@ -148,12 +176,17 @@ export default function Privacy() {
           </div>
         ) : (
           <div className="prose dark:prose-invert max-w-none">
-            <h1 className="text-3xl font-bold mb-6" data-testid="text-privacy-title">
+            <h1
+              className="text-3xl font-bold mb-6"
+              data-testid="text-privacy-title"
+            >
               {policy?.title || "Privacy Policy"}
             </h1>
             <p className="text-muted-foreground mb-6">
               Last updated: {formatDate(policy?.publishedAt || null)}
-              {policy?.version && <span className="ml-2">(Version {policy.version})</span>}
+              {policy?.version && (
+                <span className="ml-2">(Version {policy.version})</span>
+              )}
             </p>
 
             <div className="space-y-1">
