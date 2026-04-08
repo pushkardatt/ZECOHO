@@ -32,6 +32,9 @@ import {
   Image,
   BarChart2,
   Rocket,
+  Copy,
+  Share2,
+  Gift,
 } from "lucide-react";
 
 // ── Types ──────────────────────────────────────────────────────────────────
@@ -57,7 +60,131 @@ interface SubscriptionStatus {
   expiresAt: string | null;
   daysLeft: number | null;
 }
+// ── Referral Card ──────────────────────────────────────────────────────────
+function ReferralCard() {
+  const [copied, setCopied] = useState(false);
+  const { toast } = useToast();
 
+  const { data: referralData } = useQuery({
+    queryKey: ["/api/referral/my-code"],
+    queryFn: () =>
+      fetch("/api/referral/my-code", { credentials: "include" }).then((r) =>
+        r.json(),
+      ),
+  });
+
+  const handleCopyCode = () => {
+    navigator.clipboard.writeText(referralData?.referralCode || "");
+    setCopied(true);
+    toast({ title: "Referral code copied!" });
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleCopyLink = () => {
+    navigator.clipboard.writeText(referralData?.referralLink || "");
+    setCopied(true);
+    toast({ title: "Referral link copied!" });
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleWhatsApp = () => {
+    const msg = encodeURIComponent(
+      `Hey! I've been using ZECOHO to get direct hotel bookings with 0% commission. List your property for free here: ${referralData?.referralLink}`,
+    );
+    window.open(`https://wa.me/?text=${msg}`, "_blank");
+  };
+
+  return (
+    <div className="mt-8 rounded-2xl border bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-950/20 dark:to-orange-950/20 p-6">
+      <div className="flex items-center gap-2 mb-2">
+        <Gift className="h-5 w-5 text-amber-600" />
+        <h3 className="text-lg font-bold">
+          Refer a Hotel Owner — Earn Free Months
+        </h3>
+      </div>
+      <p className="text-sm text-muted-foreground mb-6">
+        Share your referral link with other hoteliers. When they subscribe, you
+        get <strong>1 free month</strong> added to your plan.
+      </p>
+
+      {/* Stats */}
+      <div className="grid grid-cols-3 gap-4 mb-6">
+        {[
+          {
+            label: "Hotels Referred",
+            value: referralData?.stats?.totalReferred ?? 0,
+          },
+          {
+            label: "Subscribed",
+            value: referralData?.stats?.totalSubscribed ?? 0,
+          },
+          {
+            label: "Free Months Earned",
+            value: referralData?.stats?.totalMonthsEarned ?? 0,
+          },
+        ].map((stat) => (
+          <div
+            key={stat.label}
+            className="bg-white dark:bg-muted/50 rounded-xl p-4 text-center shadow-sm border"
+          >
+            <div className="text-2xl font-bold text-amber-600">
+              {stat.value}
+            </div>
+            <div className="text-xs text-muted-foreground mt-1">
+              {stat.label}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Referral Code */}
+      <div className="mb-4">
+        <label className="text-xs font-semibold text-muted-foreground mb-1 block">
+          YOUR REFERRAL CODE
+        </label>
+        <div className="flex items-center gap-2">
+          <div className="flex-1 bg-white dark:bg-muted/50 border rounded-lg px-4 py-3 font-mono font-bold text-lg tracking-widest text-center">
+            {referralData?.referralCode || "Loading..."}
+          </div>
+          <button
+            onClick={handleCopyCode}
+            className="p-3 bg-amber-500 hover:bg-amber-600 text-white rounded-lg transition-colors"
+          >
+            {copied ? (
+              <CheckCircle2 className="h-4 w-4" />
+            ) : (
+              <Copy className="h-4 w-4" />
+            )}
+          </button>
+        </div>
+      </div>
+
+      {/* Share Buttons */}
+      <div className="flex flex-col sm:flex-row gap-3">
+        <button
+          onClick={handleCopyLink}
+          className="flex-1 flex items-center justify-center gap-2 px-4 py-3 border-2 border-amber-400 text-amber-700 dark:text-amber-400 rounded-xl font-semibold hover:bg-amber-50 dark:hover:bg-amber-950/30 transition-colors text-sm"
+        >
+          <Copy className="h-4 w-4" />
+          Copy Referral Link
+        </button>
+        <button
+          onClick={handleWhatsApp}
+          className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-green-500 hover:bg-green-600 text-white rounded-xl font-semibold transition-colors text-sm"
+        >
+          <Share2 className="h-4 w-4" />
+          Share on WhatsApp
+        </button>
+      </div>
+
+      <p className="text-xs text-muted-foreground text-center mt-4">
+        Reward credited when your referral activates a subscription
+      </p>
+    </div>
+  );
+}
+
+// ── Helpers ────────────────────────────────────────────────────────────────
 // ── Helpers ────────────────────────────────────────────────────────────────
 const TIER_META: Record<
   string,
@@ -498,6 +625,7 @@ export default function OwnerSubscriptionPage() {
         </div>
 
         {/* Confirm Dialog */}
+        {/* Confirm Dialog */}
         <ConfirmDialog
           plan={selectedPlan}
           open={confirmOpen}
@@ -505,6 +633,9 @@ export default function OwnerSubscriptionPage() {
           onConfirm={handleConfirm}
           isLoading={subscribeMutation.isPending}
         />
+
+        {/* Referral Program */}
+        <ReferralCard />
       </div>
     </OwnerLayout>
   );

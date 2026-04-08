@@ -12,6 +12,8 @@ import {
   callLogs,
   conversations,
   messages,
+  ownerReferrals,
+  ownerSubscriptions,
 } from "@shared/schema";
 import { setupAuth, isAuthenticated } from "./replitAuth";
 import subscriptionRoutes from "./subscriptions.ts";
@@ -9582,7 +9584,140 @@ export async function registerRoutes(
       return res.sendStatus(500);
     }
   });
+  // ─── Referral Routes ────────────────────────────────────────────────
+  app.get("/api/referral/my-code", isAuthenticated, async (req: any, res) => {
+    if (!req.isAuthenticated())
+      return res.status(401).json({ message: "Unauthorized" });
+    const userId = req.user.claims.sub;
+    try {
+      let referral = await db
+        .select()
+        .from(ownerReferrals)
+        .where(eq(ownerReferrals.referrerId, userId))
+        .limit(1);
 
+      if (referral.length === 0) {
+        const code =
+          "ZC" + Math.random().toString(36).substring(2, 6).toUpperCase();
+        const [newReferral] = await db
+          .insert(ownerReferrals)
+          .values({ referrerId: userId, referralCode: code })
+          .returning();
+        referral = [newReferral];
+      }
+
+      const stats = await db
+        .select()
+        .from(ownerReferrals)
+        .where(eq(ownerReferrals.referrerId, userId));
+
+      const totalReferred = stats.filter((r) => r.refereeId).length;
+      const totalSubscribed = stats.filter(
+        (r) => r.status === "subscribed" || r.status === "rewarded",
+      ).length;
+      const totalMonthsEarned = stats
+        .filter((r) => r.status === "rewarded")
+        .reduce((sum, r) => sum + r.rewardMonths, 0);
+
+      res.json({
+        referralCode: referral[0].referralCode,
+        referralLink: `https://www.zecoho.com/list-property?ref=${referral[0].referralCode}`,
+        stats: { totalReferred, totalSubscribed, totalMonthsEarned },
+      });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to get referral code" });
+    }
+  });
+
+  app.post("/api/referral/apply", async (req: any, res) => {
+    const { referralCode, newOwnerId } = req.body;
+    if (!referralCode || !newOwnerId)
+      return res.status(400).json({ message: "Missing fields" });
+    try {
+      const [referral] = await db
+        .select()
+        .from(ownerReferrals)
+        .where(eq(ownerReferrals.referralCode, referralCode))
+        .limit(1);
+
+      if (!referral)
+        return res.status(404).json({ message: "Invalid referral code" });
+      if (referral.refereeId)
+        return res.status(400).json({ message: "Code already used" });
+
+      await db
+        .update(ownerReferrals)
+        .set({ refereeId: newOwnerId, status: "signed_up" })
+        .where(eq(ownerReferrals.referralCode, referralCode));
+
+      res.json({ message: "Referral applied" });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to apply referral" });
+    }
+  });
+
+  app.post("/api/referral/reward", async (req: any, res) => {
+    const { refereeId } = req.body;
+    if (!refereeId)
+      return res.status(400).json({ message: "Missing refereeId" });
+    try {
+      const [referral] = await db
+        .select()
+        .from(ownerReferrals)
+        .where(
+          and(
+            eq(ownerReferrals.refereeId, refereeId),
+            eq(ownerReferrals.status, "signed_up"),
+          ),
+        )
+        .limit(1);
+
+      if (!referral) return res.json({ message: "No pending referral found" });
+
+      await db
+        .update(ownerReferrals)
+        .set({ status: "rewarded", rewardedAt: new Date() })
+        .where(eq(ownerReferrals.id, referral.id));
+
+      const referrerSubs = await db
+        .select()
+        .from(ownerSubscriptions)
+        .where(eq(ownerSubscriptions.ownerId, referral.referrerId))
+        .orderBy(desc(ownerSubscriptions.endDate))
+        .limit(1);
+
+      if (referrerSubs.length > 0) {
+        const currentEnd = new Date(referrerSubs[0].endDate || new Date());
+        const newEnd = new Date(currentEnd);
+        newEnd.setMonth(newEnd.getMonth() + 1);
+        await db
+          .update(ownerSubscriptions)
+          .set({ endDate: newEnd })
+          .where(eq(ownerSubscriptions.id, referrerSubs[0].id));
+      }
+
+      res.json({ message: "Referral rewarded — 1 free month added" });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to process reward" });
+    }
+  });
+
+  app.get("/api/referral/validate/:code", async (req: any, res) => {
+    try {
+      const [referral] = await db
+        .select()
+        .from(ownerReferrals)
+        .where(eq(ownerReferrals.referralCode, req.params.code))
+        .limit(1);
+
+      if (!referral) return res.status(404).json({ valid: false });
+      res.json({ valid: true, referralCode: referral.referralCode });
+    } catch (error) {
+      res.status(500).json({ valid: false });
+    }
+  });
+
+  // ==================== OWNER DASHBOARD ROUTES ====================
   // ==================== OWNER DASHBOARD ROUTES ====================
 
   // Get owner dashboard stats (KPIs)

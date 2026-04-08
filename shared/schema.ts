@@ -2608,3 +2608,21 @@ export const ownerSubscriptionsRelations = relations(
     }),
   }),
 );
+
+export const ownerReferrals = pgTable("owner_referrals", {
+  id: text("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  referrerId: text("referrer_id")
+    .notNull()
+    .references(() => users.id),
+  referralCode: text("referral_code").notNull().unique(),
+  refereeId: text("referee_id").references(() => users.id),
+  status: text("status").notNull().default("pending"),
+  rewardMonths: integer("reward_months").notNull().default(1),
+  createdAt: timestamp("created_at").defaultNow(),
+  rewardedAt: timestamp("rewarded_at"),
+});
+
+export type OwnerReferral = typeof ownerReferrals.$inferSelect;
+export type InsertOwnerReferral = typeof ownerReferrals.$inferInsert;

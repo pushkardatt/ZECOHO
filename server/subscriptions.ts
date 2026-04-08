@@ -63,7 +63,6 @@ router.post("/admin/subscription-plans", async (req, res) => {
   }
 }); // ← this was missing
 
-
 /* ADMIN — update plan */
 router.patch("/admin/subscription-plans/:id", async (req, res) => {
   try {
@@ -72,14 +71,19 @@ router.patch("/admin/subscription-plans/:id", async (req, res) => {
     const body = {
       ...req.body,
       price: req.body.price ? String(req.body.price) : undefined,
-      cutoffPrice: req.body.cutoffPrice ? String(req.body.cutoffPrice) : undefined,
+      cutoffPrice: req.body.cutoffPrice
+        ? String(req.body.cutoffPrice)
+        : undefined,
     };
     console.log("PATCH body to save:", JSON.stringify(body));
     const plan = await storage.updateSubscriptionPlan(req.params.id, body);
     console.log("PATCH result:", JSON.stringify(plan));
     res.json(plan);
   } catch (error) {
-    console.error("Update plan error:", error instanceof Error ? error.message : String(error));
+    console.error(
+      "Update plan error:",
+      error instanceof Error ? error.message : String(error),
+    );
     res.status(500).json({ error: "Failed to update subscription plan" });
   }
 });
@@ -129,8 +133,16 @@ router.post("/admin/owner-subscriptions/:id/activate", async (req, res) => {
   try {
     const { note, startDate, endDate } = req.body;
     const adminId = req.user?.claims?.sub || req.user?.id;
-    await storage.updateOwnerSubscriptionDates(req.params.id, new Date(startDate), new Date(endDate));
-    const sub = await storage.activateOwnerSubscription(req.params.id, adminId, note);
+    await storage.updateOwnerSubscriptionDates(
+      req.params.id,
+      new Date(startDate),
+      new Date(endDate),
+    );
+    const sub = await storage.activateOwnerSubscription(
+      req.params.id,
+      adminId,
+      note,
+    );
     res.json(sub);
   } catch (error) {
     res.status(500).json({ error: "Failed to activate" });
@@ -140,7 +152,10 @@ router.post("/admin/owner-subscriptions/:id/activate", async (req, res) => {
 /* ADMIN — cancel */
 router.post("/admin/owner-subscriptions/:id/cancel", async (req, res) => {
   try {
-    const sub = await storage.cancelOwnerSubscription(req.params.id, req.body.reason);
+    const sub = await storage.cancelOwnerSubscription(
+      req.params.id,
+      req.body.reason,
+    );
     res.json(sub);
   } catch (error) {
     res.status(500).json({ error: "Failed to cancel" });
@@ -151,7 +166,11 @@ router.post("/admin/owner-subscriptions/:id/cancel", async (req, res) => {
 router.post("/admin/owner-subscriptions/:id/waive", async (req, res) => {
   try {
     const adminId = req.user?.claims?.sub || req.user?.id;
-    const sub = await storage.waiveOwnerSubscription(req.params.id, adminId, req.body.note);
+    const sub = await storage.waiveOwnerSubscription(
+      req.params.id,
+      adminId,
+      req.body.note,
+    );
     res.json(sub);
   } catch (error) {
     res.status(500).json({ error: "Failed to waive" });
