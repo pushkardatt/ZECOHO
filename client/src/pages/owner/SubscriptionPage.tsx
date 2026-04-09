@@ -17,6 +17,7 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
+import { QRCodeSVG } from "qrcode.react";
 import {
   CheckCircle2,
   Crown,
@@ -492,7 +493,7 @@ function PaymentTabs({
                   onClick={() => setEnlargeQR(true)}
                 >
                   <div className="w-44 h-44 mx-auto rounded-xl border-2 border-primary/20 bg-white flex items-center justify-center p-2">
-                    <QRCode
+                    <QRCodeSVG
                       value={upiQRValue(acc.upiId, acc.accountName)}
                       size={160}
                       level="M"
@@ -656,7 +657,7 @@ function PaymentTabs({
               ✅ Amount is pre-filled automatically
             </p>
             <div className="w-64 h-64 mx-auto rounded-xl border bg-white flex items-center justify-center p-3">
-              <QRCode
+              <QRCodeSVG
                 value={upiQRValue(
                   upiAccounts[0].upiId,
                   upiAccounts[0].accountName,
