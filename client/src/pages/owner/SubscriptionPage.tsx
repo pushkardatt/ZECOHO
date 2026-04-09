@@ -407,8 +407,8 @@ function PaymentTabs({
   const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
   const isAndroid = /Android/i.test(navigator.userAgent);
 
-  const dynamicQR = (upiId: string, name: string) =>
-    `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(`upi://pay?pa=${upiId}&pn=${encodeURIComponent(name)}&am=${plan.price}&cu=INR&tn=ZECOHOSubscription`)}`;
+  const upiQRValue = (upiId: string, name: string) =>
+    `upi://pay?pa=${upiId}&pn=${encodeURIComponent(name)}&am=${plan.price}&cu=INR&tn=ZECOHOSubscription`;
 
   const upiApps = [
     {
@@ -491,14 +491,14 @@ function PaymentTabs({
                   className="inline-block cursor-pointer relative"
                   onClick={() => setEnlargeQR(true)}
                 >
-                  <img
-                    src={dynamicQR(acc.upiId, acc.accountName)}
-                    alt="UPI QR Code"
-                    className="w-44 h-44 mx-auto rounded-xl border-2 border-primary/20 bg-white object-contain"
-                    onError={(e) => {
-                      (e.target as HTMLImageElement).style.display = "none";
-                    }}
-                  />
+                  <div className="w-44 h-44 mx-auto rounded-xl border-2 border-primary/20 bg-white flex items-center justify-center p-2">
+                    <QRCode
+                      value={upiQRValue(acc.upiId, acc.accountName)}
+                      size={160}
+                      level="M"
+                      includeMargin={false}
+                    />
+                  </div>
                   <div className="absolute bottom-1 right-1 bg-primary text-primary-foreground text-xs px-1.5 py-0.5 rounded-full">
                     Tap to enlarge
                   </div>
@@ -655,11 +655,17 @@ function PaymentTabs({
             <p className="text-xs text-green-600 mb-4">
               ✅ Amount is pre-filled automatically
             </p>
-            <img
-              src={dynamicQR(upiAccounts[0].upiId, upiAccounts[0].accountName)}
-              alt="UPI QR"
-              className="w-64 h-64 mx-auto rounded-xl border"
-            />
+            <div className="w-64 h-64 mx-auto rounded-xl border bg-white flex items-center justify-center p-3">
+              <QRCode
+                value={upiQRValue(
+                  upiAccounts[0].upiId,
+                  upiAccounts[0].accountName,
+                )}
+                size={220}
+                level="M"
+                includeMargin={false}
+              />
+            </div>
             <p className="text-xs text-muted-foreground mt-4">
               Tap anywhere to close
             </p>
