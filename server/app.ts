@@ -28,48 +28,60 @@ export function log(message: string, source = "express") {
 
 export const app = express();
 
-declare module 'http' {
+declare module "http" {
   interface IncomingMessage {
-    rawBody: unknown
+    rawBody: unknown;
   }
 }
 
 // Add health check endpoints BEFORE any middleware
 // These MUST respond immediately without any processing
-app.get('/health', (_req, res) => {
-  res.status(200).json({ status: 'ok' });
+app.get("/health", (_req, res) => {
+  res.status(200).json({ status: "ok" });
 });
 
-app.head('/', (_req, res) => {
+app.head("/", (_req, res) => {
   res.status(200).send();
 });
 
-app.get('/__healthcheck', (_req, res) => {
-  res.status(200).send('ok');
+app.get("/__healthcheck", (_req, res) => {
+  res.status(200).send("ok");
 });
-
 
 // Bot blocker - drops junk traffic instantly
 app.use((req, res, next) => {
-  const blockedPaths = ['/wp-login.php', '/wp-admin', '/xmlrpc.php', '/.env', '/admin.php'];
-  if (blockedPaths.some(path => req.path.startsWith(path))) {
+  const blockedPaths = [
+    "/wp-login.php",
+    "/wp-admin",
+    "/xmlrpc.php",
+    "/.env",
+    "/admin.php",
+  ];
+  if (blockedPaths.some((path) => req.path.startsWith(path))) {
     return res.status(404).end();
   }
   next();
 });
 
-// Rate limiter - max 100 requests per IP per 15 mins
+// Rate limiter - max 500 requests per IP per 15 mins
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 100,
+  max: 500,
+  skip: (req) => {
+    // Skip rate limiting for WebSocket and health check endpoints
+    return req.path === "/health" || req.path.startsWith("/ws");
+  },
+  message: { message: "Too many requests, please try again in a few minutes." },
 });
 app.use(limiter);
 // NOW add middleware after health checks
-app.use(express.json({
-  verify: (req, _res, buf) => {
-    req.rawBody = buf;
-  }
-}));
+app.use(
+  express.json({
+    verify: (req, _res, buf) => {
+      req.rawBody = buf;
+    },
+  }),
+);
 app.use(express.urlencoded({ extended: false }));
 
 // Request logging middleware - only logs API calls, doesn't affect health checks
@@ -106,7 +118,7 @@ app.use((req, res, next) => {
 export default async function runApp(
   setup: (app: Express, server: Server) => Promise<void>,
 ): Promise<never> {
-  const port = parseInt(process.env.PORT || '5000', 10);
+  const port = parseInt(process.env.PORT || "5000", 10);
 
   const http = await import("node:http");
   const server = http.createServer(app);
@@ -137,7 +149,7 @@ export default async function runApp(
   seedOwnerAgreement();
   migrateMealOptionNames();
 
-  if (process.env.NODE_ENV !== 'production') {
+  if (process.env.NODE_ENV !== "production") {
     seedAmenities();
     seedDestinations();
   }
