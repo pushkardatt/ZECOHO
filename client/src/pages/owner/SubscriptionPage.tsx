@@ -422,83 +422,155 @@ function PaymentTabs({
   plan: SubscriptionPlan;
   toast: any;
 }) {
-  const [activeTab, setActiveTab] = useState<"upi" | "bank">(
-    upiAccounts.length > 0 ? "upi" : "bank",
-  );
   const [enlargeQR, setEnlargeQR] = useState(false);
 
-  return (
-    <div className="rounded-xl border overflow-hidden">
-      {/* Tab Headers */}
-      <div className="flex border-b">
-        {upiAccounts.length > 0 && (
-          <button
-            onClick={() => setActiveTab("upi")}
-            className={`flex-1 py-3 text-sm font-semibold transition-colors ${
-              activeTab === "upi"
-                ? "bg-primary text-primary-foreground"
-                : "bg-muted/40 text-muted-foreground hover:bg-muted"
-            }`}
-          >
-            📱 UPI / QR Code
-          </button>
-        )}
-        {bankAccounts.length > 0 && (
-          <button
-            onClick={() => setActiveTab("bank")}
-            className={`flex-1 py-3 text-sm font-semibold transition-colors ${
-              activeTab === "bank"
-                ? "bg-primary text-primary-foreground"
-                : "bg-muted/40 text-muted-foreground hover:bg-muted"
-            }`}
-          >
-            🏦 Bank Transfer
-          </button>
-        )}
-      </div>
+  const upiDeepLink = (upiId: string, name: string) =>
+    `upi://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(name)}&am=${plan.price}&cu=INR&tn=ZECOHO+Subscription`;
 
-      {/* UPI Tab */}
-      {activeTab === "upi" &&
-        upiAccounts.map((acc: any) => (
-          <div key={acc.id} className="p-4 space-y-4">
-            {acc.qrCodeUrl && (
+  const dynamicQR = (upiId: string, name: string) =>
+    `https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(upiDeepLink(upiId, name))}`;
+
+  const upiApps = [
+    {
+      name: "GPay",
+      color: "bg-white border",
+      textColor: "text-gray-700",
+      scheme: (upiId: string, name: string) =>
+        `tez://upi/pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(name)}&am=${plan.price}&cu=INR&tn=ZECOHO`,
+      emoji: "🟢",
+    },
+    {
+      name: "PhonePe",
+      color: "bg-purple-600",
+      textColor: "text-white",
+      scheme: (upiId: string, name: string) =>
+        `phonepe://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(name)}&am=${plan.price}&cu=INR&tn=ZECOHO`,
+      emoji: "💜",
+    },
+    {
+      name: "Paytm",
+      color: "bg-blue-500",
+      textColor: "text-white",
+      scheme: (upiId: string, name: string) =>
+        `paytmmp://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(name)}&am=${plan.price}&cu=INR&tn=ZECOHO`,
+      emoji: "💙",
+    },
+    {
+      name: "BHIM",
+      color: "bg-orange-500",
+      textColor: "text-white",
+      scheme: (upiId: string, name: string) =>
+        `upi://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(name)}&am=${plan.price}&cu=INR&tn=ZECOHO`,
+      emoji: "🇮🇳",
+    },
+    {
+      name: "Amazon Pay",
+      color: "bg-yellow-400",
+      textColor: "text-gray-900",
+      scheme: (upiId: string, name: string) =>
+        `upi://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(name)}&am=${plan.price}&cu=INR&tn=ZECOHO`,
+      emoji: "📦",
+    },
+  ];
+
+  const majorBanks = [
+    { name: "SBI", emoji: "🔵" },
+    { name: "HDFC", emoji: "🔴" },
+    { name: "ICICI", emoji: "🟠" },
+    { name: "Axis", emoji: "🟣" },
+    { name: "Kotak", emoji: "🔴" },
+    { name: "Yes Bank", emoji: "🔵" },
+    { name: "PNB", emoji: "🟤" },
+    { name: "BOB", emoji: "🟡" },
+  ];
+
+  return (
+    <div className="space-y-4">
+      {/* ── UPI SECTION ── */}
+      {upiAccounts.map((acc: any) => (
+        <div key={acc.id} className="rounded-xl border overflow-hidden">
+          {/* Header */}
+          <div className="bg-primary px-4 py-2.5 flex items-center gap-2">
+            <span className="text-primary-foreground font-semibold text-sm">
+              📱 UPI Payment
+            </span>
+            {acc.priority === "primary" && (
+              <span className="text-xs bg-white/20 text-white px-2 py-0.5 rounded-full">
+                Recommended
+              </span>
+            )}
+          </div>
+
+          <div className="p-4 space-y-4">
+            {/* Dynamic QR — Amount Pre-filled */}
+            {acc.upiId && (
               <div className="text-center">
                 <p className="text-xs text-muted-foreground mb-2">
-                  Scan QR code with any UPI app
+                  Scan to pay{" "}
+                  <strong>₹{Number(plan.price).toLocaleString("en-IN")}</strong>{" "}
+                  — amount is pre-filled
                 </p>
                 <div
                   className="inline-block cursor-pointer relative"
                   onClick={() => setEnlargeQR(true)}
                 >
                   <img
-                    src={acc.qrCodeUrl}
+                    src={dynamicQR(acc.upiId, acc.accountName)}
                     alt="UPI QR Code"
-                    className="w-48 h-48 mx-auto rounded-xl border-2 border-primary/20 bg-white object-contain p-2"
+                    className="w-44 h-44 mx-auto rounded-xl border-2 border-primary/20 bg-white object-contain"
                     onError={(e) => {
                       (e.target as HTMLImageElement).style.display = "none";
                     }}
                   />
-                  <div className="absolute bottom-2 right-2 bg-black/60 text-white text-xs px-2 py-0.5 rounded-full">
+                  <div className="absolute bottom-1 right-1 bg-primary text-primary-foreground text-xs px-1.5 py-0.5 rounded-full">
                     Tap to enlarge
                   </div>
                 </div>
-                <p className="text-xs text-muted-foreground mt-2">
-                  Works with GPay, PhonePe, Paytm, BHIM & all UPI apps
+                <p className="text-xs text-green-600 font-medium mt-1">
+                  ✅ Amount ₹{Number(plan.price).toLocaleString("en-IN")}{" "}
+                  auto-filled
                 </p>
               </div>
             )}
-            {acc.qrCodeUrl && acc.upiId && (
-              <div className="flex items-center gap-2">
-                <div className="flex-1 border-t" />
-                <span className="text-xs text-muted-foreground">
-                  or pay using UPI ID
-                </span>
-                <div className="flex-1 border-t" />
+
+            {/* Divider */}
+            <div className="flex items-center gap-2">
+              <div className="flex-1 border-t" />
+              <span className="text-xs text-muted-foreground px-2">
+                or pay via UPI app
+              </span>
+              <div className="flex-1 border-t" />
+            </div>
+
+            {/* UPI App Buttons */}
+            {acc.upiId && (
+              <div>
+                <p className="text-xs text-muted-foreground mb-2">
+                  Select your UPI app — amount will be pre-filled
+                </p>
+                <div className="grid grid-cols-5 gap-2">
+                  {upiApps.map((app) => (
+                    <a
+                      key={app.name}
+                      href={app.scheme(acc.upiId, acc.accountName)}
+                      className="flex flex-col items-center gap-1 p-2 rounded-xl border hover:border-primary hover:bg-primary/5 transition-colors cursor-pointer"
+                    >
+                      <span className="text-xl">{app.emoji}</span>
+                      <span className="text-xs text-center font-medium leading-tight">
+                        {app.name}
+                      </span>
+                    </a>
+                  ))}
+                </div>
               </div>
             )}
+
+            {/* UPI ID Manual Copy */}
             {acc.upiId && (
               <div className="rounded-lg bg-muted/40 p-3">
-                <p className="text-xs text-muted-foreground mb-1">UPI ID</p>
+                <p className="text-xs text-muted-foreground mb-1">
+                  Or copy UPI ID manually
+                </p>
                 <div className="flex items-center justify-between gap-2">
                   <code className="text-sm font-bold flex-1 break-all">
                     {acc.upiId}
@@ -515,26 +587,46 @@ function PaymentTabs({
                 </div>
               </div>
             )}
-            <a
-              href={`upi://pay?pa=${encodeURIComponent(acc.upiId || "")}&pn=${encodeURIComponent(acc.accountName)}&am=${plan.price}&cu=INR&tn=ZECOHO+Subscription`}
-              className="flex items-center justify-center gap-2 w-full py-3 bg-primary text-primary-foreground rounded-xl font-semibold text-sm hover:bg-primary/90 transition-colors"
-            >
-              <ExternalLink className="h-4 w-4" />
-              Open UPI App to Pay ₹{Number(plan.price).toLocaleString("en-IN")}
-            </a>
-            <p className="text-xs text-center text-muted-foreground -mt-2">
-              Opens GPay / PhonePe / Paytm on mobile
-            </p>
           </div>
-        ))}
+        </div>
+      ))}
 
-      {/* Bank Tab */}
-      {activeTab === "bank" &&
-        bankAccounts.map((acc: any) => (
-          <div key={acc.id} className="p-4 space-y-3">
-            <p className="text-sm font-semibold">{acc.accountName}</p>
+      {/* ── BANK SECTION ── */}
+      {bankAccounts.map((acc: any) => (
+        <div key={acc.id} className="rounded-xl border overflow-hidden">
+          {/* Header */}
+          <div className="bg-blue-600 px-4 py-2.5">
+            <span className="text-white font-semibold text-sm">
+              🏦 Bank Transfer (NEFT / IMPS / RTGS)
+            </span>
+          </div>
+
+          <div className="p-4 space-y-3">
+            {/* Bank Quick Select */}
+            <div>
+              <p className="text-xs text-muted-foreground mb-2">
+                Open your bank app and transfer to this account
+              </p>
+              <div className="grid grid-cols-4 gap-2 mb-3">
+                {majorBanks.map((bank) => (
+                  <div
+                    key={bank.name}
+                    className="flex flex-col items-center gap-1 p-2 rounded-xl border bg-muted/30 text-center"
+                  >
+                    <span className="text-lg">{bank.emoji}</span>
+                    <span className="text-xs font-medium">{bank.name}</span>
+                  </div>
+                ))}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                All banks supported. Use the account details below:
+              </p>
+            </div>
+
+            {/* Account Details with Copy */}
             <div className="space-y-2">
               {[
+                { label: "Account Name", value: acc.accountName },
                 { label: "Bank Name", value: acc.bankName },
                 {
                   label: "Account Number",
@@ -572,27 +664,33 @@ function PaymentTabs({
                   </div>
                 ))}
             </div>
-            <div className="rounded-lg bg-blue-50 dark:bg-blue-950/20 border border-blue-200 p-3 text-xs text-blue-700 dark:text-blue-300">
-              Use <strong>NEFT / IMPS / RTGS</strong> for bank transfers. Amount
-              must exactly match ₹{Number(plan.price).toLocaleString("en-IN")}.
+
+            <div className="rounded-lg bg-amber-50 dark:bg-amber-950/20 border border-amber-200 p-3 text-xs text-amber-700 dark:text-amber-300">
+              ⚠️ Transfer exactly{" "}
+              <strong>₹{Number(plan.price).toLocaleString("en-IN")}</strong> —
+              any other amount will delay activation.
             </div>
           </div>
-        ))}
+        </div>
+      ))}
 
       {/* QR Enlarge Modal */}
-      {enlargeQR && upiAccounts[0]?.qrCodeUrl && (
+      {enlargeQR && upiAccounts[0]?.upiId && (
         <div
           className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4"
           onClick={() => setEnlargeQR(false)}
         >
           <div className="bg-white rounded-2xl p-6 max-w-sm w-full text-center">
-            <p className="text-sm font-semibold mb-4">
+            <p className="text-sm font-semibold mb-1">
               Scan to Pay ₹{Number(plan.price).toLocaleString("en-IN")}
             </p>
+            <p className="text-xs text-green-600 mb-4">
+              ✅ Amount is pre-filled automatically
+            </p>
             <img
-              src={upiAccounts[0].qrCodeUrl}
+              src={dynamicQR(upiAccounts[0].upiId, upiAccounts[0].accountName)}
               alt="UPI QR Code"
-              className="w-full max-w-xs mx-auto rounded-xl border"
+              className="w-64 h-64 mx-auto rounded-xl border"
             />
             <p className="text-xs text-muted-foreground mt-4">
               Tap anywhere to close
