@@ -49,6 +49,8 @@ import {
 import {
   CheckCircle2,
   XCircle,
+  FileText,
+  Download,
   Clock,
   CreditCard,
   Users,
@@ -239,6 +241,179 @@ function StatCard({
 }
 
 // ── Main Page ──────────────────────────────────────────────────────────────
+function InvoicesTab() {
+  const { toast } = useToast();
+  const { data: invoices = [], isLoading } = useQuery<any[]>({
+    queryKey: ["/api/admin/invoices"],
+  });
+
+  const handleDownload = async (invoiceId: string, invoiceNumber: string) => {
+    try {
+      const response = await fetch(`/api/invoices/${invoiceId}/download`, {
+        credentials: "include",
+      });
+      if (!response.ok) throw new Error("Download failed");
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `Invoice-${invoiceNumber}.pdf`;
+      a.click();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to download invoice",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const totalRevenue = invoices.reduce(
+    (sum, inv) => sum + Number(inv.totalAmount || 0),
+    0,
+  );
+  const totalGST = invoices.reduce(
+    (sum, inv) =>
+      sum +
+      Number(inv.cgstAmount || 0) +
+      Number(inv.sgstAmount || 0) +
+      Number(inv.igstAmount || 0),
+    0,
+  );
+
+  return (
+    <div className="space-y-6">
+      <div className="grid grid-cols-3 gap-4">
+        <Card>
+          <CardContent className="p-4">
+            <p className="text-sm text-muted-foreground">Total Invoices</p>
+            <p className="text-2xl font-semibold">{invoices.length}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <p className="text-sm text-muted-foreground">
+              Total Revenue (incl. GST)
+            </p>
+            <p className="text-2xl font-semibold">
+              ₹{totalRevenue.toLocaleString("en-IN")}
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <p className="text-sm text-muted-foreground">Total GST Collected</p>
+            <p className="text-2xl font-semibold">
+              ₹{totalGST.toLocaleString("en-IN", { maximumFractionDigits: 2 })}
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {isLoading ? (
+        <div className="space-y-3">
+          {[...Array(4)].map((_, i) => (
+            <Skeleton key={i} className="h-16 w-full" />
+          ))}
+        </div>
+      ) : invoices.length === 0 ? (
+        <div className="text-center py-12 text-muted-foreground">
+          No invoices generated yet
+        </div>
+      ) : (
+        <Card>
+          <CardContent className="p-0">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b bg-muted/50">
+                  <th className="text-left p-3 font-medium">Invoice No.</th>
+                  <th className="text-left p-3 font-medium">Owner</th>
+                  <th className="text-left p-3 font-medium">Plan</th>
+                  <th className="text-left p-3 font-medium">Date</th>
+                  <th className="text-right p-3 font-medium">Base</th>
+                  <th className="text-right p-3 font-medium">GST</th>
+                  <th className="text-right p-3 font-medium">Total</th>
+                  <th className="text-center p-3 font-medium">Download</th>
+                </tr>
+              </thead>
+              <tbody>
+                {invoices.map((inv) => {
+                  const gst =
+                    Number(inv.cgstAmount || 0) +
+                    Number(inv.sgstAmount || 0) +
+                    Number(inv.igstAmount || 0);
+                  const gstType =
+                    Number(inv.igstAmount) > 0
+                      ? `IGST ${inv.igstRate}%`
+                      : `CGST+SGST ${inv.cgstRate}%+${inv.sgstRate}%`;
+                  return (
+                    <tr
+                      key={inv.id}
+                      className="border-b hover:bg-muted/30 transition-colors"
+                    >
+                      <td className="p-3 font-mono text-xs font-medium text-primary">
+                        {inv.invoiceNumber}
+                      </td>
+                      <td className="p-3">
+                        <div className="font-medium">{inv.ownerName}</div>
+                        <div className="text-xs text-muted-foreground">
+                          {inv.ownerEmail}
+                        </div>
+                      </td>
+                      <td className="p-3 text-xs">
+                        {inv.planName}
+                        <br />
+                        <span className="text-muted-foreground">
+                          {inv.planDuration}
+                        </span>
+                      </td>
+                      <td className="p-3 text-xs">
+                        {new Date(inv.invoiceDate).toLocaleDateString("en-IN")}
+                      </td>
+                      <td className="p-3 text-right text-xs">
+                        ₹
+                        {Number(inv.baseAmount).toLocaleString("en-IN", {
+                          minimumFractionDigits: 2,
+                        })}
+                      </td>
+                      <td className="p-3 text-right text-xs">
+                        ₹
+                        {gst.toLocaleString("en-IN", {
+                          minimumFractionDigits: 2,
+                        })}
+                        <br />
+                        <span className="text-muted-foreground">{gstType}</span>
+                      </td>
+                      <td className="p-3 text-right font-semibold">
+                        ₹
+                        {Number(inv.totalAmount).toLocaleString("en-IN", {
+                          minimumFractionDigits: 2,
+                        })}
+                      </td>
+                      <td className="p-3 text-center">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() =>
+                            handleDownload(inv.id, inv.invoiceNumber)
+                          }
+                        >
+                          <Download className="h-3 w-3 mr-1" />
+                          PDF
+                        </Button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
+}
 export default function AdminSubscriptions() {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -732,7 +907,8 @@ export default function AdminSubscriptions() {
       <Tabs value={mainTab} onValueChange={setMainTab} className="w-full">
         <TabsList className="mb-4">
           <TabsTrigger value="plans">Subscription Plans</TabsTrigger>
-          <TabsTrigger value="payment_accounts">Payment Accounts</TabsTrigger>
+          <TabsTrigger value="payment-accounts">Payment Accounts</TabsTrigger>
+          <TabsTrigger value="invoices">Invoices</TabsTrigger>
           <TabsTrigger value="subscriptions">Owner Subscriptions</TabsTrigger>
         </TabsList>
         {/* PAYMENT ACCOUNTS TAB */}
@@ -839,6 +1015,10 @@ export default function AdminSubscriptions() {
             </Card>
           ))}
         </TabsContent>
+        <TabsContent value="invoices" className="mt-6">
+          <InvoicesTab />
+        </TabsContent>
+
         {/* PLANS TAB */}
         <TabsContent value="plans" className="space-y-4">
           {plans.length === 0 && (

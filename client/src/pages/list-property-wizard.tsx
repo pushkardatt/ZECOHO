@@ -33,6 +33,14 @@ import {
 } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import {
@@ -276,7 +284,65 @@ type ListingMode = "quick" | "full" | "complete";
 export default function ListPropertyWizard() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
-  const { user, isAuthenticated, isLoading: isAuthLoading } = useAuth();
+  const {
+    user: rawUser,
+    isAuthenticated,
+    isLoading: isAuthLoading,
+  } = useAuth();
+  const user = rawUser as any;
+
+  // Owner agreement check for existing owners listing new property
+  const [agreementAccepted, setAgreementAccepted] = useState(false);
+  const [showAgreementDialog, setShowAgreementDialog] = useState(false);
+
+  const { data: ownerAgreementVersion } = useQuery<{ version: number | null }>({
+    queryKey: ["/api/owner-agreement/version/current"],
+    enabled: !!user,
+  });
+
+  const { data: ownerAgreement } = useQuery<any>({
+    queryKey: ["/api/owner-agreement"],
+    enabled: showAgreementDialog,
+  });
+
+  const acceptAgreementMutation = useMutation({
+    mutationFn: async () => {
+      return apiRequest("POST", "/api/auth/owner-agreement-consent", {});
+    },
+    onSuccess: () => {
+      setAgreementAccepted(true);
+      setShowAgreementDialog(false);
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+      toast({
+        title: "Agreement Accepted",
+        description: "You can now proceed with your listing.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to record agreement. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const u = user as any;
+  const isExistingOwner = u?.kycStatus === "verified";
+  const needsAgreementAcceptance = !!(
+    isExistingOwner &&
+    ownerAgreementVersion?.version !== null &&
+    ownerAgreementVersion?.version !== undefined &&
+    (!u?.ownerAgreementAccepted ||
+      (u?.ownerAgreementAcceptedVersion || 0) <
+        (ownerAgreementVersion?.version || 0))
+  );
+
+  useEffect(() => {
+    if (needsAgreementAcceptance && !agreementAccepted) {
+      setShowAgreementDialog(true);
+    }
+  }, [needsAgreementAcceptance, agreementAccepted]);
 
   // Check for existing KYC application
   const { data: existingKycApplication, isLoading: isLoadingKyc } =
@@ -1466,6 +1532,28 @@ export default function ListPropertyWizard() {
           "kycPincode",
           "panNumber",
         ];
+        // Validate mandatory documents before proceeding
+        const missingDocs: string[] = [];
+        if (
+          !kycDocuments.propertyOwnership ||
+          kycDocuments.propertyOwnership.length === 0
+        ) {
+          missingDocs.push("Property Ownership Proof");
+        }
+        if (
+          !kycDocuments.identityProof ||
+          kycDocuments.identityProof.length === 0
+        ) {
+          missingDocs.push("Owner Identity Proof (Aadhaar/PAN/Passport)");
+        }
+        if (missingDocs.length > 0) {
+          toast({
+            title: "Mandatory Documents Required",
+            description: `Please upload: ${missingDocs.join(", ")}`,
+            variant: "destructive",
+          });
+          return;
+        }
       } else if (step === 3) {
         fieldsToValidate = [
           "propertyTitle",
@@ -2207,806 +2295,504 @@ export default function ListPropertyWizard() {
   }
 
   return (
-    <div className="min-h-screen bg-muted/30 pb-16">
-      <Helmet>
-        <title>List Your Hotel Free — 0% Commission Forever | ZECOHO</title>
-        <meta
-          name="description"
-          content="Join ZECOHO and list your hotel for free. Zero commission on every booking. Keep 100% of your revenue. Direct guest communication. India's fastest growing zero-commission hotel platform."
-        />
-        <meta
-          property="og:title"
-          content="List Your Hotel Free on ZECOHO — 0% Commission"
-        />
-        <meta
-          property="og:description"
-          content="No commission. No listing fee. Keep 100% of every booking. Join India's zero-commission hotel platform."
-        />
-        <link rel="canonical" href="https://www.zecoho.com/list-property" />
-      </Helmet>
-      <div className="container px-4 md:px-6 py-8 max-w-4xl mx-auto">
-        {/* Header - minimal to save space */}
+    <>
+      {/* Owner Agreement Dialog */}
+      <Dialog open={showAgreementDialog} onOpenChange={() => {}}>
+        <DialogContent
+          className="max-w-2xl max-h-[80vh] overflow-y-auto"
+          onInteractOutside={(e) => e.preventDefault()}
+        >
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileCheck className="h-5 w-5 text-primary" />
+              Property Owner Agreement
+            </DialogTitle>
+            <DialogDescription>
+              Please read and accept the Owner Agreement before listing a new
+              property.
+              {ownerAgreementVersion?.version != null && (
+                <span className="ml-1 text-xs font-medium">
+                  (Version {ownerAgreementVersion?.version})
+                </span>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="border rounded-lg p-4 bg-muted/30 text-sm max-h-64 overflow-y-auto">
+            {ownerAgreement?.content ? (
+              <div
+                dangerouslySetInnerHTML={{ __html: ownerAgreement.content }}
+              />
+            ) : (
+              <p className="text-muted-foreground">Loading agreement...</p>
+            )}
+          </div>
+          <div className="flex items-start gap-3 p-3 bg-amber-50 dark:bg-amber-950/20 rounded-lg border border-amber-200">
+            <Checkbox
+              id="agreement-check"
+              checked={agreementAccepted}
+              onCheckedChange={(checked) =>
+                setAgreementAccepted(checked === true)
+              }
+            />
+            <label
+              htmlFor="agreement-check"
+              className="text-sm cursor-pointer leading-relaxed"
+            >
+              I have read and agree to the ZECOHO Property Owner Agreement. I
+              understand my responsibilities as a listed property owner.
+            </label>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setLocation("/")}>
+              Cancel
+            </Button>
+            <Button
+              onClick={() => acceptAgreementMutation.mutate()}
+              disabled={!agreementAccepted || acceptAgreementMutation.isPending}
+            >
+              {acceptAgreementMutation.isPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                "Accept & Continue"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
-        {/* Progress Steps - Clickable Headers */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between">
-            {stepTitles.map((s, i) => {
-              const Icon = s.icon;
-              const stepNumber = i + 1;
-              const isActive = stepNumber === step;
-              const isCompleted = stepNumber < step;
-              return (
+      <div className="min-h-screen bg-muted/30 pb-16">
+        <Helmet>
+          <title>List Your Hotel Free — 0% Commission Forever | ZECOHO</title>
+          <meta
+            name="description"
+            content="Join ZECOHO and list your hotel for free. Zero commission on every booking. Keep 100% of your revenue. Direct guest communication. India's fastest growing zero-commission hotel platform."
+          />
+          <meta
+            property="og:title"
+            content="List Your Hotel Free on ZECOHO — 0% Commission"
+          />
+          <meta
+            property="og:description"
+            content="No commission. No listing fee. Keep 100% of every booking. Join India's zero-commission hotel platform."
+          />
+          <link rel="canonical" href="https://www.zecoho.com/list-property" />
+        </Helmet>
+        <div className="container px-4 md:px-6 py-8 max-w-4xl mx-auto">
+          {/* Header - minimal to save space */}
+
+          {/* Progress Steps - Clickable Headers */}
+          <div className="mb-8">
+            <div className="flex items-center justify-between">
+              {stepTitles.map((s, i) => {
+                const Icon = s.icon;
+                const stepNumber = i + 1;
+                const isActive = stepNumber === step;
+                const isCompleted = stepNumber < step;
+                return (
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() => goToStep(stepNumber)}
+                    className="flex flex-col items-center flex-1 group cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded-lg p-1"
+                    data-testid={`step-nav-${stepNumber}`}
+                    aria-label={`Go to step ${stepNumber}: ${s.title}${isCompleted ? " (completed)" : isActive ? " (current)" : ""}`}
+                    aria-current={isActive ? "step" : undefined}
+                  >
+                    <div
+                      className={`w-10 h-10 rounded-full flex items-center justify-center mb-2 transition-all ${
+                        isCompleted
+                          ? "bg-primary text-primary-foreground"
+                          : isActive
+                            ? "bg-primary text-primary-foreground"
+                            : "bg-muted text-muted-foreground group-hover:bg-muted/80"
+                      }`}
+                    >
+                      {isCompleted ? (
+                        <CheckCircle className="h-5 w-5" />
+                      ) : (
+                        <Icon className="h-5 w-5" />
+                      )}
+                    </div>
+                    <span
+                      className={`text-xs text-center hidden md:block transition-colors ${
+                        isActive
+                          ? "font-medium text-foreground"
+                          : isCompleted
+                            ? "text-primary group-hover:text-primary/80"
+                            : "text-muted-foreground group-hover:text-foreground"
+                      }`}
+                    >
+                      {s.title}
+                    </span>
+                    {i < stepTitles.length - 1 && (
+                      <div
+                        className={`hidden md:block absolute h-0.5 w-full ${isCompleted ? "bg-primary" : "bg-muted"}`}
+                      />
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+            <div
+              className="mt-4 flex gap-1"
+              role="progressbar"
+              aria-valuenow={step}
+              aria-valuemin={1}
+              aria-valuemax={stepTitles.length}
+            >
+              {stepTitles.map((s, i) => (
                 <button
                   key={i}
                   type="button"
-                  onClick={() => goToStep(stepNumber)}
-                  className="flex flex-col items-center flex-1 group cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded-lg p-1"
-                  data-testid={`step-nav-${stepNumber}`}
-                  aria-label={`Go to step ${stepNumber}: ${s.title}${isCompleted ? " (completed)" : isActive ? " (current)" : ""}`}
-                  aria-current={isActive ? "step" : undefined}
-                >
-                  <div
-                    className={`w-10 h-10 rounded-full flex items-center justify-center mb-2 transition-all ${
-                      isCompleted
-                        ? "bg-primary text-primary-foreground"
-                        : isActive
-                          ? "bg-primary text-primary-foreground"
-                          : "bg-muted text-muted-foreground group-hover:bg-muted/80"
-                    }`}
-                  >
-                    {isCompleted ? (
-                      <CheckCircle className="h-5 w-5" />
-                    ) : (
-                      <Icon className="h-5 w-5" />
-                    )}
-                  </div>
-                  <span
-                    className={`text-xs text-center hidden md:block transition-colors ${
-                      isActive
-                        ? "font-medium text-foreground"
-                        : isCompleted
-                          ? "text-primary group-hover:text-primary/80"
-                          : "text-muted-foreground group-hover:text-foreground"
-                    }`}
-                  >
-                    {s.title}
-                  </span>
-                  {i < stepTitles.length - 1 && (
-                    <div
-                      className={`hidden md:block absolute h-0.5 w-full ${isCompleted ? "bg-primary" : "bg-muted"}`}
-                    />
-                  )}
-                </button>
-              );
-            })}
+                  onClick={() => goToStep(i + 1)}
+                  className={`h-1.5 flex-1 rounded-full cursor-pointer transition-all hover:opacity-80 focus-visible:ring-2 focus-visible:ring-primary ${i < step ? "bg-primary" : "bg-muted"}`}
+                  data-testid={`progress-bar-${i + 1}`}
+                  aria-label={`Go to step ${i + 1}: ${s.title}`}
+                />
+              ))}
+            </div>
           </div>
-          <div
-            className="mt-4 flex gap-1"
-            role="progressbar"
-            aria-valuenow={step}
-            aria-valuemin={1}
-            aria-valuemax={stepTitles.length}
-          >
-            {stepTitles.map((s, i) => (
-              <button
-                key={i}
-                type="button"
-                onClick={() => goToStep(i + 1)}
-                className={`h-1.5 flex-1 rounded-full cursor-pointer transition-all hover:opacity-80 focus-visible:ring-2 focus-visible:ring-primary ${i < step ? "bg-primary" : "bg-muted"}`}
-                data-testid={`progress-bar-${i + 1}`}
-                aria-label={`Go to step ${i + 1}: ${s.title}`}
-              />
-            ))}
-          </div>
-        </div>
 
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)}>
-            {/* Step 1: Personal Information */}
-            {step === 1 && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <User className="h-5 w-5" />
-                    Personal Information
-                  </CardTitle>
-                  <CardDescription>
-                    {isCompleteMode
-                      ? "Your details are pre-filled from your previous submission. You can edit any information below."
-                      : "Tell us about yourself as the property owner"}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="grid md:grid-cols-2 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="firstName"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>First Name *</FormLabel>
-                          <FormControl>
-                            <Input
-                              placeholder="John"
-                              {...field}
-                              data-testid="input-first-name"
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="lastName"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Last Name *</FormLabel>
-                          <FormControl>
-                            <Input
-                              placeholder="Doe"
-                              {...field}
-                              data-testid="input-last-name"
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-                  <FormField
-                    control={form.control}
-                    name="email"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Email Address *</FormLabel>
-                        <FormControl>
-                          <Input
-                            type="email"
-                            placeholder="john@example.com"
-                            {...field}
-                            data-testid="input-email"
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="phone"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Phone Number *</FormLabel>
-                        <FormControl>
-                          <Input
-                            placeholder="+91 98765 43210"
-                            {...field}
-                            data-testid="input-phone"
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Quick Mode Step 2: Property Basics + Photos */}
-            {isQuickMode && step === 2 && (
-              <div className="space-y-6">
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)}>
+              {/* Step 1: Personal Information */}
+              {step === 1 && (
                 <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
-                      <Home className="h-5 w-5" />
-                      Property Basics
+                      <User className="h-5 w-5" />
+                      Personal Information
                     </CardTitle>
                     <CardDescription>
-                      Tell us about your property
+                      {isCompleteMode
+                        ? "Your details are pre-filled from your previous submission. You can edit any information below."
+                        : "Tell us about yourself as the property owner"}
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
+                    <div className="grid md:grid-cols-2 gap-4">
+                      <FormField
+                        control={form.control}
+                        name="firstName"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>First Name *</FormLabel>
+                            <FormControl>
+                              <Input
+                                placeholder="John"
+                                {...field}
+                                data-testid="input-first-name"
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="lastName"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Last Name *</FormLabel>
+                            <FormControl>
+                              <Input
+                                placeholder="Doe"
+                                {...field}
+                                data-testid="input-last-name"
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
                     <FormField
                       control={form.control}
-                      name="propertyTitle"
+                      name="email"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Property Name *</FormLabel>
+                          <FormLabel>Email Address *</FormLabel>
                           <FormControl>
                             <Input
-                              placeholder="e.g., Sunrise Beach Resort"
+                              type="email"
+                              placeholder="john@example.com"
                               {...field}
-                              data-testid="input-quick-property-title"
+                              data-testid="input-email"
                             />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
                       )}
                     />
-
                     <FormField
                       control={form.control}
-                      name="propertyType"
+                      name="phone"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Property Type *</FormLabel>
-                          <Select
-                            value={field.value}
-                            onValueChange={field.onChange}
-                          >
-                            <FormControl>
-                              <SelectTrigger data-testid="select-quick-property-type">
-                                <SelectValue placeholder="Select property type" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              <SelectItem value="hotel">Hotel</SelectItem>
-                              <SelectItem value="villa">Villa</SelectItem>
-                              <SelectItem value="apartment">
-                                Apartment
-                              </SelectItem>
-                              <SelectItem value="resort">Resort</SelectItem>
-                              <SelectItem value="hostel">Hostel</SelectItem>
-                              <SelectItem value="lodge">Lodge</SelectItem>
-                              <SelectItem value="cottage">Cottage</SelectItem>
-                              <SelectItem value="farmhouse">
-                                Farmhouse
-                              </SelectItem>
-                              <SelectItem value="homestay">Homestay</SelectItem>
-                            </SelectContent>
-                          </Select>
+                          <FormLabel>Phone Number *</FormLabel>
+                          <FormControl>
+                            <Input
+                              placeholder="+91 98765 43210"
+                              {...field}
+                              data-testid="input-phone"
+                            />
+                          </FormControl>
                           <FormMessage />
                         </FormItem>
                       )}
                     />
+                  </CardContent>
+                </Card>
+              )}
 
-                    <FormField
-                      control={form.control}
-                      name="propCity"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>City *</FormLabel>
-                          <FormControl>
-                            <CitySearchInput
+              {/* Quick Mode Step 2: Property Basics + Photos */}
+              {isQuickMode && step === 2 && (
+                <div className="space-y-6">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <Home className="h-5 w-5" />
+                        Property Basics
+                      </CardTitle>
+                      <CardDescription>
+                        Tell us about your property
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <FormField
+                        control={form.control}
+                        name="propertyTitle"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Property Name *</FormLabel>
+                            <FormControl>
+                              <Input
+                                placeholder="e.g., Sunrise Beach Resort"
+                                {...field}
+                                data-testid="input-quick-property-title"
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="propertyType"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Property Type *</FormLabel>
+                            <Select
                               value={field.value}
-                              onChange={(city, state, district) => {
-                                form.setValue("propCity", city);
-                                if (state) form.setValue("propState", state);
-                                if (district)
-                                  form.setValue("propDistrict", district);
-                              }}
-                              placeholder="Search for any city in India"
-                              data-testid="input-quick-city"
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="pricePerNight"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Price per Night (₹) *</FormLabel>
-                          <FormControl>
-                            <Input
-                              type="number"
-                              placeholder="1500"
-                              {...field}
-                              data-testid="input-quick-price"
-                            />
-                          </FormControl>
-                          <p
-                            className="text-xs text-muted-foreground"
-                            data-testid="text-price-helper"
-                          >
-                            Minimum ₹100 per night
-                          </p>
-                          <PriceGuidanceWidget
-                            propertyType={form.watch("propertyType")}
-                            city={form.watch("propCity")}
-                          />
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Camera className="h-5 w-5" />
-                      Property Photos
-                    </CardTitle>
-                    <CardDescription>
-                      Add at least one photo of your property
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <PropertyImageUploader
-                      value={categorizedImages}
-                      onChange={setCategorizedImages}
-                    />
-                    {getTotalImageCount() === 0 && (
-                      <p className="text-sm text-destructive mt-2">
-                        Please upload at least one photo
-                      </p>
-                    )}
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <MapPin className="h-5 w-5" />
-                      Property Location
-                    </CardTitle>
-                    <CardDescription>
-                      Set your property's exact location on the map
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <PropertyLocationPicker
-                      latitude={propertyLatitude}
-                      longitude={propertyLongitude}
-                      onLocationChange={(lat, lng, source, addressData) => {
-                        setPropertyLatitude(lat);
-                        setPropertyLongitude(lng);
-                        setGeoSource(source || null);
-                        if (addressData) {
-                          if (addressData.streetAddress)
-                            form.setValue(
-                              "propStreetAddress",
-                              addressData.streetAddress,
-                            );
-                          if (addressData.locality)
-                            form.setValue("propLocality", addressData.locality);
-                          if (addressData.city)
-                            form.setValue("propCity", addressData.city);
-                          if (addressData.district)
-                            form.setValue("propDistrict", addressData.district);
-                          if (addressData.state)
-                            form.setValue("propState", addressData.state);
-                          if (addressData.pincode)
-                            form.setValue("propPincode", addressData.pincode);
-                          if (addressData.fullAddress) {
-                            setPropertyAddress((prev) => ({
-                              ...prev,
-                              fullAddress: addressData.fullAddress,
-                            }));
-                          }
-                        }
-                      }}
-                    />
-                    {(!propertyLatitude || !propertyLongitude) && (
-                      <p className="text-sm text-destructive mt-2">
-                        Please set your property location on the map
-                      </p>
-                    )}
-                  </CardContent>
-                </Card>
-              </div>
-            )}
-
-            {/* Step 2: Business & KYC Documents (Full Mode Only) */}
-            {!isQuickMode && step === 2 && (
-              <div className="space-y-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Building2 className="h-5 w-5" />
-                      Business Information
-                    </CardTitle>
-                    <CardDescription>
-                      {isCompleteMode && existingKycApplication
-                        ? "Your business details are pre-filled. You can edit any information or add more documents below."
-                        : "Your business details for verification"}
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <FormField
-                      control={form.control}
-                      name="businessName"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Business Name *</FormLabel>
-                          <FormControl>
-                            <Input
-                              placeholder="Your Hotel or Business Name"
-                              {...field}
-                              data-testid="input-business-name"
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    {/* Detailed Address Fields */}
-                    <div className="grid md:grid-cols-2 gap-4">
-                      <FormField
-                        control={form.control}
-                        name="kycFlatNo"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Flat / Apartment No.</FormLabel>
-                            <FormControl>
-                              <Input
-                                placeholder="e.g., A-101"
-                                {...field}
-                                data-testid="input-kyc-flat"
-                              />
-                            </FormControl>
+                              onValueChange={field.onChange}
+                            >
+                              <FormControl>
+                                <SelectTrigger data-testid="select-quick-property-type">
+                                  <SelectValue placeholder="Select property type" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                <SelectItem value="hotel">Hotel</SelectItem>
+                                <SelectItem value="villa">Villa</SelectItem>
+                                <SelectItem value="apartment">
+                                  Apartment
+                                </SelectItem>
+                                <SelectItem value="resort">Resort</SelectItem>
+                                <SelectItem value="hostel">Hostel</SelectItem>
+                                <SelectItem value="lodge">Lodge</SelectItem>
+                                <SelectItem value="cottage">Cottage</SelectItem>
+                                <SelectItem value="farmhouse">
+                                  Farmhouse
+                                </SelectItem>
+                                <SelectItem value="homestay">
+                                  Homestay
+                                </SelectItem>
+                              </SelectContent>
+                            </Select>
                             <FormMessage />
                           </FormItem>
                         )}
                       />
+
                       <FormField
                         control={form.control}
-                        name="kycHouseNo"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>House / Building No.</FormLabel>
-                            <FormControl>
-                              <Input
-                                placeholder="e.g., 123"
-                                {...field}
-                                data-testid="input-kyc-house"
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-
-                    <FormField
-                      control={form.control}
-                      name="kycStreetAddress"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Street Address *</FormLabel>
-                          <FormControl>
-                            <Input
-                              placeholder="Street name / Road name"
-                              {...field}
-                              data-testid="input-kyc-street"
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <div className="grid md:grid-cols-2 gap-4">
-                      <FormField
-                        control={form.control}
-                        name="kycLandmark"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Landmark (Optional)</FormLabel>
-                            <FormControl>
-                              <Input
-                                placeholder="Near Metro Station"
-                                {...field}
-                                data-testid="input-kyc-landmark"
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="kycLocality"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Locality / Area *</FormLabel>
-                            <FormControl>
-                              <Input
-                                placeholder="e.g., Connaught Place"
-                                {...field}
-                                data-testid="input-kyc-locality"
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-
-                    <FormField
-                      control={form.control}
-                      name="kycPincode"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>PIN Code *</FormLabel>
-                          <FormControl>
-                            <div className="relative">
-                              <Input
-                                placeholder="Enter 6-digit PIN code"
-                                {...field}
-                                onChange={(e) =>
-                                  handleKycPincodeChange(e.target.value)
-                                }
-                                maxLength={6}
-                                data-testid="input-kyc-pincode"
-                              />
-                              {isPincodeLookup && (
-                                <Loader2 className="absolute right-3 top-3 h-4 w-4 animate-spin text-muted-foreground" />
-                              )}
-                            </div>
-                          </FormControl>
-                          <p className="text-xs text-muted-foreground">
-                            Enter PIN code to auto-fill location details
-                          </p>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <div className="grid md:grid-cols-2 gap-4">
-                      <FormField
-                        control={form.control}
-                        name="kycCity"
+                        name="propCity"
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel>City *</FormLabel>
                             <FormControl>
-                              <Input
-                                placeholder="City"
-                                list="kyc-cities"
-                                {...field}
-                                data-testid="input-kyc-city"
+                              <CitySearchInput
+                                value={field.value}
+                                onChange={(city, state, district) => {
+                                  form.setValue("propCity", city);
+                                  if (state) form.setValue("propState", state);
+                                  if (district)
+                                    form.setValue("propDistrict", district);
+                                }}
+                                placeholder="Search for any city in India"
+                                data-testid="input-quick-city"
                               />
                             </FormControl>
-                            <datalist id="kyc-cities">
-                              {INDIAN_CITIES.map((city) => (
-                                <option key={city} value={city} />
-                              ))}
-                            </datalist>
                             <FormMessage />
                           </FormItem>
                         )}
                       />
+
                       <FormField
                         control={form.control}
-                        name="kycDistrict"
+                        name="pricePerNight"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>District *</FormLabel>
+                            <FormLabel>Price per Night (₹) *</FormLabel>
                             <FormControl>
                               <Input
-                                placeholder="District"
+                                type="number"
+                                placeholder="1500"
                                 {...field}
-                                data-testid="input-kyc-district"
+                                data-testid="input-quick-price"
                               />
                             </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-
-                    <FormField
-                      control={form.control}
-                      name="kycState"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>State *</FormLabel>
-                          <FormControl>
-                            <Input
-                              placeholder="State"
-                              list="kyc-states"
-                              {...field}
-                              data-testid="input-kyc-state"
+                            <p
+                              className="text-xs text-muted-foreground"
+                              data-testid="text-price-helper"
+                            >
+                              Minimum ₹100 per night
+                            </p>
+                            <PriceGuidanceWidget
+                              propertyType={form.watch("propertyType")}
+                              city={form.watch("propCity")}
                             />
-                          </FormControl>
-                          <datalist id="kyc-states">
-                            {INDIAN_STATES.map((state) => (
-                              <option key={state} value={state} />
-                            ))}
-                          </datalist>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <div className="grid md:grid-cols-2 gap-4">
-                      <FormField
-                        control={form.control}
-                        name="panNumber"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>PAN Number *</FormLabel>
-                            <FormControl>
-                              <Input
-                                placeholder="ABCDE1234F"
-                                maxLength={10}
-                                {...field}
-                                data-testid="input-pan"
-                              />
-                            </FormControl>
                             <FormMessage />
                           </FormItem>
                         )}
                       />
-                      <FormField
-                        control={form.control}
-                        name="gstNumber"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>GST Number (Optional)</FormLabel>
-                            <FormControl>
-                              <Input
-                                placeholder="22AAAAA0000A1Z5"
-                                {...field}
-                                data-testid="input-gst"
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <Camera className="h-5 w-5" />
+                        Property Photos
+                      </CardTitle>
+                      <CardDescription>
+                        Add at least one photo of your property
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <PropertyImageUploader
+                        value={categorizedImages}
+                        onChange={setCategorizedImages}
                       />
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <KycDocumentUploader
-                  value={kycDocuments}
-                  onChange={setKycDocuments}
-                />
-              </div>
-            )}
-
-            {/* Step 3: Property Details */}
-            {step === 3 && (
-              <div className="space-y-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Home className="h-5 w-5" />
-                      Property Details
-                    </CardTitle>
-                    <CardDescription>
-                      Tell us about the property you want to list
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <FormField
-                      control={form.control}
-                      name="propertyTitle"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Property Title *</FormLabel>
-                          <FormControl>
-                            <Input
-                              placeholder="Beautiful Villa with Ocean View"
-                              {...field}
-                              data-testid="input-property-title"
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
+                      {getTotalImageCount() === 0 && (
+                        <p className="text-sm text-destructive mt-2">
+                          Please upload at least one photo
+                        </p>
                       )}
-                    />
+                    </CardContent>
+                  </Card>
 
-                    <FormField
-                      control={form.control}
-                      name="propertyType"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Property Type *</FormLabel>
-                          <Select
-                            value={field.value}
-                            onValueChange={field.onChange}
-                          >
-                            <FormControl>
-                              <SelectTrigger data-testid="select-property-type">
-                                <SelectValue />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              <SelectItem value="hotel">Hotel</SelectItem>
-                              <SelectItem value="villa">Villa</SelectItem>
-                              <SelectItem value="apartment">
-                                Apartment
-                              </SelectItem>
-                              <SelectItem value="resort">Resort</SelectItem>
-                              <SelectItem value="hostel">Hostel</SelectItem>
-                              <SelectItem value="lodge">Lodge</SelectItem>
-                              <SelectItem value="cottage">Cottage</SelectItem>
-                              <SelectItem value="farmhouse">
-                                Farmhouse
-                              </SelectItem>
-                              <SelectItem value="homestay">Homestay</SelectItem>
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <div>
-                      <div className="flex items-center justify-between mb-3">
-                        <div>
-                          <Label className="text-base font-medium">
-                            Property Location *
-                          </Label>
-                          <p className="text-sm text-muted-foreground">
-                            Complete address details for the property
-                          </p>
-                        </div>
-                        {form.watch("kycPincode") && (
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            className="text-xs"
-                            onClick={() => {
-                              // Copy all KYC address fields to property fields
-                              form.setValue(
-                                "propFlatNo",
-                                form.getValues("kycFlatNo"),
-                              );
-                              form.setValue(
-                                "propHouseNo",
-                                form.getValues("kycHouseNo"),
-                              );
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <MapPin className="h-5 w-5" />
+                        Property Location
+                      </CardTitle>
+                      <CardDescription>
+                        Set your property's exact location on the map
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <PropertyLocationPicker
+                        latitude={propertyLatitude}
+                        longitude={propertyLongitude}
+                        onLocationChange={(lat, lng, source, addressData) => {
+                          setPropertyLatitude(lat);
+                          setPropertyLongitude(lng);
+                          setGeoSource(source || null);
+                          if (addressData) {
+                            if (addressData.streetAddress)
                               form.setValue(
                                 "propStreetAddress",
-                                form.getValues("kycStreetAddress"),
+                                addressData.streetAddress,
                               );
-                              form.setValue(
-                                "propLandmark",
-                                form.getValues("kycLandmark"),
-                              );
+                            if (addressData.locality)
                               form.setValue(
                                 "propLocality",
-                                form.getValues("kycLocality"),
+                                addressData.locality,
                               );
-                              form.setValue(
-                                "propCity",
-                                form.getValues("kycCity"),
-                              );
+                            if (addressData.city)
+                              form.setValue("propCity", addressData.city);
+                            if (addressData.district)
                               form.setValue(
                                 "propDistrict",
-                                form.getValues("kycDistrict"),
+                                addressData.district,
                               );
-                              form.setValue(
-                                "propState",
-                                form.getValues("kycState"),
-                              );
-                              form.setValue(
-                                "propPincode",
-                                form.getValues("kycPincode"),
-                              );
-                              form.setValue(
-                                "destination",
-                                form.getValues("kycCity"),
-                              );
+                            if (addressData.state)
+                              form.setValue("propState", addressData.state);
+                            if (addressData.pincode)
+                              form.setValue("propPincode", addressData.pincode);
+                            if (addressData.fullAddress) {
+                              setPropertyAddress((prev) => ({
+                                ...prev,
+                                fullAddress: addressData.fullAddress,
+                              }));
+                            }
+                          }
+                        }}
+                      />
+                      {(!propertyLatitude || !propertyLongitude) && (
+                        <p className="text-sm text-destructive mt-2">
+                          Please set your property location on the map
+                        </p>
+                      )}
+                    </CardContent>
+                  </Card>
+                </div>
+              )}
 
-                              toast({
-                                title: "Address copied",
-                                description:
-                                  "All business address details applied to property location",
-                              });
-                            }}
-                            data-testid="button-same-as-business"
-                          >
-                            <CheckCircle className="h-3 w-3 mr-1" />
-                            Same as business address
-                          </Button>
+              {/* Step 2: Business & KYC Documents (Full Mode Only) */}
+              {!isQuickMode && step === 2 && (
+                <div className="space-y-6">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <Building2 className="h-5 w-5" />
+                        Business Information
+                      </CardTitle>
+                      <CardDescription>
+                        {isCompleteMode && existingKycApplication
+                          ? "Your business details are pre-filled. You can edit any information or add more documents below."
+                          : "Your business details for verification"}
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <FormField
+                        control={form.control}
+                        name="businessName"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Business Name *</FormLabel>
+                            <FormControl>
+                              <Input
+                                placeholder="Your Hotel or Business Name"
+                                {...field}
+                                data-testid="input-business-name"
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
                         )}
-                      </div>
-
-                      {/* Detailed Property Address Fields - same as Business section */}
-                      <div className="grid md:grid-cols-2 gap-4 mb-4">
+                      />
+                      {/* Detailed Address Fields */}
+                      <div className="grid md:grid-cols-2 gap-4">
                         <FormField
                           control={form.control}
-                          name="propFlatNo"
+                          name="kycFlatNo"
                           render={({ field }) => (
                             <FormItem>
                               <FormLabel>Flat / Apartment No.</FormLabel>
@@ -3014,7 +2800,7 @@ export default function ListPropertyWizard() {
                                 <Input
                                   placeholder="e.g., A-101"
                                   {...field}
-                                  data-testid="input-prop-flat"
+                                  data-testid="input-kyc-flat"
                                 />
                               </FormControl>
                               <FormMessage />
@@ -3023,7 +2809,7 @@ export default function ListPropertyWizard() {
                         />
                         <FormField
                           control={form.control}
-                          name="propHouseNo"
+                          name="kycHouseNo"
                           render={({ field }) => (
                             <FormItem>
                               <FormLabel>House / Building No.</FormLabel>
@@ -3031,7 +2817,7 @@ export default function ListPropertyWizard() {
                                 <Input
                                   placeholder="e.g., 123"
                                   {...field}
-                                  data-testid="input-prop-house"
+                                  data-testid="input-kyc-house"
                                 />
                               </FormControl>
                               <FormMessage />
@@ -3042,15 +2828,15 @@ export default function ListPropertyWizard() {
 
                       <FormField
                         control={form.control}
-                        name="propStreetAddress"
+                        name="kycStreetAddress"
                         render={({ field }) => (
-                          <FormItem className="mb-4">
+                          <FormItem>
                             <FormLabel>Street Address *</FormLabel>
                             <FormControl>
                               <Input
                                 placeholder="Street name / Road name"
                                 {...field}
-                                data-testid="input-prop-street"
+                                data-testid="input-kyc-street"
                               />
                             </FormControl>
                             <FormMessage />
@@ -3058,10 +2844,10 @@ export default function ListPropertyWizard() {
                         )}
                       />
 
-                      <div className="grid md:grid-cols-2 gap-4 mb-4">
+                      <div className="grid md:grid-cols-2 gap-4">
                         <FormField
                           control={form.control}
-                          name="propLandmark"
+                          name="kycLandmark"
                           render={({ field }) => (
                             <FormItem>
                               <FormLabel>Landmark (Optional)</FormLabel>
@@ -3069,7 +2855,7 @@ export default function ListPropertyWizard() {
                                 <Input
                                   placeholder="Near Metro Station"
                                   {...field}
-                                  data-testid="input-prop-landmark"
+                                  data-testid="input-kyc-landmark"
                                 />
                               </FormControl>
                               <FormMessage />
@@ -3078,7 +2864,7 @@ export default function ListPropertyWizard() {
                         />
                         <FormField
                           control={form.control}
-                          name="propLocality"
+                          name="kycLocality"
                           render={({ field }) => (
                             <FormItem>
                               <FormLabel>Locality / Area *</FormLabel>
@@ -3086,7 +2872,7 @@ export default function ListPropertyWizard() {
                                 <Input
                                   placeholder="e.g., Connaught Place"
                                   {...field}
-                                  data-testid="input-prop-locality"
+                                  data-testid="input-kyc-locality"
                                 />
                               </FormControl>
                               <FormMessage />
@@ -3097,9 +2883,9 @@ export default function ListPropertyWizard() {
 
                       <FormField
                         control={form.control}
-                        name="propPincode"
+                        name="kycPincode"
                         render={({ field }) => (
-                          <FormItem className="mb-4">
+                          <FormItem>
                             <FormLabel>PIN Code *</FormLabel>
                             <FormControl>
                               <div className="relative">
@@ -3107,12 +2893,12 @@ export default function ListPropertyWizard() {
                                   placeholder="Enter 6-digit PIN code"
                                   {...field}
                                   onChange={(e) =>
-                                    handlePropertyPincodeChange(e.target.value)
+                                    handleKycPincodeChange(e.target.value)
                                   }
                                   maxLength={6}
-                                  data-testid="input-property-pincode"
+                                  data-testid="input-kyc-pincode"
                                 />
-                                {isPropertyPincodeLookup && (
+                                {isPincodeLookup && (
                                   <Loader2 className="absolute right-3 top-3 h-4 w-4 animate-spin text-muted-foreground" />
                                 )}
                               </div>
@@ -3125,44 +2911,33 @@ export default function ListPropertyWizard() {
                         )}
                       />
 
-                      <div className="grid md:grid-cols-2 gap-4 mb-4">
+                      <div className="grid md:grid-cols-2 gap-4">
                         <FormField
                           control={form.control}
-                          name="propCity"
+                          name="kycCity"
                           render={({ field }) => (
                             <FormItem>
                               <FormLabel>City *</FormLabel>
                               <FormControl>
-                                <CitySearchInput
-                                  value={field.value}
-                                  onChange={(city, state, district) => {
-                                    field.onChange(city);
-                                    form.setValue("destination", city);
-                                    if (state && !form.getValues("propState")) {
-                                      form.setValue("propState", state);
-                                    }
-                                    if (
-                                      district &&
-                                      !form.getValues("propDistrict")
-                                    ) {
-                                      form.setValue("propDistrict", district);
-                                    }
-                                  }}
-                                  placeholder="Search any Indian city..."
-                                  testId="input-property-city"
+                                <Input
+                                  placeholder="City"
+                                  list="kyc-cities"
+                                  {...field}
+                                  data-testid="input-kyc-city"
                                 />
                               </FormControl>
-                              <p className="text-xs text-muted-foreground">
-                                Search for any city in India including small
-                                towns
-                              </p>
+                              <datalist id="kyc-cities">
+                                {INDIAN_CITIES.map((city) => (
+                                  <option key={city} value={city} />
+                                ))}
+                              </datalist>
                               <FormMessage />
                             </FormItem>
                           )}
                         />
                         <FormField
                           control={form.control}
-                          name="propDistrict"
+                          name="kycDistrict"
                           render={({ field }) => (
                             <FormItem>
                               <FormLabel>District *</FormLabel>
@@ -3170,7 +2945,7 @@ export default function ListPropertyWizard() {
                                 <Input
                                   placeholder="District"
                                   {...field}
-                                  data-testid="input-prop-district"
+                                  data-testid="input-kyc-district"
                                 />
                               </FormControl>
                               <FormMessage />
@@ -3181,19 +2956,19 @@ export default function ListPropertyWizard() {
 
                       <FormField
                         control={form.control}
-                        name="propState"
+                        name="kycState"
                         render={({ field }) => (
-                          <FormItem className="mb-4">
+                          <FormItem>
                             <FormLabel>State *</FormLabel>
                             <FormControl>
                               <Input
                                 placeholder="State"
-                                list="property-states"
+                                list="kyc-states"
                                 {...field}
-                                data-testid="input-property-state"
+                                data-testid="input-kyc-state"
                               />
                             </FormControl>
-                            <datalist id="property-states">
+                            <datalist id="kyc-states">
                               {INDIAN_STATES.map((state) => (
                                 <option key={state} value={state} />
                               ))}
@@ -3203,736 +2978,1149 @@ export default function ListPropertyWizard() {
                         )}
                       />
 
-                      {/* Hidden field for destination */}
+                      <div className="grid md:grid-cols-2 gap-4">
+                        <FormField
+                          control={form.control}
+                          name="panNumber"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>PAN Number *</FormLabel>
+                              <FormControl>
+                                <Input
+                                  placeholder="ABCDE1234F"
+                                  maxLength={10}
+                                  {...field}
+                                  data-testid="input-pan"
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="gstNumber"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>GST Number (Optional)</FormLabel>
+                              <FormControl>
+                                <Input
+                                  placeholder="22AAAAA0000A1Z5"
+                                  {...field}
+                                  data-testid="input-gst"
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <KycDocumentUploader
+                    value={kycDocuments}
+                    onChange={setKycDocuments}
+                  />
+                </div>
+              )}
+
+              {/* Step 3: Property Details */}
+              {step === 3 && (
+                <div className="space-y-6">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <Home className="h-5 w-5" />
+                        Property Details
+                      </CardTitle>
+                      <CardDescription>
+                        Tell us about the property you want to list
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
                       <FormField
                         control={form.control}
-                        name="destination"
+                        name="propertyTitle"
                         render={({ field }) => (
-                          <FormItem className="hidden">
+                          <FormItem>
+                            <FormLabel>Property Title *</FormLabel>
                             <FormControl>
-                              <Input {...field} />
+                              <Input
+                                placeholder="Beautiful Villa with Ocean View"
+                                {...field}
+                                data-testid="input-property-title"
+                              />
                             </FormControl>
+                            <FormMessage />
                           </FormItem>
                         )}
                       />
-                    </div>
 
-                    <FormField
-                      control={form.control}
-                      name="description"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Description *</FormLabel>
-                          <FormControl>
-                            <Textarea
-                              placeholder="Describe your property..."
-                              rows={5}
-                              maxLength={500}
-                              {...field}
-                              data-testid="textarea-description"
-                            />
-                          </FormControl>
-                          <div className="flex items-center justify-between mt-1.5">
-                            <p
-                              className="text-xs text-muted-foreground"
-                              data-testid="text-description-helper"
+                      <FormField
+                        control={form.control}
+                        name="propertyType"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Property Type *</FormLabel>
+                            <Select
+                              value={field.value}
+                              onValueChange={field.onChange}
                             >
-                              Tip: Mention unique features, nearby attractions,
-                              and what makes your stay special
-                            </p>
-                            <span
-                              className={`text-xs ${(field.value?.length || 0) > 450 ? "text-orange-500" : "text-muted-foreground"}`}
-                              data-testid="text-description-counter"
-                            >
-                              {field.value?.length || 0}/500
-                            </span>
-                          </div>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </CardContent>
-                </Card>
-
-                {/* Guest Policies */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Users className="h-5 w-5" />
-                      Guest Policies
-                    </CardTitle>
-                    <CardDescription>
-                      Define who can book your property and booking options
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <FormField
-                        control={form.control}
-                        name="coupleFriendly"
-                        render={({ field }) => (
-                          <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                            <div className="space-y-0.5">
-                              <FormLabel className="text-base">
-                                Couple Friendly
-                              </FormLabel>
-                              <p className="text-sm text-muted-foreground">
-                                Allow unmarried couples to check in
-                              </p>
-                            </div>
-                            <FormControl>
-                              <Checkbox
-                                checked={field.value}
-                                onCheckedChange={field.onChange}
-                                data-testid="checkbox-couple-friendly"
-                              />
-                            </FormControl>
+                              <FormControl>
+                                <SelectTrigger data-testid="select-property-type">
+                                  <SelectValue />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                <SelectItem value="hotel">Hotel</SelectItem>
+                                <SelectItem value="villa">Villa</SelectItem>
+                                <SelectItem value="apartment">
+                                  Apartment
+                                </SelectItem>
+                                <SelectItem value="resort">Resort</SelectItem>
+                                <SelectItem value="hostel">Hostel</SelectItem>
+                                <SelectItem value="lodge">Lodge</SelectItem>
+                                <SelectItem value="cottage">Cottage</SelectItem>
+                                <SelectItem value="farmhouse">
+                                  Farmhouse
+                                </SelectItem>
+                                <SelectItem value="homestay">
+                                  Homestay
+                                </SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
                           </FormItem>
                         )}
                       />
 
-                      <FormField
-                        control={form.control}
-                        name="localIdAllowed"
-                        render={({ field }) => (
-                          <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                            <div className="space-y-0.5">
-                              <FormLabel className="text-base">
-                                Local ID Allowed
-                              </FormLabel>
-                              <p className="text-sm text-muted-foreground">
-                                Accept guests with local ID proof
-                              </p>
-                            </div>
-                            <FormControl>
-                              <Checkbox
-                                checked={field.value}
-                                onCheckedChange={field.onChange}
-                                data-testid="checkbox-local-id"
-                              />
-                            </FormControl>
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={form.control}
-                        name="foreignGuestsAllowed"
-                        render={({ field }) => (
-                          <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                            <div className="space-y-0.5">
-                              <FormLabel className="text-base">
-                                Foreign Guests Allowed
-                              </FormLabel>
-                              <p className="text-sm text-muted-foreground">
-                                Accept international guests with passport
-                              </p>
-                            </div>
-                            <FormControl>
-                              <Checkbox
-                                checked={field.value}
-                                onCheckedChange={field.onChange}
-                                data-testid="checkbox-foreign-guests"
-                              />
-                            </FormControl>
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={form.control}
-                        name="hourlyBookingAllowed"
-                        render={({ field }) => (
-                          <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                            <div className="space-y-0.5">
-                              <FormLabel className="text-base">
-                                Hourly Booking
-                              </FormLabel>
-                              <p className="text-sm text-muted-foreground">
-                                Allow guests to book by the hour
-                              </p>
-                            </div>
-                            <FormControl>
-                              <Checkbox
-                                checked={field.value}
-                                onCheckedChange={field.onChange}
-                                data-testid="checkbox-hourly-booking"
-                              />
-                            </FormControl>
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Room Types & Pricing */}
-                <RoomTypeBuilder
-                  value={wizardRoomTypes}
-                  onChange={setWizardRoomTypes}
-                  propertyType={form.watch("propertyType")}
-                />
-              </div>
-            )}
-
-            {/* Step 4: Property Location (Mandatory Geo-tagging) */}
-            {step === 4 && (
-              <div className="space-y-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <MapPin className="h-5 w-5" />
-                      Property Location
-                    </CardTitle>
-                    <CardDescription>
-                      Set the exact location of your property. This is required
-                      for your listing to be visible to guests.
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <PropertyLocationPicker
-                      latitude={propertyLatitude}
-                      longitude={propertyLongitude}
-                      onLocationChange={(lat, lng, source, addressData) => {
-                        setPropertyLatitude(lat);
-                        setPropertyLongitude(lng);
-                        setGeoSource(source);
-                        if (addressData) {
-                          if (addressData.streetAddress)
-                            form.setValue(
-                              "propStreetAddress",
-                              addressData.streetAddress,
-                            );
-                          if (addressData.locality)
-                            form.setValue("propLocality", addressData.locality);
-                          if (addressData.city)
-                            form.setValue("propCity", addressData.city);
-                          if (addressData.district)
-                            form.setValue("propDistrict", addressData.district);
-                          if (addressData.state)
-                            form.setValue("propState", addressData.state);
-                          if (addressData.pincode)
-                            form.setValue("propPincode", addressData.pincode);
-                          if (addressData.fullAddress) {
-                            setPropertyAddress((prev) => ({
-                              ...prev,
-                              fullAddress: addressData.fullAddress,
-                            }));
-                          }
-                        }
-                      }}
-                    />
-                  </CardContent>
-                </Card>
-              </div>
-            )}
-
-            {/* Step 5: Amenities & Additional Options */}
-            {step === 5 && (
-              <div className="space-y-6">
-                {/* Bulk Booking Card */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Building2 className="h-5 w-5" />
-                      Bulk Booking Options
-                    </CardTitle>
-                    <CardDescription>
-                      Offer discounts for large group bookings (optional)
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <FormField
-                      control={form.control}
-                      name="bulkBookingEnabled"
-                      render={({ field }) => (
-                        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                          <div className="space-y-0.5">
-                            <FormLabel className="text-base">
-                              Enable Bulk Booking Discounts
-                            </FormLabel>
+                      <div>
+                        <div className="flex items-center justify-between mb-3">
+                          <div>
+                            <Label className="text-base font-medium">
+                              Property Location *
+                            </Label>
                             <p className="text-sm text-muted-foreground">
-                              Attract corporate clients and group travelers
+                              Complete address details for the property
                             </p>
                           </div>
-                          <FormControl>
-                            <Checkbox
-                              checked={field.value}
-                              onCheckedChange={field.onChange}
-                              data-testid="checkbox-bulk-booking"
-                            />
-                          </FormControl>
-                        </FormItem>
-                      )}
-                    />
+                          {form.watch("kycPincode") && (
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="text-xs"
+                              onClick={() => {
+                                // Copy all KYC address fields to property fields
+                                form.setValue(
+                                  "propFlatNo",
+                                  form.getValues("kycFlatNo"),
+                                );
+                                form.setValue(
+                                  "propHouseNo",
+                                  form.getValues("kycHouseNo"),
+                                );
+                                form.setValue(
+                                  "propStreetAddress",
+                                  form.getValues("kycStreetAddress"),
+                                );
+                                form.setValue(
+                                  "propLandmark",
+                                  form.getValues("kycLandmark"),
+                                );
+                                form.setValue(
+                                  "propLocality",
+                                  form.getValues("kycLocality"),
+                                );
+                                form.setValue(
+                                  "propCity",
+                                  form.getValues("kycCity"),
+                                );
+                                form.setValue(
+                                  "propDistrict",
+                                  form.getValues("kycDistrict"),
+                                );
+                                form.setValue(
+                                  "propState",
+                                  form.getValues("kycState"),
+                                );
+                                form.setValue(
+                                  "propPincode",
+                                  form.getValues("kycPincode"),
+                                );
+                                form.setValue(
+                                  "destination",
+                                  form.getValues("kycCity"),
+                                );
 
-                    {form.watch("bulkBookingEnabled") && (
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
-                        <FormField
-                          control={form.control}
-                          name="bulkBookingMinRooms"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>
-                                Minimum Rooms for Bulk Discount
-                              </FormLabel>
-                              <FormControl>
-                                <Input
-                                  type="number"
-                                  min="2"
-                                  step="1"
-                                  {...field}
-                                  onChange={(e) =>
-                                    field.onChange(
-                                      parseInt(e.target.value) || 5,
-                                    )
-                                  }
-                                  data-testid="input-bulk-min-rooms"
-                                />
-                              </FormControl>
-                              <p className="text-xs text-muted-foreground">
-                                Discount applies when booking this many rooms or
-                                more
-                              </p>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name="bulkBookingDiscountPercent"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Discount Percentage (%)</FormLabel>
-                              <FormControl>
-                                <Input
-                                  type="number"
-                                  min="0"
-                                  max="50"
-                                  step="1"
-                                  {...field}
-                                  onChange={(e) =>
-                                    field.onChange(
-                                      parseFloat(e.target.value) || 10,
-                                    )
-                                  }
-                                  data-testid="input-bulk-discount"
-                                />
-                              </FormControl>
-                              <p className="text-xs text-muted-foreground">
-                                Maximum 50% discount allowed
-                              </p>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader>
-                    <CardTitle>House Rules & Policies</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <FormField
-                      control={form.control}
-                      name="policies"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>House Rules (Optional)</FormLabel>
-                          <FormControl>
-                            <Textarea
-                              placeholder="Check-in after 3pm, No smoking, etc."
-                              rows={3}
-                              {...field}
-                              data-testid="textarea-policies"
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Amenities</CardTitle>
-                    <CardDescription>
-                      Select the essential amenities your property offers
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    {/* Essential amenities */}
-                    <div>
-                      <p className="text-sm font-medium mb-3">
-                        Essential Amenities
-                      </p>
-                      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                        {amenities
-                          .filter(
-                            (a) =>
-                              a.category === "essential" ||
-                              a.name === "Hot water",
-                          )
-                          .map((amenity) => (
-                            <div
-                              key={amenity.id}
-                              className="flex items-center space-x-2"
+                                toast({
+                                  title: "Address copied",
+                                  description:
+                                    "All business address details applied to property location",
+                                });
+                              }}
+                              data-testid="button-same-as-business"
                             >
-                              <Checkbox
-                                id={amenity.id}
-                                checked={selectedAmenities.includes(amenity.id)}
-                                onCheckedChange={(checked) => {
-                                  setSelectedAmenities(
-                                    checked
-                                      ? [...selectedAmenities, amenity.id]
-                                      : selectedAmenities.filter(
-                                          (id) => id !== amenity.id,
-                                        ),
-                                  );
-                                }}
-                                data-testid={`checkbox-amenity-${amenity.name.toLowerCase().replace(/\s+/g, "-")}`}
-                              />
-                              <label
-                                htmlFor={amenity.id}
-                                className="text-sm font-medium cursor-pointer"
-                              >
-                                {amenity.name}
-                              </label>
-                            </div>
-                          ))}
-                      </div>
-                    </div>
-
-                    {/* Show more toggle */}
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setShowAllAmenities(!showAllAmenities)}
-                      className="w-full"
-                      data-testid="button-show-more-amenities"
-                    >
-                      {showAllAmenities ? "Show less" : "Show more (optional)"}
-                      <ArrowRight
-                        className={`ml-2 h-4 w-4 transition-transform ${showAllAmenities ? "rotate-90" : ""}`}
-                      />
-                    </Button>
-
-                    {/* Additional amenities */}
-                    {showAllAmenities && (
-                      <div className="space-y-4 pt-2 border-t">
-                        {[
-                          "bathroom",
-                          "safety",
-                          "services",
-                          "outdoor",
-                          "family",
-                          "food",
-                          "entertainment",
-                          "accessibility",
-                          "work",
-                        ].map((category) => {
-                          const categoryAmenities = amenities.filter(
-                            (a) =>
-                              a.category === category && a.name !== "Hot water",
-                          );
-                          if (categoryAmenities.length === 0) return null;
-                          return (
-                            <div key={category}>
-                              <p className="text-sm font-medium mb-2 capitalize text-muted-foreground">
-                                {category}
-                              </p>
-                              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                                {categoryAmenities.map((amenity) => (
-                                  <div
-                                    key={amenity.id}
-                                    className="flex items-center space-x-2"
-                                  >
-                                    <Checkbox
-                                      id={amenity.id}
-                                      checked={selectedAmenities.includes(
-                                        amenity.id,
-                                      )}
-                                      onCheckedChange={(checked) => {
-                                        setSelectedAmenities(
-                                          checked
-                                            ? [...selectedAmenities, amenity.id]
-                                            : selectedAmenities.filter(
-                                                (id) => id !== amenity.id,
-                                              ),
-                                        );
-                                      }}
-                                      data-testid={`checkbox-amenity-${amenity.name.toLowerCase().replace(/\s+/g, "-")}`}
-                                    />
-                                    <label
-                                      htmlFor={amenity.id}
-                                      className="text-sm cursor-pointer"
-                                    >
-                                      {amenity.name}
-                                    </label>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              </div>
-            )}
-
-            {/* Step 6: Photos & Submit */}
-            {step === 6 && (
-              <div className="space-y-6">
-                {/* Photo Category Progress Summary */}
-                <Card className="border-primary/20 bg-primary/5">
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-lg flex items-center gap-2">
-                      <Camera className="h-5 w-5 text-primary" />
-                      Photo Upload Progress
-                    </CardTitle>
-                    <CardDescription>
-                      Complete all categories for better visibility. Properties
-                      with more photos get 3x more bookings!
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                      {getPhotoCategoryStats().map((cat) => (
-                        <div
-                          key={cat.id}
-                          className={`flex items-center gap-2 p-2 rounded-lg border ${
-                            cat.hasAny
-                              ? cat.isComplete
-                                ? "bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-800"
-                                : "bg-yellow-50 dark:bg-yellow-950 border-yellow-200 dark:border-yellow-800"
-                              : cat.required
-                                ? "bg-red-50 dark:bg-red-950 border-red-200 dark:border-red-800"
-                                : "bg-muted/50 border-muted"
-                          }`}
-                        >
-                          {cat.hasAny ? (
-                            cat.isComplete ? (
-                              <CheckCircle className="h-4 w-4 text-green-600 flex-shrink-0" />
-                            ) : (
-                              <Clock className="h-4 w-4 text-yellow-600 flex-shrink-0" />
-                            )
-                          ) : cat.required ? (
-                            <XCircle className="h-4 w-4 text-red-500 flex-shrink-0" />
-                          ) : (
-                            <div className="h-4 w-4 rounded-full border-2 border-muted-foreground/30 flex-shrink-0" />
+                              <CheckCircle className="h-3 w-3 mr-1" />
+                              Same as business address
+                            </Button>
                           )}
-                          <div className="min-w-0 flex-1">
-                            <p
-                              className={`text-xs font-medium truncate ${
-                                cat.hasAny
-                                  ? ""
-                                  : cat.required
-                                    ? "text-red-700 dark:text-red-400"
-                                    : "text-muted-foreground"
-                              }`}
-                            >
-                              {cat.label}
-                              {cat.required && !cat.hasAny && " *"}
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                              {cat.count}/{cat.minRecommended} photos
-                            </p>
-                          </div>
                         </div>
-                      ))}
-                    </div>
 
-                    {getCompletedCategoriesCount() < 6 && (
-                      <div className="mt-4 p-3 bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-lg">
-                        <p className="text-sm text-amber-800 dark:text-amber-200 flex items-start gap-2">
-                          <AlertTriangle className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                          <span>
-                            <strong>Tip:</strong> Upload photos in all
-                            categories to increase your property's appeal.
-                            {getIncompleteRequiredCategories().length > 0 && (
-                              <span className="block mt-1">
-                                <strong className="text-red-600 dark:text-red-400">
-                                  Required:
-                                </strong>{" "}
-                                {getIncompleteRequiredCategories()
-                                  .map((c) => c.label)
-                                  .join(", ")}
-                              </span>
+                        {/* Detailed Property Address Fields - same as Business section */}
+                        <div className="grid md:grid-cols-2 gap-4 mb-4">
+                          <FormField
+                            control={form.control}
+                            name="propFlatNo"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Flat / Apartment No.</FormLabel>
+                                <FormControl>
+                                  <Input
+                                    placeholder="e.g., A-101"
+                                    {...field}
+                                    data-testid="input-prop-flat"
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
                             )}
-                          </span>
-                        </p>
+                          />
+                          <FormField
+                            control={form.control}
+                            name="propHouseNo"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>House / Building No.</FormLabel>
+                                <FormControl>
+                                  <Input
+                                    placeholder="e.g., 123"
+                                    {...field}
+                                    data-testid="input-prop-house"
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        </div>
+
+                        <FormField
+                          control={form.control}
+                          name="propStreetAddress"
+                          render={({ field }) => (
+                            <FormItem className="mb-4">
+                              <FormLabel>Street Address *</FormLabel>
+                              <FormControl>
+                                <Input
+                                  placeholder="Street name / Road name"
+                                  {...field}
+                                  data-testid="input-prop-street"
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        <div className="grid md:grid-cols-2 gap-4 mb-4">
+                          <FormField
+                            control={form.control}
+                            name="propLandmark"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Landmark (Optional)</FormLabel>
+                                <FormControl>
+                                  <Input
+                                    placeholder="Near Metro Station"
+                                    {...field}
+                                    data-testid="input-prop-landmark"
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          <FormField
+                            control={form.control}
+                            name="propLocality"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Locality / Area *</FormLabel>
+                                <FormControl>
+                                  <Input
+                                    placeholder="e.g., Connaught Place"
+                                    {...field}
+                                    data-testid="input-prop-locality"
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        </div>
+
+                        <FormField
+                          control={form.control}
+                          name="propPincode"
+                          render={({ field }) => (
+                            <FormItem className="mb-4">
+                              <FormLabel>PIN Code *</FormLabel>
+                              <FormControl>
+                                <div className="relative">
+                                  <Input
+                                    placeholder="Enter 6-digit PIN code"
+                                    {...field}
+                                    onChange={(e) =>
+                                      handlePropertyPincodeChange(
+                                        e.target.value,
+                                      )
+                                    }
+                                    maxLength={6}
+                                    data-testid="input-property-pincode"
+                                  />
+                                  {isPropertyPincodeLookup && (
+                                    <Loader2 className="absolute right-3 top-3 h-4 w-4 animate-spin text-muted-foreground" />
+                                  )}
+                                </div>
+                              </FormControl>
+                              <p className="text-xs text-muted-foreground">
+                                Enter PIN code to auto-fill location details
+                              </p>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        <div className="grid md:grid-cols-2 gap-4 mb-4">
+                          <FormField
+                            control={form.control}
+                            name="propCity"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>City *</FormLabel>
+                                <FormControl>
+                                  <CitySearchInput
+                                    value={field.value}
+                                    onChange={(city, state, district) => {
+                                      field.onChange(city);
+                                      form.setValue("destination", city);
+                                      if (
+                                        state &&
+                                        !form.getValues("propState")
+                                      ) {
+                                        form.setValue("propState", state);
+                                      }
+                                      if (
+                                        district &&
+                                        !form.getValues("propDistrict")
+                                      ) {
+                                        form.setValue("propDistrict", district);
+                                      }
+                                    }}
+                                    placeholder="Search any Indian city..."
+                                    testId="input-property-city"
+                                  />
+                                </FormControl>
+                                <p className="text-xs text-muted-foreground">
+                                  Search for any city in India including small
+                                  towns
+                                </p>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          <FormField
+                            control={form.control}
+                            name="propDistrict"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>District *</FormLabel>
+                                <FormControl>
+                                  <Input
+                                    placeholder="District"
+                                    {...field}
+                                    data-testid="input-prop-district"
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        </div>
+
+                        <FormField
+                          control={form.control}
+                          name="propState"
+                          render={({ field }) => (
+                            <FormItem className="mb-4">
+                              <FormLabel>State *</FormLabel>
+                              <FormControl>
+                                <Input
+                                  placeholder="State"
+                                  list="property-states"
+                                  {...field}
+                                  data-testid="input-property-state"
+                                />
+                              </FormControl>
+                              <datalist id="property-states">
+                                {INDIAN_STATES.map((state) => (
+                                  <option key={state} value={state} />
+                                ))}
+                              </datalist>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        {/* Hidden field for destination */}
+                        <FormField
+                          control={form.control}
+                          name="destination"
+                          render={({ field }) => (
+                            <FormItem className="hidden">
+                              <FormControl>
+                                <Input {...field} />
+                              </FormControl>
+                            </FormItem>
+                          )}
+                        />
                       </div>
-                    )}
-                  </CardContent>
-                </Card>
 
-                <PropertyImageUploader
-                  value={categorizedImages}
-                  onChange={setCategorizedImages}
-                  onVideosChange={setVideos}
-                  videos={videos}
-                />
+                      <FormField
+                        control={form.control}
+                        name="description"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Description *</FormLabel>
+                            <FormControl>
+                              <Textarea
+                                placeholder="Describe your property..."
+                                rows={5}
+                                maxLength={500}
+                                {...field}
+                                data-testid="textarea-description"
+                              />
+                            </FormControl>
+                            <div className="flex items-center justify-between mt-1.5">
+                              <p
+                                className="text-xs text-muted-foreground"
+                                data-testid="text-description-helper"
+                              >
+                                Tip: Mention unique features, nearby
+                                attractions, and what makes your stay special
+                              </p>
+                              <span
+                                className={`text-xs ${(field.value?.length || 0) > 450 ? "text-orange-500" : "text-muted-foreground"}`}
+                                data-testid="text-description-counter"
+                              >
+                                {field.value?.length || 0}/500
+                              </span>
+                            </div>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </CardContent>
+                  </Card>
 
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <CheckCircle className="h-5 w-5 text-primary" />
-                      Review & Submit
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
-                      <h4 className="font-medium text-blue-900 dark:text-blue-100 mb-2">
-                        What happens next?
-                      </h4>
-                      <ul className="text-sm text-blue-700 dark:text-blue-300 space-y-1">
-                        <li>
-                          • Your KYC and property listing will be reviewed
-                          together
-                        </li>
-                        <li>
-                          • Admin will approve or reject within 2-3 business
-                          days
-                        </li>
-                        <li>
-                          • Once approved, your property will be live on ZECOHO
-                        </li>
-                        <li>• You'll be notified via email when approved</li>
-                      </ul>
-                    </div>
+                  {/* Guest Policies */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <Users className="h-5 w-5" />
+                        Guest Policies
+                      </CardTitle>
+                      <CardDescription>
+                        Define who can book your property and booking options
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <FormField
+                          control={form.control}
+                          name="coupleFriendly"
+                          render={({ field }) => (
+                            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                              <div className="space-y-0.5">
+                                <FormLabel className="text-base">
+                                  Couple Friendly
+                                </FormLabel>
+                                <p className="text-sm text-muted-foreground">
+                                  Allow unmarried couples to check in
+                                </p>
+                              </div>
+                              <FormControl>
+                                <Checkbox
+                                  checked={field.value}
+                                  onCheckedChange={field.onChange}
+                                  data-testid="checkbox-couple-friendly"
+                                />
+                              </FormControl>
+                            </FormItem>
+                          )}
+                        />
 
-                    {getTotalImageCount() === 0 && (
-                      <p className="text-sm text-destructive">
-                        Please upload at least one property image
-                      </p>
-                    )}
+                        <FormField
+                          control={form.control}
+                          name="localIdAllowed"
+                          render={({ field }) => (
+                            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                              <div className="space-y-0.5">
+                                <FormLabel className="text-base">
+                                  Local ID Allowed
+                                </FormLabel>
+                                <p className="text-sm text-muted-foreground">
+                                  Accept guests with local ID proof
+                                </p>
+                              </div>
+                              <FormControl>
+                                <Checkbox
+                                  checked={field.value}
+                                  onCheckedChange={field.onChange}
+                                  data-testid="checkbox-local-id"
+                                />
+                              </FormControl>
+                            </FormItem>
+                          )}
+                        />
 
-                    {getIncompleteRequiredCategories().length > 0 &&
-                      getTotalImageCount() > 0 && (
-                        <div className="bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
-                          <p className="text-sm text-amber-800 dark:text-amber-200">
-                            <strong>Missing required photos:</strong> Please add
-                            at least one photo in these categories:{" "}
-                            {getIncompleteRequiredCategories()
-                              .map((c) => c.label)
-                              .join(", ")}
+                        <FormField
+                          control={form.control}
+                          name="foreignGuestsAllowed"
+                          render={({ field }) => (
+                            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                              <div className="space-y-0.5">
+                                <FormLabel className="text-base">
+                                  Foreign Guests Allowed
+                                </FormLabel>
+                                <p className="text-sm text-muted-foreground">
+                                  Accept international guests with passport
+                                </p>
+                              </div>
+                              <FormControl>
+                                <Checkbox
+                                  checked={field.value}
+                                  onCheckedChange={field.onChange}
+                                  data-testid="checkbox-foreign-guests"
+                                />
+                              </FormControl>
+                            </FormItem>
+                          )}
+                        />
+
+                        <FormField
+                          control={form.control}
+                          name="hourlyBookingAllowed"
+                          render={({ field }) => (
+                            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                              <div className="space-y-0.5">
+                                <FormLabel className="text-base">
+                                  Hourly Booking
+                                </FormLabel>
+                                <p className="text-sm text-muted-foreground">
+                                  Allow guests to book by the hour
+                                </p>
+                              </div>
+                              <FormControl>
+                                <Checkbox
+                                  checked={field.value}
+                                  onCheckedChange={field.onChange}
+                                  data-testid="checkbox-hourly-booking"
+                                />
+                              </FormControl>
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Room Types & Pricing */}
+                  <RoomTypeBuilder
+                    value={wizardRoomTypes}
+                    onChange={setWizardRoomTypes}
+                    propertyType={form.watch("propertyType")}
+                  />
+                </div>
+              )}
+
+              {/* Step 4: Property Location (Mandatory Geo-tagging) */}
+              {step === 4 && (
+                <div className="space-y-6">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <MapPin className="h-5 w-5" />
+                        Property Location
+                      </CardTitle>
+                      <CardDescription>
+                        Set the exact location of your property. This is
+                        required for your listing to be visible to guests.
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <PropertyLocationPicker
+                        latitude={propertyLatitude}
+                        longitude={propertyLongitude}
+                        onLocationChange={(lat, lng, source, addressData) => {
+                          setPropertyLatitude(lat);
+                          setPropertyLongitude(lng);
+                          setGeoSource(source);
+                          if (addressData) {
+                            if (addressData.streetAddress)
+                              form.setValue(
+                                "propStreetAddress",
+                                addressData.streetAddress,
+                              );
+                            if (addressData.locality)
+                              form.setValue(
+                                "propLocality",
+                                addressData.locality,
+                              );
+                            if (addressData.city)
+                              form.setValue("propCity", addressData.city);
+                            if (addressData.district)
+                              form.setValue(
+                                "propDistrict",
+                                addressData.district,
+                              );
+                            if (addressData.state)
+                              form.setValue("propState", addressData.state);
+                            if (addressData.pincode)
+                              form.setValue("propPincode", addressData.pincode);
+                            if (addressData.fullAddress) {
+                              setPropertyAddress((prev) => ({
+                                ...prev,
+                                fullAddress: addressData.fullAddress,
+                              }));
+                            }
+                          }
+                        }}
+                      />
+                    </CardContent>
+                  </Card>
+                </div>
+              )}
+
+              {/* Step 5: Amenities & Additional Options */}
+              {step === 5 && (
+                <div className="space-y-6">
+                  {/* Bulk Booking Card */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <Building2 className="h-5 w-5" />
+                        Bulk Booking Options
+                      </CardTitle>
+                      <CardDescription>
+                        Offer discounts for large group bookings (optional)
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <FormField
+                        control={form.control}
+                        name="bulkBookingEnabled"
+                        render={({ field }) => (
+                          <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                            <div className="space-y-0.5">
+                              <FormLabel className="text-base">
+                                Enable Bulk Booking Discounts
+                              </FormLabel>
+                              <p className="text-sm text-muted-foreground">
+                                Attract corporate clients and group travelers
+                              </p>
+                            </div>
+                            <FormControl>
+                              <Checkbox
+                                checked={field.value}
+                                onCheckedChange={field.onChange}
+                                data-testid="checkbox-bulk-booking"
+                              />
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
+
+                      {form.watch("bulkBookingEnabled") && (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                          <FormField
+                            control={form.control}
+                            name="bulkBookingMinRooms"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>
+                                  Minimum Rooms for Bulk Discount
+                                </FormLabel>
+                                <FormControl>
+                                  <Input
+                                    type="number"
+                                    min="2"
+                                    step="1"
+                                    {...field}
+                                    onChange={(e) =>
+                                      field.onChange(
+                                        parseInt(e.target.value) || 5,
+                                      )
+                                    }
+                                    data-testid="input-bulk-min-rooms"
+                                  />
+                                </FormControl>
+                                <p className="text-xs text-muted-foreground">
+                                  Discount applies when booking this many rooms
+                                  or more
+                                </p>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          <FormField
+                            control={form.control}
+                            name="bulkBookingDiscountPercent"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Discount Percentage (%)</FormLabel>
+                                <FormControl>
+                                  <Input
+                                    type="number"
+                                    min="0"
+                                    max="50"
+                                    step="1"
+                                    {...field}
+                                    onChange={(e) =>
+                                      field.onChange(
+                                        parseFloat(e.target.value) || 10,
+                                      )
+                                    }
+                                    data-testid="input-bulk-discount"
+                                  />
+                                </FormControl>
+                                <p className="text-xs text-muted-foreground">
+                                  Maximum 50% discount allowed
+                                </p>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>House Rules & Policies</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <FormField
+                        control={form.control}
+                        name="policies"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>House Rules (Optional)</FormLabel>
+                            <FormControl>
+                              <Textarea
+                                placeholder="Check-in after 3pm, No smoking, etc."
+                                rows={3}
+                                {...field}
+                                data-testid="textarea-policies"
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Amenities</CardTitle>
+                      <CardDescription>
+                        Select the essential amenities your property offers
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      {/* Essential amenities */}
+                      <div>
+                        <p className="text-sm font-medium mb-3">
+                          Essential Amenities
+                        </p>
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                          {amenities
+                            .filter(
+                              (a) =>
+                                a.category === "essential" ||
+                                a.name === "Hot water",
+                            )
+                            .map((amenity) => (
+                              <div
+                                key={amenity.id}
+                                className="flex items-center space-x-2"
+                              >
+                                <Checkbox
+                                  id={amenity.id}
+                                  checked={selectedAmenities.includes(
+                                    amenity.id,
+                                  )}
+                                  onCheckedChange={(checked) => {
+                                    setSelectedAmenities(
+                                      checked
+                                        ? [...selectedAmenities, amenity.id]
+                                        : selectedAmenities.filter(
+                                            (id) => id !== amenity.id,
+                                          ),
+                                    );
+                                  }}
+                                  data-testid={`checkbox-amenity-${amenity.name.toLowerCase().replace(/\s+/g, "-")}`}
+                                />
+                                <label
+                                  htmlFor={amenity.id}
+                                  className="text-sm font-medium cursor-pointer"
+                                >
+                                  {amenity.name}
+                                </label>
+                              </div>
+                            ))}
+                        </div>
+                      </div>
+
+                      {/* Show more toggle */}
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setShowAllAmenities(!showAllAmenities)}
+                        className="w-full"
+                        data-testid="button-show-more-amenities"
+                      >
+                        {showAllAmenities
+                          ? "Show less"
+                          : "Show more (optional)"}
+                        <ArrowRight
+                          className={`ml-2 h-4 w-4 transition-transform ${showAllAmenities ? "rotate-90" : ""}`}
+                        />
+                      </Button>
+
+                      {/* Additional amenities */}
+                      {showAllAmenities && (
+                        <div className="space-y-4 pt-2 border-t">
+                          {[
+                            "bathroom",
+                            "safety",
+                            "services",
+                            "outdoor",
+                            "family",
+                            "food",
+                            "entertainment",
+                            "accessibility",
+                            "work",
+                          ].map((category) => {
+                            const categoryAmenities = amenities.filter(
+                              (a) =>
+                                a.category === category &&
+                                a.name !== "Hot water",
+                            );
+                            if (categoryAmenities.length === 0) return null;
+                            return (
+                              <div key={category}>
+                                <p className="text-sm font-medium mb-2 capitalize text-muted-foreground">
+                                  {category}
+                                </p>
+                                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                                  {categoryAmenities.map((amenity) => (
+                                    <div
+                                      key={amenity.id}
+                                      className="flex items-center space-x-2"
+                                    >
+                                      <Checkbox
+                                        id={amenity.id}
+                                        checked={selectedAmenities.includes(
+                                          amenity.id,
+                                        )}
+                                        onCheckedChange={(checked) => {
+                                          setSelectedAmenities(
+                                            checked
+                                              ? [
+                                                  ...selectedAmenities,
+                                                  amenity.id,
+                                                ]
+                                              : selectedAmenities.filter(
+                                                  (id) => id !== amenity.id,
+                                                ),
+                                          );
+                                        }}
+                                        data-testid={`checkbox-amenity-${amenity.name.toLowerCase().replace(/\s+/g, "-")}`}
+                                      />
+                                      <label
+                                        htmlFor={amenity.id}
+                                        className="text-sm cursor-pointer"
+                                      >
+                                        {amenity.name}
+                                      </label>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                </div>
+              )}
+
+              {/* Step 6: Photos & Submit */}
+              {step === 6 && (
+                <div className="space-y-6">
+                  {/* Photo Category Progress Summary */}
+                  <Card className="border-primary/20 bg-primary/5">
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-lg flex items-center gap-2">
+                        <Camera className="h-5 w-5 text-primary" />
+                        Photo Upload Progress
+                      </CardTitle>
+                      <CardDescription>
+                        Complete all categories for better visibility.
+                        Properties with more photos get 3x more bookings!
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                        {getPhotoCategoryStats().map((cat) => (
+                          <div
+                            key={cat.id}
+                            className={`flex items-center gap-2 p-2 rounded-lg border ${
+                              cat.hasAny
+                                ? cat.isComplete
+                                  ? "bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-800"
+                                  : "bg-yellow-50 dark:bg-yellow-950 border-yellow-200 dark:border-yellow-800"
+                                : cat.required
+                                  ? "bg-red-50 dark:bg-red-950 border-red-200 dark:border-red-800"
+                                  : "bg-muted/50 border-muted"
+                            }`}
+                          >
+                            {cat.hasAny ? (
+                              cat.isComplete ? (
+                                <CheckCircle className="h-4 w-4 text-green-600 flex-shrink-0" />
+                              ) : (
+                                <Clock className="h-4 w-4 text-yellow-600 flex-shrink-0" />
+                              )
+                            ) : cat.required ? (
+                              <XCircle className="h-4 w-4 text-red-500 flex-shrink-0" />
+                            ) : (
+                              <div className="h-4 w-4 rounded-full border-2 border-muted-foreground/30 flex-shrink-0" />
+                            )}
+                            <div className="min-w-0 flex-1">
+                              <p
+                                className={`text-xs font-medium truncate ${
+                                  cat.hasAny
+                                    ? ""
+                                    : cat.required
+                                      ? "text-red-700 dark:text-red-400"
+                                      : "text-muted-foreground"
+                                }`}
+                              >
+                                {cat.label}
+                                {cat.required && !cat.hasAny && " *"}
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                {cat.count}/{cat.minRecommended} photos
+                              </p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
+                      {getCompletedCategoriesCount() < 6 && (
+                        <div className="mt-4 p-3 bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-lg">
+                          <p className="text-sm text-amber-800 dark:text-amber-200 flex items-start gap-2">
+                            <AlertTriangle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                            <span>
+                              <strong>Tip:</strong> Upload photos in all
+                              categories to increase your property's appeal.
+                              {getIncompleteRequiredCategories().length > 0 && (
+                                <span className="block mt-1">
+                                  <strong className="text-red-600 dark:text-red-400">
+                                    Required:
+                                  </strong>{" "}
+                                  {getIncompleteRequiredCategories()
+                                    .map((c) => c.label)
+                                    .join(", ")}
+                                </span>
+                              )}
+                            </span>
                           </p>
                         </div>
                       )}
+                    </CardContent>
+                  </Card>
 
-                    {(!kycDocuments.propertyOwnership?.length ||
-                      !kycDocuments.identityProof?.length) && (
-                      <p className="text-sm text-destructive">
-                        Please upload mandatory KYC documents (Property
-                        Ownership Proof and Identity Proof) in Step 2
-                      </p>
+                  <PropertyImageUploader
+                    value={categorizedImages}
+                    onChange={setCategorizedImages}
+                    onVideosChange={setVideos}
+                    videos={videos}
+                  />
+
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <CheckCircle className="h-5 w-5 text-primary" />
+                        Review & Submit
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+                        <h4 className="font-medium text-blue-900 dark:text-blue-100 mb-2">
+                          What happens next?
+                        </h4>
+                        <ul className="text-sm text-blue-700 dark:text-blue-300 space-y-1">
+                          <li>
+                            • Your KYC and property listing will be reviewed
+                            together
+                          </li>
+                          <li>
+                            • Admin will approve or reject within 2-3 business
+                            days
+                          </li>
+                          <li>
+                            • Once approved, your property will be live on
+                            ZECOHO
+                          </li>
+                          <li>• You'll be notified via email when approved</li>
+                        </ul>
+                      </div>
+
+                      {getTotalImageCount() === 0 && (
+                        <p className="text-sm text-destructive">
+                          Please upload at least one property image
+                        </p>
+                      )}
+
+                      {getIncompleteRequiredCategories().length > 0 &&
+                        getTotalImageCount() > 0 && (
+                          <div className="bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
+                            <p className="text-sm text-amber-800 dark:text-amber-200">
+                              <strong>Missing required photos:</strong> Please
+                              add at least one photo in these categories:{" "}
+                              {getIncompleteRequiredCategories()
+                                .map((c) => c.label)
+                                .join(", ")}
+                            </p>
+                          </div>
+                        )}
+
+                      {(!kycDocuments.propertyOwnership?.length ||
+                        !kycDocuments.identityProof?.length) && (
+                        <p className="text-sm text-destructive">
+                          Please upload mandatory KYC documents (Property
+                          Ownership Proof and Identity Proof) in Step 2
+                        </p>
+                      )}
+                    </CardContent>
+                  </Card>
+                </div>
+              )}
+
+              {/* Navigation Buttons */}
+              <div className="flex justify-between mt-8">
+                {step > 1 ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={prevStep}
+                    data-testid="button-prev-step"
+                  >
+                    <ArrowLeft className="h-4 w-4 mr-2" />
+                    Back
+                  </Button>
+                ) : isQuickMode ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setListingMode(null)}
+                    data-testid="button-change-mode"
+                  >
+                    <ArrowLeft className="h-4 w-4 mr-2" />
+                    Change Mode
+                  </Button>
+                ) : (
+                  <div />
+                )}
+
+                {/* Quick Mode Step 2: Submit Button */}
+                {isQuickMode && step === quickModeTotalSteps ? (
+                  <Button
+                    type="button"
+                    onClick={onQuickSubmit}
+                    disabled={
+                      quickSubmitMutation.isPending ||
+                      getTotalImageCount() === 0
+                    }
+                    data-testid="button-quick-submit"
+                  >
+                    {quickSubmitMutation.isPending ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Creating Draft...
+                      </>
+                    ) : getTotalImageCount() === 0 ? (
+                      <>
+                        <Camera className="h-4 w-4 mr-2" />
+                        Add Photos First
+                      </>
+                    ) : (
+                      <>
+                        <Zap className="h-4 w-4 mr-2" />
+                        Create Draft Listing
+                      </>
                     )}
-                  </CardContent>
-                </Card>
+                  </Button>
+                ) : step < (isQuickMode ? quickModeTotalSteps : totalSteps) ? (
+                  <Button
+                    type="button"
+                    onClick={nextStep}
+                    data-testid="button-next-step"
+                  >
+                    Next
+                    <ArrowRight className="h-4 w-4 ml-2" />
+                  </Button>
+                ) : (
+                  <Button
+                    type="submit"
+                    disabled={
+                      submitMutation.isPending ||
+                      getTotalImageCount() === 0 ||
+                      getIncompleteRequiredCategories().length > 0
+                    }
+                    data-testid="button-submit-application"
+                  >
+                    {submitMutation.isPending ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Submitting...
+                      </>
+                    ) : getIncompleteRequiredCategories().length > 0 ? (
+                      <>
+                        <XCircle className="h-4 w-4 mr-2" />
+                        Complete Required Photos
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle className="h-4 w-4 mr-2" />
+                        Submit Application
+                      </>
+                    )}
+                  </Button>
+                )}
               </div>
-            )}
-
-            {/* Navigation Buttons */}
-            <div className="flex justify-between mt-8">
-              {step > 1 ? (
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={prevStep}
-                  data-testid="button-prev-step"
-                >
-                  <ArrowLeft className="h-4 w-4 mr-2" />
-                  Back
-                </Button>
-              ) : isQuickMode ? (
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setListingMode(null)}
-                  data-testid="button-change-mode"
-                >
-                  <ArrowLeft className="h-4 w-4 mr-2" />
-                  Change Mode
-                </Button>
-              ) : (
-                <div />
-              )}
-
-              {/* Quick Mode Step 2: Submit Button */}
-              {isQuickMode && step === quickModeTotalSteps ? (
-                <Button
-                  type="button"
-                  onClick={onQuickSubmit}
-                  disabled={
-                    quickSubmitMutation.isPending || getTotalImageCount() === 0
-                  }
-                  data-testid="button-quick-submit"
-                >
-                  {quickSubmitMutation.isPending ? (
-                    <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Creating Draft...
-                    </>
-                  ) : getTotalImageCount() === 0 ? (
-                    <>
-                      <Camera className="h-4 w-4 mr-2" />
-                      Add Photos First
-                    </>
-                  ) : (
-                    <>
-                      <Zap className="h-4 w-4 mr-2" />
-                      Create Draft Listing
-                    </>
-                  )}
-                </Button>
-              ) : step < (isQuickMode ? quickModeTotalSteps : totalSteps) ? (
-                <Button
-                  type="button"
-                  onClick={nextStep}
-                  data-testid="button-next-step"
-                >
-                  Next
-                  <ArrowRight className="h-4 w-4 ml-2" />
-                </Button>
-              ) : (
-                <Button
-                  type="submit"
-                  disabled={
-                    submitMutation.isPending ||
-                    getTotalImageCount() === 0 ||
-                    getIncompleteRequiredCategories().length > 0
-                  }
-                  data-testid="button-submit-application"
-                >
-                  {submitMutation.isPending ? (
-                    <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Submitting...
-                    </>
-                  ) : getIncompleteRequiredCategories().length > 0 ? (
-                    <>
-                      <XCircle className="h-4 w-4 mr-2" />
-                      Complete Required Photos
-                    </>
-                  ) : (
-                    <>
-                      <CheckCircle className="h-4 w-4 mr-2" />
-                      Submit Application
-                    </>
-                  )}
-                </Button>
-              )}
-            </div>
-          </form>
-        </Form>
+            </form>
+          </Form>
+        </div>
       </div>
-    </div>
+    </>
   );
 }

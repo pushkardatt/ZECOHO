@@ -255,7 +255,24 @@ export default function OtpLogin() {
                 )}
               </Button>
 
-              <div className="text-center pt-4">
+              <p className="text-xs text-center text-muted-foreground px-2">
+                By proceeding, you agree to ZECOHO's{" "}
+                <a
+                  href="/terms"
+                  className="text-primary underline hover:no-underline"
+                >
+                  Terms & Conditions
+                </a>{" "}
+                and{" "}
+                <a
+                  href="/privacy"
+                  className="text-primary underline hover:no-underline"
+                >
+                  Privacy Policy
+                </a>
+              </p>
+
+              <div className="text-center pt-2">
                 <Button
                   variant="ghost"
                   onClick={() => setLocation("/")}

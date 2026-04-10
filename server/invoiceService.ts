@@ -186,7 +186,7 @@ export async function createInvoice(params: CreateInvoiceParams) {
       ownerState: ownerState || null,
       planName: params.planName,
       planDuration: params.planDuration,
-      sacCode: "998314",
+      sacCode: "998599",
       baseAmount: base.toFixed(2),
       cgstRate,
       cgstAmount,
@@ -217,340 +217,359 @@ export async function generateInvoicePDF(invoiceId: string): Promise<Buffer> {
 
 function buildPDF(inv: any): Promise<Buffer> {
   return new Promise((resolve, reject) => {
-    const doc = new PDFDocument({ margin: 50, size: "A4" });
+    const doc = new PDFDocument({
+      margin: 50,
+      size: "A4",
+      autoFirstPage: true,
+      bufferPages: false,
+    });
     const buffers: Buffer[] = [];
     doc.on("data", (c: Buffer) => buffers.push(c));
     doc.on("end", () => resolve(Buffer.concat(buffers)));
     doc.on("error", reject);
 
-    const W = doc.page.width - 100;
+    const pageW = doc.page.width;
+    const L = 50;
+    const R = pageW - 50;
+    const W = R - L;
     const orange = "#E67E22";
     const dark = "#1a1a1a";
-    const gray = "#666666";
-    const light = "#f8f8f8";
+    const gray = "#555555";
+    const lightGray = "#888888";
+    const tableBg = "#f7f7f7";
 
-    // ── HEADER BANNER ──
-    doc.rect(50, 50, W, 85).fillColor(orange).fill();
+    // ── HEADER ────────────────────────────────────────────
+    doc.rect(L, 45, W, 80).fillColor(orange).fill();
     doc
       .fillColor("white")
-      .fontSize(16)
       .font("Helvetica-Bold")
-      .text(COMPANY.name, 65, 60, { width: W - 20 });
+      .fontSize(15)
+      .text(COMPANY.name, L + 12, 54, { width: W - 130 });
     doc
+      .font("Helvetica")
       .fontSize(8)
-      .font("Helvetica")
-      .text("Zero Commission Hotel Booking Platform | www.zecoho.com", 65, 80);
-    doc.text(`GSTIN: ${COMPANY.gstin}   |   PAN: ${COMPANY.pan}`, 65, 93);
-    doc.text(
-      `${COMPANY.address}, ${COMPANY.city} - ${COMPANY.pin}, ${COMPANY.state}`,
-      65,
-      106,
-    );
+      .text("Zero Commission Hotel Booking Platform", L + 12, 73)
+      .text(`GSTIN: ${COMPANY.gstin}   PAN: ${COMPANY.pan}`, L + 12, 84)
+      .text(`${COMPANY.address}, ${COMPANY.city} - ${COMPANY.pin}`, L + 12, 95)
+      .text(`${COMPANY.state}  |  ${COMPANY.website}`, L + 12, 106);
 
-    // ── TAX INVOICE TITLE ──
-    doc.rect(50, 143, W, 26).fillColor("#2c2c2c").fill();
+    // ── TAX INVOICE LABEL ─────────────────────────────────
+    doc.rect(L, 133, W, 22).fillColor("#2c2c2c").fill();
     doc
       .fillColor("white")
-      .fontSize(13)
       .font("Helvetica-Bold")
-      .text("TAX INVOICE", 50, 151, { align: "center", width: W });
+      .fontSize(12)
+      .text("TAX INVOICE", L, 139, { align: "center", width: W });
 
-    // ── INVOICE DETAILS ──
-    const dY = 178;
-    doc
-      .rect(50, dY, W / 2 - 4, 58)
-      .strokeColor("#d0d0d0")
-      .lineWidth(0.8)
-      .stroke();
-    doc
-      .rect(54 + W / 2, dY, W / 2 - 4, 58)
-      .strokeColor("#d0d0d0")
-      .lineWidth(0.8)
-      .stroke();
-
-    const invoiceDate = new Date(inv.invoiceDate);
-    const dateStr = invoiceDate.toLocaleDateString("en-IN", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-    });
-
-    doc
-      .fillColor(gray)
-      .font("Helvetica-Bold")
-      .fontSize(7)
-      .text("INVOICE NUMBER", 58, dY + 8);
-    doc
-      .fillColor(dark)
-      .font("Helvetica")
-      .fontSize(11)
-      .text(inv.invoiceNumber, 58, dY + 20);
-    doc
-      .fillColor(gray)
-      .font("Helvetica-Bold")
-      .fontSize(7)
-      .text("SAC CODE", 58, dY + 38);
-    doc
-      .fillColor(dark)
-      .font("Helvetica")
-      .fontSize(9)
-      .text(inv.sacCode || "998314", 58, dY + 49);
-
-    const c2 = 58 + W / 2;
-    doc
-      .fillColor(gray)
-      .font("Helvetica-Bold")
-      .fontSize(7)
-      .text("INVOICE DATE", c2, dY + 8);
-    doc
-      .fillColor(dark)
-      .font("Helvetica")
-      .fontSize(11)
-      .text(dateStr, c2, dY + 20);
-    if (inv.transactionId) {
+    // ── INVOICE META ROW ──────────────────────────────────
+    const metaY = 163;
+    const col = W / 4;
+    const metaItems = [
+      ["Invoice No.", inv.invoiceNumber],
+      [
+        "Date",
+        new Date(inv.invoiceDate).toLocaleDateString("en-IN", {
+          day: "2-digit",
+          month: "2-digit",
+          year: "numeric",
+        }),
+      ],
+      ["SAC Code", inv.sacCode || "998599"],
+      ["Ref / Txn ID", inv.transactionId || "—"],
+    ];
+    metaItems.forEach(([label, value], i) => {
+      const x = L + i * col;
       doc
-        .fillColor(gray)
+        .rect(x, metaY, col, 36)
+        .strokeColor("#cccccc")
+        .lineWidth(0.6)
+        .stroke();
+      doc
+        .fillColor(lightGray)
         .font("Helvetica-Bold")
         .fontSize(7)
-        .text("PAYMENT REFERENCE", c2, dY + 38);
+        .text(label, x + 6, metaY + 5, { width: col - 10 });
       doc
         .fillColor(dark)
-        .font("Helvetica")
+        .font("Helvetica-Bold")
         .fontSize(9)
-        .text(inv.transactionId, c2, dY + 49);
-    }
+        .text(String(value), x + 6, metaY + 17, { width: col - 10 });
+    });
 
-    // ── BILL TO ──
-    const bY = 248;
+    // ── BILL TO ───────────────────────────────────────────
+    const btY = 210;
+    doc.rect(L, btY, W, 14).fillColor("#eeeeee").fill();
     doc
-      .fillColor(gray)
+      .fillColor(dark)
       .font("Helvetica-Bold")
       .fontSize(8)
-      .text("BILL TO", 50, bY);
+      .text("BILLED TO", L + 8, btY + 3);
     doc
-      .moveTo(50, bY + 13)
-      .lineTo(50 + W, bY + 13)
-      .strokeColor("#d0d0d0")
-      .lineWidth(0.5)
-      .stroke();
+      .rect(L, btY + 14, W, 0.5)
+      .fillColor("#cccccc")
+      .fill();
+
+    let btRow = btY + 22;
+    const btLine = (label: string, val: string) => {
+      if (!val) return;
+      doc
+        .fillColor(lightGray)
+        .font("Helvetica")
+        .fontSize(8)
+        .text(`${label}: `, L + 8, btRow, { continued: true, width: 80 });
+      doc.fillColor(dark).text(val, { width: W - 90 });
+      btRow += 13;
+    };
     doc
       .fillColor(dark)
       .font("Helvetica-Bold")
       .fontSize(10)
-      .text(inv.ownerName, 50, bY + 19);
+      .text(inv.ownerName, L + 8, btRow);
+    btRow += 14;
+    btLine("Email", inv.ownerEmail || "");
+    btLine("Phone", inv.ownerPhone || "");
+    btLine("Address", inv.ownerAddress || "");
+    btLine("GSTIN", inv.ownerGstin || "");
+    btLine("State", inv.ownerState || "");
 
-    let bRowY = bY + 34;
-    const bLine = (label: string, val: string) => {
-      doc
-        .fillColor(gray)
-        .font("Helvetica")
-        .fontSize(8)
-        .text(`${label}: `, 50, bRowY, { continued: true });
-      doc.fillColor(dark).text(val, { width: W });
-      bRowY += 14;
-    };
-    if (inv.ownerEmail) bLine("Email", inv.ownerEmail);
-    if (inv.ownerPhone) bLine("Phone", inv.ownerPhone);
-    if (inv.ownerAddress) bLine("Address", inv.ownerAddress);
-    if (inv.ownerGstin) bLine("GSTIN", inv.ownerGstin);
-    if (inv.ownerState) bLine("State", inv.ownerState);
-
-    // ── ITEMS TABLE ──
-    const tY = Math.max(bRowY + 20, 390);
-    // Header
-    doc.rect(50, tY, W, 22).fillColor("#2c2c2c").fill();
+    // ── ITEMS TABLE ───────────────────────────────────────
+    const tY = Math.max(btRow + 16, 315);
+    // Header row
+    doc.rect(L, tY, W, 20).fillColor("#2c2c2c").fill();
     doc.fillColor("white").font("Helvetica-Bold").fontSize(8);
-    doc.text("DESCRIPTION", 58, tY + 7);
-    doc.text("SAC", 295, tY + 7);
-    doc.text("PERIOD", 365, tY + 7);
-    doc.text("AMOUNT (₹)", 450, tY + 7, { align: "right", width: 95 });
+    const cols = { desc: L + 8, sac: L + 240, period: L + 300, amt: L + 380 };
+    doc.text("Description of Service", cols.desc, tY + 6);
+    doc.text("SAC", cols.sac, tY + 6);
+    doc.text("Period", cols.period, tY + 6);
+    doc.text("Amount (₹)", cols.amt, tY + 6, { width: 105, align: "right" });
 
-    // Row
-    const rY = tY + 22;
-    doc.rect(50, rY, W, 38).fillColor(light).fill();
-    doc.rect(50, rY, W, 38).strokeColor("#e0e0e0").lineWidth(0.5).stroke();
+    // Item row
+    const rY = tY + 20;
+    const rH = 40;
+    doc.rect(L, rY, W, rH).fillColor(tableBg).fill();
+    doc.rect(L, rY, W, rH).strokeColor("#dddddd").lineWidth(0.5).stroke();
     doc
       .fillColor(dark)
       .font("Helvetica-Bold")
       .fontSize(9)
-      .text(inv.planName, 58, rY + 7);
+      .text(inv.planName, cols.desc, rY + 8, { width: 220 });
     doc
       .fillColor(gray)
       .font("Helvetica")
       .fontSize(8)
-      .text("Subscription Service", 58, rY + 22);
+      .text("Subscription Service — ZECOHO Platform", cols.desc, rY + 22, {
+        width: 220,
+      });
     doc
       .fillColor(dark)
       .fontSize(9)
-      .text(inv.sacCode || "998314", 295, rY + 14);
-    doc.text(inv.planDuration, 365, rY + 14);
-    doc.font("Helvetica-Bold").text(
-      Number(inv.baseAmount).toLocaleString("en-IN", {
-        minimumFractionDigits: 2,
-      }),
-      450,
-      rY + 14,
-      { align: "right", width: 95 },
-    );
+      .text(inv.sacCode || "998599", cols.sac, rY + 15);
+    doc.text(inv.planDuration, cols.period, rY + 15);
+    doc
+      .font("Helvetica-Bold")
+      .text(
+        `₹ ${Number(inv.baseAmount).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+        cols.amt,
+        rY + 15,
+        { width: 105, align: "right" },
+      );
 
-    // ── GST BREAKUP ──
-    const gX = 350;
-    const gW = W - 300;
-    let gY = rY + 55;
+    // ── TAX SUMMARY ───────────────────────────────────────
+    const sumX = L + 270;
+    const sumW = W - 270;
+    let sumY = rY + rH + 16;
 
-    const gRow = (label: string, value: string, bold = false) => {
+    const sumRow = (
+      label: string,
+      amount: string,
+      bold = false,
+      bg = false,
+    ) => {
+      if (bg)
+        doc
+          .rect(sumX, sumY - 2, sumW, 20)
+          .fillColor(orange)
+          .fill();
       doc
-        .fillColor(bold ? dark : gray)
+        .fillColor(bg ? "white" : bold ? dark : gray)
         .font(bold ? "Helvetica-Bold" : "Helvetica")
-        .fontSize(9)
-        .text(label, gX, gY);
-      doc.text(value, gX + 50, gY, { align: "right", width: gW - 50 });
-      gY += 16;
+        .fontSize(bg ? 10 : 9)
+        .text(label, sumX + 6, sumY + 2)
+        .text(amount, sumX + 6, sumY + 2, { align: "right", width: sumW - 12 });
+      sumY += 20;
     };
 
     doc
-      .moveTo(gX, gY - 5)
-      .lineTo(50 + W, gY - 5)
-      .strokeColor("#e0e0e0")
-      .lineWidth(0.5)
-      .stroke();
-    gRow(
+      .rect(sumX, sumY - 2, sumW, 0.5)
+      .fillColor("#cccccc")
+      .fill();
+    sumY += 6;
+    sumRow(
       "Taxable Amount:",
       `₹ ${Number(inv.baseAmount).toLocaleString("en-IN", { minimumFractionDigits: 2 })}`,
     );
-
     if (Number(inv.cgstAmount) > 0) {
-      gRow(
+      sumRow(
         `CGST @ ${inv.cgstRate}%:`,
         `₹ ${Number(inv.cgstAmount).toLocaleString("en-IN", { minimumFractionDigits: 2 })}`,
       );
-      gRow(
+      sumRow(
         `SGST @ ${inv.sgstRate}%:`,
         `₹ ${Number(inv.sgstAmount).toLocaleString("en-IN", { minimumFractionDigits: 2 })}`,
       );
     } else {
-      gRow(
+      sumRow(
         `IGST @ ${inv.igstRate}%:`,
         `₹ ${Number(inv.igstAmount).toLocaleString("en-IN", { minimumFractionDigits: 2 })}`,
       );
     }
-
     doc
-      .moveTo(gX, gY)
-      .lineTo(50 + W, gY)
-      .strokeColor("#cccccc")
-      .lineWidth(0.5)
-      .stroke();
-    gY += 6;
-    doc.rect(gX, gY, gW, 26).fillColor(orange).fill();
-    doc
-      .fillColor("white")
-      .font("Helvetica-Bold")
-      .fontSize(11)
-      .text("TOTAL:", gX + 6, gY + 7)
-      .text(
-        `₹ ${Number(inv.totalAmount).toLocaleString("en-IN", { minimumFractionDigits: 2 })}`,
-        gX + 50,
-        gY + 7,
-        { align: "right", width: gW - 56 },
-      );
+      .rect(sumX, sumY - 2, sumW, 0.5)
+      .fillColor("#cccccc")
+      .fill();
+    sumY += 4;
+    sumRow(
+      "TOTAL AMOUNT:",
+      `₹ ${Number(inv.totalAmount).toLocaleString("en-IN", { minimumFractionDigits: 2 })}`,
+      true,
+      true,
+    );
 
-    // ── AMOUNT IN WORDS ──
-    const wY = gY + 40;
-    doc.rect(50, wY, W, 30).fillColor(light).fill();
-    doc.rect(50, wY, W, 30).strokeColor("#e0e0e0").lineWidth(0.5).stroke();
+    // ── AMOUNT IN WORDS ───────────────────────────────────
+    const wY = sumY + 12;
+    doc.rect(L, wY, W, 28).fillColor(tableBg).fill();
+    doc.rect(L, wY, W, 28).strokeColor("#dddddd").lineWidth(0.5).stroke();
     doc
       .fillColor(dark)
       .font("Helvetica-Bold")
       .fontSize(8)
-      .text("Amount in Words:", 58, wY + 5);
+      .text("Amount in Words:", L + 8, wY + 5);
     doc
       .font("Helvetica")
       .fontSize(8)
-      .text(amountToWords(Number(inv.totalAmount)), 58, wY + 17, {
+      .fillColor(gray)
+      .text(amountToWords(Number(inv.totalAmount)), L + 8, wY + 16, {
         width: W - 16,
       });
 
-    // ── BANK DETAILS + SIGNATURE ──
-    const bnkY = wY + 48;
-    doc
-      .fillColor(gray)
-      .font("Helvetica-Bold")
-      .fontSize(8)
-      .text("BANK DETAILS", 50, bnkY);
-    doc
-      .moveTo(50, bnkY + 12)
-      .lineTo(230, bnkY + 12)
-      .strokeColor("#d0d0d0")
-      .lineWidth(0.5)
-      .stroke();
-    doc.fillColor(dark).font("Helvetica").fontSize(8);
-    doc.text(`Account Name: ${COMPANY.bank.name}`, 50, bnkY + 17);
-    doc.text(`Bank: ${COMPANY.bank.bank}`, 50, bnkY + 29);
-    doc.text(
-      `A/C: ${COMPANY.bank.account}  |  IFSC: ${COMPANY.bank.ifsc}`,
-      50,
-      bnkY + 41,
-    );
+    // ── BANK + UPI + SIGNATURE ────────────────────────────
+    const bankY = wY + 44;
+    const halfW = W / 2 - 8;
 
-    const sigX = 370;
+    // Bank details (left)
     doc
-      .fillColor(gray)
+      .rect(L, bankY, halfW, 80)
+      .strokeColor("#dddddd")
+      .lineWidth(0.5)
+      .stroke();
+    doc
+      .fillColor(dark)
       .font("Helvetica-Bold")
       .fontSize(8)
-      .text("For ZECOHO TECHNOLOGIES PRIVATE LIMITED", sigX, bnkY, {
-        width: W - 320,
+      .text("Bank Details", L + 8, bankY + 6);
+    doc
+      .rect(L + 8, bankY + 16, halfW - 16, 0.4)
+      .fillColor("#eeeeee")
+      .fill();
+    doc.fillColor(gray).font("Helvetica").fontSize(8);
+    doc.text(`Name:    ${COMPANY.bank.name}`, L + 8, bankY + 22);
+    doc.text(`Bank:      ${COMPANY.bank.bank}`, L + 8, bankY + 34);
+    doc.text(`A/C:        ${COMPANY.bank.account}`, L + 8, bankY + 46);
+    doc.text(`IFSC:       ${COMPANY.bank.ifsc}`, L + 8, bankY + 58);
+
+    // UPI QR placeholder + UPI ID (right side)
+    const upiX = L + halfW + 16;
+    doc
+      .rect(upiX, bankY, halfW, 80)
+      .strokeColor("#dddddd")
+      .lineWidth(0.5)
+      .stroke();
+    doc
+      .fillColor(dark)
+      .font("Helvetica-Bold")
+      .fontSize(8)
+      .text("UPI Payment", upiX + 8, bankY + 6);
+    doc
+      .rect(upiX + 8, bankY + 16, halfW - 16, 0.4)
+      .fillColor("#eeeeee")
+      .fill();
+    // QR placeholder box
+    doc
+      .rect(upiX + 8, bankY + 20, 52, 52)
+      .strokeColor("#cccccc")
+      .lineWidth(0.8)
+      .stroke();
+    doc
+      .fillColor(lightGray)
+      .font("Helvetica")
+      .fontSize(6)
+      .text("SCAN TO PAY", upiX + 10, bankY + 41, {
+        width: 48,
+        align: "center",
       });
-    doc
-      .moveTo(sigX, bnkY + 12)
-      .lineTo(50 + W, bnkY + 12)
-      .strokeColor("#d0d0d0")
-      .lineWidth(0.5)
-      .stroke();
-    doc
-      .moveTo(sigX, bnkY + 52)
-      .lineTo(50 + W, bnkY + 52)
-      .strokeColor("#d0d0d0")
-      .lineWidth(0.5)
-      .stroke();
+    // UPI ID text
     doc
       .fillColor(gray)
       .font("Helvetica")
       .fontSize(8)
-      .text("Authorised Signatory", sigX, bnkY + 56, {
-        width: W - 320,
-        align: "center",
+      .text("UPI ID:", upiX + 68, bankY + 28)
+      .text("zecoho@ybl", upiX + 68, bankY + 40)
+      .text("(verify before payment)", upiX + 68, bankY + 52, {
+        width: halfW - 80,
       });
 
-    // ── FOOTER ──
-    const fY = doc.page.height - 65;
+    // Signature (far right)
+    const sigX = L + W - 160;
+    const sigY = bankY + 90;
     doc
-      .moveTo(50, fY)
-      .lineTo(50 + W, fY)
-      .strokeColor("#cccccc")
+      .rect(sigX, sigY, 160, 55)
+      .strokeColor("#dddddd")
       .lineWidth(0.5)
       .stroke();
     doc
-      .fillColor(gray)
+      .fillColor(dark)
+      .font("Helvetica-Bold")
+      .fontSize(7)
+      .text("For ZECOHO TECHNOLOGIES PRIVATE LIMITED", sigX + 6, sigY + 6, {
+        width: 148,
+      });
+    doc
+      .rect(sigX + 6, sigY + 40, 148, 0.5)
+      .fillColor("#cccccc")
+      .fill();
+    doc
+      .fillColor(lightGray)
+      .font("Helvetica")
+      .fontSize(7)
+      .text("Authorised Signatory", sigX + 6, sigY + 44, {
+        width: 148,
+        align: "center",
+      });
+
+    // ── FOOTER ────────────────────────────────────────────
+    const fY = doc.page.height - 50;
+    doc
+      .rect(L, fY - 6, W, 0.5)
+      .fillColor("#cccccc")
+      .fill();
+    doc
+      .fillColor(lightGray)
       .font("Helvetica")
       .fontSize(7)
       .text(
         "This is a computer-generated invoice and does not require a physical signature.",
-        50,
-        fY + 8,
+        L,
+        fY,
         { align: "center", width: W },
       );
     doc.text(
-      `${COMPANY.website}  |  ${COMPANY.email}  |  GSTIN: ${COMPANY.gstin}`,
-      50,
-      fY + 20,
+      `${COMPANY.website}  |  ${COMPANY.email}  |  GSTIN: ${COMPANY.gstin}  |  Subject to ${COMPANY.city} Jurisdiction`,
+      L,
+      fY + 11,
       { align: "center", width: W },
     );
-    doc.text(`Subject to ${COMPANY.city} Jurisdiction`, 50, fY + 32, {
-      align: "center",
-      width: W,
-    });
 
+    // ── END — single page only ────────────────────────────
     doc.end();
   });
 }

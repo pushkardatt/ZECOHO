@@ -165,6 +165,39 @@ router.delete("/admin/subscription-plans/:id", async (req, res) => {
   }
 });
 /* ADMIN — activate */
+router.post("/admin/owner-subscriptions/:id/extend", async (req, res) => {
+  try {
+    const { days } = req.body;
+    if (!days || isNaN(Number(days)) || Number(days) < 1) {
+      return res.status(400).json({ error: "Valid number of days required" });
+    }
+    // Get all subscriptions and find this one
+    const allSubs = await storage.getAllOwnerSubscriptions();
+    const sub = allSubs.find((s: any) => s.id === req.params.id);
+    if (!sub) return res.status(404).json({ error: "Subscription not found" });
+
+    const currentEnd = sub.endDate ? new Date(sub.endDate) : new Date();
+    const newEnd = new Date(currentEnd);
+    newEnd.setDate(newEnd.getDate() + Number(days));
+
+    const updated = await storage.updateOwnerSubscriptionDates(
+      req.params.id,
+      sub.startDate ? new Date(sub.startDate) : new Date(),
+      newEnd,
+    );
+
+    const { broadcastToUser } = await import("./routes");
+    broadcastToUser((sub as any).ownerId, {
+      type: "subscription_extended",
+      message: `Your subscription has been extended by ${days} day(s). New expiry: ${newEnd.toLocaleDateString("en-IN")}`,
+    });
+
+    res.json({ ...updated, newEndDate: newEnd });
+  } catch (error) {
+    console.error("Extend subscription error:", error);
+    res.status(500).json({ error: "Failed to extend subscription" });
+  }
+});
 router.post("/admin/owner-subscriptions/:id/activate", async (req, res) => {
   try {
     const { note, startDate, endDate } = req.body;
