@@ -476,6 +476,22 @@ export default function Login() {
               </TabsContent>
 
               <div className="mt-6 text-center space-y-4">
+                <p className="text-xs text-muted-foreground px-2 leading-relaxed">
+                  By proceeding, you agree to ZECOHO's{" "}
+                  <a
+                    href="/terms"
+                    className="text-primary underline hover:no-underline"
+                  >
+                    Terms & Conditions
+                  </a>{" "}
+                  and{" "}
+                  <a
+                    href="/privacy"
+                    className="text-primary underline hover:no-underline"
+                  >
+                    Privacy Policy
+                  </a>
+                </p>
                 <p className="text-sm text-muted-foreground">
                   Don't have an account?{" "}
                   <Link
@@ -486,7 +502,6 @@ export default function Login() {
                     Create one
                   </Link>
                 </p>
-
                 <Button
                   type="button"
                   variant="ghost"
