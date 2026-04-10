@@ -558,6 +558,22 @@ export default function Login() {
                   <ArrowLeft className="h-4 w-4 mr-2" />
                   Back to Login
                 </Button>
+                <p className="text-xs text-center text-muted-foreground px-2 mt-2 leading-relaxed">
+                  By proceeding, you agree to ZECOHO's{" "}
+                  <a
+                    href="/terms"
+                    className="text-primary underline hover:no-underline"
+                  >
+                    Terms & Conditions
+                  </a>{" "}
+                  and{" "}
+                  <a
+                    href="/privacy"
+                    className="text-primary underline hover:no-underline"
+                  >
+                    Privacy Policy
+                  </a>
+                </p>
               </div>
             </div>
           )}
