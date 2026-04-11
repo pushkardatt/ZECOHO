@@ -590,14 +590,7 @@ async function buildPDF(inv: any): Promise<Buffer> {
       });
 
     // ── FOOTER ────────────────────────────────────────────
-    // Fixed footer position — keeps invoice on single page
-    const contentBottom = sigY + 60;
-    const fY = doc.page.height - 48;
-
-    // Safety check — if content would overflow, compress spacing
-    if (fY > doc.page.height - 20) {
-      console.warn("[INVOICE] Content may overflow single page");
-    }
+    const fY = 780;
     doc
       .rect(L, fY - 6, W, 0.5)
       .fillColor("#cccccc")
