@@ -1,14 +1,13 @@
 import { type Server } from "node:http";
-
 import express, {
   type Express,
   type Request,
   Response,
   NextFunction,
 } from "express";
-
 import { registerRoutes } from "./routes";
 import rateLimit from "express-rate-limit";
+import helmet from "helmet";
 import { seedAmenities } from "./seed-amenities";
 import { seedDestinations } from "./seed-destinations";
 import { seedOwnerAgreement } from "./seed-owner-agreement";
@@ -28,6 +27,36 @@ export function log(message: string, source = "express") {
 
 export const app = express();
 
+// ── Security Headers ──────────────────────────────────────────────────────
+app.use(
+  helmet({
+    contentSecurityPolicy: false, // Disabled to allow Replit dev tools
+    crossOriginEmbedderPolicy: false,
+  }),
+);
+
+// ── CORS ──────────────────────────────────────────────────────────────────
+app.use((req: Request, res: Response, next: NextFunction) => {
+  const allowedOrigins = [
+    "https://zecoho.com",
+    "https://www.zecoho.com",
+    "https://zecoho.replit.app",
+  ];
+  const origin = req.headers.origin;
+  if (origin && allowedOrigins.includes(origin)) {
+    res.setHeader("Access-Control-Allow-Origin", origin);
+  }
+  res.setHeader(
+    "Access-Control-Allow-Methods",
+    "GET, POST, PUT, PATCH, DELETE, OPTIONS",
+  );
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  res.setHeader("Access-Control-Allow-Credentials", "true");
+  if (req.method === "OPTIONS") {
+    return res.status(200).end();
+  }
+  next();
+});
 declare module "http" {
   interface IncomingMessage {
     rawBody: unknown;
