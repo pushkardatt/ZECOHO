@@ -2214,12 +2214,79 @@ export default function ListPropertyWizard() {
                           <FormItem>
                             <FormLabel>GST Number (Optional)</FormLabel>
                             <FormControl>
-                              <Input
-                                placeholder="22AAAAA0000A1Z5"
-                                {...field}
-                                data-testid="input-gst-number"
-                              />
+                              <div className="relative">
+                                <Input
+                                  placeholder="22AAAAA0000A1Z5"
+                                  {...field}
+                                  maxLength={15}
+                                  onChange={async (e) => {
+                                    const val = e.target.value.toUpperCase();
+                                    field.onChange(val);
+                                    if (val.length === 15) {
+                                      try {
+                                        toast({
+                                          title: "Looking up GST...",
+                                          description:
+                                            "Fetching business details",
+                                        });
+                                        gstincheck;
+                                        const data = await res.json();
+                                        if (data?.flag && data.data) {
+                                          const d = data.data;
+                                          const addr = d.pradr?.addr;
+                                          if (addr) {
+                                            form.setValue(
+                                              "kycStreetAddress",
+                                              [addr.bnm, addr.st]
+                                                .filter(Boolean)
+                                                .join(", ") ||
+                                                form.getValues(
+                                                  "kycStreetAddress",
+                                                ),
+                                            );
+                                            form.setValue(
+                                              "kycLocality",
+                                              addr.loc ||
+                                                form.getValues("kycLocality"),
+                                            );
+                                            form.setValue(
+                                              "kycCity",
+                                              addr.dst ||
+                                                form.getValues("kycCity"),
+                                            );
+                                            form.setValue(
+                                              "kycDistrict",
+                                              addr.dst ||
+                                                form.getValues("kycDistrict"),
+                                            );
+                                            form.setValue(
+                                              "kycState",
+                                              addr.stcd ||
+                                                form.getValues("kycState"),
+                                            );
+                                            form.setValue(
+                                              "kycPincode",
+                                              addr.pncd ||
+                                                form.getValues("kycPincode"),
+                                            );
+                                            toast({
+                                              title: "GST Details Found!",
+                                              description: `Business: ${d.tradeNam || d.lgnm}`,
+                                            });
+                                          }
+                                        }
+                                      } catch (err) {
+                                        console.log("GST lookup failed", err);
+                                      }
+                                    }
+                                  }}
+                                  data-testid="input-gst-number"
+                                />
+                              </div>
                             </FormControl>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              Enter 15-digit GSTIN to auto-fill address details
+                            </p>
                             <FormMessage />
                           </FormItem>
                         )}
@@ -3000,12 +3067,82 @@ export default function ListPropertyWizard() {
                             <FormItem>
                               <FormLabel>GST Number (Optional)</FormLabel>
                               <FormControl>
-                                <Input
-                                  placeholder="22AAAAA0000A1Z5"
-                                  {...field}
-                                  data-testid="input-gst"
-                                />
+                                <div className="relative">
+                                  <Input
+                                    placeholder="22AAAAA0000A1Z5"
+                                    {...field}
+                                    maxLength={15}
+                                    onChange={async (e) => {
+                                      const val = e.target.value.toUpperCase();
+                                      field.onChange(val);
+                                      if (val.length === 15) {
+                                        try {
+                                          toast({
+                                            title: "Looking up GST...",
+                                            description:
+                                              "Fetching business details",
+                                          });
+                                          const res = await fetch(
+                                            `https://sheet.gstincheck.co.in/check/${import.meta.env.VITE_GST_API_KEY}/${val}`,
+                                          );
+                                          const data = await res.json();
+                                          if (data?.flag && data.data) {
+                                            const d = data.data;
+                                            const addr = d.pradr?.addr;
+                                            if (addr) {
+                                              form.setValue(
+                                                "kycStreetAddress",
+                                                [addr.bnm, addr.st]
+                                                  .filter(Boolean)
+                                                  .join(", ") ||
+                                                  form.getValues(
+                                                    "kycStreetAddress",
+                                                  ),
+                                              );
+                                              form.setValue(
+                                                "kycLocality",
+                                                addr.loc ||
+                                                  form.getValues("kycLocality"),
+                                              );
+                                              form.setValue(
+                                                "kycCity",
+                                                addr.dst ||
+                                                  form.getValues("kycCity"),
+                                              );
+                                              form.setValue(
+                                                "kycDistrict",
+                                                addr.dst ||
+                                                  form.getValues("kycDistrict"),
+                                              );
+                                              form.setValue(
+                                                "kycState",
+                                                addr.stcd ||
+                                                  form.getValues("kycState"),
+                                              );
+                                              form.setValue(
+                                                "kycPincode",
+                                                addr.pncd ||
+                                                  form.getValues("kycPincode"),
+                                              );
+                                              toast({
+                                                title: "GST Details Found!",
+                                                description: `Business: ${d.tradeNam || d.lgnm}`,
+                                              });
+                                            }
+                                          }
+                                        } catch (err) {
+                                          console.log("GST lookup failed", err);
+                                        }
+                                      }
+                                    }}
+                                    data-testid="input-gst-number"
+                                  />
+                                </div>
                               </FormControl>
+                              <p className="text-xs text-muted-foreground mt-1">
+                                Enter 15-digit GSTIN to auto-fill address
+                                details
+                              </p>
                               <FormMessage />
                             </FormItem>
                           )}

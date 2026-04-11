@@ -182,19 +182,7 @@ export async function createInvoice(params: CreateInvoiceParams) {
       ownerName,
       ownerEmail: owner.email || null,
       ownerPhone: owner.phone || null,
-      ownerAddress:
-        owner.kycAddress ||
-        [
-          (kycApp as any)?.flatNo,
-          (kycApp as any)?.houseNo,
-          (kycApp as any)?.streetAddress,
-          (kycApp as any)?.locality,
-          (kycApp as any)?.city,
-          (kycApp as any)?.district,
-        ]
-          .filter(Boolean)
-          .join(", ") ||
-        null,
+      ownerAddress: owner.kycAddress || null,
       ownerGstin: params.ownerGstin || (kycApp as any)?.gstNumber || null,
       ownerState: ownerState || (kycApp as any)?.state || null,
       planName: params.planName,
@@ -276,7 +264,7 @@ async function buildPDF(inv: any): Promise<Buffer> {
       .fontSize(12)
       .text("TAX INVOICE", L, 139, { align: "center", width: W });
 
-    // ── INVOICE META ROW ──────────────────────────────────
+    // ── INVOICE META ROW ─────────────────)��────────────────
     const metaY = 163;
     const col = W / 4;
     const metaItems = [
@@ -514,7 +502,7 @@ async function buildPDF(inv: any): Promise<Buffer> {
       .fill();
     // Real UPI QR Code
     try {
-      const upiString = `upi://pay?pa=yespay.mabs0470619ikit5650@yesbankltd&pn=ZECOHO TECHNOLOGIES&am=${inv.totalAmount}&cu=INR&tn=Invoice ${inv.invoiceNumber}`;
+      const upiString = `upi://pay?pa=yespay.mabs0470619ikit5650@yesbankltd&pn=ZECOHO%20TECHNOLOGIES&am=${Number(inv.totalAmount).toFixed(2)}&cu=INR`;
       const qrDataUrl = await QRCode.toDataURL(upiString, {
         width: 52,
         margin: 1,
@@ -633,16 +621,5 @@ async function buildPDF(inv: any): Promise<Buffer> {
 
     // ── END — single page only ────────────────────────────
     doc.end();
-    // Remove any extra blank pages
-    const range = doc.bufferedPageRange();
-    if (range.count > 1) {
-      for (let i = range.count - 1; i > 0; i--) {
-        doc.switchToPage(i);
-        const pageContent = (doc as any).page.content;
-        if (!pageContent || pageContent.toString().trim() === "") {
-          (doc as any)._pageBuffer.splice(i, 1);
-        }
-      }
-    }
   });
 }
