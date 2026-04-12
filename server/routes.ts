@@ -2,7 +2,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { db } from "./db";
+import { db, pool } from "./db";
 import { eq, sql, inArray, desc, and, gte } from "drizzle-orm";
 import {
   users,
