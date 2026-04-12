@@ -179,7 +179,10 @@ export interface IStorage {
     search?: string;
     adminView?: boolean;
   }): Promise<Property[]>;
-  getProperty(id: string): Promise<Property | undefined>;
+  getProperty(
+    id: string,
+    bypassSubscriptionCheck?: boolean,
+  ): Promise<Property | undefined>;
   createProperty(property: InsertProperty): Promise<Property>;
   updateProperty(
     id: string,
@@ -709,6 +712,7 @@ export interface IStorage {
     adminId: string,
     note: string,
   ): Promise<OwnerSubscription | undefined>;
+  getAllOwnerSubscriptions(): Promise<OwnerSubscription[]>;
   getAllOwnerSubscriptionsForAdmin(): Promise<
     (OwnerSubscription & { owner: User; plan: SubscriptionPlan })[]
   >;
@@ -882,7 +886,10 @@ export class DatabaseStorage implements IStorage {
     return allProps.filter((p) => subscribedOwnerIds.has(p.ownerId));
   }
 
-  async getProperty(id: string): Promise<Property | undefined> {
+  async getProperty(
+    id: string,
+    bypassSubscriptionCheck = false,
+  ): Promise<Property | undefined> {
     const [property] = await db
       .select()
       .from(properties)
@@ -890,9 +897,11 @@ export class DatabaseStorage implements IStorage {
 
     if (!property) return undefined;
 
-    const sub = await this.checkOwnerSubscriptionStatus(property.ownerId);
+    // Bypass for: admin operations, owner portal, internal lookups
+    if (bypassSubscriptionCheck) return property;
 
-    // 🔴 BLOCK if no active subscription
+    // Public guest access: only show if owner has active subscription
+    const sub = await this.checkOwnerSubscriptionStatus(property.ownerId);
     if (!sub.isActive) return undefined;
 
     return property;
@@ -3788,19 +3797,43 @@ export class DatabaseStorage implements IStorage {
     adminId: string,
     note?: string,
   ): Promise<OwnerSubscription | undefined> {
+    const [sub] = await db
+      .select()
+      .from(ownerSubscriptions)
+      .where(eq(ownerSubscriptions.id, id));
+    if (!sub) return undefined;
+
+    // Only set dates if not already set (preserve dates set by updateOwnerSubscriptionDates)
+    const updateData: any = {
+      status: "active",
+      activatedBy: adminId,
+      activationNote: note || null,
+      updatedAt: new Date(),
+    };
+
+    if (!sub.startDate) {
+      updateData.startDate = new Date();
+    }
+    if (!sub.endDate) {
+      const endDate = new Date();
+      const duration = sub.duration || "monthly";
+      if (duration === "monthly") endDate.setMonth(endDate.getMonth() + 1);
+      else if (duration === "quarterly")
+        endDate.setMonth(endDate.getMonth() + 3);
+      else if (duration === "half_yearly")
+        endDate.setMonth(endDate.getMonth() + 6);
+      else if (duration === "yearly")
+        endDate.setFullYear(endDate.getFullYear() + 1);
+      updateData.endDate = endDate;
+    }
+
     const [updated] = await db
       .update(ownerSubscriptions)
-      .set({
-        status: "active",
-        activatedBy: adminId,
-        activationNote: note,
-        activatedAt: new Date(),
-      })
+      .set(updateData)
       .where(eq(ownerSubscriptions.id, id))
       .returning();
     return updated;
   }
-
   async cancelOwnerSubscription(
     id: string,
     reason?: string,
@@ -3809,8 +3842,44 @@ export class DatabaseStorage implements IStorage {
       .update(ownerSubscriptions)
       .set({
         status: "cancelled",
-        cancellationReason: reason,
-        cancelledAt: new Date(),
+        activationNote: reason || null,
+        updatedAt: new Date(),
+      })
+      .where(eq(ownerSubscriptions.id, id))
+      .returning();
+    return updated;
+  }
+  async waiveOwnerSubscription(
+    id: string,
+    adminId: string,
+    note: string,
+  ): Promise<OwnerSubscription | undefined> {
+    const [sub] = await db
+      .select()
+      .from(ownerSubscriptions)
+      .where(eq(ownerSubscriptions.id, id));
+    if (!sub) return undefined;
+
+    const startDate = new Date();
+    const endDate = new Date();
+    const duration = sub.duration || "monthly";
+    if (duration === "monthly") endDate.setMonth(endDate.getMonth() + 1);
+    else if (duration === "quarterly") endDate.setMonth(endDate.getMonth() + 3);
+    else if (duration === "half_yearly")
+      endDate.setMonth(endDate.getMonth() + 6);
+    else if (duration === "yearly")
+      endDate.setFullYear(endDate.getFullYear() + 1);
+
+    const [updated] = await db
+      .update(ownerSubscriptions)
+      .set({
+        status: "active",
+        isWaived: true,
+        activatedBy: adminId,
+        activationNote: note,
+        startDate,
+        endDate,
+        updatedAt: new Date(),
       })
       .where(eq(ownerSubscriptions.id, id))
       .returning();
@@ -3958,6 +4027,13 @@ export class DatabaseStorage implements IStorage {
         maxAllowed,
       };
     return { allowed: true, currentCount, maxAllowed };
+  }
+
+  async getAllOwnerSubscriptions(): Promise<OwnerSubscription[]> {
+    return db
+      .select()
+      .from(ownerSubscriptions)
+      .orderBy(desc(ownerSubscriptions.createdAt));
   }
 }
 

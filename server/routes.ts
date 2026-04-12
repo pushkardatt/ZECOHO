@@ -1000,14 +1000,6 @@ export async function registerRoutes(
   app.post("/api/kyc/submit", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      // 🔴 SUBSCRIPTION CHECK
-      const check = await storage.canOwnerAddProperty(userId);
-
-      if (!check.allowed) {
-        return res.status(403).json({
-          message: check.reason,
-        });
-      }
       // Check if user already has a KYC application
       const existingKyc = await storage.getUserKycApplication(userId);
       if (existingKyc) {
@@ -2641,7 +2633,8 @@ export async function registerRoutes(
           .json({ message: "Only owners can update properties" });
       }
 
-      const property = await storage.getProperty(req.params.id);
+      // Owner can always access their own property regardless of subscription
+      const property = await storage.getProperty(req.params.id, true);
 
       if (!property) {
         return res.status(404).json({ message: "Property not found" });
@@ -2776,7 +2769,7 @@ export async function registerRoutes(
             .json({ message: "Only owners can update property price" });
         }
 
-        const property = await storage.getProperty(req.params.id);
+        const property = await storage.getProperty(req.params.id, true);
 
         if (!property) {
           return res.status(404).json({ message: "Property not found" });
@@ -2896,7 +2889,7 @@ export async function registerRoutes(
             .json({ message: "Only owners can pause properties" });
         }
 
-        const property = await storage.getProperty(req.params.id);
+        const property = await storage.getProperty(req.params.id, true);
 
         if (!property) {
           return res.status(404).json({ message: "Property not found" });
@@ -2951,16 +2944,16 @@ export async function registerRoutes(
             .json({ message: "Only owners can resume properties" });
         }
 
-        const property = await storage.getProperty(req.params.id);
+        const property = await storage.getProperty(req.params.id, true);
 
         if (!property) {
           return res.status(404).json({ message: "Property not found" });
         }
 
         if (property.ownerId !== userId) {
-          return res
-            .status(403)
-            .json({ message: "Not authorized to resume this property" });
+          return res.status(403).json({
+            message: "Not authorized to request deactivation for this property",
+          });
         }
 
         if (property.status !== "paused") {
@@ -6370,6 +6363,7 @@ export async function registerRoutes(
 
       const properties = await storage.getProperties({
         includeAllStatuses: true,
+        adminView: true,
       });
       res.json(properties);
     } catch (error) {
@@ -6392,7 +6386,7 @@ export async function registerRoutes(
             .json({ message: "Only admins can approve properties" });
         }
 
-        const property = await storage.getProperty(req.params.id);
+        const property = await storage.getProperty(req.params.id, true);
 
         if (!property) {
           return res.status(404).json({ message: "Property not found" });
@@ -6474,7 +6468,7 @@ export async function registerRoutes(
             .json({ message: "Only admins can reject properties" });
         }
 
-        const property = await storage.getProperty(req.params.id);
+        const property = await storage.getProperty(req.params.id, true);
 
         if (!property) {
           return res.status(404).json({ message: "Property not found" });
@@ -6526,7 +6520,7 @@ export async function registerRoutes(
             .json({ message: "Only admins can delete properties" });
         }
 
-        const property = await storage.getProperty(req.params.id);
+        const property = await storage.getProperty(req.params.id, true);
 
         if (!property) {
           return res.status(404).json({ message: "Property not found" });

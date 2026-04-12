@@ -279,6 +279,7 @@ router.post("/admin/owner-subscriptions/:id/activate", async (req, res) => {
         const allProperties = await storage.getProperties({
           ownerId,
           includeAllStatuses: true,
+          adminView: true,
         });
         const pendingProperties = allProperties.filter(
           (p: any) => p.status === "pending",
