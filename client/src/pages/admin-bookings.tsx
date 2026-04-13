@@ -34,7 +34,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { CalendarDays, XCircle, LogIn, LogOut, AlertTriangle, Search, BookOpen, Clock, CheckCircle, Ban, Info } from "lucide-react";
+import { CalendarDays, XCircle, LogIn, LogOut, AlertTriangle, Search, BookOpen, Clock, CheckCircle, Ban, Info, MessageSquare } from "lucide-react";
 import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
@@ -368,7 +368,24 @@ export default function AdminBookings() {
                         </div>
                       </TableCell>
                       <TableCell>
-                        {booking.guest.firstName} {booking.guest.lastName}
+                        <div className="flex items-center gap-1.5">
+                          <span>{booking.guest.firstName} {booking.guest.lastName}</span>
+                          {booking.specialRequests && (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-5 w-5" data-testid={`special-request-icon-${booking.id}`}>
+                                  <MessageSquare className="h-3 w-3 text-blue-500" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent side="top" className="max-w-[300px]">
+                                <div className="text-sm">
+                                  <p className="font-medium mb-1">Special Request:</p>
+                                  <p className="text-muted-foreground">{booking.specialRequests}</p>
+                                </div>
+                              </TooltipContent>
+                            </Tooltip>
+                          )}
+                        </div>
                       </TableCell>
                       <TableCell>
                         <div className="text-sm">

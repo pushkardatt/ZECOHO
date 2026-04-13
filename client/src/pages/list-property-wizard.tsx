@@ -248,6 +248,13 @@ const combinedSchema = z.object({
   hourlyBookingAllowed: z.boolean().optional(),
   foreignGuestsAllowed: z.boolean().optional(),
   coupleFriendly: z.boolean().optional(),
+  // Check-in / Check-out times
+  checkInTime: z.string().optional(),
+  checkOutTime: z.string().optional(),
+  // Cancellation Policy
+  cancellationPolicyType: z.enum(["flexible", "moderate", "strict"]).optional(),
+  freeCancellationHours: z.coerce.number().optional(),
+  partialRefundPercent: z.coerce.number().optional(),
 });
 
 type CombinedFormData = z.infer<typeof combinedSchema>;
@@ -525,6 +532,11 @@ export default function ListPropertyWizard() {
       hourlyBookingAllowed: false,
       foreignGuestsAllowed: true,
       coupleFriendly: true,
+      checkInTime: "",
+      checkOutTime: "",
+      cancellationPolicyType: "flexible" as const,
+      freeCancellationHours: 24,
+      partialRefundPercent: 50,
     },
   });
 
@@ -1326,6 +1338,11 @@ export default function ListPropertyWizard() {
             hourlyBookingAllowed: data.hourlyBookingAllowed ?? false,
             foreignGuestsAllowed: data.foreignGuestsAllowed ?? true,
             coupleFriendly: data.coupleFriendly ?? true,
+            checkInTime: data.checkInTime || undefined,
+            checkOutTime: data.checkOutTime || undefined,
+            cancellationPolicyType: data.cancellationPolicyType || "flexible",
+            freeCancellationHours: data.freeCancellationHours ?? 24,
+            partialRefundPercent: data.partialRefundPercent ?? 50,
             images: allImages,
             categorizedImages: categorizedImages,
             videos: videos,
@@ -3558,6 +3575,77 @@ export default function ListPropertyWizard() {
                     </CardContent>
                   </Card>
 
+                  {/* Check-in & Check-out Times */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <Clock className="h-5 w-5" />
+                        Check-in & Check-out
+                      </CardTitle>
+                      <CardDescription>
+                        Set your standard check-in and check-out times
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <FormField
+                          control={form.control}
+                          name="checkInTime"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Check-in Time</FormLabel>
+                              <Select
+                                value={field.value || ""}
+                                onValueChange={field.onChange}
+                              >
+                                <FormControl>
+                                  <SelectTrigger data-testid="select-checkin-time">
+                                    <SelectValue placeholder="Select check-in time" />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  {["10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00", "17:00", "18:00"].map((t) => (
+                                    <SelectItem key={t} value={t}>
+                                      {t.replace(":00", ":00")} {parseInt(t) < 12 ? "AM" : "PM"}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="checkOutTime"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Check-out Time</FormLabel>
+                              <Select
+                                value={field.value || ""}
+                                onValueChange={field.onChange}
+                              >
+                                <FormControl>
+                                  <SelectTrigger data-testid="select-checkout-time">
+                                    <SelectValue placeholder="Select check-out time" />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  {["06:00", "07:00", "08:00", "09:00", "10:00", "11:00", "12:00", "13:00"].map((t) => (
+                                    <SelectItem key={t} value={t}>
+                                      {t.replace(":00", ":00")} {parseInt(t) < 12 ? "AM" : "PM"}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                    </CardContent>
+                  </Card>
+
                   {/* Guest Policies */}
                   <Card>
                     <CardHeader>
@@ -3740,6 +3828,98 @@ export default function ListPropertyWizard() {
               {/* Step 5: Amenities & Additional Options */}
               {step === 5 && (
                 <div className="space-y-6">
+                  {/* Cancellation Policy Card */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <XCircle className="h-5 w-5" />
+                        Cancellation Policy
+                      </CardTitle>
+                      <CardDescription>
+                        Set how guests can cancel their bookings
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <FormField
+                        control={form.control}
+                        name="cancellationPolicyType"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Policy Type *</FormLabel>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                              {[
+                                { value: "flexible", label: "Flexible", desc: "Full refund if cancelled before the free cancellation window" },
+                                { value: "moderate", label: "Moderate", desc: "Partial refund if cancelled within the window" },
+                                { value: "strict", label: "Strict", desc: "No refund if cancelled" },
+                              ].map((policy) => (
+                                <div
+                                  key={policy.value}
+                                  className={`p-4 rounded-lg border cursor-pointer transition-colors ${field.value === policy.value ? "border-primary bg-primary/5" : "border-border hover-elevate"}`}
+                                  onClick={() => field.onChange(policy.value)}
+                                  data-testid={`cancellation-policy-${policy.value}`}
+                                >
+                                  <p className="font-medium text-sm">{policy.label}</p>
+                                  <p className="text-xs text-muted-foreground mt-1">{policy.desc}</p>
+                                </div>
+                              ))}
+                            </div>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      {form.watch("cancellationPolicyType") !== "strict" && (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                          <FormField
+                            control={form.control}
+                            name="freeCancellationHours"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Free Cancellation Window (hours before check-in)</FormLabel>
+                                <FormControl>
+                                  <Input
+                                    type="number"
+                                    min="1"
+                                    step="1"
+                                    {...field}
+                                    onChange={(e) => field.onChange(parseInt(e.target.value) || 24)}
+                                    data-testid="input-free-cancellation-hours"
+                                  />
+                                </FormControl>
+                                <p className="text-xs text-muted-foreground">Guests can cancel for free this many hours before check-in</p>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          {form.watch("cancellationPolicyType") === "moderate" && (
+                            <FormField
+                              control={form.control}
+                              name="partialRefundPercent"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Partial Refund (%)</FormLabel>
+                                  <FormControl>
+                                    <Input
+                                      type="number"
+                                      min="0"
+                                      max="100"
+                                      step="5"
+                                      {...field}
+                                      onChange={(e) => field.onChange(parseInt(e.target.value) || 50)}
+                                      data-testid="input-partial-refund-percent"
+                                    />
+                                  </FormControl>
+                                  <p className="text-xs text-muted-foreground">Refund % when cancelled outside the free window</p>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                          )}
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+
                   {/* Bulk Booking Card */}
                   <Card>
                     <CardHeader>
@@ -3854,7 +4034,7 @@ export default function ListPropertyWizard() {
                             <FormLabel>House Rules (Optional)</FormLabel>
                             <FormControl>
                               <Textarea
-                                placeholder="Check-in after 3pm, No smoking, etc."
+                                placeholder="No smoking in rooms, No outside food, Quiet hours after 10pm, etc."
                                 rows={3}
                                 {...field}
                                 data-testid="textarea-policies"

@@ -788,6 +788,26 @@ function StatusSection({ property }: { property: Property }) {
     "deactivate" | "delete"
   >("deactivate");
 
+  // Check-in / Check-out time state
+  const [checkInTime, setCheckInTime] = useState(property.checkInTime || "");
+  const [checkOutTime, setCheckOutTime] = useState(property.checkOutTime || "");
+
+  const saveCheckInOutMutation = useMutation({
+    mutationFn: async () => {
+      return apiRequest("PATCH", `/api/properties/${property.id}`, {
+        checkInTime: checkInTime || null,
+        checkOutTime: checkOutTime || null,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/properties", property.id] });
+      toast({ title: "Saved", description: "Check-in/check-out times updated." });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to save times.", variant: "destructive" });
+    },
+  });
+
   // Check if there's a pending deactivation request
   const { data: pendingRequest, isLoading: isLoadingRequest } = useQuery({
     queryKey: ["/api/properties", property.id, "deactivation-request"],
@@ -920,6 +940,61 @@ function StatusSection({ property }: { property: Property }) {
 
   return (
     <div className="space-y-6">
+      {/* Check-in / Check-out Times */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Clock className="h-5 w-5" />
+            Check-in & Check-out Times
+          </CardTitle>
+          <CardDescription>
+            Set your standard check-in and check-out times visible to guests
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="manage-checkin-time">Check-in Time</Label>
+              <Select value={checkInTime} onValueChange={setCheckInTime}>
+                <SelectTrigger id="manage-checkin-time" data-testid="select-manage-checkin-time">
+                  <SelectValue placeholder="Select check-in time" />
+                </SelectTrigger>
+                <SelectContent>
+                  {["10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00", "17:00", "18:00"].map((t) => (
+                    <SelectItem key={t} value={t}>
+                      {t} {parseInt(t) < 12 ? "AM" : "PM"}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="manage-checkout-time">Check-out Time</Label>
+              <Select value={checkOutTime} onValueChange={setCheckOutTime}>
+                <SelectTrigger id="manage-checkout-time" data-testid="select-manage-checkout-time">
+                  <SelectValue placeholder="Select check-out time" />
+                </SelectTrigger>
+                <SelectContent>
+                  {["06:00", "07:00", "08:00", "09:00", "10:00", "11:00", "12:00", "13:00"].map((t) => (
+                    <SelectItem key={t} value={t}>
+                      {t} {parseInt(t) < 12 ? "AM" : "PM"}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <Button
+            onClick={() => saveCheckInOutMutation.mutate()}
+            disabled={saveCheckInOutMutation.isPending}
+            data-testid="button-save-checkinout"
+          >
+            <Save className="h-4 w-4 mr-2" />
+            {saveCheckInOutMutation.isPending ? "Saving..." : "Save Times"}
+          </Button>
+        </CardContent>
+      </Card>
+
       <Card>
         <CardHeader>
           <CardTitle>Property Status</CardTitle>

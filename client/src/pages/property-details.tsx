@@ -1367,10 +1367,6 @@ export default function PropertyDetails() {
               <BadgeCheck className="h-3 w-3 mr-1" />
               100% Verified
             </Badge>
-            <Badge className="bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border-0">
-              <Clock className="h-3 w-3 mr-1" />
-              24hr Check-in
-            </Badge>
             <Badge className="bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border-0">
               <Handshake className="h-3 w-3 mr-1" />
               Direct Negotiation

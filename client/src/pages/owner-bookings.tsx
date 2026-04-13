@@ -88,6 +88,7 @@ interface Booking {
   checkedOutBy?: string;
   actualCheckOutDate?: string;
   earlyCheckout?: boolean;
+  specialRequests?: string | null;
   bookingType?: "standard" | "extension";
   parentBookingId?: string | null;
   bookingCreatedAt?: string;
@@ -1008,6 +1009,16 @@ export default function OwnerBookings() {
                 </span>
               </div>
             )}
+          </div>
+        )}
+
+        {booking.specialRequests && (
+          <div
+            className="text-sm p-3 bg-muted/60 rounded-md border"
+            data-testid={`special-requests-${booking.id}`}
+          >
+            <p className="text-muted-foreground font-medium mb-1">Special Request from Guest:</p>
+            <p className="text-foreground">{booking.specialRequests}</p>
           </div>
         )}
 

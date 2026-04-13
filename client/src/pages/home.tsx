@@ -37,7 +37,6 @@ import {
   ArrowRight,
   ChevronRight,
   IndianRupee,
-  Clock,
   MessageSquare,
   MessageCircle,
 } from "lucide-react";
@@ -568,19 +567,6 @@ export default function Home() {
               </CardContent>
             </Card>
 
-            {/* 24 Hours Check-in */}
-            <Card className="rounded-3xl border-0 shadow-lg overflow-hidden group hover-elevate">
-              <CardContent className="p-6">
-                <div className="p-3 bg-blue-100 dark:bg-blue-900/30 rounded-xl inline-flex mb-4">
-                  <Clock className="h-7 w-7 text-blue-600 dark:text-blue-400" />
-                </div>
-                <h3 className="text-xl font-bold mb-2">24 Hours Check-in</h3>
-                <p className="text-muted-foreground">
-                  Arrive anytime! Properties offer flexible 24-hour check-in for
-                  your convenience
-                </p>
-              </CardContent>
-            </Card>
           </div>
         </div>
       </div>

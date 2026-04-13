@@ -10,7 +10,6 @@ import {
   Phone,
   MessageCircle,
   BadgeCheck,
-  Clock,
   ArrowRight,
   Check,
   GitCompare,
@@ -247,10 +246,6 @@ export function PropertyCard({
             <Badge className="bg-emerald-500/90 backdrop-blur-sm text-white border-0 shadow-sm text-xs">
               <BadgeCheck className="h-3 w-3 mr-1" />
               Verified
-            </Badge>
-            <Badge className="bg-blue-500/90 backdrop-blur-sm text-white border-0 shadow-sm text-xs">
-              <Clock className="h-3 w-3 mr-1" />
-              24hr Check-in
             </Badge>
           </div>
         </div>
