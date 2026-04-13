@@ -928,40 +928,6 @@ export default function Profile() {
                     </Card>
                   )}
 
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Switch Account</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <p className="text-sm text-muted-foreground">
-                      Want to login with a different account? You can sign in
-                      with a different email address or phone number.
-                    </p>
-                    <div className="flex flex-col sm:flex-row gap-3">
-                      <Button
-                        variant="outline"
-                        onClick={() =>
-                          (window.location.href = "/otp-login?method=email")
-                        }
-                        data-testid="button-login-different-email"
-                      >
-                        Login with Different Email
-                      </Button>
-                      <Button
-                        variant="outline"
-                        onClick={() =>
-                          (window.location.href = "/otp-login?method=phone")
-                        }
-                        data-testid="button-login-different-phone"
-                      >
-                        Login with Different Phone
-                      </Button>
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      Note: This will sign you out of your current account.
-                    </p>
-                  </CardContent>
-                </Card>
               </div>
             </TabsContent>
 

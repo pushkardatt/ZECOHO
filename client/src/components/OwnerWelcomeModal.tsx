@@ -16,7 +16,6 @@ import {
   Users,
   MessageSquare,
   TrendingUp,
-  Home,
   LayoutDashboard,
 } from "lucide-react";
 
@@ -39,12 +38,6 @@ export function OwnerWelcomeModal({ open, onClose }: OwnerWelcomeModalProps) {
     dismissMutation.mutate();
     onClose();
     setLocation("/owner/dashboard");
-  };
-
-  const handleSwitchToCustomer = () => {
-    dismissMutation.mutate();
-    onClose();
-    setLocation("/");
   };
 
   return (
@@ -115,19 +108,10 @@ export function OwnerWelcomeModal({ open, onClose }: OwnerWelcomeModalProps) {
           </div>
         </div>
 
-        <DialogFooter className="flex flex-col sm:flex-row gap-2">
-          <Button
-            variant="outline"
-            onClick={handleSwitchToCustomer}
-            className="flex-1"
-            data-testid="button-switch-customer"
-          >
-            <Home className="h-4 w-4 mr-2" />
-            Switch to Customer View
-          </Button>
+        <DialogFooter>
           <Button
             onClick={handleGoToDashboard}
-            className="flex-1"
+            className="w-full"
             data-testid="button-go-dashboard"
           >
             <LayoutDashboard className="h-4 w-4 mr-2" />
