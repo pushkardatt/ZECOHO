@@ -2193,3 +2193,77 @@ export async function sendReviewRequestEmail(
     return false;
   }
 }
+
+// ── Waitlist Confirmation Email ──────────────────────────────────────────────
+export async function sendWaitlistConfirmationEmail(
+  name: string,
+  to: string,
+): Promise<boolean> {
+  try {
+    const { client, fromEmail } = await getResendClient();
+    const baseUrl = getAppBaseUrl();
+
+    const { data: emailData, error } = await client.emails.send({
+      from: fromEmail,
+      to,
+      subject: "You're on the ZECOHO waitlist! 🎉",
+      html: `
+        <!DOCTYPE html>
+        <html>
+        <body style="margin:0;padding:0;font-family:Arial,sans-serif;background:#f9fafb;">
+          <div style="max-width:600px;margin:0 auto;background:white;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+            ${getEmailHeader()}
+            <div style="padding:32px;">
+              <h2 style="color:#111827;margin:0 0 8px 0;font-size:22px;font-weight:700;">You're on the list, ${name}!</h2>
+              <p style="color:#6b7280;font-size:15px;line-height:1.6;margin:0 0 24px 0;">
+                Thank you for joining the ZECOHO early access waitlist. We're working hard to bring you a zero-commission hotel booking experience — and you'll be among the first to know when we launch.
+              </p>
+
+              <div style="background:#fff7ed;border-radius:8px;padding:20px;margin-bottom:24px;border-left:4px solid #FF7A00;">
+                <p style="color:#92400e;margin:0 0 8px 0;font-weight:600;">What to expect from ZECOHO</p>
+                <ul style="color:#b45309;margin:0;padding-left:20px;font-size:14px;line-height:1.8;">
+                  <li>Zero commission on every booking</li>
+                  <li>Direct contact with property owners</li>
+                  <li>Verified hotels and homestays across India</li>
+                  <li>No hidden fees, ever</li>
+                </ul>
+              </div>
+
+              <p style="color:#6b7280;font-size:14px;line-height:1.6;margin:0 0 24px 0;">
+                We'll send you a personal invite as soon as we're live. In the meantime, keep an eye on your inbox — we may reach out with exclusive early-bird offers.
+              </p>
+
+              <div style="text-align:center;margin-bottom:24px;">
+                <a href="${baseUrl}" style="display:inline-block;background:#FF7A00;color:white;text-decoration:none;padding:14px 36px;border-radius:8px;font-weight:600;font-size:15px;">
+                  Visit ZECOHO
+                </a>
+              </div>
+
+              <p style="color:#9ca3af;font-size:13px;margin:0;text-align:center;">
+                You registered with: <strong>${to}</strong>
+              </p>
+            </div>
+            <div style="background:#f9fafb;padding:20px;text-align:center;border-top:1px solid #e5e7eb;">
+              <p style="color:#9ca3af;font-size:12px;margin:0;">
+                ZECOHO — Zero Commission Hotel Booking<br>
+                Questions? Contact <a href="mailto:support@zecoho.com" style="color:#FF7A00;">support@zecoho.com</a>
+              </p>
+            </div>
+          </div>
+        </body>
+        </html>
+      `,
+    });
+
+    if (error) {
+      console.error("[WAITLIST] Failed to send confirmation email:", error);
+      return false;
+    }
+
+    console.log("[WAITLIST] Confirmation email sent successfully:", emailData?.id);
+    return true;
+  } catch (error: any) {
+    console.error("[WAITLIST] Exception sending confirmation email:", error?.message || error);
+    return false;
+  }
+}

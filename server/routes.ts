@@ -61,6 +61,7 @@ import {
   sendBookingCancelledOwnerEmail,
   sendReviewRequestEmail,
   sendAdminDeactivationRequestEmail,
+  sendWaitlistConfirmationEmail,
 } from "./emailService";
 import {
   createNotification,
@@ -213,6 +214,15 @@ export async function registerRoutes(
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (!emailRegex.test(email)) {
         return res.status(400).json({ message: "Invalid email format" });
+      }
+
+      // Check if user exists — if not, tell the frontend so it can prompt account creation
+      const existingUser = await storage.getUserByEmail(email.toLowerCase().trim());
+      if (!existingUser) {
+        return res.status(404).json({
+          message: "No account found with this email address.",
+          userNotFound: true,
+        });
       }
 
       // Generate 6-digit OTP
@@ -523,7 +533,10 @@ export async function registerRoutes(
       // Get user by email
       const user = await storage.getUserByEmail(email);
       if (!user) {
-        return res.status(401).json({ message: "Invalid email or password" });
+        return res.status(401).json({
+          message: "No account found with this email address.",
+          userNotFound: true,
+        });
       }
 
       // Check if user has a password (registered with email/password)
@@ -7216,6 +7229,10 @@ export async function registerRoutes(
         phone: phone?.trim() || null,
         message: message?.trim() || null,
       });
+      // Send confirmation email (non-blocking — don't fail if email fails)
+      sendWaitlistConfirmationEmail(name.trim(), emailLower).catch((e) =>
+        console.error("[WAITLIST] Email error:", e),
+      );
       res.json({
         message:
           "You've been added to the waitlist! We'll notify you when we launch.",

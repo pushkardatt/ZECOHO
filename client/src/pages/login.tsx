@@ -11,6 +11,14 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
@@ -22,6 +30,7 @@ import {
   Shield,
   Eye,
   EyeOff,
+  UserPlus,
 } from "lucide-react";
 
 type LoginStep = "input" | "otp";
@@ -52,6 +61,8 @@ export default function Login() {
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
   const [countdown, setCountdown] = useState(0);
   const [pendingVerificationEmail, setPendingVerificationEmail] = useState("");
+  const [showNotRegisteredDialog, setShowNotRegisteredDialog] = useState(false);
+  const [unregisteredEmail, setUnregisteredEmail] = useState("");
   const otpRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   useEffect(() => {
@@ -76,7 +87,9 @@ export default function Login() {
       }
 
       if (!response.ok) {
-        throw new Error(result.message || "Invalid email or password");
+        const err = new Error(result.message || "Invalid email or password");
+        (err as any).userNotFound = !!result.userNotFound;
+        throw err;
       }
 
       return result;
@@ -117,6 +130,11 @@ export default function Login() {
       }
     },
     onError: (error: any) => {
+      if (error.userNotFound) {
+        setUnregisteredEmail(email.trim());
+        setShowNotRegisteredDialog(true);
+        return;
+      }
       toast({
         title: "Login Failed",
         description: error.message || "Invalid email or password",
@@ -126,11 +144,20 @@ export default function Login() {
   });
 
   const sendOtpMutation = useMutation({
-    mutationFn: async (email: string) => {
-      const response = await apiRequest("POST", "/api/auth/send-otp", {
-        email,
+    mutationFn: async (emailAddr: string) => {
+      const response = await fetch("/api/auth/send-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: emailAddr }),
+        credentials: "include",
       });
-      return response.json();
+      const result = await response.json();
+      if (!response.ok) {
+        const err = new Error(result.message || "Please try again");
+        (err as any).userNotFound = !!result.userNotFound;
+        throw err;
+      }
+      return result;
     },
     onSuccess: (data) => {
       setStep("otp");
@@ -141,6 +168,11 @@ export default function Login() {
       });
     },
     onError: (error: any) => {
+      if (error.userNotFound) {
+        setUnregisteredEmail(email.trim());
+        setShowNotRegisteredDialog(true);
+        return;
+      }
       toast({
         title: "Failed to send OTP",
         description: error.message || "Please try again",
@@ -314,6 +346,45 @@ export default function Login() {
     verifyOtpMutation.isPending || verifyRegistrationOtpMutation.isPending;
 
   return (
+    <>
+    {/* Not-registered email dialog */}
+    <Dialog open={showNotRegisteredDialog} onOpenChange={setShowNotRegisteredDialog}>
+      <DialogContent data-testid="dialog-not-registered">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <UserPlus className="h-5 w-5 text-primary" />
+            Email Not Registered
+          </DialogTitle>
+          <DialogDescription className="text-sm leading-relaxed pt-1">
+            <span className="font-medium text-foreground">{unregisteredEmail}</span>{" "}
+            is not linked to any ZECOHO account.
+            <br />
+            <br />
+            Create an account to access the platform and start booking stays.
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter className="flex-col sm:flex-row gap-2 mt-2">
+          <Button
+            variant="outline"
+            onClick={() => setShowNotRegisteredDialog(false)}
+            data-testid="button-not-registered-cancel"
+          >
+            Try another email
+          </Button>
+          <Button
+            onClick={() => {
+              setShowNotRegisteredDialog(false);
+              setLocation("/register");
+            }}
+            data-testid="button-not-registered-create"
+          >
+            <UserPlus className="h-4 w-4 mr-2" />
+            Create Account
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-background to-muted/30 px-4 py-12">
       <Card className="w-full max-w-md" data-testid="card-login">
         <CardHeader className="text-center pb-4">
@@ -595,5 +666,6 @@ export default function Login() {
         </CardContent>
       </Card>
     </div>
+    </>
   );
 }
