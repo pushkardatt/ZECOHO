@@ -1,6 +1,7 @@
 // Referenced from blueprint:javascript_log_in_with_replit
 import { useEffect, useState, useCallback } from "react";
-import { Switch, Route, useLocation } from "wouter";
+import { Switch, Route, Link, useLocation } from "wouter";
+import { ChevronLeft, Shield } from "lucide-react";
 // Note: useEffect is still used by ScrollToTop component
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider, useQuery } from "@tanstack/react-query";
@@ -62,7 +63,6 @@ import AddProperty from "@/pages/add-property";
 import Profile from "@/pages/profile";
 import Destinations from "@/pages/destinations";
 import DestinationDetails from "@/pages/destination-details";
-import AdminDestinations from "@/pages/admin-destinations";
 import AdminProperties from "@/pages/admin-properties";
 import AdminKYC from "@/pages/admin-kyc";
 import AdminAccess from "@/pages/admin-access";
@@ -146,7 +146,6 @@ function Router() {
       <Route path="/search-history" component={SearchHistoryPage} />
       <Route path="/messages" component={Messages} />
       <Route path="/profile" component={Profile} />
-      <Route path="/admin/destinations" component={AdminDestinations} />
       <Route path="/admin/properties" component={AdminProperties} />
       <Route path="/admin/kyc" component={AdminKYC} />
       <Route path="/admin/policies" component={AdminPolicies} />
@@ -357,6 +356,22 @@ function AppContent() {
               isComingSoonPage ? "flex-1" : "flex-1 pt-14 md:pt-0 pb-12 md:pb-0"
             }
           >
+            {/* Admin breadcrumb — shown on all /admin/* subpages so both desktop and mobile have a consistent back-to-hub link */}
+            {location.startsWith("/admin/") && (
+              <div className="bg-muted/50 border-b">
+                <div className="container mx-auto px-4 py-2 flex items-center gap-2">
+                  <Link
+                    href="/admin"
+                    className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+                    data-testid="link-admin-breadcrumb"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                    <Shield className="h-3.5 w-3.5" />
+                    <span>Admin Panel</span>
+                  </Link>
+                </div>
+              </div>
+            )}
             <Router />
           </div>
           {location === "/" && !isComingSoonPage && <Footer />}

@@ -21,7 +21,6 @@ import {
   Shield,
   Settings,
   FileText,
-  MapPin,
   CheckCircle,
   Clock,
   XCircle,
@@ -30,13 +29,6 @@ import {
   CalendarCheck,
   IndianRupee,
   Star,
-  Phone,
-  Handshake,
-  Info,
-  Calendar,
-  Users,
-  Package,
-  CreditCard,
 } from "lucide-react";
 import { Logo } from "@/components/Logo";
 import { NotificationBell } from "@/components/NotificationBell";
@@ -221,173 +213,21 @@ export function Header() {
                 </Link>
               )}
 
-              {/* Admin dropdown - hidden on mobile (moved to bottom nav) */}
+              {/* Admin button - links directly to Admin Panel hub (same flow as mobile) */}
               {isAdmin && (
-                <div className="hidden md:block">
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        variant={
-                          location.startsWith("/admin") ? "secondary" : "ghost"
-                        }
-                        size="sm"
-                        className="font-medium text-sm"
-                        data-testid="button-admin-menu"
-                      >
-                        <Shield className="h-4 w-4 mr-2" />
-                        <span>Admin</span>
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-56">
-                      <div className="px-2 py-1.5">
-                        <p className="text-sm font-semibold flex items-center gap-2">
-                          <Shield className="h-4 w-4" />
-                          Admin Panel
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          Manage platform content
-                        </p>
-                      </div>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem
-                        asChild
-                        data-testid="link-admin-properties"
-                      >
-                        <Link href="/admin/properties">
-                          <Building className="h-4 w-4 mr-2" />
-                          Manage Properties
-                        </Link>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem asChild data-testid="link-admin-kyc">
-                        <Link href="/admin/kyc">
-                          <FileText className="h-4 w-4 mr-2" />
-                          KYC Applications
-                        </Link>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        asChild
-                        data-testid="link-admin-destinations"
-                      >
-                        <Link href="/admin/destinations">
-                          <MapPin className="h-4 w-4 mr-2" />
-                          Manage Destinations
-                        </Link>
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem
-                        asChild
-                        data-testid="link-admin-policies"
-                      >
-                        <Link href="/admin/policies">
-                          <FileText className="h-4 w-4 mr-2" />
-                          Policies & Terms
-                        </Link>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        asChild
-                        data-testid="link-admin-contact-settings"
-                      >
-                        <Link href="/admin/contact-settings">
-                          <Phone className="h-4 w-4 mr-2" />
-                          Contact Settings
-                        </Link>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        asChild
-                        data-testid="link-admin-owner-agreements"
-                      >
-                        <Link href="/admin/owner-agreements">
-                          <Handshake className="h-4 w-4 mr-2" />
-                          Owner Agreements
-                        </Link>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        asChild
-                        data-testid="link-admin-about-us"
-                      >
-                        <Link href="/admin/about-us">
-                          <Info className="h-4 w-4 mr-2" />
-                          About Us Page
-                        </Link>
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem
-                        asChild
-                        data-testid="link-admin-bookings"
-                      >
-                        <Link href="/admin/bookings">
-                          <Calendar className="h-4 w-4 mr-2" />
-                          Booking Management
-                        </Link>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        asChild
-                        data-testid="link-admin-subscriptions"
-                      >
-                        <Link href="/admin/subscriptions">
-                          <CreditCard className="h-4 w-4 mr-2" />
-                          Subscriptions
-                        </Link>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem asChild data-testid="link-admin-owners">
-                        <Link href="/admin/owners">
-                          <Users className="h-4 w-4 mr-2" />
-                          Owner Compliance
-                        </Link>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        asChild
-                        data-testid="link-admin-inventory"
-                      >
-                        <Link href="/admin/inventory">
-                          <Package className="h-4 w-4 mr-2" />
-                          Inventory Health
-                        </Link>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem asChild data-testid="link-admin-users">
-                        <Link href="/admin/users">
-                          <User className="h-4 w-4 mr-2" />
-                          User Management
-                        </Link>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        asChild
-                        data-testid="link-admin-support"
-                      >
-                        <Link href="/admin/support">
-                          <MessageCircle className="h-4 w-4 mr-2" />
-                          Support Inbox
-                        </Link>
-                      </DropdownMenuItem>
-                      {/* ✅ Communication Analytics — added for admin desktop nav */}
-                      <DropdownMenuItem
-                        asChild
-                        data-testid="link-admin-communication-analytics"
-                      >
-                        <Link href="/admin">
-                          <MessageCircle className="h-4 w-4 mr-2" />
-                          Communication Analytics
-                        </Link>
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem asChild data-testid="link-admin-logo">
-                        <Link href="/admin/logo">
-                          <Settings className="h-4 w-4 mr-2" />
-                          Logo &amp; Branding
-                        </Link>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        asChild
-                        data-testid="link-admin-coming-soon"
-                      >
-                        <Link href="/admin/coming-soon">
-                          <Clock className="h-4 w-4 mr-2" />
-                          Coming Soon Mode
-                        </Link>
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
+                <Link href="/admin" className="hidden md:block">
+                  <Button
+                    variant={
+                      location.startsWith("/admin") ? "secondary" : "ghost"
+                    }
+                    size="sm"
+                    className="font-medium text-sm"
+                    data-testid="button-admin-menu"
+                  >
+                    <Shield className="h-4 w-4 mr-2" />
+                    <span>Admin Panel</span>
+                  </Button>
+                </Link>
               )}
 
               {/* Messages - hidden on mobile for all users (moved to bottom nav) except on property detail pages where bottom nav is hidden */}

@@ -13,7 +13,6 @@ import {
   Package,
   HeadphonesIcon,
   FileCheck,
-  MapPin,
   FileText,
   Handshake,
   Info,
@@ -117,13 +116,6 @@ const adminSections = [
     icon: FileCheck,
     href: "/admin/kyc",
     testId: "admin-nav-kyc",
-  },
-  {
-    title: "Destinations",
-    description: "Manage destinations",
-    icon: MapPin,
-    href: "/admin/destinations",
-    testId: "admin-nav-destinations",
   },
   {
     title: "Policies",

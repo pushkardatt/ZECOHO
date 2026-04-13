@@ -974,7 +974,7 @@ export default function AdminSubscriptions() {
   });
 
   return (
-    <div className="space-y-6">
+    <div className="container mx-auto py-6 px-4 space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
@@ -1014,11 +1014,11 @@ export default function AdminSubscriptions() {
 
       {/* Stats */}
       <Tabs value={mainTab} onValueChange={setMainTab} className="w-full">
-        <TabsList className="mb-4">
-          <TabsTrigger value="plans">Subscription Plans</TabsTrigger>
-          <TabsTrigger value="payment-accounts">Payment Accounts</TabsTrigger>
-          <TabsTrigger value="invoices">Invoices</TabsTrigger>
-          <TabsTrigger value="subscriptions">Owner Subscriptions</TabsTrigger>
+        <TabsList className="mb-4 flex w-full overflow-x-auto">
+          <TabsTrigger value="plans" className="flex-shrink-0">Subscription Plans</TabsTrigger>
+          <TabsTrigger value="payment-accounts" className="flex-shrink-0">Payment Accounts</TabsTrigger>
+          <TabsTrigger value="invoices" className="flex-shrink-0">Invoices</TabsTrigger>
+          <TabsTrigger value="subscriptions" className="flex-shrink-0">Owner Subscriptions</TabsTrigger>
         </TabsList>
         {/* PAYMENT ACCOUNTS TAB */}
         <TabsContent value="payment-accounts" className="space-y-4">
@@ -1291,18 +1291,18 @@ export default function AdminSubscriptions() {
             </CardHeader>
             <CardContent className="p-0">
               <Tabs value={activeTab} onValueChange={setActiveTab}>
-                <div className="px-6">
-                  <TabsList className="mb-4">
-                    <TabsTrigger value="pending_payment">
+                <div className="px-6 overflow-x-auto">
+                  <TabsList className="mb-4 flex w-full overflow-x-auto">
+                    <TabsTrigger value="pending_payment" className="flex-shrink-0">
                       Pending{" "}
                       <Badge variant="secondary" className="ml-1.5 text-xs">
                         {pending}
                       </Badge>
                     </TabsTrigger>
-                    <TabsTrigger value="active">Active</TabsTrigger>
-                    <TabsTrigger value="expired">Expired</TabsTrigger>
-                    <TabsTrigger value="cancelled">Cancelled</TabsTrigger>
-                    <TabsTrigger value="waived">Waived</TabsTrigger>
+                    <TabsTrigger value="active" className="flex-shrink-0">Active</TabsTrigger>
+                    <TabsTrigger value="expired" className="flex-shrink-0">Expired</TabsTrigger>
+                    <TabsTrigger value="cancelled" className="flex-shrink-0">Cancelled</TabsTrigger>
+                    <TabsTrigger value="waived" className="flex-shrink-0">Waived</TabsTrigger>
                   </TabsList>
                 </div>
 
