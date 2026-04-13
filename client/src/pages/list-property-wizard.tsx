@@ -88,7 +88,14 @@ import {
   Camera,
   Zap,
   FileCheck,
+  CalendarDays,
+  Ban,
+  Settings2,
+  Sparkles,
+  Plus,
+  Trash2,
 } from "lucide-react";
+import { PriceCalendar } from "@/components/PriceCalendar";
 import { INDIAN_STATES, INDIAN_CITIES } from "@/data/locations";
 import type { KycSectionId, KycRejectionDetails } from "@shared/schema";
 import { useEffect, useMemo, useRef, useCallback } from "react";
@@ -364,11 +371,11 @@ export default function ListPropertyWizard() {
   const canSkipKycSteps = isKycVerified || isKycPending;
 
   // For verified/pending users, we skip steps 1 and 2 (KYC steps)
-  // Steps for verified/pending users: 3 (property info) -> 4 (location) -> 5 (amenities) -> 6 (photos)
-  // Steps for new/rejected users: 1 (personal) -> 2 (business/docs) -> 3 (property) -> 4 (location) -> 5 (amenities) -> 6 (photos)
+  // New 9-step flow: 1(personal)->2(KYC)->3(property+rooms)->4(pricing)->5(amenities)->6(availability)->7(status)->8(location)->9(photos)
+  // KYC-verified users start at step 3
   const kycStepsCount = canSkipKycSteps ? 0 : 2;
-  // totalSteps is always 6 (the last step number), regardless of whether KYC steps are skipped
-  const totalSteps = 6;
+  // totalSteps is always 9 (the last step number), regardless of whether KYC steps are skipped
+  const totalSteps = 9;
   const firstStep = canSkipKycSteps ? 3 : 1;
 
   const [step, setStep] = useState(firstStep);
@@ -483,6 +490,18 @@ export default function ListPropertyWizard() {
   const [geoSource, setGeoSource] = useState<
     "manual_pin" | "current_location" | null
   >(null);
+
+  // Auto-draft: property ID created between step 3→4 to enable pricing/availability steps
+  const [autoDraftPropertyId, setAutoDraftPropertyId] = useState<string | null>(null);
+  const [isAutoSaving, setIsAutoSaving] = useState(false);
+
+  // Availability blocking state (for step 6)
+  const [blockStartDate, setBlockStartDate] = useState("");
+  const [blockEndDate, setBlockEndDate] = useState("");
+  const [blockType, setBlockType] = useState<"temporary_hold" | "sold_out" | "maintenance">("maintenance");
+  const [isBlockingDates, setIsBlockingDates] = useState(false);
+  const [blockedRanges, setBlockedRanges] = useState<Array<{id: string; startDate: string; endDate: string; blockType: string}>>([]);
+  const [isFetchingBlocks, setIsFetchingBlocks] = useState(false);
 
   const form = useForm<CombinedFormData>({
     resolver: zodResolver(combinedSchema),
@@ -1279,6 +1298,8 @@ export default function ListPropertyWizard() {
         "POST",
         "/api/kyc/submit-with-property",
         {
+          // Pass existing draft property ID if we auto-saved a draft during wizard
+          existingPropertyId: autoDraftPropertyId || undefined,
           // KYC data
           kyc: {
             firstName: data.firstName,
@@ -1521,6 +1542,74 @@ export default function ListPropertyWizard() {
     quickSubmitMutation.mutate(formData);
   };
 
+  // Auto-save draft property between step 3 and step 4 so pricing/availability steps have a propertyId
+  const autoSaveDraft = async (): Promise<string | null> => {
+    const data = form.getValues();
+    if (!data.propertyTitle) return null;
+    setIsAutoSaving(true);
+    try {
+      const response = await apiRequest("POST", "/api/owner/wizard-auto-save", {
+        existingPropertyId: autoDraftPropertyId || undefined,
+        property: {
+          title: data.propertyTitle,
+          description: data.description,
+          propertyType: data.propertyType,
+          propStreetAddress: data.propStreetAddress,
+          propLocality: data.propLocality,
+          propCity: data.propCity,
+          propDistrict: data.propDistrict,
+          propState: data.propState,
+          propPincode: data.propPincode,
+          checkInTime: data.checkInTime,
+          checkOutTime: data.checkOutTime,
+          coupleFriendly: data.coupleFriendly,
+          localIdAllowed: data.localIdAllowed,
+          foreignGuestsAllowed: data.foreignGuestsAllowed,
+          hourlyBookingAllowed: data.hourlyBookingAllowed,
+          cancellationPolicyType: data.cancellationPolicyType,
+          freeCancellationHours: data.freeCancellationHours,
+          partialRefundPercent: data.partialRefundPercent,
+          bulkBookingEnabled: data.bulkBookingEnabled,
+          bulkBookingMinRooms: data.bulkBookingMinRooms,
+          bulkBookingDiscountPercent: data.bulkBookingDiscountPercent,
+          policies: data.policies,
+        },
+        roomTypes: wizardRoomTypes,
+      });
+      const result = await response.json();
+      if (result.propertyId) {
+        setAutoDraftPropertyId(result.propertyId);
+        return result.propertyId;
+      }
+    } catch (e) {
+      console.warn("Auto-save draft failed:", e);
+    } finally {
+      setIsAutoSaving(false);
+    }
+    return null;
+  };
+
+  // Fetch blocked dates when autoDraftPropertyId is available and user is on step 6
+  const fetchBlockedDates = async (propertyId: string) => {
+    setIsFetchingBlocks(true);
+    try {
+      const resp = await apiRequest("GET", `/api/properties/${propertyId}/availability-overrides`);
+      const data = await resp.json();
+      if (Array.isArray(data)) {
+        setBlockedRanges(data.map((d: any) => ({
+          id: d.id,
+          startDate: d.startDate,
+          endDate: d.endDate,
+          blockType: d.blockType || "maintenance",
+        })));
+      }
+    } catch (e) {
+      console.warn("Failed to fetch blocked dates:", e);
+    } finally {
+      setIsFetchingBlocks(false);
+    }
+  };
+
   const nextStep = async () => {
     let fieldsToValidate: (keyof CombinedFormData)[] = [];
 
@@ -1589,8 +1678,40 @@ export default function ListPropertyWizard() {
           });
           return;
         }
+        // Validate form fields first
+        const isValid = await form.trigger(fieldsToValidate);
+        if (!isValid) {
+          setTimeout(() => scrollToFirstError(fieldsToValidate), 100);
+          toast({
+            title: "Please fill required fields",
+            description: "Some fields need your attention before proceeding",
+            variant: "destructive",
+          });
+          return;
+        }
+        // Auto-save draft to get a propertyId for pricing/availability steps
+        toast({ title: "Saving your property details..." });
+        await autoSaveDraft();
+        setStep(step + 1);
+        return;
       } else if (step === 4) {
-        // Step 4 is Property Location - requires latitude and longitude
+        // Step 4: Day-wise Pricing — optional, no required fields
+        fieldsToValidate = [];
+      } else if (step === 5) {
+        // Step 5: Cancellation + Amenities — optional
+        fieldsToValidate = [];
+        // Re-save draft with updated cancellation policy
+        if (autoDraftPropertyId) {
+          await autoSaveDraft();
+        }
+      } else if (step === 6) {
+        // Step 6: Availability — optional
+        fieldsToValidate = [];
+      } else if (step === 7) {
+        // Step 7: Status/Setup summary — optional
+        fieldsToValidate = [];
+      } else if (step === 8) {
+        // Step 8 is Property Location - requires latitude and longitude
         if (!propertyLatitude || !propertyLongitude) {
           toast({
             title: "Property Location Required",
@@ -1601,15 +1722,17 @@ export default function ListPropertyWizard() {
           return;
         }
         fieldsToValidate = [];
-      } else if (step === 5) {
-        // Step 5 is Amenities - optional, no required fields
-        fieldsToValidate = [];
       }
     }
 
     const isValid = await form.trigger(fieldsToValidate);
     if (isValid) {
-      setStep(step + 1);
+      const nextStepNum = step + 1;
+      setStep(nextStepNum);
+      // When entering availability step, load existing blocks
+      if (nextStepNum === 6 && autoDraftPropertyId) {
+        fetchBlockedDates(autoDraftPropertyId);
+      }
     } else {
       // Scroll to first error field and show toast
       setTimeout(() => scrollToFirstError(fieldsToValidate), 100);
@@ -1673,8 +1796,11 @@ export default function ListPropertyWizard() {
           });
           return;
         }
-      } else if (s === 4) {
-        // Step 4 is Property Location - requires latitude and longitude
+      } else if (s === 4 || s === 5 || s === 6 || s === 7) {
+        // Steps 4-7 are optional (pricing, amenities, availability, status)
+        fieldsToValidate = [];
+      } else if (s === 8) {
+        // Step 8 is Property Location - requires latitude and longitude
         if (!propertyLatitude || !propertyLongitude) {
           setStep(s);
           toast({
@@ -1685,9 +1811,6 @@ export default function ListPropertyWizard() {
           });
           return;
         }
-        fieldsToValidate = [];
-      } else if (s === 5) {
-        // Step 5 is Amenities - optional, no required fields
         fieldsToValidate = [];
       }
 
@@ -1708,13 +1831,16 @@ export default function ListPropertyWizard() {
     setStep(targetStep);
   };
 
-  // Step titles for full mode
+  // Step titles for full mode (9 steps)
   const fullModeStepTitles = [
     { title: "Personal Information", icon: User },
     { title: "Business & KYC Documents", icon: FileText },
     { title: "Property Details & Room Types", icon: Home },
+    { title: "Day-wise Pricing", icon: CalendarDays },
+    { title: "Cancellation & Amenities", icon: XCircle },
+    { title: "Availability", icon: Ban },
+    { title: "Setup Summary", icon: Settings2 },
     { title: "Property Location", icon: MapPin },
-    { title: "Amenities & Extras", icon: Building2 },
     { title: "Photos & Submit", icon: CheckCircle },
   ];
 
@@ -3767,8 +3893,40 @@ export default function ListPropertyWizard() {
                 </div>
               )}
 
-              {/* Step 4: Property Location (Mandatory Geo-tagging) */}
+              {/* Step 4: Day-wise Pricing */}
               {step === 4 && (
+                <div className="space-y-6">
+                  {autoDraftPropertyId ? (
+                    <>
+                      <Card className="border-primary/20 bg-primary/5">
+                        <CardHeader className="pb-3">
+                          <CardTitle className="flex items-center gap-2">
+                            <CalendarDays className="h-5 w-5 text-primary" />
+                            Day-wise Calendar Pricing
+                          </CardTitle>
+                          <CardDescription>
+                            Set specific prices for dates and date ranges. Drag to select multiple dates and apply pricing in bulk. You can also set meal plan prices.
+                          </CardDescription>
+                        </CardHeader>
+                      </Card>
+                      <PriceCalendar
+                        propertyId={autoDraftPropertyId}
+                        roomTypes={[]}
+                      />
+                    </>
+                  ) : (
+                    <Card>
+                      <CardContent className="flex flex-col items-center justify-center py-12 gap-4">
+                        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                        <p className="text-muted-foreground">Saving your property details to enable pricing setup...</p>
+                      </CardContent>
+                    </Card>
+                  )}
+                </div>
+              )}
+
+              {/* Step 8: Property Location (Mandatory Geo-tagging) */}
+              {step === 8 && (
                 <div className="space-y-6">
                   <Card>
                     <CardHeader>
@@ -4185,8 +4343,206 @@ export default function ListPropertyWizard() {
                 </div>
               )}
 
-              {/* Step 6: Photos & Submit */}
+              {/* Step 6: Availability Blocking */}
               {step === 6 && (
+                <div className="space-y-6">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <Ban className="h-5 w-5" />
+                        Block Unavailable Dates
+                      </CardTitle>
+                      <CardDescription>
+                        Mark dates when your property won't be available — for maintenance, personal use, or if already sold out elsewhere. This step is optional and can be done later.
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      {!autoDraftPropertyId ? (
+                        <div className="flex flex-col items-center justify-center py-8 gap-3 text-center">
+                          <AlertTriangle className="h-8 w-8 text-amber-500" />
+                          <p className="text-muted-foreground text-sm">Property details must be saved first. Please go back to step 3 and complete your property details.</p>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div className="space-y-1">
+                              <Label htmlFor="block-start">Start Date</Label>
+                              <Input
+                                id="block-start"
+                                type="date"
+                                value={blockStartDate}
+                                onChange={e => setBlockStartDate(e.target.value)}
+                                min={new Date().toISOString().split("T")[0]}
+                                data-testid="input-block-start-date"
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <Label htmlFor="block-end">End Date</Label>
+                              <Input
+                                id="block-end"
+                                type="date"
+                                value={blockEndDate}
+                                onChange={e => setBlockEndDate(e.target.value)}
+                                min={blockStartDate || new Date().toISOString().split("T")[0]}
+                                data-testid="input-block-end-date"
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <Label>Block Type</Label>
+                              <Select value={blockType} onValueChange={(v: any) => setBlockType(v)}>
+                                <SelectTrigger data-testid="select-block-type">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="maintenance">Maintenance</SelectItem>
+                                  <SelectItem value="sold_out">Sold Out Elsewhere</SelectItem>
+                                  <SelectItem value="temporary_hold">Temporary Hold</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          </div>
+                          <Button
+                            type="button"
+                            disabled={!blockStartDate || !blockEndDate || isBlockingDates}
+                            onClick={async () => {
+                              if (!blockStartDate || !blockEndDate || !autoDraftPropertyId) return;
+                              setIsBlockingDates(true);
+                              try {
+                                await apiRequest("POST", `/api/properties/${autoDraftPropertyId}/availability-overrides`, {
+                                  startDate: blockStartDate,
+                                  endDate: blockEndDate,
+                                  blockType,
+                                });
+                                toast({ title: "Dates blocked successfully" });
+                                setBlockStartDate("");
+                                setBlockEndDate("");
+                                fetchBlockedDates(autoDraftPropertyId);
+                              } catch (e) {
+                                toast({ title: "Failed to block dates", variant: "destructive" });
+                              } finally {
+                                setIsBlockingDates(false);
+                              }
+                            }}
+                            data-testid="button-block-dates"
+                          >
+                            {isBlockingDates ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Plus className="h-4 w-4 mr-2" />}
+                            Block Dates
+                          </Button>
+
+                          {isFetchingBlocks ? (
+                            <div className="flex items-center gap-2 text-muted-foreground text-sm py-4">
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                              Loading blocked dates...
+                            </div>
+                          ) : blockedRanges.length > 0 ? (
+                            <div className="space-y-2">
+                              <p className="text-sm font-medium">Currently Blocked Dates</p>
+                              {blockedRanges.map((range) => (
+                                <div key={range.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                                  <div>
+                                    <p className="text-sm font-medium">{range.startDate} → {range.endDate}</p>
+                                    <p className="text-xs text-muted-foreground capitalize">{range.blockType.replace(/_/g, " ")}</p>
+                                  </div>
+                                  <Button
+                                    type="button"
+                                    size="icon"
+                                    variant="ghost"
+                                    onClick={async () => {
+                                      try {
+                                        await apiRequest("DELETE", `/api/properties/${autoDraftPropertyId}/availability-overrides/${range.id}`);
+                                        setBlockedRanges(prev => prev.filter(r => r.id !== range.id));
+                                        toast({ title: "Date block removed" });
+                                      } catch (e) {
+                                        toast({ title: "Failed to remove block", variant: "destructive" });
+                                      }
+                                    }}
+                                    data-testid={`button-remove-block-${range.id}`}
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <p className="text-sm text-muted-foreground">No dates blocked yet. Add blocks above or skip this step.</p>
+                          )}
+                        </>
+                      )}
+                    </CardContent>
+                  </Card>
+                </div>
+              )}
+
+              {/* Step 7: Setup Summary / Status */}
+              {step === 7 && (
+                <div className="space-y-6">
+                  <Card className="border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-950/30">
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2 text-green-700 dark:text-green-400">
+                        <Sparkles className="h-5 w-5" />
+                        Almost Done! Your Property Setup Summary
+                      </CardTitle>
+                      <CardDescription>
+                        Review what you've set up. Next you'll pin your property location and upload photos before submitting for review.
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      {[
+                        { label: "Property Name", value: form.watch("propertyTitle"), done: !!form.watch("propertyTitle") },
+                        { label: "Property Type", value: form.watch("propertyType"), done: !!form.watch("propertyType") },
+                        { label: "Room Types", value: `${wizardRoomTypes.length} room type(s) configured`, done: wizardRoomTypes.length > 0 },
+                        { label: "Check-in Time", value: form.watch("checkInTime") || "Not set", done: !!form.watch("checkInTime") },
+                        { label: "Check-out Time", value: form.watch("checkOutTime") || "Not set", done: !!form.watch("checkOutTime") },
+                        { label: "Cancellation Policy", value: form.watch("cancellationPolicyType") || "flexible", done: true },
+                        { label: "Day-wise Pricing", value: autoDraftPropertyId ? "Configured in pricing step" : "Will be available after submission", done: !!autoDraftPropertyId },
+                        { label: "Blocked Dates", value: blockedRanges.length > 0 ? `${blockedRanges.length} period(s) blocked` : "None", done: true },
+                      ].map((item) => (
+                        <div key={item.label} className="flex items-center justify-between py-2 border-b border-border last:border-0">
+                          <div>
+                            <p className="text-sm font-medium">{item.label}</p>
+                            <p className="text-xs text-muted-foreground capitalize">{String(item.value)}</p>
+                          </div>
+                          {item.done ? (
+                            <CheckCircle className="h-4 w-4 text-green-500 flex-shrink-0" />
+                          ) : (
+                            <Clock className="h-4 w-4 text-amber-500 flex-shrink-0" />
+                          )}
+                        </div>
+                      ))}
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <Settings2 className="h-5 w-5" />
+                        What Happens Next
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      {[
+                        { step: "Step 8", desc: "Pin your property on the map for accurate location" },
+                        { step: "Step 9", desc: "Upload photos by category (Exterior, Rooms, Amenities, etc.)" },
+                        { step: "Review", desc: "Our team reviews your listing within 24 hours" },
+                        { step: "Go Live", desc: "Once approved, your property is visible to guests" },
+                      ].map((item, i) => (
+                        <div key={i} className="flex items-start gap-3">
+                          <div className="w-6 h-6 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5">
+                            {i + 1}
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium">{item.step}</p>
+                            <p className="text-xs text-muted-foreground">{item.desc}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </CardContent>
+                  </Card>
+                </div>
+              )}
+
+              {/* Step 9: Photos & Submit */}
+              {step === 9 && (
                 <div className="space-y-6">
                   {/* Photo Category Progress Summary */}
                   <Card className="border-primary/20 bg-primary/5">

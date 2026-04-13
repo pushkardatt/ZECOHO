@@ -1,9 +1,12 @@
-import React from "react";
+import { useEffect } from "react";
+import { useLocation } from "wouter";
 
 export default function AddProperty() {
-  return (
-    <div>
-      <h1>Personal Information</h1>
-    </div>
-  );
+  const [, setLocation] = useLocation();
+
+  useEffect(() => {
+    setLocation("/owner/list-property");
+  }, [setLocation]);
+
+  return null;
 }

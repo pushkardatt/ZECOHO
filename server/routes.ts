@@ -1134,7 +1134,7 @@ export async function registerRoutes(
     async (req: any, res) => {
       try {
         const userId = req.user.claims.sub;
-        const { kyc, property } = req.body;
+        const { kyc, property, existingPropertyId: wizardDraftPropertyId } = req.body;
 
         if (!kyc || !property) {
           return res
@@ -1165,50 +1165,54 @@ export async function registerRoutes(
         // If user has verified or pending KYC, skip KYC creation and just create the property
         if (isVerified || isPending) {
           try {
-            // Create property directly for verified users
+            // Create or update property for verified/pending KYC users
             const { amenityIds, ...propertyData } = property;
 
-            createdProperty = await storage.createProperty({
+            const propertyPayload = {
               title: propertyData.title,
               description: propertyData.description,
               propertyType: propertyData.propertyType,
               destination: propertyData.destination,
               address: propertyData.address || null,
-              latitude: propertyData.latitude
-                ? String(propertyData.latitude)
-                : null,
-              longitude: propertyData.longitude
-                ? String(propertyData.longitude)
-                : null,
+              latitude: propertyData.latitude ? String(propertyData.latitude) : null,
+              longitude: propertyData.longitude ? String(propertyData.longitude) : null,
               geoVerified: propertyData.geoVerified || false,
               geoSource: propertyData.geoSource || null,
               images: propertyData.images || [],
               categorizedImages: propertyData.categorizedImages || null,
               videos: propertyData.videos || [],
               pricePerNight: String(propertyData.pricePerNight),
-              singleOccupancyPrice: propertyData.singleOccupancyPrice
-                ? String(propertyData.singleOccupancyPrice)
-                : null,
-              doubleOccupancyPrice: propertyData.doubleOccupancyPrice
-                ? String(propertyData.doubleOccupancyPrice)
-                : null,
-              tripleOccupancyPrice: propertyData.tripleOccupancyPrice
-                ? String(propertyData.tripleOccupancyPrice)
-                : null,
+              singleOccupancyPrice: propertyData.singleOccupancyPrice ? String(propertyData.singleOccupancyPrice) : null,
+              doubleOccupancyPrice: propertyData.doubleOccupancyPrice ? String(propertyData.doubleOccupancyPrice) : null,
+              tripleOccupancyPrice: propertyData.tripleOccupancyPrice ? String(propertyData.tripleOccupancyPrice) : null,
               bulkBookingEnabled: propertyData.bulkBookingEnabled || false,
               bulkBookingMinRooms: propertyData.bulkBookingMinRooms || 5,
-              bulkBookingDiscountPercent:
-                propertyData.bulkBookingDiscountPercent
-                  ? String(propertyData.bulkBookingDiscountPercent)
-                  : "10",
+              bulkBookingDiscountPercent: propertyData.bulkBookingDiscountPercent ? String(propertyData.bulkBookingDiscountPercent) : "10",
               maxGuests: propertyData.maxGuests || 2,
               bedrooms: propertyData.bedrooms || 1,
               beds: propertyData.beds || 1,
               bathrooms: propertyData.bathrooms || 1,
               policies: propertyData.policies || null,
-              ownerId: userId,
-              status: "pending", // New properties still need admin approval
-            });
+              checkInTime: propertyData.checkInTime || null,
+              checkOutTime: propertyData.checkOutTime || null,
+              localIdAllowed: propertyData.localIdAllowed ?? true,
+              foreignGuestsAllowed: propertyData.foreignGuestsAllowed ?? true,
+              coupleFriendly: propertyData.coupleFriendly ?? true,
+              hourlyBookingAllowed: propertyData.hourlyBookingAllowed ?? false,
+              cancellationPolicyType: propertyData.cancellationPolicyType || "flexible",
+              freeCancellationHours: propertyData.freeCancellationHours ?? 24,
+              partialRefundPercent: propertyData.partialRefundPercent ?? 50,
+              status: "pending" as const,
+            };
+
+            if (wizardDraftPropertyId) {
+              // Update existing draft property → promote to pending
+              const updatedProp = await storage.updateProperty(wizardDraftPropertyId, propertyPayload);
+              if (!updatedProp) throw new Error("Draft property not found");
+              createdProperty = updatedProp;
+            } else {
+              createdProperty = await storage.createProperty({ ...propertyPayload, ownerId: userId });
+            }
 
             // Set amenities if provided
             if (amenityIds && amenityIds.length > 0) {
@@ -1218,9 +1222,9 @@ export async function registerRoutes(
               );
             }
 
-            // Create room types if provided
+            // Create room types if provided and not already created via auto-save draft
             const { roomTypes } = req.body;
-            if (roomTypes && Array.isArray(roomTypes) && roomTypes.length > 0) {
+            if (!wizardDraftPropertyId && roomTypes && Array.isArray(roomTypes) && roomTypes.length > 0) {
               for (const rt of roomTypes) {
                 // Validate required fields
                 const basePrice = parseFloat(rt.basePrice);
@@ -1357,59 +1361,62 @@ export async function registerRoutes(
             });
           }
 
-          // Step 3: Create property with pending status
+          // Step 3: Create or update property with pending status
           const { amenityIds, ...propertyData } = property;
 
-          // Prepare property data for database - convert number to string for decimal fields
-          createdProperty = await storage.createProperty({
+          const propertyPayload2 = {
             title: propertyData.title,
             description: propertyData.description,
             propertyType: propertyData.propertyType,
             destination: propertyData.destination,
             address: propertyData.address || null,
-            latitude: propertyData.latitude
-              ? String(propertyData.latitude)
-              : null,
-            longitude: propertyData.longitude
-              ? String(propertyData.longitude)
-              : null,
+            latitude: propertyData.latitude ? String(propertyData.latitude) : null,
+            longitude: propertyData.longitude ? String(propertyData.longitude) : null,
             geoVerified: propertyData.geoVerified || false,
             geoSource: propertyData.geoSource || null,
             images: propertyData.images || [],
             categorizedImages: propertyData.categorizedImages || null,
             videos: propertyData.videos || [],
             pricePerNight: String(propertyData.pricePerNight),
-            singleOccupancyPrice: propertyData.singleOccupancyPrice
-              ? String(propertyData.singleOccupancyPrice)
-              : null,
-            doubleOccupancyPrice: propertyData.doubleOccupancyPrice
-              ? String(propertyData.doubleOccupancyPrice)
-              : null,
-            tripleOccupancyPrice: propertyData.tripleOccupancyPrice
-              ? String(propertyData.tripleOccupancyPrice)
-              : null,
+            singleOccupancyPrice: propertyData.singleOccupancyPrice ? String(propertyData.singleOccupancyPrice) : null,
+            doubleOccupancyPrice: propertyData.doubleOccupancyPrice ? String(propertyData.doubleOccupancyPrice) : null,
+            tripleOccupancyPrice: propertyData.tripleOccupancyPrice ? String(propertyData.tripleOccupancyPrice) : null,
             bulkBookingEnabled: propertyData.bulkBookingEnabled || false,
             bulkBookingMinRooms: propertyData.bulkBookingMinRooms || 5,
-            bulkBookingDiscountPercent: propertyData.bulkBookingDiscountPercent
-              ? String(propertyData.bulkBookingDiscountPercent)
-              : "10",
+            bulkBookingDiscountPercent: propertyData.bulkBookingDiscountPercent ? String(propertyData.bulkBookingDiscountPercent) : "10",
             maxGuests: propertyData.maxGuests || 2,
             bedrooms: propertyData.bedrooms || 1,
             beds: propertyData.beds || 1,
             bathrooms: propertyData.bathrooms || 1,
             policies: propertyData.policies || null,
-            ownerId: userId,
-            status: "pending",
-          });
+            checkInTime: propertyData.checkInTime || null,
+            checkOutTime: propertyData.checkOutTime || null,
+            localIdAllowed: propertyData.localIdAllowed ?? true,
+            foreignGuestsAllowed: propertyData.foreignGuestsAllowed ?? true,
+            coupleFriendly: propertyData.coupleFriendly ?? true,
+            hourlyBookingAllowed: propertyData.hourlyBookingAllowed ?? false,
+            cancellationPolicyType: propertyData.cancellationPolicyType || "flexible",
+            freeCancellationHours: propertyData.freeCancellationHours ?? 24,
+            partialRefundPercent: propertyData.partialRefundPercent ?? 50,
+            status: "pending" as const,
+          };
+
+          if (wizardDraftPropertyId) {
+            const updatedProp2 = await storage.updateProperty(wizardDraftPropertyId, propertyPayload2);
+            if (!updatedProp2) throw new Error("Draft property not found");
+            createdProperty = updatedProp2;
+          } else {
+            createdProperty = await storage.createProperty({ ...propertyPayload2, ownerId: userId });
+          }
 
           // Step 4: Set amenities if provided
           if (amenityIds && amenityIds.length > 0) {
             await storage.setPropertyAmenities(createdProperty.id, amenityIds);
           }
 
-          // Step 5: Create room types if provided
+          // Step 5: Create room types if provided and not already created via auto-save draft
           const { roomTypes } = req.body;
-          if (roomTypes && Array.isArray(roomTypes) && roomTypes.length > 0) {
+          if (!wizardDraftPropertyId && roomTypes && Array.isArray(roomTypes) && roomTypes.length > 0) {
             for (const rt of roomTypes) {
               // Validate required fields
               const basePrice = parseFloat(rt.basePrice);
@@ -1617,6 +1624,153 @@ export async function registerRoutes(
       } catch (error) {
         console.error("Error creating draft property:", error);
         res.status(500).json({ message: "Failed to create draft listing" });
+      }
+    },
+  );
+
+  // Wizard auto-save draft: creates draft property + room types mid-wizard (for pricing/availability steps)
+  app.post(
+    "/api/owner/wizard-auto-save",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const userId = req.user.claims.sub;
+        const { property, roomTypes, existingPropertyId } = req.body;
+
+        if (!property || !property.title) {
+          return res.status(400).json({ message: "Property title is required" });
+        }
+
+        let savedProperty: any;
+
+        if (existingPropertyId) {
+          // Update existing draft property
+          savedProperty = await storage.updateProperty(existingPropertyId, {
+            title: property.title,
+            description: property.description || `Welcome to ${property.title}`,
+            propertyType: property.propertyType || "hotel",
+            destination: property.propCity || property.destination || "",
+            propCity: property.propCity || null,
+            propState: property.propState || null,
+            propDistrict: property.propDistrict || null,
+            propStreetAddress: property.propStreetAddress || null,
+            propLocality: property.propLocality || null,
+            propPincode: property.propPincode || null,
+            checkInTime: property.checkInTime || null,
+            checkOutTime: property.checkOutTime || null,
+            coupleFriendly: property.coupleFriendly ?? true,
+            localIdAllowed: property.localIdAllowed ?? true,
+            foreignGuestsAllowed: property.foreignGuestsAllowed ?? true,
+            hourlyBookingAllowed: property.hourlyBookingAllowed ?? false,
+            cancellationPolicyType: property.cancellationPolicyType || "flexible",
+            freeCancellationHours: property.freeCancellationHours ?? 24,
+            partialRefundPercent: property.partialRefundPercent ?? 50,
+            bulkBookingEnabled: property.bulkBookingEnabled ?? false,
+            bulkBookingMinRooms: property.bulkBookingMinRooms || 5,
+            bulkBookingDiscountPercent: property.bulkBookingDiscountPercent ? String(property.bulkBookingDiscountPercent) : "10",
+            policies: property.policies || null,
+          });
+        } else {
+          // Create new draft property
+          const basePrice = roomTypes?.[0]?.basePrice || 1000;
+          savedProperty = await storage.createProperty({
+            title: property.title,
+            description: property.description || `Welcome to ${property.title}`,
+            propertyType: property.propertyType || "hotel",
+            destination: property.propCity || property.destination || "",
+            propCity: property.propCity || null,
+            propState: property.propState || null,
+            propDistrict: property.propDistrict || null,
+            propStreetAddress: property.propStreetAddress || null,
+            propLocality: property.propLocality || null,
+            propPincode: property.propPincode || null,
+            latitude: null,
+            longitude: null,
+            geoVerified: false,
+            images: [],
+            categorizedImages: null,
+            pricePerNight: String(basePrice),
+            maxGuests: 2,
+            bedrooms: 1,
+            beds: 1,
+            bathrooms: 1,
+            ownerId: userId,
+            status: "draft",
+            checkInTime: property.checkInTime || null,
+            checkOutTime: property.checkOutTime || null,
+            coupleFriendly: property.coupleFriendly ?? true,
+            localIdAllowed: property.localIdAllowed ?? true,
+            foreignGuestsAllowed: property.foreignGuestsAllowed ?? true,
+            hourlyBookingAllowed: property.hourlyBookingAllowed ?? false,
+            cancellationPolicyType: property.cancellationPolicyType || "flexible",
+            freeCancellationHours: property.freeCancellationHours ?? 24,
+            partialRefundPercent: property.partialRefundPercent ?? 50,
+          });
+        }
+
+        const propertyId = savedProperty.id;
+
+        // Create/update room types
+        if (roomTypes && Array.isArray(roomTypes) && roomTypes.length > 0) {
+          // Get existing room types for this property
+          const existingRooms = await storage.getRoomTypes(propertyId);
+          // Delete old ones if refreshing (to avoid duplicates on re-save)
+          if (existingPropertyId && existingRooms.length > 0) {
+            for (const er of existingRooms) {
+              await storage.deleteRoom(er.id);
+            }
+          }
+          for (const rt of roomTypes) {
+            const basePrice = parseFloat(rt.basePrice);
+            if (!rt.name || isNaN(basePrice) || basePrice < 100) continue;
+            const created = await storage.createRoom({
+              propertyId,
+              name: rt.name,
+              description: rt.description || null,
+              basePrice: String(basePrice),
+              maxGuests: parseInt(rt.maxGuests) || 2,
+              totalRooms: parseInt(rt.totalRooms) || 1,
+              bedType: rt.bedType || null,
+              viewType: rt.viewType || null,
+              bathroomType: rt.bathroomType || null,
+              smokingAllowed: rt.smokingAllowed ?? false,
+              roomSize: rt.roomSize ? parseFloat(rt.roomSize) : null,
+              hasAC: rt.hasAC ?? false,
+              hasTV: rt.hasTV ?? false,
+              hasWifi: rt.hasWifi ?? false,
+              hasRefrigerator: rt.hasRefrigerator ?? false,
+              hasBalcony: rt.hasBalcony ?? false,
+              hasBathtub: rt.hasBathtub ?? false,
+              hasKitchen: rt.hasKitchen ?? false,
+              hasWashingMachine: rt.hasWashingMachine ?? false,
+              hasSafe: rt.hasSafe ?? false,
+              hasHairDryer: rt.hasHairDryer ?? false,
+            });
+            // Create meal options
+            if (rt.mealOptions && Array.isArray(rt.mealOptions)) {
+              for (const mo of rt.mealOptions) {
+                if (!mo.name) continue;
+                await storage.createRoomOption({
+                  roomTypeId: created.id,
+                  name: mo.name,
+                  inclusions: mo.inclusions || null,
+                  priceAdjustment: String(mo.priceAdjustment || 0),
+                });
+              }
+            }
+          }
+        }
+
+        // Promote user to owner if not already
+        const currentUser = await storage.getUser(userId);
+        if (currentUser && currentUser.userRole === "guest") {
+          await storage.upsertUser({ ...currentUser, userRole: "owner" });
+        }
+
+        res.json({ propertyId, message: "Draft saved successfully" });
+      } catch (error) {
+        console.error("Error in wizard auto-save:", error);
+        res.status(500).json({ message: "Failed to save draft" });
       }
     },
   );
