@@ -54,6 +54,8 @@ export function OwnerAgreementConsentModal({
       return response.json();
     },
     onSuccess: () => {
+      // Refresh the user object so App.tsx re-evaluates showOwnerAgreementModal
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
       toast({
         title: isVersionUpdate
           ? "Agreement Accepted"

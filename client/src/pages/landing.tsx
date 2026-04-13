@@ -306,7 +306,7 @@ export default function Landing() {
             <div className="mt-5">
               <span
                 className="text-muted-foreground text-sm hover:text-primary cursor-pointer transition-colors underline-offset-2 hover:underline"
-                onClick={() => setLocation("/login?returnTo=/list-property")}
+                onClick={() => setLocation(user ? "/list-property" : "/login?returnTo=/list-property")}
                 data-testid="link-owner-cta-hero"
               >
                 Are you a hotelier? List your property — 0% commission
@@ -795,7 +795,7 @@ export default function Landing() {
                     size="lg"
                     className="font-semibold"
                     onClick={() =>
-                      setLocation("/login?returnTo=/list-property")
+                      setLocation(user ? "/list-property" : "/login?returnTo=/list-property")
                     }
                     data-testid="button-owner-cta-seo"
                   >

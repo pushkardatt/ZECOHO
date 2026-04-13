@@ -65,11 +65,30 @@ export default function Register() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/coming-soon/access"] });
       toast({
         title: "Welcome to ZECOHO!",
         description: "Your account has been created successfully.",
       });
-      setLocation("/");
+      // Poll until the session is confirmed server-side, then hard-reload to avoid
+      // the race where the coming-soon gate fires before the cookie is recognised.
+      let attempts = 0;
+      const checkAuth = async () => {
+        attempts++;
+        try {
+          const resp = await fetch("/api/auth/user", { credentials: "include" });
+          if (resp.ok) {
+            window.location.href = "/";
+          } else if (attempts < 10) {
+            setTimeout(checkAuth, 500);
+          } else {
+            window.location.href = "/";
+          }
+        } catch {
+          window.location.href = "/";
+        }
+      };
+      setTimeout(checkAuth, 300);
     },
     onError: (error: any) => {
       toast({
