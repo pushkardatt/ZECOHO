@@ -589,10 +589,14 @@ async function buildPDF(inv: any): Promise<Buffer> {
         align: "center",
       });
 
-    // ── FOOTER ────────────────────────────────────────────
-    const fY = 780;
+    // ── FOOTER — always on page 1 ─────────────────────────
+    // Switch back to page 0 before drawing footer so that even if upstream
+    // content overflowed and created a second page, the footer always appears
+    // at the very bottom of page 1 (not on a blank page 2).
+    doc.switchToPage(0);
+    const fY = doc.page.height - doc.page.margins.bottom - 28;
     doc
-      .rect(L, fY - 6, W, 0.5)
+      .rect(L, fY - 4, W, 0.5)
       .fillColor("#cccccc")
       .fill();
     doc
@@ -608,10 +612,10 @@ async function buildPDF(inv: any): Promise<Buffer> {
     doc.text(
       `${COMPANY.website}  |  ${COMPANY.email}  |  GSTIN: ${COMPANY.gstin}  |  ${COMPANY.city} Jurisdiction`,
       L,
-      fY + 10,
+      fY + 11,
       { align: "center", width: W, lineBreak: false },
     );
-    // ── END — single page only ────────────────────────────
+    // ── END ───────────────────────────────────────────────
     doc.end();
   });
 }

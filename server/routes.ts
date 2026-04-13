@@ -10073,6 +10073,59 @@ export async function registerRoutes(
     },
   );
 
+  // Admin: Send invoice PDF by email (with optional custom recipient email)
+  app.post(
+    "/api/admin/invoices/:id/send-email",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const userId = req.user.claims.sub;
+        const user = await storage.getUser(userId);
+        if (!userHasRole(user, "admin")) {
+          return res.status(403).json({ message: "Not authorized" });
+        }
+
+        const { email } = req.body;
+        if (!email || typeof email !== "string") {
+          return res.status(400).json({ message: "Recipient email is required" });
+        }
+
+        const [invoice] = await db
+          .select()
+          .from(invoices)
+          .where(eq(invoices.id, req.params.id));
+
+        if (!invoice) {
+          return res.status(404).json({ message: "Invoice not found" });
+        }
+
+        const { generateInvoicePDF } = await import("./invoiceService");
+        const pdfBuffer = await generateInvoicePDF(req.params.id);
+
+        const { sendInvoiceEmail } = await import("./emailService");
+        const sent = await sendInvoiceEmail(
+          email.trim().toLowerCase(),
+          invoice.ownerName,
+          invoice.invoiceNumber,
+          invoice.planName,
+          String(invoice.totalAmount),
+          pdfBuffer,
+        );
+
+        if (!sent) {
+          return res
+            .status(500)
+            .json({ message: "Failed to send invoice email. Please try again." });
+        }
+
+        res.json({ message: "Invoice sent successfully" });
+      } catch (error) {
+        console.error("Invoice send email error:", error);
+        res.status(500).json({ message: "Failed to send invoice" });
+      }
+    },
+  );
+
   // Owner: Get my invoices
   app.get("/api/owner/invoices", isAuthenticated, async (req: any, res) => {
     try {

@@ -71,6 +71,8 @@ import {
   QrCode,
   Building,
   Copy,
+  Mail,
+  Send,
 } from "lucide-react";
 
 // ── Types ──────────────────────────────────────────────────────────────────
@@ -246,9 +248,35 @@ function InvoicesTab() {
   const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState("");
   const [dateFilter, setDateFilter] = useState({ month: "", year: "" });
+  const [sendDialogOpen, setSendDialogOpen] = useState(false);
+  const [sendTarget, setSendTarget] = useState<{ id: string; invoiceNumber: string; ownerEmail: string; ownerName: string } | null>(null);
+  const [sendEmail, setSendEmail] = useState("");
+
   const { data: invoices = [], isLoading } = useQuery<any[]>({
     queryKey: ["/api/admin/invoices"],
   });
+
+  const sendEmailMutation = useMutation({
+    mutationFn: async ({ invoiceId, email }: { invoiceId: string; email: string }) => {
+      const res = await apiRequest("POST", `/api/admin/invoices/${invoiceId}/send-email`, { email });
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Invoice sent", description: `Invoice emailed to ${sendEmail}` });
+      setSendDialogOpen(false);
+      setSendTarget(null);
+    },
+    onError: (error: any) => {
+      toast({ title: "Failed to send invoice", description: error.message || "Please try again", variant: "destructive" });
+    },
+  });
+
+  const openSendDialog = (inv: any) => {
+    setSendTarget({ id: inv.id, invoiceNumber: inv.invoiceNumber, ownerEmail: inv.ownerEmail || "", ownerName: inv.ownerName || "" });
+    setSendEmail(inv.ownerEmail || "");
+    setSendDialogOpen(true);
+  };
+
   const handleDownload = async (invoiceId: string, invoiceNumber: string) => {
     try {
       const response = await fetch(`/api/invoices/${invoiceId}/download`, {
@@ -315,6 +343,60 @@ function InvoicesTab() {
     { value: "12", label: "December" },
   ];
   return (
+    <>
+    {/* Send Invoice Email Dialog */}
+    <Dialog open={sendDialogOpen} onOpenChange={setSendDialogOpen}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Mail className="h-4 w-4 text-primary" />
+            Send Invoice by Email
+          </DialogTitle>
+          <DialogDescription>
+            Sending invoice <span className="font-medium">{sendTarget?.invoiceNumber}</span> to{" "}
+            <span className="font-medium">{sendTarget?.ownerName}</span>.
+            You can edit the recipient email before sending.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-3 py-2">
+          <Label htmlFor="send-invoice-email">Recipient Email</Label>
+          <Input
+            id="send-invoice-email"
+            type="email"
+            value={sendEmail}
+            onChange={(e) => setSendEmail(e.target.value)}
+            placeholder="owner@example.com"
+            data-testid="input-send-invoice-email"
+          />
+          <p className="text-xs text-muted-foreground">
+            The invoice PDF will be attached to this email.
+          </p>
+        </div>
+        <DialogFooter className="gap-2">
+          <Button variant="outline" onClick={() => setSendDialogOpen(false)}>
+            Cancel
+          </Button>
+          <Button
+            onClick={() =>
+              sendTarget &&
+              sendEmailMutation.mutate({ invoiceId: sendTarget.id, email: sendEmail })
+            }
+            disabled={sendEmailMutation.isPending || !sendEmail.trim()}
+            data-testid="button-send-invoice-confirm"
+          >
+            {sendEmailMutation.isPending ? (
+              "Sending…"
+            ) : (
+              <>
+                <Send className="h-4 w-4 mr-2" />
+                Send Invoice
+              </>
+            )}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+
     <div className="space-y-6">
       <div className="grid grid-cols-3 gap-4">
         <Card>
@@ -416,7 +498,7 @@ function InvoicesTab() {
                   <th className="text-right p-3 font-medium">Base</th>
                   <th className="text-right p-3 font-medium">GST</th>
                   <th className="text-right p-3 font-medium">Total</th>
-                  <th className="text-center p-3 font-medium">Download</th>
+                  <th className="text-center p-3 font-medium">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -474,16 +556,28 @@ function InvoicesTab() {
                         })}
                       </td>
                       <td className="p-3 text-center">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() =>
-                            handleDownload(inv.id, inv.invoiceNumber)
-                          }
-                        >
-                          <Download className="h-3 w-3 mr-1" />
-                          PDF
-                        </Button>
+                        <div className="flex items-center justify-center gap-1">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() =>
+                              handleDownload(inv.id, inv.invoiceNumber)
+                            }
+                            data-testid={`button-download-invoice-${inv.id}`}
+                          >
+                            <Download className="h-3 w-3 mr-1" />
+                            PDF
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => openSendDialog(inv)}
+                            data-testid={`button-send-invoice-${inv.id}`}
+                          >
+                            <Mail className="h-3 w-3 mr-1" />
+                            Send
+                          </Button>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -494,6 +588,7 @@ function InvoicesTab() {
         </Card>
       )}
     </div>
+    </>
   );
 }
 export default function AdminSubscriptions() {
