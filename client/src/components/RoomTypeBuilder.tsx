@@ -709,6 +709,7 @@ function RoomTypeCard({
             {isEditing ? (
               <>
                 <Button
+                  type="button"
                   size="sm"
                   variant="ghost"
                   onClick={handleSave}
@@ -717,6 +718,7 @@ function RoomTypeCard({
                   <Save className="h-4 w-4" />
                 </Button>
                 <Button
+                  type="button"
                   size="sm"
                   variant="ghost"
                   onClick={resetEdit}
@@ -728,6 +730,7 @@ function RoomTypeCard({
             ) : (
               <>
                 <Button
+                  type="button"
                   size="sm"
                   variant="ghost"
                   onClick={onEdit}
@@ -736,6 +739,7 @@ function RoomTypeCard({
                   <Edit className="h-4 w-4" />
                 </Button>
                 <Button
+                  type="button"
                   size="sm"
                   variant="ghost"
                   onClick={onDelete}
@@ -745,6 +749,7 @@ function RoomTypeCard({
                 </Button>
                 <CollapsibleTrigger asChild>
                   <Button
+                    type="button"
                     size="sm"
                     variant="ghost"
                     data-testid={`expand-room-${room.id}`}
@@ -1250,6 +1255,7 @@ function MealOptionRow({
           onCheckedChange={(checked) => onUpdate({ isActive: checked })}
         />
         <Button
+          type="button"
           size="icon"
           variant="ghost"
           className="h-7 w-7"
@@ -1259,6 +1265,7 @@ function MealOptionRow({
           <Edit className="h-3 w-3" />
         </Button>
         <Button
+          type="button"
           size="icon"
           variant="ghost"
           className="h-7 w-7"

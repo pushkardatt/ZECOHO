@@ -1416,6 +1416,10 @@ export default function ListPropertyWizard() {
   });
 
   const onSubmit = (data: CombinedFormData) => {
+    const finalStep = isQuickMode ? quickModeTotalSteps : totalSteps;
+    if (step !== finalStep) {
+      return;
+    }
     submitMutation.mutate(data);
   };
 
