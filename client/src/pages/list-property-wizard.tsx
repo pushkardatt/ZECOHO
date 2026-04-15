@@ -492,7 +492,14 @@ export default function ListPropertyWizard() {
   >(null);
 
   // Auto-draft: property ID created between step 3→4 to enable pricing/availability steps
-  const [autoDraftPropertyId, setAutoDraftPropertyId] = useState<string | null>(null);
+  // In complete mode, initialize from the URL propertyId so step 4 renders immediately
+  const [autoDraftPropertyId, setAutoDraftPropertyId] = useState<string | null>(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("mode") === "complete") return params.get("propertyId");
+    }
+    return null;
+  });
   const [isAutoSaving, setIsAutoSaving] = useState(false);
 
   // Availability blocking state (for step 6)
@@ -727,6 +734,34 @@ export default function ListPropertyWizard() {
       // Pre-fill amenities if available
       if (draftProperty.amenityIds && Array.isArray(draftProperty.amenityIds)) {
         setSelectedAmenities(draftProperty.amenityIds.map(String));
+      }
+
+      // Ensure autoDraftPropertyId is set for complete mode (handles auto-redirect case
+      // where the URL didn't have propertyId when the component first mounted)
+      if (draftProperty.id) {
+        setAutoDraftPropertyId((prev) => prev || draftProperty.id);
+      }
+
+      // Fetch and pre-populate existing room types so step 3 passes validation
+      if (draftProperty.id) {
+        fetch(`/api/properties/${draftProperty.id}/rooms`)
+          .then((r) => r.json())
+          .then((rooms: any[]) => {
+            if (Array.isArray(rooms) && rooms.length > 0) {
+              setWizardRoomTypes(
+                rooms.map((r) => ({
+                  id: r.id,
+                  name: r.name,
+                  description: r.description || "",
+                  basePrice: Number(r.basePrice) || 1000,
+                  maxGuests: r.maxGuests || 2,
+                  totalRooms: r.totalRooms || 1,
+                  mealOptions: [],
+                }))
+              );
+            }
+          })
+          .catch(() => {});
       }
 
       toast({
