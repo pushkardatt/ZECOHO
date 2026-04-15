@@ -345,7 +345,27 @@ export function PriceCalendar({ propertyId, roomTypes }: PriceCalendarProps) {
     endDate,
   ]);
 
-  if (roomTypes.length === 0) {
+  // Derive display room types — prefer the prop (owner page), fall back to
+  // calendarData (wizard context where roomTypes prop is always [])
+  const displayRoomTypes = useMemo(() => {
+    if (roomTypes.length > 0) {
+      return roomTypes.map((rt) => ({ id: rt.id, name: rt.name }));
+    }
+    if (!calendarData?.roomTypes) return [] as { id: string; name: string }[];
+    return calendarData.roomTypes.map((rt) => ({
+      id: rt.roomTypeId,
+      name: rt.roomTypeName,
+    }));
+  }, [roomTypes, calendarData]);
+
+  // Auto-select first room type once displayRoomTypes becomes available
+  useEffect(() => {
+    if (!selectedRoomTypeId && displayRoomTypes.length > 0) {
+      setSelectedRoomTypeId(displayRoomTypes[0].id);
+    }
+  }, [displayRoomTypes, selectedRoomTypeId]);
+
+  if (displayRoomTypes.length === 0 && !isLoading) {
     return (
       <div className="flex flex-col items-center justify-center py-20 text-center">
         <Bed className="h-12 w-12 text-gray-300 mb-4" />
@@ -364,6 +384,7 @@ export function PriceCalendar({ propertyId, roomTypes }: PriceCalendarProps) {
         {/* Mode toggle */}
         <div className="flex rounded-xl border border-gray-200 bg-gray-50 p-1 gap-1 w-fit">
           <button
+            type="button"
             onClick={() => {
               setEditMode("room");
               setSelectedDates(new Set());
@@ -377,6 +398,7 @@ export function PriceCalendar({ propertyId, roomTypes }: PriceCalendarProps) {
             <Bed className="h-4 w-4" /> Room Prices
           </button>
           <button
+            type="button"
             onClick={() => {
               setEditMode("mealplan");
               setSelectedDates(new Set());
@@ -403,7 +425,7 @@ export function PriceCalendar({ propertyId, roomTypes }: PriceCalendarProps) {
             <SelectValue placeholder="Select room type" />
           </SelectTrigger>
           <SelectContent>
-            {roomTypes.map((rt) => (
+            {displayRoomTypes.map((rt) => (
               <SelectItem key={rt.id} value={rt.id}>
                 {rt.name}
               </SelectItem>
@@ -486,6 +508,7 @@ export function PriceCalendar({ propertyId, roomTypes }: PriceCalendarProps) {
         <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
           <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
             <button
+              type="button"
               onClick={() => {
                 setCurrentMonth((m) => subMonths(m, 1));
                 setSelectedDates(new Set());
@@ -498,6 +521,7 @@ export function PriceCalendar({ propertyId, roomTypes }: PriceCalendarProps) {
               {format(currentMonth, "MMMM yyyy")}
             </h3>
             <button
+              type="button"
               onClick={() => {
                 setCurrentMonth((m) => addMonths(m, 1));
                 setSelectedDates(new Set());
@@ -645,6 +669,7 @@ export function PriceCalendar({ propertyId, roomTypes }: PriceCalendarProps) {
                       {selectedDates.size > 1 ? "s" : ""} selected
                     </span>
                     <button
+                      type="button"
                       onClick={() => setSelectedDates(new Set())}
                       className="text-[11px] text-gray-400 hover:text-gray-600 underline"
                     >
@@ -681,6 +706,7 @@ export function PriceCalendar({ propertyId, roomTypes }: PriceCalendarProps) {
             </div>
 
             <Button
+              type="button"
               onClick={handleApply}
               disabled={
                 isPending ||
@@ -725,6 +751,7 @@ export function PriceCalendar({ propertyId, roomTypes }: PriceCalendarProps) {
                 { type: "all" as const, emoji: "🗓️", label: "Entire month" },
               ].map(({ type, emoji, label }) => (
                 <button
+                  type="button"
                   key={type}
                   onClick={() => handleQuickSelect(type)}
                   className="w-full text-left px-3 py-2.5 rounded-xl bg-gray-50 hover:bg-orange-50 hover:border-orange-200 border border-gray-100 text-sm font-medium text-gray-700 transition-all"
@@ -757,6 +784,7 @@ export function PriceCalendar({ propertyId, roomTypes }: PriceCalendarProps) {
                           ₹{Number(price).toLocaleString("en-IN")}
                         </span>
                         <button
+                          type="button"
                           title="Select this date to revert to default"
                           className="p-1 rounded-lg hover:bg-orange-200 text-orange-300 hover:text-orange-700 transition-colors"
                           onClick={() => {
