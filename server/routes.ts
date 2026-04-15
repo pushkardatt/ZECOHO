@@ -12560,7 +12560,7 @@ export async function registerRoutes(
         });
       }
 
-      const property = await storage.getProperty(propertyId);
+      const property = await storage.getProperty(propertyId, true);
       if (!property)
         return res.status(404).json({ message: "Property not found" });
 
