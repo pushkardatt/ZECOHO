@@ -1699,8 +1699,8 @@ export default function ListPropertyWizard() {
       // Full mode validation
       if (step === 1) {
         fieldsToValidate = ["firstName", "lastName", "email", "phone"];
-        } else if (step === 2) {
-          fieldsToValidate = [];
+      } else if (step === 2) {
+        fieldsToValidate = [];
         // Validate mandatory documents before proceeding
         const missingDocs: string[] = [];
         if (
@@ -1829,8 +1829,8 @@ export default function ListPropertyWizard() {
 
       if (s === 1) {
         fieldsToValidate = ["firstName", "lastName", "email", "phone"];
-        } else if (s === 2) {
-          fieldsToValidate = [];
+      } else if (s === 2) {
+        fieldsToValidate = [];
       } else if (s === 3) {
         fieldsToValidate = [
           "propertyTitle",
@@ -1892,7 +1892,7 @@ export default function ListPropertyWizard() {
   // Step titles for full mode (9 steps)
   const fullModeStepTitles = [
     { title: "Personal Information", icon: User },
-    { title: "KYC Documents", icon: FileText },
+    { title: "Business KYC", icon: FileText },
     { title: "Property Details & Room Types", icon: Home },
     { title: "Day-wise Pricing", icon: CalendarDays },
     { title: "Cancellation & Amenities", icon: XCircle },
@@ -2724,7 +2724,7 @@ export default function ListPropertyWizard() {
                     >
                       {s.title}
                     </span>
-                    {i < stepTitles.length - 1 && (
+                    {false && i < stepTitles.length - 1 && (
                       <div
                         className={`hidden md:block absolute h-0.5 w-full ${isCompleted ? "bg-primary" : "bg-muted"}`}
                       />
@@ -3094,7 +3094,7 @@ export default function ListPropertyWizard() {
                   />
                 </div>
               )}
-                            {/* Step 3: Property Details */}
+              {/* Step 3: Property Details */}
               {step === 3 && (
                 <div className="space-y-6">
                   <Card>
@@ -4762,6 +4762,6 @@ export default function ListPropertyWizard() {
           </Form>
         </div>
       </div>
-  </>
+    </>
   );
 }
