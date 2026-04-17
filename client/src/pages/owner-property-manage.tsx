@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useParams, Link } from "wouter";
 import { OwnerLayout } from "@/components/OwnerLayout";
@@ -61,7 +61,17 @@ import {
   Users,
   ArrowUpDown,
   Clock,
+  Info,
+  Building2,
+  Star,
+  Phone,
+  Mail,
+  MessageSquare,
+  LayoutDashboard,
+  Shield,
+  ClipboardList,
 } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   PropertyLocationPicker,
   type AddressData,
@@ -169,7 +179,7 @@ export default function OwnerPropertyManage() {
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <div className="overflow-x-auto -mx-4 px-4 md:mx-0 md:px-0">
-            <TabsList className="inline-flex w-auto min-w-full md:grid md:grid-cols-6 md:w-full md:max-w-4xl gap-1">
+            <TabsList className="inline-flex w-auto min-w-full md:grid md:grid-cols-8 md:w-full md:max-w-5xl gap-1">
               <TabsTrigger
                 value="rooms"
                 data-testid="tab-rooms"
@@ -187,13 +197,21 @@ export default function OwnerPropertyManage() {
                 <span>Pricing</span>
               </TabsTrigger>
               <TabsTrigger
-                value="cancellation"
-                data-testid="tab-cancellation"
+                value="property-details"
+                data-testid="tab-property-details"
                 className="flex-shrink-0 whitespace-nowrap px-3"
               >
-                <FileX className="h-4 w-4 mr-1 md:mr-2" />
-                <span className="hidden sm:inline">Cancellation</span>
-                <span className="sm:hidden">Cancel</span>
+                <Building2 className="h-4 w-4 mr-1 md:mr-2" />
+                <span className="hidden sm:inline">Details</span>
+                <span className="sm:hidden">Info</span>
+              </TabsTrigger>
+              <TabsTrigger
+                value="policy"
+                data-testid="tab-policy"
+                className="flex-shrink-0 whitespace-nowrap px-3"
+              >
+                <Shield className="h-4 w-4 mr-1 md:mr-2" />
+                <span>Policy</span>
               </TabsTrigger>
               <TabsTrigger
                 value="availability"
@@ -211,6 +229,14 @@ export default function OwnerPropertyManage() {
               >
                 <MapPin className="h-4 w-4 mr-1 md:mr-2" />
                 <span>Location</span>
+              </TabsTrigger>
+              <TabsTrigger
+                value="summary"
+                data-testid="tab-summary"
+                className="flex-shrink-0 whitespace-nowrap px-3"
+              >
+                <ClipboardList className="h-4 w-4 mr-1 md:mr-2" />
+                <span>Summary</span>
               </TabsTrigger>
               <TabsTrigger
                 value="status"
@@ -235,8 +261,12 @@ export default function OwnerPropertyManage() {
             <PriceCalendar propertyId={id!} roomTypes={roomTypes} />
           </TabsContent>
 
-          <TabsContent value="cancellation" className="mt-6">
-            <CancellationSection property={property} />
+          <TabsContent value="property-details" className="mt-6">
+            <PropertyDetailsSection property={property} />
+          </TabsContent>
+
+          <TabsContent value="policy" className="mt-6">
+            <PolicySection property={property} />
           </TabsContent>
 
           <TabsContent value="availability" className="mt-6">
@@ -250,6 +280,10 @@ export default function OwnerPropertyManage() {
 
           <TabsContent value="location" className="mt-6">
             <LocationSection property={property} />
+          </TabsContent>
+
+          <TabsContent value="summary" className="mt-6">
+            <SummarySection property={property} roomTypes={roomTypes} />
           </TabsContent>
 
           <TabsContent value="status" className="mt-6">
@@ -362,6 +396,18 @@ function LocationSection({ property }: { property: Property }) {
 
   return (
     <div className="space-y-6">
+      <Card className="border-amber-300 bg-amber-50 dark:bg-amber-950/20">
+        <CardContent className="pt-4 pb-4">
+          <div className="flex items-start gap-3">
+            <Info className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
+            <p className="text-sm text-amber-800 dark:text-amber-200">
+              To avoid rejection, please enter the address as per the
+              registration or lease document.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+
       {!hasLocation && (
         <Card className="border-destructive bg-destructive/10">
           <CardContent className="pt-4">
@@ -788,26 +834,6 @@ function StatusSection({ property }: { property: Property }) {
     "deactivate" | "delete"
   >("deactivate");
 
-  // Check-in / Check-out time state
-  const [checkInTime, setCheckInTime] = useState(property.checkInTime || "");
-  const [checkOutTime, setCheckOutTime] = useState(property.checkOutTime || "");
-
-  const saveCheckInOutMutation = useMutation({
-    mutationFn: async () => {
-      return apiRequest("PATCH", `/api/properties/${property.id}`, {
-        checkInTime: checkInTime || null,
-        checkOutTime: checkOutTime || null,
-      });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/properties", property.id] });
-      toast({ title: "Saved", description: "Check-in/check-out times updated." });
-    },
-    onError: () => {
-      toast({ title: "Error", description: "Failed to save times.", variant: "destructive" });
-    },
-  });
-
   // Check if there's a pending deactivation request
   const { data: pendingRequest, isLoading: isLoadingRequest } = useQuery({
     queryKey: ["/api/properties", property.id, "deactivation-request"],
@@ -940,61 +966,6 @@ function StatusSection({ property }: { property: Property }) {
 
   return (
     <div className="space-y-6">
-      {/* Check-in / Check-out Times */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Clock className="h-5 w-5" />
-            Check-in & Check-out Times
-          </CardTitle>
-          <CardDescription>
-            Set your standard check-in and check-out times visible to guests
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="manage-checkin-time">Check-in Time</Label>
-              <Select value={checkInTime} onValueChange={setCheckInTime}>
-                <SelectTrigger id="manage-checkin-time" data-testid="select-manage-checkin-time">
-                  <SelectValue placeholder="Select check-in time" />
-                </SelectTrigger>
-                <SelectContent>
-                  {["10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00", "17:00", "18:00"].map((t) => (
-                    <SelectItem key={t} value={t}>
-                      {t} {parseInt(t) < 12 ? "AM" : "PM"}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="manage-checkout-time">Check-out Time</Label>
-              <Select value={checkOutTime} onValueChange={setCheckOutTime}>
-                <SelectTrigger id="manage-checkout-time" data-testid="select-manage-checkout-time">
-                  <SelectValue placeholder="Select check-out time" />
-                </SelectTrigger>
-                <SelectContent>
-                  {["06:00", "07:00", "08:00", "09:00", "10:00", "11:00", "12:00", "13:00"].map((t) => (
-                    <SelectItem key={t} value={t}>
-                      {t} {parseInt(t) < 12 ? "AM" : "PM"}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          <Button
-            onClick={() => saveCheckInOutMutation.mutate()}
-            disabled={saveCheckInOutMutation.isPending}
-            data-testid="button-save-checkinout"
-          >
-            <Save className="h-4 w-4 mr-2" />
-            {saveCheckInOutMutation.isPending ? "Saving..." : "Save Times"}
-          </Button>
-        </CardContent>
-      </Card>
-
       <Card>
         <CardHeader>
           <CardTitle>Property Status</CardTitle>
@@ -1343,7 +1314,6 @@ function StatusSection({ property }: { property: Property }) {
         </DialogContent>
       </Dialog>
 
-      <GuestPoliciesCard property={property} />
     </div>
   );
 }
@@ -1381,9 +1351,9 @@ function CancellationSection({ property }: { property: Property }) {
 
 function CancellationPolicyCard({ property }: { property: Property }) {
   const { toast } = useToast();
-  type PolicyType = "flexible" | "moderate" | "strict";
+  type PolicyType = "flexible" | "moderate" | "strict" | "custom";
   const [policyType, setPolicyType] = useState<PolicyType>(
-    property.cancellationPolicyType ?? "flexible",
+    (property.cancellationPolicyType as PolicyType) ?? "flexible",
   );
   const [freeCancellationHours, setFreeCancellationHours] = useState(
     String(property.freeCancellationHours ?? 24),
@@ -3156,6 +3126,893 @@ function MealOptionsManager({ roomTypeId }: { roomTypeId: string }) {
           </div>
         </div>
       ))}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PropertyDetailsSection
+// ─────────────────────────────────────────────────────────────────────────────
+
+const CHANNEL_MANAGERS = [
+  "SiteMinder",
+  "RateGain",
+  "eZee Absolute",
+  "STAAH",
+  "Cloudbeds",
+  "MakeMyTrip Connect",
+  "Other",
+];
+
+const PROPERTY_TYPES = [
+  "hotel", "villa", "hostel", "lodge", "resort",
+  "apartment", "farmhouse", "homestay", "cottage",
+];
+
+function PropertyDetailsSection({ property }: { property: Property }) {
+  const { toast } = useToast();
+
+  const [title, setTitle] = useState(property.title || "");
+  const [propertyType, setPropertyType] = useState<string>(property.propertyType || "");
+  const [starRating, setStarRating] = useState<number | null>(
+    (property as any).starRating ?? null,
+  );
+  const [channelManagerEnabled, setChannelManagerEnabled] = useState(
+    (property as any).channelManagerEnabled ?? false,
+  );
+  const [channelManagerName, setChannelManagerName] = useState(
+    (property as any).channelManagerName ?? "",
+  );
+  const [channelManagerNameCustom, setChannelManagerNameCustom] = useState(
+    (property as any).channelManagerNameCustom ?? "",
+  );
+  const [contactEmail, setContactEmail] = useState(
+    (property as any).contactEmail ?? "",
+  );
+  const [contactPhone, setContactPhone] = useState(
+    (property as any).contactPhone ?? "",
+  );
+  const [whatsappNumber, setWhatsappNumber] = useState(
+    (property as any).whatsappNumber ?? "",
+  );
+  const [receptionNumber, setReceptionNumber] = useState(
+    (property as any).receptionNumber ?? "",
+  );
+
+  const updateMutation = useMutation({
+    mutationFn: async (data: Record<string, any>) =>
+      apiRequest("PATCH", `/api/properties/${property.id}`, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/properties", property.id] });
+      toast({ title: "Saved", description: "Property details updated." });
+    },
+    onError: () =>
+      toast({ title: "Error", description: "Failed to save.", variant: "destructive" }),
+  });
+
+  const handleSave = () => {
+    if (!title.trim()) {
+      toast({ title: "Property name is required.", variant: "destructive" });
+      return;
+    }
+    updateMutation.mutate({
+      title: title.trim(),
+      propertyType: propertyType || undefined,
+      starRating: starRating ?? null,
+      channelManagerEnabled,
+      channelManagerName: channelManagerEnabled ? channelManagerName : null,
+      channelManagerNameCustom:
+        channelManagerEnabled && channelManagerName === "Other"
+          ? channelManagerNameCustom
+          : null,
+      contactEmail: contactEmail || null,
+      contactPhone: contactPhone || null,
+      whatsappNumber: whatsappNumber || null,
+      receptionNumber: receptionNumber || null,
+    });
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Core identity */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Building2 className="h-5 w-5" />
+            Property Identity
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="pd-title">
+              Property Name <span className="text-destructive">*</span>
+            </Label>
+            <Input
+              id="pd-title"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="e.g. The Grand Residency"
+              data-testid="input-pd-title"
+            />
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="pd-type">Property Type</Label>
+              <Select value={propertyType} onValueChange={setPropertyType}>
+                <SelectTrigger id="pd-type" data-testid="select-pd-type">
+                  <SelectValue placeholder="Select type" />
+                </SelectTrigger>
+                <SelectContent>
+                  {PROPERTY_TYPES.map((t) => (
+                    <SelectItem key={t} value={t}>
+                      {t.charAt(0).toUpperCase() + t.slice(1)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Hotel Star Rating (optional)</Label>
+              <div className="flex items-center gap-1 pt-1">
+                {[1, 2, 3, 4, 5].map((n) => (
+                  <button
+                    key={n}
+                    type="button"
+                    onClick={() =>
+                      setStarRating(starRating === n ? null : n)
+                    }
+                    className="focus:outline-none"
+                    data-testid={`star-${n}`}
+                  >
+                    <Star
+                      className={`h-6 w-6 transition-colors ${
+                        starRating !== null && n <= starRating
+                          ? "fill-amber-400 text-amber-400"
+                          : "text-gray-300 hover:text-amber-300"
+                      }`}
+                    />
+                  </button>
+                ))}
+                {starRating !== null && (
+                  <button
+                    type="button"
+                    onClick={() => setStarRating(null)}
+                    className="ml-2 text-xs text-muted-foreground underline"
+                  >
+                    clear
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Channel manager */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <ArrowUpDown className="h-5 w-5" />
+            Channel Manager
+          </CardTitle>
+          <CardDescription>
+            Are you using a channel manager to sync inventory across OTAs?
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center justify-between">
+            <Label htmlFor="pd-cm-toggle">Using a channel manager?</Label>
+            <Switch
+              id="pd-cm-toggle"
+              checked={channelManagerEnabled}
+              onCheckedChange={setChannelManagerEnabled}
+              data-testid="switch-channel-manager"
+            />
+          </div>
+
+          {channelManagerEnabled && (
+            <div className="space-y-3 pt-1">
+              <div className="space-y-2">
+                <Label htmlFor="pd-cm-name">Channel Manager</Label>
+                <Select
+                  value={channelManagerName}
+                  onValueChange={setChannelManagerName}
+                >
+                  <SelectTrigger id="pd-cm-name" data-testid="select-cm-name">
+                    <SelectValue placeholder="Select channel manager" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {CHANNEL_MANAGERS.map((cm) => (
+                      <SelectItem key={cm} value={cm}>
+                        {cm}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {channelManagerName === "Other" && (
+                <div className="space-y-2">
+                  <Label htmlFor="pd-cm-custom">Channel Manager Name</Label>
+                  <Input
+                    id="pd-cm-custom"
+                    value={channelManagerNameCustom}
+                    onChange={(e) => setChannelManagerNameCustom(e.target.value)}
+                    placeholder="Enter channel manager name"
+                    data-testid="input-cm-custom"
+                  />
+                </div>
+              )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Contact details */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Phone className="h-5 w-5" />
+            Contact Details
+          </CardTitle>
+          <CardDescription>
+            These are private. Only shared with guests who have a confirmed
+            booking on this property.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="pd-email" className="flex items-center gap-1.5">
+                <Mail className="h-3.5 w-3.5" /> Email ID
+              </Label>
+              <Input
+                id="pd-email"
+                type="email"
+                value={contactEmail}
+                onChange={(e) => setContactEmail(e.target.value)}
+                placeholder="hotel@example.com"
+                data-testid="input-contact-email"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="pd-phone" className="flex items-center gap-1.5">
+                <Phone className="h-3.5 w-3.5" /> Contact No.
+              </Label>
+              <Input
+                id="pd-phone"
+                type="tel"
+                value={contactPhone}
+                onChange={(e) => setContactPhone(e.target.value)}
+                placeholder="+91 98765 43210"
+                data-testid="input-contact-phone"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="pd-whatsapp" className="flex items-center gap-1.5">
+                <MessageSquare className="h-3.5 w-3.5" /> WhatsApp No.
+              </Label>
+              <Input
+                id="pd-whatsapp"
+                type="tel"
+                value={whatsappNumber}
+                onChange={(e) => setWhatsappNumber(e.target.value)}
+                placeholder="+91 98765 43210"
+                data-testid="input-whatsapp"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="pd-reception" className="flex items-center gap-1.5">
+                <Phone className="h-3.5 w-3.5" /> Reception No.
+              </Label>
+              <Input
+                id="pd-reception"
+                type="tel"
+                value={receptionNumber}
+                onChange={(e) => setReceptionNumber(e.target.value)}
+                placeholder="+91 11 2345 6789"
+                data-testid="input-reception"
+              />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <div className="flex justify-end">
+        <Button
+          onClick={handleSave}
+          disabled={updateMutation.isPending}
+          data-testid="button-save-property-details"
+        >
+          <Save className="h-4 w-4 mr-2" />
+          {updateMutation.isPending ? "Saving..." : "Save Details"}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PolicySection
+// ─────────────────────────────────────────────────────────────────────────────
+
+const CHECK_IN_TIMES = ["10:00","11:00","12:00","13:00","14:00","15:00","16:00","17:00","18:00"];
+const CHECK_OUT_TIMES = ["06:00","07:00","08:00","09:00","10:00","11:00","12:00","13:00"];
+const LOCAL_ID_OPTIONS = ["Aadhaar", "PAN", "Passport", "Voter ID", "Driving License"];
+const FOREIGN_ID_OPTIONS = ["Passport", "Visa", "OCI Card"];
+
+function PolicySection({ property }: { property: Property }) {
+  const { toast } = useToast();
+
+  // Check-in / Check-out
+  const [checkInTime, setCheckInTime] = useState(property.checkInTime || "14:00");
+  const [checkOutTime, setCheckOutTime] = useState(property.checkOutTime || "11:00");
+
+  // Cancellation
+  type PolicyType = "flexible" | "moderate" | "strict" | "custom";
+  const [policyType, setPolicyType] = useState<PolicyType>(
+    (property.cancellationPolicyType as PolicyType) ?? "flexible",
+  );
+  const [freeCancellationHours, setFreeCancellationHours] = useState(
+    String(property.freeCancellationHours ?? 24),
+  );
+  const [partialRefundPercent, setPartialRefundPercent] = useState(
+    String(property.partialRefundPercent ?? 50),
+  );
+  const [customPolicyText, setCustomPolicyText] = useState(
+    property.cancellationPolicy ?? "",
+  );
+
+  // ID types
+  const [localIdTypes, setLocalIdTypes] = useState<string[]>(
+    (property as any).acceptedLocalIdTypes ?? [],
+  );
+  const [foreignIdTypes, setForeignIdTypes] = useState<string[]>(
+    (property as any).acceptedForeignIdTypes ?? [],
+  );
+
+  // Hotel rules
+  const [coupleFriendly, setCoupleFriendly] = useState(property.coupleFriendly ?? true);
+  const [petsAllowed, setPetsAllowed] = useState((property as any).petsAllowed ?? false);
+  const [smokingAllowed, setSmokingAllowed] = useState((property as any).smokingAllowed ?? false);
+  const [liquorAllowed, setLiquorAllowed] = useState((property as any).liquorAllowed ?? false);
+  const [visitorsAllowed, setVisitorsAllowed] = useState((property as any).visitorsAllowed ?? false);
+  const [hourlyBookingAllowed, setHourlyBookingAllowed] = useState(property.hourlyBookingAllowed ?? false);
+
+  const updateMutation = useMutation({
+    mutationFn: async (data: Record<string, any>) =>
+      apiRequest("PATCH", `/api/properties/${property.id}`, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/properties", property.id] });
+      toast({ title: "Saved", description: "Policy updated." });
+    },
+    onError: () =>
+      toast({ title: "Error", description: "Failed to save.", variant: "destructive" }),
+  });
+
+  const toggleIdType = (list: string[], setList: (v: string[]) => void, value: string) => {
+    setList(list.includes(value) ? list.filter((x) => x !== value) : [...list, value]);
+  };
+
+  const handleSave = () => {
+    const hours = parseInt(freeCancellationHours, 10);
+    const percent = parseInt(partialRefundPercent, 10);
+
+    if (policyType !== "custom") {
+      if (isNaN(hours) || hours < 1 || hours > 168) {
+        toast({ title: "Free cancellation hours must be 1–168.", variant: "destructive" });
+        return;
+      }
+      if (isNaN(percent) || percent < 0 || percent > 100) {
+        toast({ title: "Refund % must be 0–100.", variant: "destructive" });
+        return;
+      }
+    } else if (!customPolicyText.trim()) {
+      toast({ title: "Please enter your custom policy text.", variant: "destructive" });
+      return;
+    }
+
+    updateMutation.mutate({
+      checkInTime: checkInTime || null,
+      checkOutTime: checkOutTime || null,
+      cancellationPolicyType: policyType,
+      freeCancellationHours: policyType !== "custom" ? hours : property.freeCancellationHours,
+      partialRefundPercent: policyType !== "custom" ? percent : property.partialRefundPercent,
+      cancellationPolicy: policyType === "custom" ? customPolicyText : null,
+      cancellationPolicyConfigured: true,
+      acceptedLocalIdTypes: localIdTypes,
+      acceptedForeignIdTypes: foreignIdTypes,
+      coupleFriendly,
+      petsAllowed,
+      smokingAllowed,
+      liquorAllowed,
+      visitorsAllowed,
+      hourlyBookingAllowed,
+    });
+  };
+
+  const policyLabel: Record<PolicyType, string> = {
+    flexible: "Free cancellation (Flexible)",
+    moderate: "Partial refund (Moderate)",
+    strict: "Non-refundable (Strict)",
+    custom: "Custom policy",
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Check-in / Check-out */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Clock className="h-5 w-5" />
+            Check-in &amp; Check-out Times
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Check-in Time <span className="text-destructive">*</span></Label>
+              <Select value={checkInTime} onValueChange={setCheckInTime}>
+                <SelectTrigger data-testid="select-checkin">
+                  <SelectValue placeholder="Select time" />
+                </SelectTrigger>
+                <SelectContent>
+                  {CHECK_IN_TIMES.map((t) => (
+                    <SelectItem key={t} value={t}>
+                      {t} {parseInt(t) < 12 ? "AM" : "PM"}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Check-out Time <span className="text-destructive">*</span></Label>
+              <Select value={checkOutTime} onValueChange={setCheckOutTime}>
+                <SelectTrigger data-testid="select-checkout">
+                  <SelectValue placeholder="Select time" />
+                </SelectTrigger>
+                <SelectContent>
+                  {CHECK_OUT_TIMES.map((t) => (
+                    <SelectItem key={t} value={t}>
+                      {t} {parseInt(t) < 12 ? "AM" : "PM"}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Cancellation policy */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <FileX className="h-5 w-5" />
+            Cancellation Policy
+          </CardTitle>
+          <CardDescription>Define how refunds work when guests cancel</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label>Policy Type</Label>
+            <Select
+              value={policyType}
+              onValueChange={(v) => setPolicyType(v as PolicyType)}
+            >
+              <SelectTrigger data-testid="select-policy-type">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="flexible">Free cancellation (Flexible)</SelectItem>
+                <SelectItem value="moderate">Partial refund (Moderate)</SelectItem>
+                <SelectItem value="strict">Non-refundable (Strict)</SelectItem>
+                <SelectItem value="custom">Custom policy</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {policyType !== "custom" && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="policy-hours">Free cancellation window (hours)</Label>
+                <Input
+                  id="policy-hours"
+                  type="number"
+                  min="1"
+                  max="168"
+                  value={freeCancellationHours}
+                  onChange={(e) => setFreeCancellationHours(e.target.value)}
+                  data-testid="input-free-hours"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="policy-percent">Refund % within window</Label>
+                <Input
+                  id="policy-percent"
+                  type="number"
+                  min="0"
+                  max="100"
+                  value={partialRefundPercent}
+                  onChange={(e) => setPartialRefundPercent(e.target.value)}
+                  data-testid="input-refund-percent"
+                />
+              </div>
+            </div>
+          )}
+
+          {policyType === "custom" && (
+            <div className="space-y-2">
+              <Label htmlFor="policy-custom">Custom Policy Text</Label>
+              <Textarea
+                id="policy-custom"
+                rows={4}
+                value={customPolicyText}
+                onChange={(e) => setCustomPolicyText(e.target.value)}
+                placeholder="Describe your cancellation and refund terms..."
+                data-testid="input-custom-policy"
+              />
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* ID acceptance */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <ShieldCheck className="h-5 w-5" />
+            Acceptable ID Proof
+          </CardTitle>
+          <CardDescription>
+            Which ID types do you accept at check-in?
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-5">
+          <div>
+            <p className="text-sm font-medium mb-2">Local Guests</p>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+              {LOCAL_ID_OPTIONS.map((id) => (
+                <div key={id} className="flex items-center gap-2">
+                  <Checkbox
+                    id={`local-${id}`}
+                    checked={localIdTypes.includes(id)}
+                    onCheckedChange={() =>
+                      toggleIdType(localIdTypes, setLocalIdTypes, id)
+                    }
+                    data-testid={`checkbox-local-${id}`}
+                  />
+                  <Label htmlFor={`local-${id}`} className="font-normal cursor-pointer">
+                    {id}
+                  </Label>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div>
+            <p className="text-sm font-medium mb-2">Foreign Guests</p>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+              {FOREIGN_ID_OPTIONS.map((id) => (
+                <div key={id} className="flex items-center gap-2">
+                  <Checkbox
+                    id={`foreign-${id}`}
+                    checked={foreignIdTypes.includes(id)}
+                    onCheckedChange={() =>
+                      toggleIdType(foreignIdTypes, setForeignIdTypes, id)
+                    }
+                    data-testid={`checkbox-foreign-${id}`}
+                  />
+                  <Label htmlFor={`foreign-${id}`} className="font-normal cursor-pointer">
+                    {id}
+                  </Label>
+                </div>
+              ))}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Hotel rules */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Shield className="h-5 w-5" />
+            Hotel Rules
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {(
+              [
+                { label: "Couple-friendly", desc: "Allow unmarried couples to check in", value: coupleFriendly, set: setCoupleFriendly, testId: "switch-couple-friendly" },
+                { label: "Pets allowed", desc: "Guests may bring pets", value: petsAllowed, set: setPetsAllowed, testId: "switch-pets" },
+                { label: "Smoking in room", desc: "Smoking permitted inside rooms", value: smokingAllowed, set: setSmokingAllowed, testId: "switch-smoking" },
+                { label: "Liquor in room", desc: "Guests may consume liquor in room", value: liquorAllowed, set: setLiquorAllowed, testId: "switch-liquor" },
+                { label: "Visitors allowed in room", desc: "Registered guests may bring visitors to the room", value: visitorsAllowed, set: setVisitorsAllowed, testId: "switch-visitors" },
+                { label: "Hourly booking", desc: "Accept bookings by the hour", value: hourlyBookingAllowed, set: setHourlyBookingAllowed, testId: "switch-hourly" },
+              ] as const
+            ).map(({ label, desc, value, set, testId }) => (
+              <div key={label} className="flex items-center justify-between py-2 border-b last:border-b-0">
+                <div>
+                  <p className="text-sm font-medium">{label}</p>
+                  <p className="text-xs text-muted-foreground">{desc}</p>
+                </div>
+                <Switch
+                  checked={value}
+                  onCheckedChange={set}
+                  data-testid={testId}
+                />
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      <div className="flex justify-end">
+        <Button
+          onClick={handleSave}
+          disabled={updateMutation.isPending}
+          data-testid="button-save-policy"
+        >
+          <Save className="h-4 w-4 mr-2" />
+          {updateMutation.isPending ? "Saving..." : "Save Policy"}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SummarySection
+// ─────────────────────────────────────────────────────────────────────────────
+
+function SummarySection({
+  property,
+  roomTypes,
+}: {
+  property: Property;
+  roomTypes: RoomType[];
+}) {
+  const p = property as any;
+
+  const totalRooms = roomTypes.reduce((sum, rt) => sum + ((rt as any).totalRooms ?? 0), 0);
+  const minPrice = roomTypes.length
+    ? Math.min(...roomTypes.map((rt) => parseFloat(rt.basePrice)))
+    : null;
+
+  const policyLabels: Record<string, string> = {
+    flexible: "Free cancellation (Flexible)",
+    moderate: "Partial refund (Moderate)",
+    strict: "Non-refundable (Strict)",
+    custom: "Custom policy",
+  };
+
+  const rules = [
+    { label: "Couple-friendly", value: p.coupleFriendly },
+    { label: "Pets allowed", value: p.petsAllowed },
+    { label: "Smoking in room", value: p.smokingAllowed },
+    { label: "Liquor in room", value: p.liquorAllowed },
+    { label: "Visitors in room", value: p.visitorsAllowed },
+    { label: "Hourly booking", value: p.hourlyBookingAllowed },
+  ];
+
+  const completeness = (() => {
+    const checks = [
+      !!property.title,
+      !!property.description,
+      !!p.starRating,
+      !!p.contactEmail || !!p.contactPhone || !!p.whatsappNumber || !!p.receptionNumber,
+      !!property.checkInTime && !!property.checkOutTime,
+      !!property.cancellationPolicyConfigured,
+      (p.acceptedLocalIdTypes?.length ?? 0) > 0,
+      !!property.latitude && !!property.longitude,
+      roomTypes.length > 0,
+    ];
+    return Math.round((checks.filter(Boolean).length / checks.length) * 100);
+  })();
+
+  return (
+    <div className="space-y-6">
+      {/* Completeness bar */}
+      <Card>
+        <CardContent className="pt-5 pb-4">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm font-semibold">Profile completeness</span>
+            <span className="text-sm font-bold text-primary">{completeness}%</span>
+          </div>
+          <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
+            <div
+              className="h-full bg-primary rounded-full transition-all"
+              style={{ width: `${completeness}%` }}
+            />
+          </div>
+          {completeness < 100 && (
+            <p className="text-xs text-muted-foreground mt-2">
+              Fill in the missing details across the tabs above to improve your listing visibility.
+            </p>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Property */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <Building2 className="h-4 w-4" /> Property
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2 text-sm">
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Name</span>
+            <span className="font-medium">{property.title || "—"}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Type</span>
+            <span className="capitalize">{property.propertyType || "—"}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Star rating</span>
+            <span>
+              {p.starRating
+                ? Array.from({ length: p.starRating }).map((_, i) => (
+                    <Star key={i} className="inline h-3.5 w-3.5 fill-amber-400 text-amber-400" />
+                  ))
+                : "—"}
+            </span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Destination</span>
+            <span>{property.destination || "—"}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Status</span>
+            <Badge variant={property.status === "published" ? "default" : "secondary"} className="capitalize">
+              {property.status}
+            </Badge>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Rooms & Pricing */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <Bed className="h-4 w-4" /> Rooms &amp; Pricing
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2 text-sm">
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Room types</span>
+            <span>{roomTypes.length > 0 ? roomTypes.map((r) => r.name).join(", ") : "—"}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Total rooms</span>
+            <span>{totalRooms > 0 ? totalRooms : "—"}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Starting price</span>
+            <span>{minPrice ? `₹${minPrice.toLocaleString("en-IN")}/night` : "—"}</span>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Policy */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <Shield className="h-4 w-4" /> Policy
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2 text-sm">
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Check-in</span>
+            <span>{property.checkInTime || "—"}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Check-out</span>
+            <span>{property.checkOutTime || "—"}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Cancellation</span>
+            <span>{policyLabels[property.cancellationPolicyType ?? ""] ?? "Not set"}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Local IDs accepted</span>
+            <span>{(p.acceptedLocalIdTypes?.length ?? 0) > 0 ? p.acceptedLocalIdTypes.join(", ") : "—"}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Foreign IDs accepted</span>
+            <span>{(p.acceptedForeignIdTypes?.length ?? 0) > 0 ? p.acceptedForeignIdTypes.join(", ") : "—"}</span>
+          </div>
+          <div className="pt-2 grid grid-cols-2 gap-x-4 gap-y-1">
+            {rules.map(({ label, value }) => (
+              <div key={label} className="flex items-center gap-1.5">
+                <span className={`w-1.5 h-1.5 rounded-full ${value ? "bg-green-500" : "bg-gray-300"}`} />
+                <span className={value ? "text-foreground" : "text-muted-foreground"}>{label}</span>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Channel manager */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <ArrowUpDown className="h-4 w-4" /> Channel Manager
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="text-sm">
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Enabled</span>
+            <span>{p.channelManagerEnabled ? "Yes" : "No"}</span>
+          </div>
+          {p.channelManagerEnabled && (
+            <div className="flex justify-between mt-2">
+              <span className="text-muted-foreground">Manager</span>
+              <span>
+                {p.channelManagerName === "Other"
+                  ? p.channelManagerNameCustom || "Other"
+                  : p.channelManagerName || "—"}
+              </span>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Contact (visible to owner only) */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <Phone className="h-4 w-4" /> Contact Details
+            <Badge variant="outline" className="text-xs ml-1">Owner only</Badge>
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2 text-sm">
+          {[
+            { label: "Email", value: p.contactEmail },
+            { label: "Contact No.", value: p.contactPhone },
+            { label: "WhatsApp", value: p.whatsappNumber },
+            { label: "Reception", value: p.receptionNumber },
+          ].map(({ label, value }) => (
+            <div key={label} className="flex justify-between">
+              <span className="text-muted-foreground">{label}</span>
+              <span>{value || "—"}</span>
+            </div>
+          ))}
+        </CardContent>
+      </Card>
+
+      {/* Location */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <MapPin className="h-4 w-4" /> Location
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="text-sm">
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">City / State</span>
+            <span>
+              {[property.propCity, property.propState].filter(Boolean).join(", ") || "—"}
+            </span>
+          </div>
+          <div className="flex justify-between mt-2">
+            <span className="text-muted-foreground">GPS verified</span>
+            {property.latitude && property.longitude ? (
+              <Badge variant="default" className="text-xs bg-green-600">
+                <CheckCircle className="h-3 w-3 mr-1" /> Verified
+              </Badge>
+            ) : (
+              <Badge variant="outline" className="text-xs text-destructive border-destructive">
+                <AlertTriangle className="h-3 w-3 mr-1" /> Not set
+              </Badge>
+            )}
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

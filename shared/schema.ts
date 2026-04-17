@@ -9,6 +9,7 @@ import {
   varchar,
   text,
   integer,
+  smallint,
   decimal,
   boolean,
   pgEnum,
@@ -363,6 +364,7 @@ export const cancellationPolicyTypeEnum = pgEnum("cancellation_policy_type", [
   "flexible", // Free cancellation until X hours before check-in
   "moderate", // Partial refund if cancelled within X hours
   "strict", // No refund / non-refundable
+  "custom", // Owner-written freetext policy
 ]);
 
 // Suspension status enum
@@ -544,6 +546,27 @@ export const properties = pgTable("properties", {
     .notNull()
     .default(true),
   coupleFriendly: boolean("couple_friendly").notNull().default(true),
+  petsAllowed: boolean("pets_allowed").notNull().default(false),
+  smokingAllowed: boolean("smoking_allowed").notNull().default(false),
+  liquorAllowed: boolean("liquor_allowed").notNull().default(false),
+  visitorsAllowed: boolean("visitors_allowed").notNull().default(false),
+  // Accepted ID types for check-in
+  acceptedLocalIdTypes: text("accepted_local_id_types")
+    .array()
+    .default(sql`ARRAY[]::text[]`),
+  acceptedForeignIdTypes: text("accepted_foreign_id_types")
+    .array()
+    .default(sql`ARRAY[]::text[]`),
+  // Channel manager integration
+  channelManagerEnabled: boolean("channel_manager_enabled").notNull().default(false),
+  channelManagerName: varchar("channel_manager_name", { length: 100 }),
+  channelManagerNameCustom: varchar("channel_manager_name_custom", { length: 255 }),
+  // Star rating (1–5)
+  starRating: smallint("star_rating"),
+  // Private contact fields — never returned in public API responses
+  contactEmail: varchar("contact_email", { length: 255 }),
+  contactPhone: varchar("contact_phone", { length: 20 }),
+  whatsappNumber: varchar("whatsapp_number", { length: 20 }),
   // Admin suspension - property-level suspension when owner is suspended
   suspended: boolean("suspended").notNull().default(false),
   suspendedAt: timestamp("suspended_at"),

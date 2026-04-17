@@ -2965,7 +2965,7 @@ export default function PropertyDetails() {
                         ? "Loading..."
                         : "Chat with Owner"}
                     </Button>
-                    {user && (property as any).ownerContact?.phone && (
+                    {(property as any).ownerContact?.canCall && (
                       <Button
                         className="w-full"
                         variant="outline"

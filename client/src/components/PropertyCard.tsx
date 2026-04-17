@@ -23,8 +23,9 @@ import { useAuth } from "@/hooks/useAuth";
 import { useCompare } from "@/contexts/CompareContext";
 
 interface OwnerContact {
-  phone: string | null;
   name: string | null;
+  canCall: boolean;
+  phone?: string | null;
 }
 
 interface SearchParams {
@@ -205,7 +206,7 @@ export function PropertyCard({
   };
 
   const isPublished = property.status === "published";
-  const hasOwnerPhone = Boolean(property.ownerContact?.phone);
+  const hasOwnerPhone = Boolean(property.ownerContact?.canCall);
 
   return (
     <Link href={propertyUrl}>

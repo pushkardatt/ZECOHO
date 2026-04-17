@@ -2424,6 +2424,19 @@ export async function registerRoutes(
 
       const properties = await storage.getProperties(filters);
 
+      // Determine the requesting user and pre-fetch their bookings once to avoid N+1
+      const requestUserId =
+        req.isAuthenticated() && (req.user as any)
+          ? (req.user as any).claims?.sub || (req.user as any).id
+          : null;
+      let guestBookedPropertyIds = new Set<string>();
+      if (requestUserId) {
+        const guestBookings = await storage.getBookingsByGuest(requestUserId);
+        for (const b of guestBookings) {
+          guestBookedPropertyIds.add(b.propertyId);
+        }
+      }
+
       // For published properties, include owner contact info and room-type pricing
       const propertiesWithDetails = await Promise.all(
         properties.map(async (property) => {
@@ -2454,20 +2467,24 @@ export async function registerRoutes(
 
           if (property.status === "published") {
             const owner = await storage.getUser(property.ownerId);
-            // Clean phone value - trim whitespace and convert empty strings to null
             const ownerPhone =
               owner?.phone && owner.phone.trim() ? owner.phone.trim() : null;
+            const canCall =
+              requestUserId !== null &&
+              (requestUserId === property.ownerId ||
+                guestBookedPropertyIds.has(property.id));
             return {
               ...property,
               startingRoomPrice,
               startingRoomOriginalPrice,
               ownerContact: owner
                 ? {
-                    phone: ownerPhone,
                     name:
                       owner.firstName && owner.lastName
                         ? `${owner.firstName} ${owner.lastName}`
                         : owner.firstName || null,
+                    canCall,
+                    ...(canCall ? { phone: ownerPhone } : {}),
                   }
                 : null,
             };
@@ -2517,30 +2534,72 @@ export async function registerRoutes(
         }
       }
 
-      // For published properties, include owner contact info
+      // Determine caller identity and authorisation level
+      const requestUserId =
+        req.isAuthenticated() && (req.user as any)
+          ? (req.user as any).claims?.sub || (req.user as any).id
+          : null;
+
+      let isOwner = false;
+      let hasConfirmedBooking = false;
+      let isAdmin = false;
+
+      if (requestUserId) {
+        isOwner = requestUserId === property.ownerId;
+        if (!isOwner) {
+          const caller = await storage.getUser(requestUserId);
+          isAdmin = caller?.userRole === "admin";
+          if (!isAdmin) {
+            const guestBookings = await storage.getBookingsByGuest(requestUserId);
+            hasConfirmedBooking = guestBookings.some(
+              (b) => b.propertyId === property.id && b.status === "confirmed",
+            );
+          }
+        }
+      }
+
+      const canSeeContactFields = isOwner || isAdmin || hasConfirmedBooking;
+
+      // Strip private contact fields — only expose to authorised callers
+      const {
+        receptionNumber,
+        contactEmail,
+        contactPhone,
+        whatsappNumber,
+        ...publicProperty
+      } = property as any;
+
+      const contactFields = canSeeContactFields
+        ? { receptionNumber, contactEmail, contactPhone, whatsappNumber }
+        : {};
+
+      // For published properties, also include owner phone via ownerContact
       if (property.status === "published") {
         const owner = await storage.getUser(property.ownerId);
-        // Clean phone value - trim whitespace and convert empty strings to null
         const ownerPhone =
           owner?.phone && owner.phone.trim() ? owner.phone.trim() : null;
+        const canCall = isOwner || isAdmin || hasConfirmedBooking;
         return res.json({
-          ...property,
+          ...publicProperty,
+          ...contactFields,
           startingRoomPrice,
           startingRoomOriginalPrice,
           ownerContact: owner
             ? {
-                phone: ownerPhone,
                 name:
                   owner.firstName && owner.lastName
                     ? `${owner.firstName} ${owner.lastName}`
                     : owner.firstName || null,
+                canCall,
+                ...(canCall ? { phone: ownerPhone } : {}),
               }
             : null,
         });
       }
 
       res.json({
-        ...property,
+        ...publicProperty,
+        ...contactFields,
         startingRoomPrice,
         startingRoomOriginalPrice,
       });
