@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Switch } from "@/components/ui/switch";
 import {
   Select,
   SelectContent,
@@ -84,6 +85,7 @@ import {
   AlertTriangle,
   IdCard,
   Shield,
+  ShieldCheck,
   Flame,
   Camera,
   Zap,
@@ -94,6 +96,12 @@ import {
   Sparkles,
   Plus,
   Trash2,
+  Star,
+  ArrowUpDown,
+  MessageSquare,
+  Mail,
+  Phone,
+  FileX,
 } from "lucide-react";
 import { PriceCalendar } from "@/components/PriceCalendar";
 import { INDIAN_STATES, INDIAN_CITIES } from "@/data/locations";
@@ -384,8 +392,8 @@ export default function ListPropertyWizard() {
   // New 9-step flow: 1(personal)->2(KYC)->3(property+rooms)->4(pricing)->5(amenities)->6(availability)->7(status)->8(location)->9(photos)
   // KYC-verified users start at step 3
   const kycStepsCount = canSkipKycSteps ? 0 : 2;
-  // totalSteps is always 9 (the last step number), regardless of whether KYC steps are skipped
-  const totalSteps = 9;
+  // totalSteps is always 11 (the last step number), regardless of whether KYC steps are skipped
+  const totalSteps = 11;
   const firstStep = canSkipKycSteps ? 3 : 1;
 
   const [step, setStep] = useState(firstStep);
@@ -514,7 +522,25 @@ export default function ListPropertyWizard() {
   );
   const [isAutoSaving, setIsAutoSaving] = useState(false);
 
-  // Availability blocking state (for step 6)
+  // Step 4: Property Details (star rating, channel manager, contacts)
+  const [wizardStarRating, setWizardStarRating] = useState<number | null>(null);
+  const [wizardChannelManagerEnabled, setWizardChannelManagerEnabled] = useState(false);
+  const [wizardChannelManagerName, setWizardChannelManagerName] = useState("");
+  const [wizardChannelManagerNameCustom, setWizardChannelManagerNameCustom] = useState("");
+  const [wizardContactEmail, setWizardContactEmail] = useState("");
+  const [wizardContactPhone, setWizardContactPhone] = useState("");
+  const [wizardWhatsappNumber, setWizardWhatsappNumber] = useState("");
+  const [wizardReceptionNumber, setWizardReceptionNumber] = useState("");
+
+  // Step 5: Policy (ID proof, hotel rules — check-in/out & cancellation stay in form)
+  const [wizardLocalIdTypes, setWizardLocalIdTypes] = useState<string[]>([]);
+  const [wizardForeignIdTypes, setWizardForeignIdTypes] = useState<string[]>([]);
+  const [wizardPetsAllowed, setWizardPetsAllowed] = useState(false);
+  const [wizardSmokingAllowed, setWizardSmokingAllowed] = useState(false);
+  const [wizardLiquorAllowed, setWizardLiquorAllowed] = useState(false);
+  const [wizardVisitorsAllowed, setWizardVisitorsAllowed] = useState(false);
+
+  // Availability blocking state (for step 8)
   const [blockStartDate, setBlockStartDate] = useState("");
   const [blockEndDate, setBlockEndDate] = useState("");
   const [blockType, setBlockType] = useState<
@@ -754,6 +780,25 @@ export default function ListPropertyWizard() {
       if (draftProperty.amenityIds && Array.isArray(draftProperty.amenityIds)) {
         setSelectedAmenities(draftProperty.amenityIds.map(String));
       }
+
+      // Pre-fill step 4 (Property Details) fields
+      const dp = draftProperty as any;
+      if (dp.starRating) setWizardStarRating(dp.starRating);
+      if (dp.channelManagerEnabled) setWizardChannelManagerEnabled(dp.channelManagerEnabled);
+      if (dp.channelManagerName) setWizardChannelManagerName(dp.channelManagerName);
+      if (dp.channelManagerNameCustom) setWizardChannelManagerNameCustom(dp.channelManagerNameCustom);
+      if (dp.contactEmail) setWizardContactEmail(dp.contactEmail);
+      if (dp.contactPhone) setWizardContactPhone(dp.contactPhone);
+      if (dp.whatsappNumber) setWizardWhatsappNumber(dp.whatsappNumber);
+      if (dp.receptionNumber) setWizardReceptionNumber(dp.receptionNumber);
+
+      // Pre-fill step 5 (Policy) fields
+      if (Array.isArray(dp.acceptedLocalIdTypes)) setWizardLocalIdTypes(dp.acceptedLocalIdTypes);
+      if (Array.isArray(dp.acceptedForeignIdTypes)) setWizardForeignIdTypes(dp.acceptedForeignIdTypes);
+      if (dp.petsAllowed !== undefined) setWizardPetsAllowed(dp.petsAllowed);
+      if (dp.smokingAllowed !== undefined) setWizardSmokingAllowed(dp.smokingAllowed);
+      if (dp.liquorAllowed !== undefined) setWizardLiquorAllowed(dp.liquorAllowed);
+      if (dp.visitorsAllowed !== undefined) setWizardVisitorsAllowed(dp.visitorsAllowed);
 
       // Ensure autoDraftPropertyId is set for complete mode (handles auto-redirect case
       // where the URL didn't have propertyId when the component first mounted)
@@ -1625,8 +1670,8 @@ export default function ListPropertyWizard() {
           propDistrict: data.propDistrict,
           propState: data.propState,
           propPincode: data.propPincode,
-          checkInTime: data.checkInTime,
-          checkOutTime: data.checkOutTime,
+          checkInTime: data.checkInTime || "14:00",
+          checkOutTime: data.checkOutTime || "11:00",
           coupleFriendly: data.coupleFriendly,
           localIdAllowed: data.localIdAllowed,
           foreignGuestsAllowed: data.foreignGuestsAllowed,
@@ -1638,6 +1683,22 @@ export default function ListPropertyWizard() {
           bulkBookingMinRooms: data.bulkBookingMinRooms,
           bulkBookingDiscountPercent: data.bulkBookingDiscountPercent,
           policies: data.policies,
+          // Step 4: Property Details
+          starRating: wizardStarRating,
+          channelManagerEnabled: wizardChannelManagerEnabled,
+          channelManagerName: wizardChannelManagerEnabled ? wizardChannelManagerName : null,
+          channelManagerNameCustom: wizardChannelManagerEnabled && wizardChannelManagerName === "Other" ? wizardChannelManagerNameCustom : null,
+          contactEmail: wizardContactEmail || null,
+          contactPhone: wizardContactPhone || null,
+          whatsappNumber: wizardWhatsappNumber || null,
+          receptionNumber: wizardReceptionNumber || null,
+          // Step 5: Policy
+          acceptedLocalIdTypes: wizardLocalIdTypes,
+          acceptedForeignIdTypes: wizardForeignIdTypes,
+          petsAllowed: wizardPetsAllowed,
+          smokingAllowed: wizardSmokingAllowed,
+          liquorAllowed: wizardLiquorAllowed,
+          visitorsAllowed: wizardVisitorsAllowed,
         },
         roomTypes: wizardRoomTypes,
       });
@@ -1762,23 +1823,31 @@ export default function ListPropertyWizard() {
         setStep(step + 1);
         return;
       } else if (step === 4) {
-        // Step 4: Day-wise Pricing — optional, no required fields
+        // Step 4: Property Details (star rating, channel manager, contacts) — optional
         fieldsToValidate = [];
+        if (autoDraftPropertyId) await autoSaveDraft();
       } else if (step === 5) {
-        // Step 5: Cancellation + Amenities — optional
+        // Step 5: Policy (check-in/out, cancellation, ID proof, hotel rules) — optional
+        fieldsToValidate = [];
+        if (autoDraftPropertyId) await autoSaveDraft();
+      } else if (step === 6) {
+        // Step 6: Day-wise Pricing — optional, no required fields
+        fieldsToValidate = [];
+      } else if (step === 7) {
+        // Step 7: Cancellation + Amenities — optional
         fieldsToValidate = [];
         // Re-save draft with updated cancellation policy
         if (autoDraftPropertyId) {
           await autoSaveDraft();
         }
-      } else if (step === 6) {
-        // Step 6: Availability — optional
-        fieldsToValidate = [];
-      } else if (step === 7) {
-        // Step 7: Status/Setup summary — optional
-        fieldsToValidate = [];
       } else if (step === 8) {
-        // Step 8 is Property Location - requires latitude and longitude
+        // Step 8: Availability — optional
+        fieldsToValidate = [];
+      } else if (step === 9) {
+        // Step 9: Setup summary — optional
+        fieldsToValidate = [];
+      } else if (step === 10) {
+        // Step 10: Property Location - requires latitude and longitude
         if (!propertyLatitude || !propertyLongitude) {
           toast({
             title: "Property Location Required",
@@ -1797,7 +1866,7 @@ export default function ListPropertyWizard() {
       const nextStepNum = step + 1;
       setStep(nextStepNum);
       // When entering availability step, load existing blocks
-      if (nextStepNum === 6 && autoDraftPropertyId) {
+      if (nextStepNum === 8 && autoDraftPropertyId) {
         fetchBlockedDates(autoDraftPropertyId);
       }
     } else {
@@ -1854,11 +1923,11 @@ export default function ListPropertyWizard() {
           });
           return;
         }
-      } else if (s === 4 || s === 5 || s === 6 || s === 7) {
-        // Steps 4-7 are optional (pricing, amenities, availability, status)
+      } else if (s >= 4 && s <= 9) {
+        // Steps 4-9 are optional (property details, policy, pricing, amenities, availability, summary)
         fieldsToValidate = [];
-      } else if (s === 8) {
-        // Step 8 is Property Location - requires latitude and longitude
+      } else if (s === 10) {
+        // Step 10 is Property Location - requires latitude and longitude
         if (!propertyLatitude || !propertyLongitude) {
           setStep(s);
           toast({
@@ -1889,11 +1958,13 @@ export default function ListPropertyWizard() {
     setStep(targetStep);
   };
 
-  // Step titles for full mode (9 steps)
+  // Step titles for full mode (11 steps)
   const fullModeStepTitles = [
     { title: "Personal Information", icon: User },
     { title: "Business KYC", icon: FileText },
-    { title: "Property Details & Room Types", icon: Home },
+    { title: "Property & Room Types", icon: Home },
+    { title: "Property Details", icon: Building2 },
+    { title: "Policy", icon: Shield },
     { title: "Day-wise Pricing", icon: CalendarDays },
     { title: "Cancellation & Amenities", icon: XCircle },
     { title: "Availability", icon: Ban },
@@ -3494,98 +3565,6 @@ export default function ListPropertyWizard() {
                     </CardContent>
                   </Card>
 
-                  {/* Check-in & Check-out Times */}
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2">
-                        <Clock className="h-5 w-5" />
-                        Check-in & Check-out
-                      </CardTitle>
-                      <CardDescription>
-                        Set your standard check-in and check-out times
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <FormField
-                          control={form.control}
-                          name="checkInTime"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Check-in Time</FormLabel>
-                              <Select
-                                value={field.value || ""}
-                                onValueChange={field.onChange}
-                              >
-                                <FormControl>
-                                  <SelectTrigger data-testid="select-checkin-time">
-                                    <SelectValue placeholder="Select check-in time" />
-                                  </SelectTrigger>
-                                </FormControl>
-                                <SelectContent>
-                                  {[
-                                    "10:00",
-                                    "11:00",
-                                    "12:00",
-                                    "13:00",
-                                    "14:00",
-                                    "15:00",
-                                    "16:00",
-                                    "17:00",
-                                    "18:00",
-                                  ].map((t) => (
-                                    <SelectItem key={t} value={t}>
-                                      {t.replace(":00", ":00")}{" "}
-                                      {parseInt(t) < 12 ? "AM" : "PM"}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name="checkOutTime"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Check-out Time</FormLabel>
-                              <Select
-                                value={field.value || ""}
-                                onValueChange={field.onChange}
-                              >
-                                <FormControl>
-                                  <SelectTrigger data-testid="select-checkout-time">
-                                    <SelectValue placeholder="Select check-out time" />
-                                  </SelectTrigger>
-                                </FormControl>
-                                <SelectContent>
-                                  {[
-                                    "06:00",
-                                    "07:00",
-                                    "08:00",
-                                    "09:00",
-                                    "10:00",
-                                    "11:00",
-                                    "12:00",
-                                    "13:00",
-                                  ].map((t) => (
-                                    <SelectItem key={t} value={t}>
-                                      {t.replace(":00", ":00")}{" "}
-                                      {parseInt(t) < 12 ? "AM" : "PM"}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      </div>
-                    </CardContent>
-                  </Card>
-
                   {/* Guest Policies */}
                   <Card>
                     <CardHeader>
@@ -3707,8 +3686,330 @@ export default function ListPropertyWizard() {
                 </div>
               )}
 
-              {/* Step 4: Day-wise Pricing */}
+              {/* Step 4: Property Details (star rating, channel manager, contacts) */}
               {step === 4 && (
+                <div className="space-y-6">
+                  {/* Star Rating */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <Building2 className="h-5 w-5" />
+                        Property Identity
+                      </CardTitle>
+                      <CardDescription>Optional details to help guests find and trust your property</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div>
+                        <Label>Hotel Star Rating (optional)</Label>
+                        <div className="flex items-center gap-1 mt-2">
+                          {[1, 2, 3, 4, 5].map((n) => (
+                            <button
+                              key={n}
+                              type="button"
+                              onClick={() => setWizardStarRating(wizardStarRating === n ? null : n)}
+                              className="focus:outline-none"
+                            >
+                              <Star className={`h-7 w-7 transition-colors ${wizardStarRating !== null && n <= wizardStarRating ? "fill-amber-400 text-amber-400" : "text-gray-300 hover:text-amber-300"}`} />
+                            </button>
+                          ))}
+                          {wizardStarRating !== null && (
+                            <button type="button" onClick={() => setWizardStarRating(null)} className="ml-2 text-xs text-muted-foreground underline">clear</button>
+                          )}
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Channel Manager */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <ArrowUpDown className="h-5 w-5" />
+                        Channel Manager
+                      </CardTitle>
+                      <CardDescription>Are you using a channel manager to sync inventory across OTAs?</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <Label>Using a channel manager?</Label>
+                        <Switch
+                          checked={wizardChannelManagerEnabled}
+                          onCheckedChange={setWizardChannelManagerEnabled}
+                          data-testid="wizard-switch-channel-manager"
+                        />
+                      </div>
+                      {wizardChannelManagerEnabled && (
+                        <div className="space-y-3 pt-1">
+                          <div className="space-y-2">
+                            <Label>Channel Manager</Label>
+                            <Select value={wizardChannelManagerName} onValueChange={setWizardChannelManagerName}>
+                              <SelectTrigger data-testid="wizard-select-cm-name">
+                                <SelectValue placeholder="Select channel manager" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {["SiteMinder","RateGain","eZee Absolute","STAAH","Cloudbeds","MakeMyTrip Connect","Other"].map((cm) => (
+                                  <SelectItem key={cm} value={cm}>{cm}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          {wizardChannelManagerName === "Other" && (
+                            <div className="space-y-2">
+                              <Label>Channel Manager Name</Label>
+                              <Input
+                                value={wizardChannelManagerNameCustom}
+                                onChange={(e) => setWizardChannelManagerNameCustom(e.target.value)}
+                                placeholder="Enter channel manager name"
+                                data-testid="wizard-input-cm-custom"
+                              />
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+
+                  {/* Contact Details */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <Phone className="h-5 w-5" />
+                        Contact Details
+                      </CardTitle>
+                      <CardDescription>
+                        These are private — only shared with guests who have a confirmed booking on this property.
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label className="flex items-center gap-1.5"><Mail className="h-3.5 w-3.5" /> Email ID</Label>
+                          <Input type="email" value={wizardContactEmail} onChange={(e) => setWizardContactEmail(e.target.value)} placeholder="hotel@example.com" data-testid="wizard-input-contact-email" />
+                        </div>
+                        <div className="space-y-2">
+                          <Label className="flex items-center gap-1.5"><Phone className="h-3.5 w-3.5" /> Contact No.</Label>
+                          <Input type="tel" value={wizardContactPhone} onChange={(e) => setWizardContactPhone(e.target.value)} placeholder="+91 98765 43210" data-testid="wizard-input-contact-phone" />
+                        </div>
+                        <div className="space-y-2">
+                          <Label className="flex items-center gap-1.5"><MessageSquare className="h-3.5 w-3.5" /> WhatsApp No.</Label>
+                          <Input type="tel" value={wizardWhatsappNumber} onChange={(e) => setWizardWhatsappNumber(e.target.value)} placeholder="+91 98765 43210" data-testid="wizard-input-whatsapp" />
+                        </div>
+                        <div className="space-y-2">
+                          <Label className="flex items-center gap-1.5"><Phone className="h-3.5 w-3.5" /> Reception No.</Label>
+                          <Input type="tel" value={wizardReceptionNumber} onChange={(e) => setWizardReceptionNumber(e.target.value)} placeholder="+91 11 2345 6789" data-testid="wizard-input-reception" />
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              )}
+
+              {/* Step 5: Policy */}
+              {step === 5 && (
+                <div className="space-y-6">
+                  {/* Check-in & Check-out */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <Clock className="h-5 w-5" />
+                        Check-in &amp; Check-out Times
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <FormField
+                          control={form.control}
+                          name="checkInTime"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Check-in Time <span className="text-destructive">*</span></FormLabel>
+                              <Select value={field.value || "14:00"} onValueChange={field.onChange}>
+                                <FormControl>
+                                  <SelectTrigger data-testid="wizard-select-checkin-time">
+                                    <SelectValue placeholder="Select check-in time" />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  {["10:00","11:00","12:00","13:00","14:00","15:00","16:00","17:00","18:00"].map((t) => (
+                                    <SelectItem key={t} value={t}>{t} {parseInt(t) < 12 ? "AM" : "PM"}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="checkOutTime"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Check-out Time <span className="text-destructive">*</span></FormLabel>
+                              <Select value={field.value || "11:00"} onValueChange={field.onChange}>
+                                <FormControl>
+                                  <SelectTrigger data-testid="wizard-select-checkout-time">
+                                    <SelectValue placeholder="Select check-out time" />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  {["06:00","07:00","08:00","09:00","10:00","11:00","12:00","13:00"].map((t) => (
+                                    <SelectItem key={t} value={t}>{t} {parseInt(t) < 12 ? "AM" : "PM"}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Cancellation Policy */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <FileX className="h-5 w-5" />
+                        Cancellation Policy
+                      </CardTitle>
+                      <CardDescription>Define how refunds work when guests cancel</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <FormField
+                        control={form.control}
+                        name="cancellationPolicyType"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Policy Type</FormLabel>
+                            <Select value={field.value || "flexible"} onValueChange={field.onChange}>
+                              <FormControl>
+                                <SelectTrigger data-testid="wizard-select-policy-type">
+                                  <SelectValue />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                <SelectItem value="flexible">Free cancellation (Flexible)</SelectItem>
+                                <SelectItem value="moderate">Partial refund (Moderate)</SelectItem>
+                                <SelectItem value="strict">Non-refundable (Strict)</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      {form.watch("cancellationPolicyType") !== "strict" && (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <FormField
+                            control={form.control}
+                            name="freeCancellationHours"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Free cancellation window (hours)</FormLabel>
+                                <FormControl>
+                                  <Input type="number" min="1" max="168" {...field} data-testid="wizard-input-free-hours" />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          {form.watch("cancellationPolicyType") === "moderate" && (
+                            <FormField
+                              control={form.control}
+                              name="partialRefundPercent"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Refund % within window</FormLabel>
+                                  <FormControl>
+                                    <Input type="number" min="0" max="100" {...field} data-testid="wizard-input-refund-percent" />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                          )}
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+
+                  {/* Acceptable ID Proof */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <ShieldCheck className="h-5 w-5" />
+                        Acceptable ID Proof
+                      </CardTitle>
+                      <CardDescription>Which ID types do you accept at check-in?</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-5">
+                      <div>
+                        <p className="text-sm font-medium mb-2">Local Guests</p>
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                          {["Aadhaar","PAN","Passport","Voter ID","Driving License"].map((id) => (
+                            <div key={id} className="flex items-center gap-2">
+                              <Checkbox
+                                id={`wizard-local-${id}`}
+                                checked={wizardLocalIdTypes.includes(id)}
+                                onCheckedChange={() => setWizardLocalIdTypes(wizardLocalIdTypes.includes(id) ? wizardLocalIdTypes.filter((x) => x !== id) : [...wizardLocalIdTypes, id])}
+                                data-testid={`wizard-checkbox-local-${id}`}
+                              />
+                              <Label htmlFor={`wizard-local-${id}`} className="font-normal cursor-pointer">{id}</Label>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium mb-2">Foreign Guests</p>
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                          {["Passport","Visa","OCI Card"].map((id) => (
+                            <div key={id} className="flex items-center gap-2">
+                              <Checkbox
+                                id={`wizard-foreign-${id}`}
+                                checked={wizardForeignIdTypes.includes(id)}
+                                onCheckedChange={() => setWizardForeignIdTypes(wizardForeignIdTypes.includes(id) ? wizardForeignIdTypes.filter((x) => x !== id) : [...wizardForeignIdTypes, id])}
+                                data-testid={`wizard-checkbox-foreign-${id}`}
+                              />
+                              <Label htmlFor={`wizard-foreign-${id}`} className="font-normal cursor-pointer">{id}</Label>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Hotel Rules */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <Shield className="h-5 w-5" />
+                        Hotel Rules
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-4">
+                        {([
+                          { label: "Couple-friendly", desc: "Allow unmarried couples to check in", value: form.watch("coupleFriendly") ?? true, onChange: (v: boolean) => form.setValue("coupleFriendly", v), testId: "wizard-switch-couple-friendly" },
+                          { label: "Pets allowed", desc: "Guests may bring pets", value: wizardPetsAllowed, onChange: setWizardPetsAllowed, testId: "wizard-switch-pets" },
+                          { label: "Smoking in room", desc: "Smoking permitted inside rooms", value: wizardSmokingAllowed, onChange: setWizardSmokingAllowed, testId: "wizard-switch-smoking" },
+                          { label: "Liquor in room", desc: "Guests may consume liquor in room", value: wizardLiquorAllowed, onChange: setWizardLiquorAllowed, testId: "wizard-switch-liquor" },
+                          { label: "Visitors allowed in room", desc: "Registered guests may bring visitors", value: wizardVisitorsAllowed, onChange: setWizardVisitorsAllowed, testId: "wizard-switch-visitors" },
+                        ] as const).map(({ label, desc, value, onChange, testId }) => (
+                          <div key={label} className="flex items-center justify-between py-2 border-b last:border-b-0">
+                            <div>
+                              <p className="text-sm font-medium">{label}</p>
+                              <p className="text-xs text-muted-foreground">{desc}</p>
+                            </div>
+                            <Switch checked={value} onCheckedChange={onChange} data-testid={testId} />
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              )}
+
+              {/* Step 6: Day-wise Pricing */}
+              {step === 6 && (
                 <div className="space-y-6">
                   {autoDraftPropertyId ? (
                     <>
@@ -3744,8 +4045,8 @@ export default function ListPropertyWizard() {
                 </div>
               )}
 
-              {/* Step 8: Property Location (Mandatory Geo-tagging) */}
-              {step === 8 && (
+              {/* Step 10: Property Location (Mandatory Geo-tagging) */}
+              {step === 10 && (
                 <div className="space-y-6">
                   <Card>
                     <CardHeader>
@@ -3802,8 +4103,8 @@ export default function ListPropertyWizard() {
                 </div>
               )}
 
-              {/* Step 5: Amenities & Additional Options */}
-              {step === 5 && (
+              {/* Step 7: Amenities & Additional Options */}
+              {step === 7 && (
                 <div className="space-y-6">
                   {/* Cancellation Policy Card */}
                   <Card>
@@ -4196,8 +4497,8 @@ export default function ListPropertyWizard() {
                 </div>
               )}
 
-              {/* Step 6: Availability Blocking */}
-              {step === 6 && (
+              {/* Step 8: Availability Blocking */}
+              {step === 8 && (
                 <div className="space-y-6">
                   <Card>
                     <CardHeader>
@@ -4387,8 +4688,8 @@ export default function ListPropertyWizard() {
                 </div>
               )}
 
-              {/* Step 7: Setup Summary / Status */}
-              {step === 7 && (
+              {/* Step 9: Setup Summary / Status */}
+              {step === 9 && (
                 <div className="space-y-6">
                   <Card className="border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-950/30">
                     <CardHeader>
@@ -4480,11 +4781,11 @@ export default function ListPropertyWizard() {
                     <CardContent className="space-y-3">
                       {[
                         {
-                          step: "Step 8",
+                          step: "Step 10",
                           desc: "Pin your property on the map for accurate location",
                         },
                         {
-                          step: "Step 9",
+                          step: "Step 11",
                           desc: "Upload photos by category (Exterior, Rooms, Amenities, etc.)",
                         },
                         {
@@ -4513,8 +4814,8 @@ export default function ListPropertyWizard() {
                 </div>
               )}
 
-              {/* Step 9: Photos & Submit */}
-              {step === 9 && (
+              {/* Step 11: Photos & Submit */}
+              {step === 11 && (
                 <div className="space-y-6">
                   {/* Photo Category Progress Summary */}
                   <Card className="border-primary/20 bg-primary/5">
