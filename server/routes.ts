@@ -105,33 +105,75 @@ function userHasRole(user: any, role: string): boolean {
 }
 
 // Helper: resolve the correct room rate based on guest count
-// Uses new separate occupancy prices (singleOccupancyPrice / doubleOccupancyPrice / tripleOccupancyPrice)
-// Falls back to legacy basePrice + adjustment model if new prices not set
-function resolveOccupancyPrice(roomType: any, adultsCount: number): number {
+// Resolve single/base nightly rate from room type (no occupancy increment).
+// Used as the "base" before adding occupancy increments.
+function resolveBasePrice(roomType: any): number {
+  if (roomType.singleOccupancyPrice) return Number(roomType.singleOccupancyPrice);
+  return Number(roomType.basePrice);
+}
+
+// Occupancy increment above single rate (0 for single occupancy).
+// OTA model: override replaces the base; increment is preserved.
+function occupancyIncrement(roomType: any, adultsCount: number): number {
   const adults = Math.max(1, adultsCount || 1);
 
-  // New model: separate full-room rates per occupancy level
+  // New model: increment = full tier price − single price
+  const single = roomType.singleOccupancyPrice ? Number(roomType.singleOccupancyPrice) : Number(roomType.basePrice);
   if (adults >= 3 && roomType.tripleOccupancyPrice) {
-    return Number(roomType.tripleOccupancyPrice);
+    return Number(roomType.tripleOccupancyPrice) - single;
   }
   if (adults >= 2 && roomType.doubleOccupancyPrice) {
-    return Number(roomType.doubleOccupancyPrice);
-  }
-  if (adults === 1 && roomType.singleOccupancyPrice) {
-    return Number(roomType.singleOccupancyPrice);
+    return Number(roomType.doubleOccupancyPrice) - single;
   }
 
-  // Legacy fallback: basePrice + adjustment
-  const basePrice = Number(roomType.basePrice);
+  // Legacy model: explicit adjustment fields
   const singleOccupancyBase = roomType.singleOccupancyBase || 1;
   const guestsOverBase = adults - singleOccupancyBase;
   if (guestsOverBase >= 2 && roomType.tripleOccupancyAdjustment) {
-    return basePrice + Number(roomType.tripleOccupancyAdjustment);
+    return Number(roomType.tripleOccupancyAdjustment);
   }
   if (guestsOverBase >= 1 && roomType.doubleOccupancyAdjustment) {
-    return basePrice + Number(roomType.doubleOccupancyAdjustment);
+    return Number(roomType.doubleOccupancyAdjustment);
   }
-  return basePrice;
+  return 0;
+}
+
+// Resolve nightly price for a given occupancy level, optionally using a
+// day-level override as the base rate (MMT-style: override is single/base
+// rate; occupancy increments are preserved on top).
+function resolveOccupancyPrice(roomType: any, adultsCount: number, overrideBasePrice?: number): number {
+  const adults = Math.max(1, adultsCount || 1);
+
+  if (overrideBasePrice !== undefined) {
+    // Day-level override: use as base, add occupancy increment on top
+    return overrideBasePrice + occupancyIncrement(roomType, adults);
+  }
+
+  // No override — use static room type prices
+  const single = roomType.singleOccupancyPrice ? Number(roomType.singleOccupancyPrice) : Number(roomType.basePrice);
+  return single + occupancyIncrement(roomType, adults);
+}
+
+// Calculate total room cost night-by-night, applying per-day price overrides.
+// overridesMap: date string (YYYY-MM-DD) → override base price for that night.
+function calculateNightlyRoomCost(
+  roomType: any,
+  adultsPerRoom: number,
+  roomsCount: number,
+  checkIn: Date,
+  checkOut: Date,
+  overridesMap: Map<string, number>,
+): number {
+  let total = 0;
+  const cursor = new Date(checkIn);
+  while (cursor < checkOut) {
+    const dateKey = cursor.toISOString().split("T")[0];
+    const override = overridesMap.get(dateKey);
+    const nightPrice = resolveOccupancyPrice(roomType, adultsPerRoom, override);
+    total += nightPrice * roomsCount;
+    cursor.setDate(cursor.getDate() + 1);
+  }
+  return total;
 }
 
 export async function registerRoutes(
@@ -4505,35 +4547,43 @@ export async function registerRoutes(
       const guestCount = validatedData.guests || 1;
       const adultsCount = validatedData.adults || guestCount;
 
-      let pricePerNight = Number(property.pricePerNight);
       let mealPrice = 0;
+      let roomSubtotal = nights * Number(property.pricePerNight) * roomsCount;
 
-      // If room type is selected, use room type pricing
+      // If room type is selected, use room type pricing with per-night overrides
       if (validatedData.roomTypeId) {
         const roomType = await storage.getRoomType(validatedData.roomTypeId);
         if (roomType) {
-          // Resolve correct rate based on adult count (single/double/triple)
           const adultsPerRoom = Math.ceil(adultsCount / roomsCount);
-          pricePerNight = resolveOccupancyPrice(roomType, adultsPerRoom);
 
-          // If meal option is selected, add meal option price (per person per night)
+          // Fetch day-level price overrides for the booking date range
+          const startKey = checkIn.toISOString().split("T")[0];
+          const endKey = new Date(checkOut.getTime() - 86400000).toISOString().split("T")[0];
+          const overrideRows = await storage.getRoomPriceOverrides(
+            validatedData.roomTypeId,
+            startKey,
+            endKey,
+          );
+          const overridesMap = new Map<string, number>(
+            overrideRows.map((r) => [r.date, Number(r.roomPrice)]),
+          );
+
+          // Sum nightly prices: each night uses override base + occupancy increment
+          roomSubtotal = calculateNightlyRoomCost(
+            roomType, adultsPerRoom, roomsCount, checkIn, checkOut, overridesMap,
+          );
+
+          // Meal option price (per person per night, no day overrides yet)
           if (validatedData.roomOptionId) {
-            const mealOption = await storage.getRoomOption(
-              validatedData.roomOptionId,
-            );
-            if (
-              mealOption &&
-              mealOption.roomTypeId === validatedData.roomTypeId
-            ) {
+            const mealOption = await storage.getRoomOption(validatedData.roomOptionId);
+            if (mealOption && mealOption.roomTypeId === validatedData.roomTypeId) {
               mealPrice = Number(mealOption.priceAdjustment);
             }
           }
         }
       }
 
-      // Room subtotal: price × nights × rooms
       // Meal subtotal: mealPrice × guests × nights (per person per night)
-      const roomSubtotal = nights * pricePerNight * roomsCount;
       const mealSubtotal = nights * mealPrice * guestCount;
 
       // Platform fee: ZERO commission model - no platform fee
@@ -11977,34 +12027,42 @@ export async function registerRoutes(
         const guestCount = parentBooking.guests || 1;
         const adultsCount = parentBooking.adults || guestCount;
 
-        let pricePerNight = Number(property.pricePerNight);
         let mealPrice = 0;
+        let roomSubtotal = nights * Number(property.pricePerNight) * roomsCount;
 
         // Use same room type and meal option pricing from parent booking
         if (parentBooking.roomTypeId) {
           const roomType = await storage.getRoomType(parentBooking.roomTypeId);
           if (roomType) {
-            // Resolve correct rate based on adult count (single/double/triple)
             const adultsPerRoom = Math.ceil(adultsCount / roomsCount);
-            pricePerNight = resolveOccupancyPrice(roomType, adultsPerRoom);
+
+            // Fetch day-level overrides for the extension date range
+            const startKey = extensionCheckIn.toISOString().split("T")[0];
+            const endKey = new Date(extensionCheckOut.getTime() - 86400000).toISOString().split("T")[0];
+            const overrideRows = await storage.getRoomPriceOverrides(
+              parentBooking.roomTypeId,
+              startKey,
+              endKey,
+            );
+            const overridesMap = new Map<string, number>(
+              overrideRows.map((r) => [r.date, Number(r.roomPrice)]),
+            );
+
+            roomSubtotal = calculateNightlyRoomCost(
+              roomType, adultsPerRoom, roomsCount,
+              extensionCheckIn, extensionCheckOut, overridesMap,
+            );
 
             if (parentBooking.roomOptionId) {
-              const mealOption = await storage.getRoomOption(
-                parentBooking.roomOptionId,
-              );
-              if (
-                mealOption &&
-                mealOption.roomTypeId === parentBooking.roomTypeId
-              ) {
+              const mealOption = await storage.getRoomOption(parentBooking.roomOptionId);
+              if (mealOption && mealOption.roomTypeId === parentBooking.roomTypeId) {
                 mealPrice = Number(mealOption.priceAdjustment);
               }
             }
           }
         }
 
-        // Room subtotal: price × nights × rooms
         // Meal subtotal: mealPrice × guests × nights (per person per night)
-        const roomSubtotal = nights * pricePerNight * roomsCount;
         const mealSubtotal = nights * mealPrice * guestCount;
         const totalPrice = roomSubtotal + mealSubtotal;
 

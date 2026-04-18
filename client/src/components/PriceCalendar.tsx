@@ -704,6 +704,11 @@ export function PriceCalendar({ propertyId, roomTypes }: PriceCalendarProps) {
                 className="pl-8 text-base font-semibold h-11 rounded-xl border-gray-200 focus-visible:ring-orange-200 focus-visible:border-orange-400"
               />
             </div>
+            {editMode === "room" && (
+              <p className="text-xs text-muted-foreground">
+                This sets the <strong>single/base rate</strong> for selected dates. Extra-guest charges (double/triple occupancy) are added on top automatically.
+              </p>
+            )}
 
             <Button
               type="button"

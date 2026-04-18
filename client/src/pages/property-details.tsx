@@ -437,6 +437,25 @@ export default function PropertyDetails() {
     enabled: !!propertyId,
   });
 
+  // Fetch price overrides for selected date range + room type (for accurate display)
+  const { data: priceOverridesMap } = useQuery<Map<string, number>>({
+    queryKey: ["/api/properties", propertyId, "pricing-calendar", checkIn, checkOut, selectedRoomTypeId],
+    queryFn: async () => {
+      if (!propertyId || !checkIn || !checkOut || !selectedRoomTypeId) return new Map();
+      const end = new Date(checkOut);
+      end.setDate(end.getDate() - 1);
+      const res = await fetch(
+        `/api/properties/${propertyId}/pricing-calendar?startDate=${checkIn}&endDate=${end.toISOString().split("T")[0]}`
+      );
+      if (!res.ok) return new Map();
+      const data = await res.json();
+      const rt = (data.roomTypes || []).find((r: any) => r.roomTypeId === selectedRoomTypeId);
+      if (!rt?.overrides) return new Map();
+      return new Map<string, number>(Object.entries(rt.overrides).map(([d, p]) => [d, Number(p)]));
+    },
+    enabled: !!propertyId && !!checkIn && !!checkOut && !!selectedRoomTypeId,
+  });
+
   // Fetch real-time room inventory for selected dates
   const { data: roomInventory = [] } = useQuery<any[]>({
     queryKey: [
@@ -967,55 +986,53 @@ export default function PropertyDetails() {
 
     const start = new Date(checkIn);
     const end = new Date(checkOut);
-    const nights = Math.ceil(
-      (end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24),
-    );
-
-    if (nights <= 0) return 0;
-    if (!selectedRoomTypeId) return 0;
-
-    let pricePerNight = 0;
-    let mealOptionPrice = 0;
+    const nights = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+    if (nights <= 0 || !selectedRoomTypeId) return 0;
 
     const rt = roomTypes.find((rt: any) => rt.id === selectedRoomTypeId);
-    if (rt) {
-      // New model: pick correct rate based on adults per room
-      const adultsPerRoom = Math.ceil(adults / rooms);
-      if (adultsPerRoom >= 3 && rt.tripleOccupancyPrice) {
-        pricePerNight = Number(rt.tripleOccupancyPrice);
-      } else if (adultsPerRoom >= 2 && rt.doubleOccupancyPrice) {
-        pricePerNight = Number(rt.doubleOccupancyPrice);
-      } else if (rt.singleOccupancyPrice) {
-        pricePerNight = Number(rt.singleOccupancyPrice);
-      } else {
-        // Legacy fallback: basePrice + adjustment
-        pricePerNight = Number(rt.basePrice);
-        const singleOccupancyBase = rt.singleOccupancyBase || 1;
-        const guestsOverBase = adultsPerRoom - singleOccupancyBase;
-        if (guestsOverBase >= 2 && rt.tripleOccupancyAdjustment) {
-          pricePerNight += Number(rt.tripleOccupancyAdjustment);
-        } else if (guestsOverBase >= 1 && rt.doubleOccupancyAdjustment) {
-          pricePerNight += Number(rt.doubleOccupancyAdjustment);
-        }
-      }
+    if (!rt) return 0;
 
-      if (selectedMealOptionId && rt.mealOptions) {
-        const selectedMealOption = rt.mealOptions.find(
-          (opt: any) => opt.id === selectedMealOptionId,
-        );
-        if (selectedMealOption) {
-          mealOptionPrice = Number(selectedMealOption.priceAdjustment);
-        }
+    const adultsPerRoom = Math.ceil(adults / rooms);
+
+    // Occupancy increment above single/base rate (same logic as backend)
+    const singleBase = rt.singleOccupancyPrice ? Number(rt.singleOccupancyPrice) : Number(rt.basePrice);
+    let occupancyIncrement = 0;
+    if (adultsPerRoom >= 3 && rt.tripleOccupancyPrice) {
+      occupancyIncrement = Number(rt.tripleOccupancyPrice) - singleBase;
+    } else if (adultsPerRoom >= 2 && rt.doubleOccupancyPrice) {
+      occupancyIncrement = Number(rt.doubleOccupancyPrice) - singleBase;
+    } else {
+      // Legacy adjustments
+      const singleOccupancyBase = rt.singleOccupancyBase || 1;
+      const guestsOverBase = adultsPerRoom - singleOccupancyBase;
+      if (guestsOverBase >= 2 && rt.tripleOccupancyAdjustment) {
+        occupancyIncrement = Number(rt.tripleOccupancyAdjustment);
+      } else if (guestsOverBase >= 1 && rt.doubleOccupancyAdjustment) {
+        occupancyIncrement = Number(rt.doubleOccupancyAdjustment);
       }
     }
 
-    if (pricePerNight <= 0) return 0;
+    // Sum nightly room costs: override base + occupancy increment (MMT-style)
+    let roomCost = 0;
+    const cursor = new Date(start);
+    while (cursor < end) {
+      const dateKey = cursor.toISOString().split("T")[0];
+      const overrideBase = priceOverridesMap?.get(dateKey);
+      const base = overrideBase !== undefined ? overrideBase : singleBase;
+      roomCost += (base + occupancyIncrement) * rooms;
+      cursor.setDate(cursor.getDate() + 1);
+    }
 
-    const roomCost = nights * pricePerNight * rooms;
+    if (roomCost <= 0) return 0;
+
+    let mealOptionPrice = 0;
+    if (selectedMealOptionId && rt.mealOptions) {
+      const selectedMealOption = rt.mealOptions.find((opt: any) => opt.id === selectedMealOptionId);
+      if (selectedMealOption) mealOptionPrice = Number(selectedMealOption.priceAdjustment);
+    }
+
     const mealCost = nights * mealOptionPrice * guests;
-    let basePrice = roomCost + mealCost;
-
-    return Math.round(basePrice);
+    return Math.round(roomCost + mealCost);
   };
 
   const totalPrice = useMemo(
@@ -1030,6 +1047,7 @@ export default function PropertyDetails() {
       selectedRoomTypeId,
       selectedMealOptionId,
       roomTypes,
+      priceOverridesMap,
     ],
   );
   const nights = useMemo(() => {
@@ -2717,16 +2735,12 @@ export default function PropertyDetails() {
                     if (!rt) return null;
 
                     const adultsPerRoom = Math.ceil(adults / rooms);
-                    let pricePerNight = Number(rt.basePrice);
                     let occupancyLabel = "";
                     if (adultsPerRoom >= 3 && rt.tripleOccupancyPrice) {
-                      pricePerNight = Number(rt.tripleOccupancyPrice);
                       occupancyLabel = "Triple occupancy";
                     } else if (adultsPerRoom >= 2 && rt.doubleOccupancyPrice) {
-                      pricePerNight = Number(rt.doubleOccupancyPrice);
                       occupancyLabel = "Double occupancy";
                     } else if (rt.singleOccupancyPrice) {
-                      pricePerNight = Number(rt.singleOccupancyPrice);
                       occupancyLabel = "Single occupancy";
                     }
 
@@ -2742,8 +2756,9 @@ export default function PropertyDetails() {
                       }
                     }
 
-                    const roomSubtotal = nights * pricePerNight * rooms;
                     const mealSubtotal = nights * mealOptionPrice * guests;
+                    // roomSubtotal derived from override-aware totalPrice
+                    const roomSubtotal = totalPrice - mealSubtotal;
 
                     return (
                       <div className="mb-4 p-4 bg-muted rounded-lg space-y-2">
@@ -2788,16 +2803,12 @@ export default function PropertyDetails() {
                     if (!rt) return null;
 
                     const adultsPerRoom = Math.ceil(adults / rooms);
-                    let basePrice = Number(rt.basePrice);
                     let occupancyLabel = "";
                     if (adultsPerRoom >= 3 && rt.tripleOccupancyPrice) {
-                      basePrice = Number(rt.tripleOccupancyPrice);
                       occupancyLabel = "Triple occupancy";
                     } else if (adultsPerRoom >= 2 && rt.doubleOccupancyPrice) {
-                      basePrice = Number(rt.doubleOccupancyPrice);
                       occupancyLabel = "Double occupancy";
                     } else if (rt.singleOccupancyPrice) {
-                      basePrice = Number(rt.singleOccupancyPrice);
                       occupancyLabel = "Single occupancy";
                     }
 
@@ -2820,6 +2831,10 @@ export default function PropertyDetails() {
                         mealOptionPrice = Number(sel.priceAdjustment);
                       }
                     }
+
+                    // Use override-aware totalPrice for the breakdown
+                    const mealSubtotal = nights * mealOptionPrice * guests;
+                    const basePrice = nights > 0 ? (totalPrice - mealSubtotal) / (nights * rooms) : 0;
 
                     return (
                       <div className="space-y-4" ref={travellerDetailsRef}>
@@ -3028,16 +3043,12 @@ export default function PropertyDetails() {
                 if (!rt) return null;
 
                 const adultsPerRoom = Math.ceil(adults / rooms);
-                let basePrice = Number(rt.basePrice);
                 let occupancyLabel = "";
                 if (adultsPerRoom >= 3 && rt.tripleOccupancyPrice) {
-                  basePrice = Number(rt.tripleOccupancyPrice);
                   occupancyLabel = "Triple occupancy";
                 } else if (adultsPerRoom >= 2 && rt.doubleOccupancyPrice) {
-                  basePrice = Number(rt.doubleOccupancyPrice);
                   occupancyLabel = "Double occupancy";
                 } else if (rt.singleOccupancyPrice) {
-                  basePrice = Number(rt.singleOccupancyPrice);
                   occupancyLabel = "Single occupancy";
                 }
 
@@ -3060,6 +3071,10 @@ export default function PropertyDetails() {
                     mealOptionPrice = Number(mo.priceAdjustment);
                   }
                 }
+
+                // Use override-aware totalPrice for the breakdown
+                const mealSubtotal = nights * mealOptionPrice * guests;
+                const basePrice = nights > 0 ? (totalPrice - mealSubtotal) / (nights * rooms) : 0;
 
                 return (
                   <>
