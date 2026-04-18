@@ -400,31 +400,25 @@ export function RoomTypeBuilder({
                   </Badge>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Set extra charges when guest count exceeds the base occupancy.
-                  Base price applies for single occupancy.
+                  Set the price charged per night based on number of guests.
+                  Leave 2-guest and 3-guest prices blank to use the base price for all.
                 </p>
                 <div className="grid gap-4 md:grid-cols-3">
                   <div className="space-y-2">
-                    <Label className="text-xs">Single Occupancy (Base)</Label>
-                    <div className="flex items-center gap-2">
-                      <Input
-                        type="number"
-                        min="1"
-                        max="3"
-                        value={newSingleOccupancyBase}
-                        onChange={(e) =>
-                          setNewSingleOccupancyBase(e.target.value)
-                        }
-                        className="w-20"
-                        data-testid="input-new-room-single-occupancy"
-                      />
-                      <span className="text-xs text-muted-foreground">
-                        guest(s) at base price
-                      </span>
-                    </div>
+                    <Label className="text-xs font-medium">1 Guest — Price/Night (₹)</Label>
+                    <Input
+                      type="number"
+                      min="100"
+                      value={newRoomPrice}
+                      onChange={(e) => setNewRoomPrice(e.target.value)}
+                      placeholder="e.g., 2000"
+                      data-testid="input-new-room-single-occupancy"
+                      className="bg-background"
+                    />
+                    <p className="text-xs text-muted-foreground">Same as selling price above</p>
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-xs">Double Occupancy (+₹)</Label>
+                    <Label className="text-xs font-medium">2 Guests — Price/Night (₹)</Label>
                     <Input
                       type="number"
                       min="0"
@@ -432,15 +426,17 @@ export function RoomTypeBuilder({
                       onChange={(e) =>
                         setNewDoubleOccupancyAdjustment(e.target.value)
                       }
-                      placeholder="e.g., 500"
+                      placeholder="e.g., 2500"
                       data-testid="input-new-room-double-occupancy"
                     />
-                    <p className="text-xs text-muted-foreground">
-                      Extra per night for 2 guests
-                    </p>
+                    {newDoubleOccupancyAdjustment && newRoomPrice && (
+                      <p className="text-xs text-primary">
+                        +₹{Math.max(0, parseFloat(newDoubleOccupancyAdjustment) - parseFloat(newRoomPrice || "0")).toLocaleString("en-IN")} extra vs. 1 guest
+                      </p>
+                    )}
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-xs">Triple Occupancy (+₹)</Label>
+                    <Label className="text-xs font-medium">3+ Guests — Price/Night (₹)</Label>
                     <Input
                       type="number"
                       min="0"
@@ -448,12 +444,14 @@ export function RoomTypeBuilder({
                       onChange={(e) =>
                         setNewTripleOccupancyAdjustment(e.target.value)
                       }
-                      placeholder="e.g., 1000"
+                      placeholder="e.g., 3000"
                       data-testid="input-new-room-triple-occupancy"
                     />
-                    <p className="text-xs text-muted-foreground">
-                      Extra per night for 3+ guests
-                    </p>
+                    {newTripleOccupancyAdjustment && newRoomPrice && (
+                      <p className="text-xs text-primary">
+                        +₹{Math.max(0, parseFloat(newTripleOccupancyAdjustment) - parseFloat(newRoomPrice || "0")).toLocaleString("en-IN")} extra vs. 1 guest
+                      </p>
+                    )}
                   </div>
                 </div>
               </div>
@@ -521,9 +519,7 @@ export function RoomTypeBuilder({
 
         {value.length > 0 && (
           <div className="bg-muted/50 rounded-lg p-3 text-sm text-muted-foreground">
-            <strong>Tip:</strong> Click on a room type to expand and manage its
-            meal options. The final price shown to customers will be: Room Base
-            Price + Meal Option Price Adjustment.
+            <strong>Tip:</strong> Expand a room type to manage meal plans. Guest price = 1-guest price + meal plan add-on per person. Set 2-guest and 3-guest prices for occupancy-based rates.
           </div>
         )}
       </CardContent>
@@ -881,47 +877,52 @@ function RoomTypeCard({
                   Optional
                 </Badge>
               </div>
+              <p className="text-xs text-muted-foreground">
+                Set price per night per occupancy level. Leave 2-guest / 3-guest blank to use the base price.
+              </p>
               <div className="grid gap-3 md:grid-cols-3">
                 <div className="space-y-1">
-                  <Label className="text-xs">Single Occupancy (Base)</Label>
-                  <div className="flex items-center gap-2">
-                    <Input
-                      type="number"
-                      min="1"
-                      max="3"
-                      value={editSingleOccupancyBase}
-                      onChange={(e) =>
-                        setEditSingleOccupancyBase(e.target.value)
-                      }
-                      className="w-20"
-                      data-testid={`edit-room-single-occupancy-${room.id}`}
-                    />
-                    <span className="text-xs text-muted-foreground">
-                      guest(s)
-                    </span>
-                  </div>
+                  <Label className="text-xs font-medium">1 Guest — ₹/Night</Label>
+                  <Input
+                    type="number"
+                    min="100"
+                    value={editPrice}
+                    onChange={(e) => setEditPrice(e.target.value)}
+                    data-testid={`edit-room-single-occupancy-${room.id}`}
+                  />
+                  <p className="text-xs text-muted-foreground">Same as selling price</p>
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-xs">Double Occupancy (+₹)</Label>
+                  <Label className="text-xs font-medium">2 Guests — ₹/Night</Label>
                   <Input
                     type="number"
                     min="0"
                     value={editDoubleOccupancy}
                     onChange={(e) => setEditDoubleOccupancy(e.target.value)}
-                    placeholder="0"
+                    placeholder="Leave blank for same as 1 guest"
                     data-testid={`edit-room-double-occupancy-${room.id}`}
                   />
+                  {editDoubleOccupancy && editPrice && (
+                    <p className="text-xs text-primary">
+                      +₹{Math.max(0, parseFloat(editDoubleOccupancy) - parseFloat(editPrice)).toLocaleString("en-IN")} extra
+                    </p>
+                  )}
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-xs">Triple Occupancy (+₹)</Label>
+                  <Label className="text-xs font-medium">3+ Guests — ₹/Night</Label>
                   <Input
                     type="number"
                     min="0"
                     value={editTripleOccupancy}
                     onChange={(e) => setEditTripleOccupancy(e.target.value)}
-                    placeholder="0"
+                    placeholder="Leave blank for same as 1 guest"
                     data-testid={`edit-room-triple-occupancy-${room.id}`}
                   />
+                  {editTripleOccupancy && editPrice && (
+                    <p className="text-xs text-primary">
+                      +₹{Math.max(0, parseFloat(editTripleOccupancy) - parseFloat(editPrice)).toLocaleString("en-IN")} extra
+                    </p>
+                  )}
                 </div>
               </div>
             </div>
@@ -932,6 +933,7 @@ function RoomTypeCard({
           <div className="p-3 border-t bg-background">
             <MealOptionsSection
               options={room.mealOptions}
+              basePrice={room.basePrice}
               onAdd={onAddMealOption}
               onDelete={onDeleteMealOption}
               onUpdate={onUpdateMealOption}
@@ -968,11 +970,13 @@ const PRESET_MEAL_OPTIONS_WIZARD = [
 
 function MealOptionsSection({
   options,
+  basePrice,
   onAdd,
   onDelete,
   onUpdate,
 }: {
   options: WizardMealOption[];
+  basePrice: number;
   onAdd: (option: Omit<WizardMealOption, "id">) => void;
   onDelete: (optionId: string) => void;
   onUpdate: (optionId: string, updates: Partial<WizardMealOption>) => void;
@@ -1135,6 +1139,7 @@ function MealOptionsSection({
             <MealOptionRow
               key={option.id}
               option={option}
+              basePrice={basePrice}
               isEditing={editingOption === option.id}
               onEdit={() => setEditingOption(option.id)}
               onCancelEdit={() => setEditingOption(null)}
@@ -1153,6 +1158,7 @@ function MealOptionsSection({
 
 function MealOptionRow({
   option,
+  basePrice,
   isEditing,
   onEdit,
   onCancelEdit,
@@ -1160,6 +1166,7 @@ function MealOptionRow({
   onDelete,
 }: {
   option: WizardMealOption;
+  basePrice: number;
   isEditing: boolean;
   onEdit: () => void;
   onCancelEdit: () => void;
@@ -1225,6 +1232,8 @@ function MealOptionRow({
     );
   }
 
+  const totalPrice = basePrice + (option.priceAdjustment || 0);
+
   return (
     <div
       className="flex items-center justify-between p-2 bg-muted/30 rounded-md"
@@ -1232,14 +1241,21 @@ function MealOptionRow({
     >
       <div className="flex items-center gap-3 flex-wrap">
         <span className="text-sm font-medium">{option.name}</span>
-        <Badge
-          variant={option.priceAdjustment === 0 ? "secondary" : "default"}
-          className="text-xs"
-        >
-          {option.priceAdjustment === 0
-            ? "Included"
-            : `+₹${option.priceAdjustment}/person`}
-        </Badge>
+        <div className="flex items-center gap-1.5 text-xs">
+          {option.priceAdjustment > 0 ? (
+            <>
+              <span className="text-muted-foreground">₹{basePrice.toLocaleString("en-IN")}</span>
+              <span className="text-muted-foreground">+</span>
+              <Badge variant="default" className="text-xs px-1.5">+₹{option.priceAdjustment}/person</Badge>
+              <span className="text-muted-foreground">=</span>
+              <span className="font-semibold text-primary">₹{totalPrice.toLocaleString("en-IN")}/night</span>
+            </>
+          ) : (
+            <Badge variant="secondary" className="text-xs px-1.5">
+              ₹{basePrice.toLocaleString("en-IN")}/night (meals incl.)
+            </Badge>
+          )}
+        </div>
         {option.inclusions && (
           <span className="text-xs text-muted-foreground">
             {option.inclusions}

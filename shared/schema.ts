@@ -503,13 +503,6 @@ export const properties = pgTable("properties", {
     precision: 10,
     scale: 2,
   }),
-  // Bulk booking options
-  bulkBookingEnabled: boolean("bulk_booking_enabled").notNull().default(false),
-  bulkBookingMinRooms: integer("bulk_booking_min_rooms").default(5),
-  bulkBookingDiscountPercent: decimal("bulk_booking_discount_percent", {
-    precision: 5,
-    scale: 2,
-  }).default("10"),
   maxGuests: integer("max_guests").notNull().default(2),
   bedrooms: integer("bedrooms").notNull().default(1),
   beds: integer("beds").notNull().default(1),

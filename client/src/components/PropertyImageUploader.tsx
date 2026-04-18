@@ -136,18 +136,26 @@ interface PropertyImageUploaderProps {
   onChange: (images: CategorizedPropertyImages) => void;
   onVideosChange?: (videos: string[]) => void;
   videos?: string[];
+  roomTypes?: { id: string; name: string }[];
+  roomTypeImages?: Record<string, string[]>;
+  onRoomTypeImagesChange?: (images: Record<string, string[]>) => void;
 }
 
-export function PropertyImageUploader({ 
-  value, 
-  onChange, 
+export function PropertyImageUploader({
+  value,
+  onChange,
   onVideosChange,
-  videos = []
+  videos = [],
+  roomTypes = [],
+  roomTypeImages = {},
+  onRoomTypeImagesChange,
 }: PropertyImageUploaderProps) {
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState<PropertyImageCategory>("exterior");
   const [editingCaption, setEditingCaption] = useState<string | null>(null);
   const [uploadingCategory, setUploadingCategory] = useState<PropertyImageCategory | null>(null);
+  const [uploadingRoomType, setUploadingRoomType] = useState<string | null>(null);
+  const roomTypeFileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
   
   // Refs for quick upload file inputs
   const fileInputRefs = useRef<Record<PropertyImageCategory, HTMLInputElement | null>>({
@@ -225,6 +233,58 @@ export function PropertyImageUploader({
     }
   };
 
+  const handleRoomTypeFileChange = async (roomTypeId: string, event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (!files || files.length === 0) return;
+    const minFileSize = 102400;
+    const maxFileSize = 5242880;
+    const fileArray = Array.from(files).slice(0, 10);
+    const validFiles = fileArray.filter(file => {
+      if (file.size < minFileSize) {
+        toast({ title: "Image too small", description: `${file.name} is below 100KB. Use higher resolution photos.`, variant: "destructive" });
+        return false;
+      }
+      if (file.size > maxFileSize) {
+        toast({ title: "File too large", description: `${file.name} exceeds 5MB limit`, variant: "destructive" });
+        return false;
+      }
+      return true;
+    });
+    if (validFiles.length === 0) return;
+    setUploadingRoomType(roomTypeId);
+    const successfulUrls: string[] = [];
+    for (const file of validFiles) {
+      try {
+        const { url, accessPath, aclToken } = await handleGetUploadParameters();
+        await new Promise((resolve, reject) => {
+          const xhr = new XMLHttpRequest();
+          xhr.onload = () => xhr.status === 200 ? resolve(null) : reject(new Error(`Status ${xhr.status}`));
+          xhr.onerror = () => reject(new Error("Upload failed"));
+          xhr.open("PUT", url);
+          xhr.send(file);
+        });
+        await apiRequest("POST", "/api/objects/set-acl", { accessPath, aclToken, visibility: "public" });
+        successfulUrls.push(accessPath);
+      } catch {
+        toast({ title: "Error", description: `Failed to upload ${file.name}`, variant: "destructive" });
+      }
+    }
+    if (successfulUrls.length > 0 && onRoomTypeImagesChange) {
+      const existing = roomTypeImages[roomTypeId] || [];
+      onRoomTypeImagesChange({ ...roomTypeImages, [roomTypeId]: [...existing, ...successfulUrls] });
+      toast({ title: "Images uploaded", description: `${successfulUrls.length} photo${successfulUrls.length > 1 ? "s" : ""} added to room type` });
+    }
+    setUploadingRoomType(null);
+    if (event.target) event.target.value = "";
+  };
+
+  const handleRemoveRoomTypeImage = (roomTypeId: string, index: number) => {
+    if (!onRoomTypeImagesChange) return;
+    const existing = [...(roomTypeImages[roomTypeId] || [])];
+    existing.splice(index, 1);
+    onRoomTypeImagesChange({ ...roomTypeImages, [roomTypeId]: existing });
+  };
+
   const getTotalImages = () => {
     return Object.values(value).reduce((sum, arr) => sum + (arr?.length || 0), 0);
   };
@@ -241,9 +301,18 @@ export function PropertyImageUploader({
     const files = event.target.files;
     if (!files || files.length === 0) return;
 
+    const minFileSize = 102400; // 100KB
     const maxFileSize = 5242880; // 5MB
     const fileArray = Array.from(files).slice(0, 10);
     const validFiles = fileArray.filter(file => {
+      if (file.size < minFileSize) {
+        toast({
+          title: "Image too small",
+          description: `${file.name} is below 100KB minimum. Use higher resolution photos.`,
+          variant: "destructive",
+        });
+        return false;
+      }
       if (file.size > maxFileSize) {
         toast({
           title: "File too large",
@@ -450,19 +519,19 @@ export function PropertyImageUploader({
                     Upload {category.label} Photos
                   </ObjectUploader>
                   <span className="text-sm text-muted-foreground">
-                    Max 5MB per image. JPEG, PNG, or WebP.
+                    Min. 100KB · Max 5MB per image. JPEG, PNG, or WebP.
                   </span>
                 </div>
 
                 {(value[category.id]?.length || 0) > 0 && (
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3">
                     {value[category.id]?.map((img, idx) => (
                       <div key={idx} className="relative group">
-                        <div className="aspect-[4/3] rounded-lg overflow-hidden bg-muted">
+                        <div className="aspect-square rounded-lg overflow-hidden bg-muted">
                           <img
                             src={img.url}
                             alt={img.caption || `${category.label} ${idx + 1}`}
-                            className="w-full h-full object-cover"
+                            className="w-full h-full object-cover hover:scale-105 transition-transform cursor-pointer"
                           />
                         </div>
                         <Button
@@ -514,6 +583,78 @@ export function PropertyImageUploader({
           </TabsContent>
         ))}
       </Tabs>
+
+      {roomTypes.length > 0 && onRoomTypeImagesChange && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2">
+              <Bed className="h-5 w-5" />
+              Room Type Photos
+            </CardTitle>
+            <CardDescription>
+              Upload photos specific to each room type. Min. 100KB per photo.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {roomTypes.map((rt) => {
+              const rtImages = roomTypeImages[rt.id] || [];
+              const isUploading = uploadingRoomType === rt.id;
+              return (
+                <div key={rt.id} className="border rounded-lg p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Bed className="h-4 w-4 text-muted-foreground" />
+                      <span className="font-medium text-sm">{rt.name}</span>
+                    </div>
+                    <Badge variant={rtImages.length > 0 ? "default" : "outline"} className="text-xs">
+                      {rtImages.length} photo{rtImages.length !== 1 ? "s" : ""}
+                    </Badge>
+                  </div>
+                  <input
+                    ref={(el) => { roomTypeFileInputRefs.current[rt.id] = el; }}
+                    type="file"
+                    multiple
+                    accept=".jpeg,.jpg,.png,.webp,image/*"
+                    onChange={(e) => handleRoomTypeFileChange(rt.id, e)}
+                    className="hidden"
+                    data-testid={`input-roomtype-upload-${rt.id}`}
+                  />
+                  {rtImages.length > 0 && (
+                    <div className="grid grid-cols-3 md:grid-cols-5 lg:grid-cols-6 gap-2">
+                      {rtImages.map((url, idx) => (
+                        <div key={idx} className="relative group aspect-square rounded-md overflow-hidden bg-muted">
+                          <img src={url} alt={`${rt.name} ${idx + 1}`} className="w-full h-full object-cover" />
+                          <Button
+                            type="button"
+                            variant="destructive"
+                            size="icon"
+                            className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                            onClick={() => handleRemoveRoomTypeImage(rt.id, idx)}
+                            data-testid={`button-remove-roomtype-${rt.id}-${idx}`}
+                          >
+                            <X className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={isUploading}
+                    onClick={() => roomTypeFileInputRefs.current[rt.id]?.click()}
+                    data-testid={`button-upload-roomtype-${rt.id}`}
+                  >
+                    <Upload className="h-4 w-4 mr-2" />
+                    {isUploading ? "Uploading..." : `Add ${rt.name} Photos`}
+                  </Button>
+                </div>
+              );
+            })}
+          </CardContent>
+        </Card>
+      )}
 
       {onVideosChange && (
         <Card>

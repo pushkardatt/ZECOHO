@@ -70,13 +70,21 @@ import {
   LayoutDashboard,
   Shield,
   ClipboardList,
+  Sparkles,
+  Camera,
 } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   PropertyLocationPicker,
   type AddressData,
 } from "@/components/PropertyLocationPicker";
 import { PropertyMap } from "@/components/PropertyMap";
+import {
+  PropertyImageUploader,
+  defaultCategorizedImages,
+  type CategorizedPropertyImages,
+} from "@/components/PropertyImageUploader";
 import type { Property, AvailabilityOverride, RoomType } from "@shared/schema";
 import { PriceCalendar } from "@/components/PriceCalendar";
 import { Collapsible } from "@/components/ui/collapsible";
@@ -93,7 +101,7 @@ import {
 export default function OwnerPropertyManage() {
   const { id } = useParams<{ id: string }>();
   const { toast } = useToast();
-  const [activeTab, setActiveTab] = useState("rooms");
+  const [activeTab, setActiveTab] = useState("property-details");
 
   const { data: property, isLoading } = useQuery<Property>({
     queryKey: ["/api/properties", id],
@@ -179,31 +187,24 @@ export default function OwnerPropertyManage() {
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <div className="overflow-x-auto -mx-4 px-4 md:mx-0 md:px-0">
-            <TabsList className="inline-flex w-auto min-w-full md:grid md:grid-cols-8 md:w-full md:max-w-5xl gap-1">
-              <TabsTrigger
-                value="rooms"
-                data-testid="tab-rooms"
-                className="flex-shrink-0 whitespace-nowrap px-3"
-              >
-                <Bed className="h-4 w-4 mr-1 md:mr-2" />
-                <span>Rooms</span>
-              </TabsTrigger>
-              <TabsTrigger
-                value="pricing"
-                data-testid="tab-pricing"
-                className="flex-shrink-0 whitespace-nowrap px-3"
-              >
-                <IndianRupee className="h-4 w-4 mr-1 md:mr-2" />
-                <span>Pricing</span>
-              </TabsTrigger>
+            <TabsList className="inline-flex w-auto min-w-full md:grid md:grid-cols-7 md:w-full md:max-w-5xl gap-1">
               <TabsTrigger
                 value="property-details"
                 data-testid="tab-property-details"
                 className="flex-shrink-0 whitespace-nowrap px-3"
               >
                 <Building2 className="h-4 w-4 mr-1 md:mr-2" />
-                <span className="hidden sm:inline">Details</span>
-                <span className="sm:hidden">Info</span>
+                <span className="hidden sm:inline">Property Details</span>
+                <span className="sm:hidden">Details</span>
+              </TabsTrigger>
+              <TabsTrigger
+                value="room-type-pricing"
+                data-testid="tab-room-type-pricing"
+                className="flex-shrink-0 whitespace-nowrap px-3"
+              >
+                <IndianRupee className="h-4 w-4 mr-1 md:mr-2" />
+                <span className="hidden sm:inline">Room Type and Pricing</span>
+                <span className="sm:hidden">Rooms</span>
               </TabsTrigger>
               <TabsTrigger
                 value="policy"
@@ -212,6 +213,14 @@ export default function OwnerPropertyManage() {
               >
                 <Shield className="h-4 w-4 mr-1 md:mr-2" />
                 <span>Policy</span>
+              </TabsTrigger>
+              <TabsTrigger
+                value="amenities"
+                data-testid="tab-amenities"
+                className="flex-shrink-0 whitespace-nowrap px-3"
+              >
+                <Sparkles className="h-4 w-4 mr-1 md:mr-2" />
+                <span>Amenities</span>
               </TabsTrigger>
               <TabsTrigger
                 value="availability"
@@ -223,20 +232,12 @@ export default function OwnerPropertyManage() {
                 <span className="sm:hidden">Avail</span>
               </TabsTrigger>
               <TabsTrigger
-                value="location"
-                data-testid="tab-location"
+                value="photos"
+                data-testid="tab-photos"
                 className="flex-shrink-0 whitespace-nowrap px-3"
               >
-                <MapPin className="h-4 w-4 mr-1 md:mr-2" />
-                <span>Location</span>
-              </TabsTrigger>
-              <TabsTrigger
-                value="summary"
-                data-testid="tab-summary"
-                className="flex-shrink-0 whitespace-nowrap px-3"
-              >
-                <ClipboardList className="h-4 w-4 mr-1 md:mr-2" />
-                <span>Summary</span>
+                <Camera className="h-4 w-4 mr-1 md:mr-2" />
+                <span>Photos</span>
               </TabsTrigger>
               <TabsTrigger
                 value="status"
@@ -249,24 +250,30 @@ export default function OwnerPropertyManage() {
             </TabsList>
           </div>
 
-          <TabsContent value="rooms" className="mt-6">
-            <RoomsSection
-              propertyId={id!}
-              roomTypes={roomTypes}
-              isLoading={roomTypesLoading}
-            />
-          </TabsContent>
-
-          <TabsContent value="pricing" className="mt-6">
-            <PriceCalendar propertyId={id!} roomTypes={roomTypes} />
-          </TabsContent>
-
           <TabsContent value="property-details" className="mt-6">
-            <PropertyDetailsSection property={property} />
+            <div className="space-y-6">
+              <PropertyDetailsSection property={property} />
+              <LocationSection property={property} />
+            </div>
+          </TabsContent>
+
+          <TabsContent value="room-type-pricing" className="mt-6">
+            <div className="space-y-6">
+              <RoomsSection
+                propertyId={id!}
+                roomTypes={roomTypes}
+                isLoading={roomTypesLoading}
+              />
+              <PriceCalendar propertyId={id!} roomTypes={roomTypes} />
+            </div>
           </TabsContent>
 
           <TabsContent value="policy" className="mt-6">
             <PolicySection property={property} />
+          </TabsContent>
+
+          <TabsContent value="amenities" className="mt-6">
+            <AmenitiesSection property={property} />
           </TabsContent>
 
           <TabsContent value="availability" className="mt-6">
@@ -278,12 +285,8 @@ export default function OwnerPropertyManage() {
             />
           </TabsContent>
 
-          <TabsContent value="location" className="mt-6">
-            <LocationSection property={property} />
-          </TabsContent>
-
-          <TabsContent value="summary" className="mt-6">
-            <SummarySection property={property} roomTypes={roomTypes} />
+          <TabsContent value="photos" className="mt-6">
+            <PhotosSection property={property} roomTypes={roomTypes} />
           </TabsContent>
 
           <TabsContent value="status" className="mt-6">
@@ -3758,6 +3761,204 @@ function PolicySection({ property }: { property: Property }) {
         >
           <Save className="h-4 w-4 mr-2" />
           {updateMutation.isPending ? "Saving..." : "Save Policy"}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// AmenitiesSection
+// ─────────────────────────────────────────────────────────────────────────────
+
+function AmenitiesSection({ property }: { property: Property }) {
+  const { toast } = useToast();
+  const { data: allAmenities = [] } = useQuery<any[]>({
+    queryKey: ["/api/amenities"],
+  });
+  const { data: propertyAmenities = [] } = useQuery<any[]>({
+    queryKey: ["/api/properties", property.id, "amenities"],
+  });
+  const [selectedAmenityIds, setSelectedAmenityIds] = useState<string[]>([]);
+  const [policies, setPolicies] = useState((property as any).policies || "");
+
+  useEffect(() => {
+    setSelectedAmenityIds(propertyAmenities.map((a: any) => a.amenityId || a.id));
+  }, [propertyAmenities]);
+
+  const updateMutation = useMutation({
+    mutationFn: async () =>
+      apiRequest("PATCH", `/api/properties/${property.id}`, { policies, amenityIds: selectedAmenityIds }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/properties", property.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/properties", property.id, "amenities"] });
+      toast({ title: "Saved", description: "Amenities updated." });
+    },
+    onError: () => toast({ title: "Error", description: "Failed to save.", variant: "destructive" }),
+  });
+
+  const toggleAmenity = (id: string) => {
+    setSelectedAmenityIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+    );
+  };
+
+  const essentialAmenities = allAmenities.filter((a: any) => a.category === "essential" || a.name === "Hot water");
+  const otherCategories = ["bathroom","safety","services","outdoor","family","food","entertainment","accessibility","work"];
+
+  return (
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Sparkles className="h-5 w-5" />
+            Essential Amenities
+          </CardTitle>
+          <CardDescription>Select what your property offers</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+            {essentialAmenities.map((amenity: any) => (
+              <div key={amenity.id} className="flex items-center gap-2">
+                <Checkbox
+                  id={`amenity-${amenity.id}`}
+                  checked={selectedAmenityIds.includes(amenity.id)}
+                  onCheckedChange={() => toggleAmenity(amenity.id)}
+                />
+                <label htmlFor={`amenity-${amenity.id}`} className="text-sm cursor-pointer">{amenity.name}</label>
+              </div>
+            ))}
+          </div>
+          <details className="mt-2">
+            <summary className="text-sm text-muted-foreground cursor-pointer">Show more amenity categories</summary>
+            <div className="space-y-4 mt-3 border-t pt-3">
+              {otherCategories.map((cat) => {
+                const catAmenities = allAmenities.filter((a: any) => a.category === cat && a.name !== "Hot water");
+                if (!catAmenities.length) return null;
+                return (
+                  <div key={cat}>
+                    <p className="text-xs font-medium text-muted-foreground capitalize mb-2">{cat}</p>
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                      {catAmenities.map((amenity: any) => (
+                        <div key={amenity.id} className="flex items-center gap-2">
+                          <Checkbox
+                            id={`amenity-${amenity.id}`}
+                            checked={selectedAmenityIds.includes(amenity.id)}
+                            onCheckedChange={() => toggleAmenity(amenity.id)}
+                          />
+                          <label htmlFor={`amenity-${amenity.id}`} className="text-sm cursor-pointer">{amenity.name}</label>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </details>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>House Rules</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="policies-input">House Rules (Optional)</Label>
+            <Textarea
+              id="policies-input"
+              value={policies}
+              onChange={(e) => setPolicies(e.target.value)}
+              placeholder="No smoking in rooms, No outside food, Quiet hours after 10pm, etc."
+              rows={4}
+              data-testid="input-policies"
+            />
+          </div>
+        </CardContent>
+      </Card>
+
+      <div className="flex justify-end">
+        <Button onClick={() => updateMutation.mutate()} disabled={updateMutation.isPending} data-testid="button-save-amenities">
+          <Save className="h-4 w-4 mr-2" />
+          {updateMutation.isPending ? "Saving..." : "Save Amenities"}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PhotosSection
+// ─────────────────────────────────────────────────────────────────────────────
+
+function PhotosSection({ property, roomTypes }: { property: Property; roomTypes: RoomType[] }) {
+  const { toast } = useToast();
+  const [categorizedImages, setCategorizedImages] = useState<CategorizedPropertyImages>(
+    (property as any).categorizedImages || defaultCategorizedImages,
+  );
+  const [roomTypeImages, setRoomTypeImages] = useState<Record<string, string[]>>({});
+
+  useEffect(() => {
+    const initial: Record<string, string[]> = {};
+    roomTypes.forEach((rt) => {
+      initial[String(rt.id)] = (rt as any).images || [];
+    });
+    setRoomTypeImages(initial);
+  }, [roomTypes]);
+
+  const updateMutation = useMutation({
+    mutationFn: async () =>
+      apiRequest("PATCH", `/api/properties/${property.id}`, { categorizedImages }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/properties", String(property.id)] });
+      toast({ title: "Saved", description: "Photos updated successfully." });
+    },
+    onError: () =>
+      toast({ title: "Error", description: "Failed to save photos.", variant: "destructive" }),
+  });
+
+  const handleRoomTypeImagesChange = async (images: Record<string, string[]>) => {
+    setRoomTypeImages(images);
+    for (const [roomTypeId, imgs] of Object.entries(images)) {
+      try {
+        await apiRequest("PATCH", `/api/owner/room-types/${roomTypeId}`, { images: imgs });
+      } catch {
+        toast({ title: "Error", description: "Failed to save room type photos.", variant: "destructive" });
+      }
+    }
+  };
+
+  const rtForUploader = roomTypes.map((rt) => ({
+    id: String(rt.id),
+    name: rt.name,
+  }));
+
+  return (
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Camera className="h-5 w-5" />
+            Property Photos
+          </CardTitle>
+          <CardDescription>
+            Upload high-quality photos (min. 100KB) to showcase your property to guests.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <PropertyImageUploader
+            value={categorizedImages}
+            onChange={setCategorizedImages}
+            roomTypes={rtForUploader}
+            roomTypeImages={roomTypeImages}
+            onRoomTypeImagesChange={handleRoomTypeImagesChange}
+          />
+        </CardContent>
+      </Card>
+      <div className="flex justify-end">
+        <Button onClick={() => updateMutation.mutate()} disabled={updateMutation.isPending}>
+          <Save className="h-4 w-4 mr-2" />
+          {updateMutation.isPending ? "Saving..." : "Save Photos"}
         </Button>
       </div>
     </div>

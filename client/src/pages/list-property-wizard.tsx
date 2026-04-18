@@ -104,6 +104,7 @@ import {
   FileX,
 } from "lucide-react";
 import { PriceCalendar } from "@/components/PriceCalendar";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { INDIAN_STATES, INDIAN_CITIES } from "@/data/locations";
 import type { KycSectionId, KycRejectionDetails } from "@shared/schema";
 import { useEffect, useMemo, useRef, useCallback } from "react";
@@ -252,11 +253,6 @@ const combinedSchema = z.object({
   singleOccupancyPrice: z.coerce.number().optional(),
   doubleOccupancyPrice: z.coerce.number().optional(),
   tripleOccupancyPrice: z.coerce.number().optional(),
-  // Bulk booking options
-  bulkBookingEnabled: z.boolean().optional(),
-  bulkBookingMinRooms: z.coerce.number().min(2).optional(),
-  bulkBookingDiscountPercent: z.coerce.number().min(0).max(50).optional(),
-
   // These are now optional - managed via room types
   maxGuests: z.coerce.number().optional(),
   bedrooms: z.coerce.number().optional(),
@@ -389,11 +385,11 @@ export default function ListPropertyWizard() {
   const canSkipKycSteps = isKycVerified || isKycPending;
 
   // For verified/pending users, we skip steps 1 and 2 (KYC steps)
-  // New 9-step flow: 1(personal)->2(KYC)->3(property+rooms)->4(pricing)->5(amenities)->6(availability)->7(status)->8(location)->9(photos)
+  // 8-step flow: 1(personal)->2(KYC)->3(property details)->4(room type+pricing)->5(policy)->6(amenities)->7(availability)->8(photos)
   // KYC-verified users start at step 3
   const kycStepsCount = canSkipKycSteps ? 0 : 2;
-  // totalSteps is always 11 (the last step number), regardless of whether KYC steps are skipped
-  const totalSteps = 11;
+  // totalSteps is always 8 (the last step number), regardless of whether KYC steps are skipped
+  const totalSteps = 8;
   const firstStep = canSkipKycSteps ? 3 : 1;
 
   const [step, setStep] = useState(firstStep);
@@ -499,6 +495,7 @@ export default function ListPropertyWizard() {
     fullAddress: "",
   });
   const [wizardRoomTypes, setWizardRoomTypes] = useState<WizardRoomType[]>([]);
+  const [wizardRoomTypeImages, setWizardRoomTypeImages] = useState<Record<string, string[]>>({});
 
   // Geo-tagging state (mandatory for property location)
   const [propertyLatitude, setPropertyLatitude] = useState<number | null>(null);
@@ -589,9 +586,6 @@ export default function ListPropertyWizard() {
       singleOccupancyPrice: undefined,
       doubleOccupancyPrice: undefined,
       tripleOccupancyPrice: undefined,
-      bulkBookingEnabled: false,
-      bulkBookingMinRooms: 5,
-      bulkBookingDiscountPercent: 10,
       maxGuests: 2,
       bedrooms: 1,
       beds: 1,
@@ -1453,9 +1447,6 @@ export default function ListPropertyWizard() {
             singleOccupancyPrice: data.singleOccupancyPrice || null,
             doubleOccupancyPrice: data.doubleOccupancyPrice || null,
             tripleOccupancyPrice: data.tripleOccupancyPrice || null,
-            bulkBookingEnabled: data.bulkBookingEnabled || false,
-            bulkBookingMinRooms: data.bulkBookingMinRooms || 5,
-            bulkBookingDiscountPercent: data.bulkBookingDiscountPercent || 10,
             maxGuests: maxGuests,
             bedrooms: data.bedrooms || 1,
             beds: data.beds || 1,
@@ -1679,9 +1670,6 @@ export default function ListPropertyWizard() {
           cancellationPolicyType: data.cancellationPolicyType,
           freeCancellationHours: data.freeCancellationHours,
           partialRefundPercent: data.partialRefundPercent,
-          bulkBookingEnabled: data.bulkBookingEnabled,
-          bulkBookingMinRooms: data.bulkBookingMinRooms,
-          bulkBookingDiscountPercent: data.bulkBookingDiscountPercent,
           policies: data.policies,
           // Step 4: Property Details
           starRating: wizardStarRating,
@@ -1785,6 +1773,7 @@ export default function ListPropertyWizard() {
           return;
         }
       } else if (step === 3) {
+        // Step 3: Property Details — requires address + location pin
         fieldsToValidate = [
           "propertyTitle",
           "propertyType",
@@ -1796,12 +1785,10 @@ export default function ListPropertyWizard() {
           "propState",
           "propPincode",
         ];
-        // Also validate that at least one room type is added
-        if (wizardRoomTypes.length === 0) {
+        if (!propertyLatitude || !propertyLongitude) {
           toast({
-            title: "Room Types Required",
-            description:
-              "Please add at least one room type with pricing before proceeding.",
+            title: "Property Location Required",
+            description: "Please set the exact location of your property on the map before proceeding.",
             variant: "destructive",
           });
           return;
@@ -1823,40 +1810,27 @@ export default function ListPropertyWizard() {
         setStep(step + 1);
         return;
       } else if (step === 4) {
-        // Step 4: Property Details (star rating, channel manager, contacts) — optional
-        fieldsToValidate = [];
-        if (autoDraftPropertyId) await autoSaveDraft();
-      } else if (step === 5) {
-        // Step 5: Policy (check-in/out, cancellation, ID proof, hotel rules) — optional
-        fieldsToValidate = [];
-        if (autoDraftPropertyId) await autoSaveDraft();
-      } else if (step === 6) {
-        // Step 6: Day-wise Pricing — optional, no required fields
-        fieldsToValidate = [];
-      } else if (step === 7) {
-        // Step 7: Cancellation + Amenities — optional
-        fieldsToValidate = [];
-        // Re-save draft with updated cancellation policy
-        if (autoDraftPropertyId) {
-          await autoSaveDraft();
-        }
-      } else if (step === 8) {
-        // Step 8: Availability — optional
-        fieldsToValidate = [];
-      } else if (step === 9) {
-        // Step 9: Setup summary — optional
-        fieldsToValidate = [];
-      } else if (step === 10) {
-        // Step 10: Property Location - requires latitude and longitude
-        if (!propertyLatitude || !propertyLongitude) {
+        // Step 4: Room Type and Pricing — requires at least one room type
+        if (wizardRoomTypes.length === 0) {
           toast({
-            title: "Property Location Required",
-            description:
-              "Please set the exact location of your property to continue.",
+            title: "Room Types Required",
+            description: "Please add at least one room type with pricing before proceeding.",
             variant: "destructive",
           });
           return;
         }
+        fieldsToValidate = [];
+        if (autoDraftPropertyId) await autoSaveDraft();
+      } else if (step === 5) {
+        // Step 5: Policy — optional
+        fieldsToValidate = [];
+        if (autoDraftPropertyId) await autoSaveDraft();
+      } else if (step === 6) {
+        // Step 6: Amenities — optional
+        fieldsToValidate = [];
+        if (autoDraftPropertyId) await autoSaveDraft();
+      } else if (step === 7) {
+        // Step 7: Availability — optional
         fieldsToValidate = [];
       }
     }
@@ -1866,7 +1840,7 @@ export default function ListPropertyWizard() {
       const nextStepNum = step + 1;
       setStep(nextStepNum);
       // When entering availability step, load existing blocks
-      if (nextStepNum === 8 && autoDraftPropertyId) {
+      if (nextStepNum === 7 && autoDraftPropertyId) {
         fetchBlockedDates(autoDraftPropertyId);
       }
     } else {
@@ -1912,30 +1886,32 @@ export default function ListPropertyWizard() {
           "propState",
           "propPincode",
         ];
-        // Also validate that at least one room type is added
-        if (wizardRoomTypes.length === 0) {
-          setStep(s);
-          toast({
-            title: "Room Types Required",
-            description:
-              "Please add at least one room type with pricing before proceeding.",
-            variant: "destructive",
-          });
-          return;
-        }
-      } else if (s >= 4 && s <= 9) {
-        // Steps 4-9 are optional (property details, policy, pricing, amenities, availability, summary)
-        fieldsToValidate = [];
-      } else if (s === 10) {
-        // Step 10 is Property Location - requires latitude and longitude
         if (!propertyLatitude || !propertyLongitude) {
           setStep(s);
           toast({
             title: "Property Location Required",
-            description:
-              "Please set the exact location of your property to continue.",
+            description: "Please set the exact location on the map before proceeding.",
             variant: "destructive",
           });
+          return;
+        }
+      } else if (s === 4) {
+        // Step 4: Room Type and Pricing — requires at least one room type
+        if (wizardRoomTypes.length === 0) {
+          setStep(s);
+          toast({
+            title: "Room Types Required",
+            description: "Please add at least one room type with pricing before proceeding.",
+            variant: "destructive",
+          });
+          return;
+        }
+        fieldsToValidate = [];
+      } else if (s >= 5 && s <= 7) {
+        // Steps 5-7 are optional (policy, amenities, availability)
+        fieldsToValidate = [];
+      } else if (false) {
+        // placeholder to satisfy linter structure — never reached
           return;
         }
         fieldsToValidate = [];
@@ -1958,18 +1934,15 @@ export default function ListPropertyWizard() {
     setStep(targetStep);
   };
 
-  // Step titles for full mode (11 steps)
+  // Step titles for full mode (8 steps)
   const fullModeStepTitles = [
     { title: "Personal Information", icon: User },
     { title: "Business KYC", icon: FileText },
-    { title: "Property & Room Types", icon: Home },
-    { title: "Property Details", icon: Building2 },
+    { title: "Property Details", icon: Home },
+    { title: "Room Type and Pricing", icon: CalendarDays },
     { title: "Policy", icon: Shield },
-    { title: "Day-wise Pricing", icon: CalendarDays },
-    { title: "Cancellation & Amenities", icon: XCircle },
+    { title: "Amenities", icon: Sparkles },
     { title: "Availability", icon: Ban },
-    { title: "Setup Summary", icon: Settings2 },
-    { title: "Property Location", icon: MapPin },
     { title: "Photos & Submit", icon: CheckCircle },
   ];
 
@@ -3565,130 +3538,6 @@ export default function ListPropertyWizard() {
                     </CardContent>
                   </Card>
 
-                  {/* Guest Policies */}
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2">
-                        <Users className="h-5 w-5" />
-                        Guest Policies
-                      </CardTitle>
-                      <CardDescription>
-                        Define who can book your property and booking options
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <FormField
-                          control={form.control}
-                          name="coupleFriendly"
-                          render={({ field }) => (
-                            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                              <div className="space-y-0.5">
-                                <FormLabel className="text-base">
-                                  Couple Friendly
-                                </FormLabel>
-                                <p className="text-sm text-muted-foreground">
-                                  Allow unmarried couples to check in
-                                </p>
-                              </div>
-                              <FormControl>
-                                <Checkbox
-                                  checked={field.value}
-                                  onCheckedChange={field.onChange}
-                                  data-testid="checkbox-couple-friendly"
-                                />
-                              </FormControl>
-                            </FormItem>
-                          )}
-                        />
-
-                        <FormField
-                          control={form.control}
-                          name="localIdAllowed"
-                          render={({ field }) => (
-                            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                              <div className="space-y-0.5">
-                                <FormLabel className="text-base">
-                                  Local ID Allowed
-                                </FormLabel>
-                                <p className="text-sm text-muted-foreground">
-                                  Accept guests with local ID proof
-                                </p>
-                              </div>
-                              <FormControl>
-                                <Checkbox
-                                  checked={field.value}
-                                  onCheckedChange={field.onChange}
-                                  data-testid="checkbox-local-id"
-                                />
-                              </FormControl>
-                            </FormItem>
-                          )}
-                        />
-
-                        <FormField
-                          control={form.control}
-                          name="foreignGuestsAllowed"
-                          render={({ field }) => (
-                            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                              <div className="space-y-0.5">
-                                <FormLabel className="text-base">
-                                  Foreign Guests Allowed
-                                </FormLabel>
-                                <p className="text-sm text-muted-foreground">
-                                  Accept international guests with passport
-                                </p>
-                              </div>
-                              <FormControl>
-                                <Checkbox
-                                  checked={field.value}
-                                  onCheckedChange={field.onChange}
-                                  data-testid="checkbox-foreign-guests"
-                                />
-                              </FormControl>
-                            </FormItem>
-                          )}
-                        />
-
-                        <FormField
-                          control={form.control}
-                          name="hourlyBookingAllowed"
-                          render={({ field }) => (
-                            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                              <div className="space-y-0.5">
-                                <FormLabel className="text-base">
-                                  Hourly Booking
-                                </FormLabel>
-                                <p className="text-sm text-muted-foreground">
-                                  Allow guests to book by the hour
-                                </p>
-                              </div>
-                              <FormControl>
-                                <Checkbox
-                                  checked={field.value}
-                                  onCheckedChange={field.onChange}
-                                  data-testid="checkbox-hourly-booking"
-                                />
-                              </FormControl>
-                            </FormItem>
-                          )}
-                        />
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  {/* Room Types & Pricing */}
-                  <RoomTypeBuilder
-                    value={wizardRoomTypes}
-                    onChange={setWizardRoomTypes}
-                    propertyType={form.watch("propertyType")}
-                  />
-                </div>
-              )}
-
-              {/* Step 4: Property Details (star rating, channel manager, contacts) */}
-              {step === 4 && (
-                <div className="space-y-6">
                   {/* Star Rating */}
                   <Card>
                     <CardHeader>
@@ -3801,6 +3650,92 @@ export default function ListPropertyWizard() {
                       </div>
                     </CardContent>
                   </Card>
+
+                  {/* Property Location (geo-tagging) */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <MapPin className="h-5 w-5" />
+                        Property Location
+                      </CardTitle>
+                      <CardDescription>
+                        Set the exact location of your property on the map. Required to go live.
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <Alert>
+                        <AlertDescription>
+                          To avoid rejection, please enter the address as per the registration or lease document.
+                        </AlertDescription>
+                      </Alert>
+                      <PropertyLocationPicker
+                        latitude={propertyLatitude}
+                        longitude={propertyLongitude}
+                        onLocationChange={(lat, lng, source, addressData) => {
+                          setPropertyLatitude(lat);
+                          setPropertyLongitude(lng);
+                          setGeoSource(source);
+                          if (addressData) {
+                            if (addressData.streetAddress)
+                              form.setValue("propStreetAddress", addressData.streetAddress);
+                            if (addressData.city)
+                              form.setValue("propCity", addressData.city);
+                            if (addressData.district)
+                              form.setValue("propDistrict", addressData.district);
+                            if (addressData.state)
+                              form.setValue("propState", addressData.state);
+                            if (addressData.pincode)
+                              form.setValue("propPincode", addressData.pincode);
+                            if (addressData.fullAddress) {
+                              setPropertyAddress((prev) => ({
+                                ...prev,
+                                fullAddress: addressData.fullAddress,
+                              }));
+                            }
+                          }
+                        }}
+                      />
+                    </CardContent>
+                  </Card>
+                </div>
+              )}
+
+              {/* Step 4: Room Type and Pricing */}
+              {step === 4 && (
+                <div className="space-y-6">
+                  <RoomTypeBuilder
+                    value={wizardRoomTypes}
+                    onChange={setWizardRoomTypes}
+                    propertyType={form.watch("propertyType")}
+                  />
+                  {autoDraftPropertyId ? (
+                    <>
+                      <Card className="border-primary/20 bg-primary/5">
+                        <CardHeader className="pb-3">
+                          <CardTitle className="flex items-center gap-2">
+                            <CalendarDays className="h-5 w-5 text-primary" />
+                            Day-wise Calendar Pricing
+                          </CardTitle>
+                          <CardDescription>
+                            Set specific prices for dates and date ranges. Drag to select multiple dates and apply pricing in bulk. You can also set meal plan prices.
+                          </CardDescription>
+                        </CardHeader>
+                      </Card>
+                      <PriceCalendar
+                        propertyId={autoDraftPropertyId}
+                        roomTypes={[]}
+                      />
+                    </>
+                  ) : (
+                    <Card>
+                      <CardContent className="flex flex-col items-center justify-center py-12 gap-4">
+                        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                        <p className="text-muted-foreground">
+                          Saving your property details to enable pricing setup...
+                        </p>
+                      </CardContent>
+                    </Card>
+                  )}
                 </div>
               )}
 
@@ -4008,330 +3943,9 @@ export default function ListPropertyWizard() {
                 </div>
               )}
 
-              {/* Step 6: Day-wise Pricing */}
+              {/* Step 6: Amenities */}
               {step === 6 && (
                 <div className="space-y-6">
-                  {autoDraftPropertyId ? (
-                    <>
-                      <Card className="border-primary/20 bg-primary/5">
-                        <CardHeader className="pb-3">
-                          <CardTitle className="flex items-center gap-2">
-                            <CalendarDays className="h-5 w-5 text-primary" />
-                            Day-wise Calendar Pricing
-                          </CardTitle>
-                          <CardDescription>
-                            Set specific prices for dates and date ranges. Drag
-                            to select multiple dates and apply pricing in bulk.
-                            You can also set meal plan prices.
-                          </CardDescription>
-                        </CardHeader>
-                      </Card>
-                      <PriceCalendar
-                        propertyId={autoDraftPropertyId}
-                        roomTypes={[]}
-                      />
-                    </>
-                  ) : (
-                    <Card>
-                      <CardContent className="flex flex-col items-center justify-center py-12 gap-4">
-                        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                        <p className="text-muted-foreground">
-                          Saving your property details to enable pricing
-                          setup...
-                        </p>
-                      </CardContent>
-                    </Card>
-                  )}
-                </div>
-              )}
-
-              {/* Step 10: Property Location (Mandatory Geo-tagging) */}
-              {step === 10 && (
-                <div className="space-y-6">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2">
-                        <MapPin className="h-5 w-5" />
-                        Property Location
-                      </CardTitle>
-                      <CardDescription>
-                        Set the exact location of your property. This is
-                        required for your listing to be visible to guests.
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <PropertyLocationPicker
-                        latitude={propertyLatitude}
-                        longitude={propertyLongitude}
-                        onLocationChange={(lat, lng, source, addressData) => {
-                          setPropertyLatitude(lat);
-                          setPropertyLongitude(lng);
-                          setGeoSource(source);
-                          if (addressData) {
-                            if (addressData.streetAddress)
-                              form.setValue(
-                                "propStreetAddress",
-                                addressData.streetAddress,
-                              );
-                            if (addressData.locality)
-                              form.setValue(
-                                "propLocality",
-                                addressData.locality,
-                              );
-                            if (addressData.city)
-                              form.setValue("propCity", addressData.city);
-                            if (addressData.district)
-                              form.setValue(
-                                "propDistrict",
-                                addressData.district,
-                              );
-                            if (addressData.state)
-                              form.setValue("propState", addressData.state);
-                            if (addressData.pincode)
-                              form.setValue("propPincode", addressData.pincode);
-                            if (addressData.fullAddress) {
-                              setPropertyAddress((prev) => ({
-                                ...prev,
-                                fullAddress: addressData.fullAddress,
-                              }));
-                            }
-                          }
-                        }}
-                      />
-                    </CardContent>
-                  </Card>
-                </div>
-              )}
-
-              {/* Step 7: Amenities & Additional Options */}
-              {step === 7 && (
-                <div className="space-y-6">
-                  {/* Cancellation Policy Card */}
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2">
-                        <XCircle className="h-5 w-5" />
-                        Cancellation Policy
-                      </CardTitle>
-                      <CardDescription>
-                        Set how guests can cancel their bookings
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      <FormField
-                        control={form.control}
-                        name="cancellationPolicyType"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Policy Type *</FormLabel>
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                              {[
-                                {
-                                  value: "flexible",
-                                  label: "Flexible",
-                                  desc: "Full refund if cancelled before the free cancellation window",
-                                },
-                                {
-                                  value: "moderate",
-                                  label: "Moderate",
-                                  desc: "Partial refund if cancelled within the window",
-                                },
-                                {
-                                  value: "strict",
-                                  label: "Strict",
-                                  desc: "No refund if cancelled",
-                                },
-                              ].map((policy) => (
-                                <div
-                                  key={policy.value}
-                                  className={`p-4 rounded-lg border cursor-pointer transition-colors ${field.value === policy.value ? "border-primary bg-primary/5" : "border-border hover-elevate"}`}
-                                  onClick={() => field.onChange(policy.value)}
-                                  data-testid={`cancellation-policy-${policy.value}`}
-                                >
-                                  <p className="font-medium text-sm">
-                                    {policy.label}
-                                  </p>
-                                  <p className="text-xs text-muted-foreground mt-1">
-                                    {policy.desc}
-                                  </p>
-                                </div>
-                              ))}
-                            </div>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      {form.watch("cancellationPolicyType") !== "strict" && (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
-                          <FormField
-                            control={form.control}
-                            name="freeCancellationHours"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>
-                                  Free Cancellation Window (hours before
-                                  check-in)
-                                </FormLabel>
-                                <FormControl>
-                                  <Input
-                                    type="number"
-                                    min="1"
-                                    step="1"
-                                    {...field}
-                                    onChange={(e) =>
-                                      field.onChange(
-                                        parseInt(e.target.value) || 24,
-                                      )
-                                    }
-                                    data-testid="input-free-cancellation-hours"
-                                  />
-                                </FormControl>
-                                <p className="text-xs text-muted-foreground">
-                                  Guests can cancel for free this many hours
-                                  before check-in
-                                </p>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                          {form.watch("cancellationPolicyType") ===
-                            "moderate" && (
-                            <FormField
-                              control={form.control}
-                              name="partialRefundPercent"
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel>Partial Refund (%)</FormLabel>
-                                  <FormControl>
-                                    <Input
-                                      type="number"
-                                      min="0"
-                                      max="100"
-                                      step="5"
-                                      {...field}
-                                      onChange={(e) =>
-                                        field.onChange(
-                                          parseInt(e.target.value) || 50,
-                                        )
-                                      }
-                                      data-testid="input-partial-refund-percent"
-                                    />
-                                  </FormControl>
-                                  <p className="text-xs text-muted-foreground">
-                                    Refund % when cancelled outside the free
-                                    window
-                                  </p>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-                          )}
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-
-                  {/* Bulk Booking Card */}
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2">
-                        <Building2 className="h-5 w-5" />
-                        Bulk Booking Options
-                      </CardTitle>
-                      <CardDescription>
-                        Offer discounts for large group bookings (optional)
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      <FormField
-                        control={form.control}
-                        name="bulkBookingEnabled"
-                        render={({ field }) => (
-                          <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                            <div className="space-y-0.5">
-                              <FormLabel className="text-base">
-                                Enable Bulk Booking Discounts
-                              </FormLabel>
-                              <p className="text-sm text-muted-foreground">
-                                Attract corporate clients and group travelers
-                              </p>
-                            </div>
-                            <FormControl>
-                              <Checkbox
-                                checked={field.value}
-                                onCheckedChange={field.onChange}
-                                data-testid="checkbox-bulk-booking"
-                              />
-                            </FormControl>
-                          </FormItem>
-                        )}
-                      />
-
-                      {form.watch("bulkBookingEnabled") && (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
-                          <FormField
-                            control={form.control}
-                            name="bulkBookingMinRooms"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>
-                                  Minimum Rooms for Bulk Discount
-                                </FormLabel>
-                                <FormControl>
-                                  <Input
-                                    type="number"
-                                    min="2"
-                                    step="1"
-                                    {...field}
-                                    onChange={(e) =>
-                                      field.onChange(
-                                        parseInt(e.target.value) || 5,
-                                      )
-                                    }
-                                    data-testid="input-bulk-min-rooms"
-                                  />
-                                </FormControl>
-                                <p className="text-xs text-muted-foreground">
-                                  Discount applies when booking this many rooms
-                                  or more
-                                </p>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                          <FormField
-                            control={form.control}
-                            name="bulkBookingDiscountPercent"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Discount Percentage (%)</FormLabel>
-                                <FormControl>
-                                  <Input
-                                    type="number"
-                                    min="0"
-                                    max="50"
-                                    step="1"
-                                    {...field}
-                                    onChange={(e) =>
-                                      field.onChange(
-                                        parseFloat(e.target.value) || 10,
-                                      )
-                                    }
-                                    data-testid="input-bulk-discount"
-                                  />
-                                </FormControl>
-                                <p className="text-xs text-muted-foreground">
-                                  Maximum 50% discount allowed
-                                </p>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
 
                   <Card>
                     <CardHeader>
@@ -4497,8 +4111,8 @@ export default function ListPropertyWizard() {
                 </div>
               )}
 
-              {/* Step 8: Availability Blocking */}
-              {step === 8 && (
+              {/* Step 7: Availability Blocking */}
+              {step === 7 && (
                 <div className="space-y-6">
                   <Card>
                     <CardHeader>
@@ -4688,8 +4302,8 @@ export default function ListPropertyWizard() {
                 </div>
               )}
 
-              {/* Step 9: Setup Summary / Status */}
-              {step === 9 && (
+              {/* Step 9: Setup Summary — removed */}
+              {false && step === 9 && (
                 <div className="space-y-6">
                   <Card className="border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-950/30">
                     <CardHeader>
@@ -4814,8 +4428,8 @@ export default function ListPropertyWizard() {
                 </div>
               )}
 
-              {/* Step 11: Photos & Submit */}
-              {step === 11 && (
+              {/* Step 8: Photos & Submit */}
+              {step === 8 && (
                 <div className="space-y-6">
                   {/* Photo Category Progress Summary */}
                   <Card className="border-primary/20 bg-primary/5">
@@ -4905,6 +4519,9 @@ export default function ListPropertyWizard() {
                     onChange={setCategorizedImages}
                     onVideosChange={setVideos}
                     videos={videos}
+                    roomTypes={wizardRoomTypes.map((rt) => ({ id: rt.id, name: rt.name }))}
+                    roomTypeImages={wizardRoomTypeImages}
+                    onRoomTypeImagesChange={setWizardRoomTypeImages}
                   />
 
                   <Card>

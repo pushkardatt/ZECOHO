@@ -83,9 +83,6 @@ export function PropertyLocationPicker({
         if (types.includes("route")) {
           streetParts.push(component.long_name);
         }
-        if (types.includes("sublocality_level_1") || types.includes("sublocality")) {
-          data.locality = component.long_name;
-        }
         if (types.includes("locality")) {
           data.city = component.long_name;
         }
