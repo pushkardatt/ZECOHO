@@ -45,6 +45,9 @@ interface PricingCalendarData {
     roomTypeId: string;
     roomTypeName: string;
     defaultPrice: number;
+    singleOccupancyPrice: number | null;
+    doubleOccupancyPrice: number | null;
+    tripleOccupancyPrice: number | null;
     overrides: Record<string, number>; // date → price
   }[];
   mealPlanOverrides: Record<string, Record<string, number>>; // date → roomOptionId → price
@@ -71,6 +74,7 @@ export function PriceCalendar({ propertyId, roomTypes }: PriceCalendarProps) {
     roomTypes[0]?.id ?? "",
   );
   const [selectedRoomOptionId, setSelectedRoomOptionId] = useState<string>("");
+  const [selectedOccupancy, setSelectedOccupancy] = useState<1 | 2 | 3>(1);
   const [selectedDates, setSelectedDates] = useState<Set<string>>(new Set());
   const [priceInput, setPriceInput] = useState("");
 
@@ -198,6 +202,13 @@ export function PriceCalendar({ propertyId, roomTypes }: PriceCalendarProps) {
     return isBefore(parseISO(dateStr), TODAY);
   }
 
+  function getOccupancyBasePrice(rt: PricingCalendarData["roomTypes"][number]): number {
+    if (selectedOccupancy === 2 && rt.doubleOccupancyPrice != null) return rt.doubleOccupancyPrice;
+    if (selectedOccupancy === 3 && rt.tripleOccupancyPrice != null) return rt.tripleOccupancyPrice;
+    if (selectedOccupancy === 1 && rt.singleOccupancyPrice != null) return rt.singleOccupancyPrice;
+    return rt.defaultPrice;
+  }
+
   function getPriceInfo(dateStr: string): {
     price: number | null;
     isOverride: boolean;
@@ -205,7 +216,7 @@ export function PriceCalendar({ propertyId, roomTypes }: PriceCalendarProps) {
     if (editMode === "room" && selectedRoomType) {
       const override = selectedRoomType.overrides[dateStr];
       if (override !== undefined) return { price: override, isOverride: true };
-      return { price: selectedRoomType.defaultPrice, isOverride: false };
+      return { price: getOccupancyBasePrice(selectedRoomType), isOverride: false };
     }
     if (editMode === "mealplan" && selectedRoomOptionId && calendarData) {
       const override =
@@ -433,6 +444,26 @@ export function PriceCalendar({ propertyId, roomTypes }: PriceCalendarProps) {
           </SelectContent>
         </Select>
 
+        {/* Occupancy selector (room mode only) */}
+        {editMode === "room" && (
+          <Select
+            value={String(selectedOccupancy)}
+            onValueChange={(v) => {
+              setSelectedOccupancy(Number(v) as 1 | 2 | 3);
+              setSelectedDates(new Set());
+            }}
+          >
+            <SelectTrigger className="w-40 bg-white">
+              <SelectValue placeholder="Occupancy" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="1">1 Guest</SelectItem>
+              <SelectItem value="2">2 Guests</SelectItem>
+              <SelectItem value="3">3 Guests</SelectItem>
+            </SelectContent>
+          </Select>
+        )}
+
         {/* Meal plan selector (only in meal mode) */}
         {editMode === "mealplan" && (
           <Select
@@ -464,9 +495,9 @@ export function PriceCalendar({ propertyId, roomTypes }: PriceCalendarProps) {
         {/* Default price chip */}
         {editMode === "room" && selectedRoomType && (
           <div className="flex items-center gap-1.5 px-3 py-2 bg-gray-100 rounded-lg text-sm">
-            <span className="text-gray-400 text-xs">Default</span>
+            <span className="text-gray-400 text-xs">Base</span>
             <span className="font-bold text-gray-800">
-              ₹{selectedRoomType.defaultPrice.toLocaleString("en-IN")}
+              ₹{getOccupancyBasePrice(selectedRoomType).toLocaleString("en-IN")}
             </span>
             <span className="text-gray-400 text-xs">/night</span>
           </div>

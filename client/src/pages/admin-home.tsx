@@ -1,7 +1,8 @@
 import { useAuth } from "@/hooks/useAuth";
 import { useLocation } from "wouter";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { useState } from "react";
+import { apiRequest } from "@/lib/queryClient";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -27,7 +28,10 @@ import {
   CreditCard,
   Download,
   BarChart2,
+  Trash2,
+  Wrench,
 } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 interface CommunicationAnalytics {
   chats: any[];
@@ -174,9 +178,25 @@ const adminSections = [
 export default function AdminHome() {
   const { user } = useAuth();
   const [, setLocation] = useLocation();
+  const { toast } = useToast();
+  const [cleanupResult, setCleanupResult] = useState<{ deletedCount: number; skippedCount: number } | null>(null);
   const [timeFilter, setTimeFilter] = useState<"daily" | "weekly" | "monthly">(
     "monthly",
   );
+
+  const cleanupDuplicatesMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/admin/cleanup-duplicate-properties");
+      return res.json();
+    },
+    onSuccess: (data) => {
+      setCleanupResult({ deletedCount: data.deletedCount, skippedCount: data.skippedCount });
+      toast({ title: "Cleanup Complete", description: data.message });
+    },
+    onError: () => {
+      toast({ title: "Cleanup Failed", description: "Something went wrong. Check the server logs.", variant: "destructive" });
+    },
+  });
   const [callLogFrom, setCallLogFrom] = useState(() => {
     const d = new Date();
     d.setDate(d.getDate() - 30);
@@ -522,6 +542,42 @@ export default function AdminHome() {
                 </div>
               </>
             )}
+          </CardContent>
+        </Card>
+        {/* Data Maintenance */}
+        <Card data-testid="card-admin-maintenance">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Wrench className="h-4 w-4" />
+              Data Maintenance
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="flex items-start justify-between gap-4 p-3 rounded-lg border">
+              <div>
+                <p className="text-sm font-medium">Remove Duplicate Properties</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Deletes extra property entries created by the wizard auto-save bug (same owner, same title). Keeps the newest copy. Skips any that have bookings.
+                </p>
+                {cleanupResult && (
+                  <p className="text-xs mt-1.5 text-green-600 dark:text-green-400 font-medium">
+                    Last run: removed {cleanupResult.deletedCount} duplicate{cleanupResult.deletedCount !== 1 ? "s" : ""}
+                    {cleanupResult.skippedCount > 0 ? `, skipped ${cleanupResult.skippedCount} with bookings` : ""}.
+                  </p>
+                )}
+              </div>
+              <Button
+                size="sm"
+                variant="destructive"
+                className="flex-shrink-0 flex items-center gap-1.5"
+                disabled={cleanupDuplicatesMutation.isPending}
+                onClick={() => cleanupDuplicatesMutation.mutate()}
+                data-testid="btn-cleanup-duplicate-properties"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+                {cleanupDuplicatesMutation.isPending ? "Running…" : "Run Cleanup"}
+              </Button>
+            </div>
           </CardContent>
         </Card>
       </div>

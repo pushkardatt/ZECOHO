@@ -600,9 +600,9 @@ export default function ListPropertyWizard() {
       beds: 1,
       bathrooms: 1,
       policies: "",
-      localIdAllowed: true,
+      localIdAllowed: false,
       hourlyBookingAllowed: false,
-      foreignGuestsAllowed: true,
+      foreignGuestsAllowed: false,
       coupleFriendly: false,
       checkInTime: "",
       checkOutTime: "",
@@ -1140,10 +1140,9 @@ export default function ListPropertyWizard() {
           form.setValue("kycCity", postOffice.District || "");
           form.setValue("kycDistrict", postOffice.District || "");
           form.setValue("kycState", postOffice.State || "");
-          form.setValue("kycLocality", postOffice.Name || "");
           toast({
             title: "PIN Code Found!",
-            description: `${postOffice.Name}, ${postOffice.District}, ${postOffice.State}`,
+            description: `${postOffice.District}, ${postOffice.State}`,
           });
         } else {
           toast({
@@ -1183,11 +1182,10 @@ export default function ListPropertyWizard() {
           form.setValue("propCity", postOffice.District || "");
           form.setValue("propDistrict", postOffice.District || "");
           form.setValue("propState", postOffice.State || "");
-          form.setValue("propLocality", postOffice.Name || "");
           form.setValue("destination", postOffice.District || "");
           toast({
             title: "PIN Code Found!",
-            description: `${postOffice.Name}, ${postOffice.District}, ${postOffice.State}`,
+            description: `${postOffice.District}, ${postOffice.State}`,
           });
         } else {
           toast({
@@ -1462,10 +1460,10 @@ export default function ListPropertyWizard() {
             beds: data.beds || 1,
             bathrooms: data.bathrooms || 1,
             policies: data.policies,
-            localIdAllowed: data.localIdAllowed ?? true,
+            localIdAllowed: data.localIdAllowed ?? false,
             hourlyBookingAllowed: data.hourlyBookingAllowed ?? false,
-            foreignGuestsAllowed: data.foreignGuestsAllowed ?? true,
-            coupleFriendly: data.coupleFriendly ?? true,
+            foreignGuestsAllowed: data.foreignGuestsAllowed ?? false,
+            coupleFriendly: data.coupleFriendly ?? false,
             checkInTime: data.checkInTime || undefined,
             checkOutTime: data.checkOutTime || undefined,
             cancellationPolicyType: data.cancellationPolicyType || "flexible",
@@ -2278,7 +2276,7 @@ export default function ListPropertyWizard() {
                             />
                           </FormControl>
                           <p className="text-xs text-muted-foreground">
-                            Add a manager or front-desk number for guest contact
+                            Shared with Zecoho admin team only. Not visible to guests.
                           </p>
                           <FormMessage />
                         </FormItem>
@@ -2919,7 +2917,7 @@ export default function ListPropertyWizard() {
                             />
                           </FormControl>
                           <p className="text-xs text-muted-foreground">
-                            Add a manager or front-desk number for guest contact
+                            Shared with Zecoho admin team only. Not visible to guests.
                           </p>
                           <FormMessage />
                         </FormItem>
@@ -3952,6 +3950,7 @@ export default function ListPropertyWizard() {
                       <div className="space-y-4">
                         {([
                           { label: "Couple-friendly", desc: "Allow unmarried couples to check in", value: form.watch("coupleFriendly") ?? false, onChange: (v: boolean) => form.setValue("coupleFriendly", v), testId: "wizard-switch-couple-friendly" },
+                          { label: "Foreign guests allowed", desc: "Accept international guests with passport", value: form.watch("foreignGuestsAllowed") ?? false, onChange: (v: boolean) => form.setValue("foreignGuestsAllowed", v), testId: "wizard-switch-foreign-guests" },
                           { label: "Pets allowed", desc: "Guests may bring pets", value: wizardPetsAllowed, onChange: setWizardPetsAllowed, testId: "wizard-switch-pets" },
                           { label: "Smoking in room", desc: "Smoking permitted inside rooms", value: wizardSmokingAllowed, onChange: setWizardSmokingAllowed, testId: "wizard-switch-smoking" },
                           { label: "Liquor in room", desc: "Guests may consume liquor in room", value: wizardLiquorAllowed, onChange: setWizardLiquorAllowed, testId: "wizard-switch-liquor" },

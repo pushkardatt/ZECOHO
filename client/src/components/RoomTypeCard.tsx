@@ -371,7 +371,7 @@ function MealPlanRow({
 
       {/* Price */}
       <div className="text-right flex-shrink-0">
-        {price === 0 ? (
+        {price === 0 && id === null ? null : price === 0 ? (
           <span className="text-xs text-muted-foreground">Included</span>
         ) : (
           <span

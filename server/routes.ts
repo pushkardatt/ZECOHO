@@ -1340,9 +1340,9 @@ export async function registerRoutes(
               policies: propertyData.policies || null,
               checkInTime: propertyData.checkInTime || null,
               checkOutTime: propertyData.checkOutTime || null,
-              localIdAllowed: propertyData.localIdAllowed ?? true,
-              foreignGuestsAllowed: propertyData.foreignGuestsAllowed ?? true,
-              coupleFriendly: propertyData.coupleFriendly ?? true,
+              localIdAllowed: propertyData.localIdAllowed ?? false,
+              foreignGuestsAllowed: propertyData.foreignGuestsAllowed ?? false,
+              coupleFriendly: propertyData.coupleFriendly ?? false,
               hourlyBookingAllowed: propertyData.hourlyBookingAllowed ?? false,
               cancellationPolicyType:
                 propertyData.cancellationPolicyType || "flexible",
@@ -1360,10 +1360,19 @@ export async function registerRoutes(
               if (!updatedProp) throw new Error("Draft property not found");
               createdProperty = updatedProp;
             } else {
-              createdProperty = await storage.createProperty({
-                ...propertyPayload,
-                ownerId: userId,
-              });
+              // Check for an existing draft property (wizard state may have been lost on refresh)
+              const ownerProps = await storage.getProperties({ ownerId: userId });
+              const existingDraft = ownerProps.find((p: any) => p.status === "draft");
+              if (existingDraft) {
+                const updatedProp = await storage.updateProperty(existingDraft.id, propertyPayload);
+                if (!updatedProp) throw new Error("Draft property not found");
+                createdProperty = updatedProp;
+              } else {
+                createdProperty = await storage.createProperty({
+                  ...propertyPayload,
+                  ownerId: userId,
+                });
+              }
             }
 
             // Set amenities if provided
@@ -1555,9 +1564,9 @@ export async function registerRoutes(
             policies: propertyData.policies || null,
             checkInTime: propertyData.checkInTime || null,
             checkOutTime: propertyData.checkOutTime || null,
-            localIdAllowed: propertyData.localIdAllowed ?? true,
-            foreignGuestsAllowed: propertyData.foreignGuestsAllowed ?? true,
-            coupleFriendly: propertyData.coupleFriendly ?? true,
+            localIdAllowed: propertyData.localIdAllowed ?? false,
+            foreignGuestsAllowed: propertyData.foreignGuestsAllowed ?? false,
+            coupleFriendly: propertyData.coupleFriendly ?? false,
             hourlyBookingAllowed: propertyData.hourlyBookingAllowed ?? false,
             cancellationPolicyType:
               propertyData.cancellationPolicyType || "flexible",
@@ -1574,10 +1583,19 @@ export async function registerRoutes(
             if (!updatedProp2) throw new Error("Draft property not found");
             createdProperty = updatedProp2;
           } else {
-            createdProperty = await storage.createProperty({
-              ...propertyPayload2,
-              ownerId: userId,
-            });
+            // Check for an existing draft property (wizard state may have been lost on refresh)
+            const ownerProps2 = await storage.getProperties({ ownerId: userId });
+            const existingDraft2 = ownerProps2.find((p: any) => p.status === "draft");
+            if (existingDraft2) {
+              const updatedProp2b = await storage.updateProperty(existingDraft2.id, propertyPayload2);
+              if (!updatedProp2b) throw new Error("Draft property not found");
+              createdProperty = updatedProp2b;
+            } else {
+              createdProperty = await storage.createProperty({
+                ...propertyPayload2,
+                ownerId: userId,
+              });
+            }
           }
 
           // Step 4: Set amenities if provided
@@ -1863,9 +1881,9 @@ export async function registerRoutes(
             propPincode: property.propPincode || null,
             checkInTime: property.checkInTime || null,
             checkOutTime: property.checkOutTime || null,
-            coupleFriendly: property.coupleFriendly ?? true,
-            localIdAllowed: property.localIdAllowed ?? true,
-            foreignGuestsAllowed: property.foreignGuestsAllowed ?? true,
+            coupleFriendly: property.coupleFriendly ?? false,
+            localIdAllowed: property.localIdAllowed ?? false,
+            foreignGuestsAllowed: property.foreignGuestsAllowed ?? false,
             hourlyBookingAllowed: property.hourlyBookingAllowed ?? false,
             cancellationPolicyType:
               property.cancellationPolicyType || "flexible",
@@ -1874,42 +1892,71 @@ export async function registerRoutes(
             policies: property.policies || null,
           });
         } else {
-          // Create new draft property
-          const basePrice = roomTypes?.[0]?.basePrice || 1000;
-          savedProperty = await storage.createProperty({
-            title: property.title,
-            description: property.description || `Welcome to ${property.title}`,
-            propertyType: property.propertyType || "hotel",
-            destination: property.propCity || property.destination || "",
-            propCity: property.propCity || null,
-            propState: property.propState || null,
-            propDistrict: property.propDistrict || null,
-            propStreetAddress: property.propStreetAddress || null,
-            propLocality: property.propLocality || null,
-            propPincode: property.propPincode || null,
-            latitude: null,
-            longitude: null,
-            geoVerified: false,
-            images: [],
-            categorizedImages: null,
-            pricePerNight: String(basePrice),
-            maxGuests: 2,
-            bedrooms: 1,
-            beds: 1,
-            bathrooms: 1,
-            ownerId: userId,
-            status: "draft",
-            checkInTime: property.checkInTime || null,
-            checkOutTime: property.checkOutTime || null,
-            coupleFriendly: property.coupleFriendly ?? true,
-            localIdAllowed: property.localIdAllowed ?? true,
-            foreignGuestsAllowed: property.foreignGuestsAllowed ?? true,
-            hourlyBookingAllowed: property.hourlyBookingAllowed ?? false,
-            cancellationPolicyType:
-              property.cancellationPolicyType || "flexible",
-            freeCancellationHours: property.freeCancellationHours ?? 24,
-            partialRefundPercent: property.partialRefundPercent ?? 50,
-          });
+          // Before creating a new draft, check if owner already has one (prevents duplicates on page refresh/remount)
+          const ownerProperties = await storage.getProperties({ ownerId: userId });
+          const existingDraft = ownerProperties.find((p: any) => p.status === "draft");
+
+          if (existingDraft) {
+            // Reuse the existing draft instead of creating a duplicate
+            savedProperty = await storage.updateProperty(existingDraft.id, {
+              title: property.title,
+              description: property.description || `Welcome to ${property.title}`,
+              propertyType: property.propertyType || "hotel",
+              destination: property.propCity || property.destination || "",
+              propCity: property.propCity || null,
+              propState: property.propState || null,
+              propDistrict: property.propDistrict || null,
+              propStreetAddress: property.propStreetAddress || null,
+              propLocality: property.propLocality || null,
+              propPincode: property.propPincode || null,
+              checkInTime: property.checkInTime || null,
+              checkOutTime: property.checkOutTime || null,
+              coupleFriendly: property.coupleFriendly ?? false,
+              localIdAllowed: property.localIdAllowed ?? false,
+              foreignGuestsAllowed: property.foreignGuestsAllowed ?? false,
+              hourlyBookingAllowed: property.hourlyBookingAllowed ?? false,
+              cancellationPolicyType: property.cancellationPolicyType || "flexible",
+              freeCancellationHours: property.freeCancellationHours ?? 24,
+              partialRefundPercent: property.partialRefundPercent ?? 50,
+              policies: property.policies || null,
+            });
+          } else {
+            // Create new draft property
+            const basePrice = roomTypes?.[0]?.basePrice || 1000;
+            savedProperty = await storage.createProperty({
+              title: property.title,
+              description: property.description || `Welcome to ${property.title}`,
+              propertyType: property.propertyType || "hotel",
+              destination: property.propCity || property.destination || "",
+              propCity: property.propCity || null,
+              propState: property.propState || null,
+              propDistrict: property.propDistrict || null,
+              propStreetAddress: property.propStreetAddress || null,
+              propLocality: property.propLocality || null,
+              propPincode: property.propPincode || null,
+              latitude: null,
+              longitude: null,
+              geoVerified: false,
+              images: [],
+              categorizedImages: null,
+              pricePerNight: String(basePrice),
+              maxGuests: 2,
+              bedrooms: 1,
+              beds: 1,
+              bathrooms: 1,
+              ownerId: userId,
+              status: "draft",
+              checkInTime: property.checkInTime || null,
+              checkOutTime: property.checkOutTime || null,
+              coupleFriendly: property.coupleFriendly ?? false,
+              localIdAllowed: property.localIdAllowed ?? false,
+              foreignGuestsAllowed: property.foreignGuestsAllowed ?? false,
+              hourlyBookingAllowed: property.hourlyBookingAllowed ?? false,
+              cancellationPolicyType: property.cancellationPolicyType || "flexible",
+              freeCancellationHours: property.freeCancellationHours ?? 24,
+              partialRefundPercent: property.partialRefundPercent ?? 50,
+            });
+          }
         }
 
         const propertyId = savedProperty.id;
@@ -7232,6 +7279,88 @@ export async function registerRoutes(
       } catch (error) {
         console.error("Error fixing reactivation requests:", error);
         res.status(500).json({ message: "Failed to run migration" });
+      }
+    },
+  );
+
+  // Admin: Deduplicate properties — remove extra copies created by the wizard auto-save bug
+  app.post(
+    "/api/admin/cleanup-duplicate-properties",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const userId = req.user.claims.sub;
+        const user = await storage.getUser(userId);
+        if (!user || !userHasRole(user, "admin")) {
+          return res.status(403).json({ message: "Admin access required" });
+        }
+
+        // Find all properties, group by (owner_id, lower(title)) to detect dupes
+        const allProps = await db
+          .select({
+            id: propertiesTable.id,
+            ownerId: propertiesTable.ownerId,
+            title: propertiesTable.title,
+            status: propertiesTable.status,
+            createdAt: propertiesTable.createdAt,
+          })
+          .from(propertiesTable)
+          .orderBy(propertiesTable.createdAt);
+
+        type PropRow = (typeof allProps)[number];
+
+        // Group by ownerId + normalized title
+        const groupsMap: Record<string, PropRow[]> = {};
+        for (const p of allProps) {
+          const key = `${p.ownerId}::${p.title.toLowerCase().trim()}`;
+          if (!groupsMap[key]) groupsMap[key] = [];
+          groupsMap[key].push(p);
+        }
+
+        let deletedCount = 0;
+        let skippedCount = 0;
+        const deletedIds: string[] = [];
+
+        for (const key of Object.keys(groupsMap)) {
+          const group = groupsMap[key];
+          if (group.length <= 1) continue;
+
+          // Sort newest first — keep the last one created
+          group.sort((a: PropRow, b: PropRow) => {
+            const ta = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+            const tb = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+            return tb - ta;
+          });
+
+          const [_keep, ...toRemove] = group;
+
+          for (const dupe of toRemove) {
+            // Safety: only delete if property has no bookings
+            const [{ cnt }] = await db
+              .select({ cnt: sql<number>`COUNT(*)::int` })
+              .from(bookings)
+              .where(eq(bookings.propertyId, dupe.id));
+
+            if (cnt > 0) {
+              skippedCount++;
+              continue;
+            }
+
+            await storage.deleteProperty(dupe.id);
+            deletedIds.push(dupe.id);
+            deletedCount++;
+          }
+        }
+
+        res.json({
+          message: `Cleanup complete. Removed ${deletedCount} duplicate propert${deletedCount === 1 ? "y" : "ies"}.${skippedCount > 0 ? ` Skipped ${skippedCount} duplicate(s) that had bookings.` : ""}`,
+          deletedCount,
+          skippedCount,
+          deletedIds,
+        });
+      } catch (error) {
+        console.error("Error cleaning up duplicate properties:", error);
+        res.status(500).json({ message: "Failed to run cleanup" });
       }
     },
   );

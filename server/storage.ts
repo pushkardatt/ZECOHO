@@ -1093,7 +1093,10 @@ export class DatabaseStorage implements IStorage {
     await db
       .insert(amenities)
       .values(amenitiesData)
-      .onConflictDoNothing()
+      .onConflictDoUpdate({
+        target: amenities.name,
+        set: { icon: sql`EXCLUDED.icon`, category: sql`EXCLUDED.category` },
+      })
       .execute();
   }
 
