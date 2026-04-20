@@ -42,6 +42,7 @@ import {
   Phone,
   MessageCircle,
   Download,
+  Gift,
 } from "lucide-react";
 import {
   Collapsible,
@@ -618,6 +619,27 @@ export default function OwnerDashboard() {
             </AlertDescription>
           </Alert>
         )}
+
+        {/* Refer & Earn banner */}
+        <div className="flex items-center justify-between rounded-xl border bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800 px-4 py-3">
+          <div className="flex items-center gap-3">
+            <Gift className="h-5 w-5 text-amber-600 flex-shrink-0" />
+            <div>
+              <p className="text-sm font-semibold text-amber-800 dark:text-amber-200">
+                Refer a hotelier, earn 1 free month
+              </p>
+              <p className="text-xs text-amber-700 dark:text-amber-400">
+                Share your referral link — get a reward code when they subscribe.
+              </p>
+            </div>
+          </div>
+          <Link href="/owner/refer">
+            <Button size="sm" variant="outline" className="border-amber-400 text-amber-700 hover:bg-amber-100 dark:text-amber-300 dark:hover:bg-amber-900/30 flex-shrink-0">
+              <Gift className="h-3.5 w-3.5 mr-1" />
+              Refer Now
+            </Button>
+          </Link>
+        </div>
 
         {hasPublishedProperty && isSubscriptionActive && (
           <Alert className="bg-green-50 border-green-200 dark:border-green-800">

@@ -68,30 +68,21 @@ function isTabVisible(): boolean {
 
 function generateAlertSound(ctx: AudioContext): { duration: number } {
   const now = ctx.currentTime;
-  const totalDuration = 6;
+  // Zecoho chime: clean 3-note ascending ding — D5 (587Hz) → F#5 (740Hz) → A5 (880Hz)
+  // Short and professional, like a hotel desk bell
+  const totalDuration = 1.4;
 
   const masterGain = ctx.createGain();
-  masterGain.gain.setValueAtTime(0.25, now);
+  masterGain.gain.setValueAtTime(0.3, now);
   masterGain.connect(ctx.destination);
   activeGainNode = masterGain;
 
   activeOscillators = [];
 
   const noteSequence = [
-    { freq: 880, start: 0, end: 0.4, type: "sine" as OscillatorType },
-    { freq: 1100, start: 0.4, end: 0.8, type: "sine" as OscillatorType },
-    { freq: 1320, start: 0.8, end: 1.2, type: "sine" as OscillatorType },
-    { freq: 1100, start: 1.2, end: 1.6, type: "sine" as OscillatorType },
-    { freq: 880, start: 1.6, end: 2.0, type: "sine" as OscillatorType },
-    { freq: 660, start: 2.2, end: 2.6, type: "triangle" as OscillatorType },
-    { freq: 880, start: 2.6, end: 3.0, type: "triangle" as OscillatorType },
-    { freq: 1100, start: 3.0, end: 3.4, type: "triangle" as OscillatorType },
-    { freq: 1320, start: 3.4, end: 3.8, type: "triangle" as OscillatorType },
-    { freq: 1100, start: 3.8, end: 4.2, type: "sine" as OscillatorType },
-    { freq: 880, start: 4.4, end: 4.8, type: "sine" as OscillatorType },
-    { freq: 1100, start: 4.8, end: 5.2, type: "sine" as OscillatorType },
-    { freq: 1320, start: 5.2, end: 5.6, type: "sine" as OscillatorType },
-    { freq: 1540, start: 5.6, end: 6.0, type: "sine" as OscillatorType },
+    { freq: 587, start: 0,    end: 0.5,  type: "sine" as OscillatorType },
+    { freq: 740, start: 0.38, end: 0.9,  type: "sine" as OscillatorType },
+    { freq: 880, start: 0.76, end: 1.4,  type: "sine" as OscillatorType },
   ];
 
   noteSequence.forEach((note) => {
@@ -101,14 +92,12 @@ function generateAlertSound(ctx: AudioContext): { duration: number } {
     osc.type = note.type;
     osc.frequency.setValueAtTime(note.freq, now + note.start);
 
-    const attackTime = 0.03;
-    const releaseTime = 0.08;
+    const attackTime = 0.015;
     const noteDuration = note.end - note.start;
 
     noteGain.gain.setValueAtTime(0, now + note.start);
-    noteGain.gain.linearRampToValueAtTime(0.8, now + note.start + attackTime);
-    noteGain.gain.setValueAtTime(0.8, now + note.end - releaseTime);
-    noteGain.gain.linearRampToValueAtTime(0, now + note.end);
+    noteGain.gain.linearRampToValueAtTime(0.9, now + note.start + attackTime);
+    noteGain.gain.exponentialRampToValueAtTime(0.001, now + note.end);
 
     osc.connect(noteGain);
     noteGain.connect(masterGain);
@@ -118,9 +107,6 @@ function generateAlertSound(ctx: AudioContext): { duration: number } {
 
     activeOscillators.push(osc);
   });
-
-  masterGain.gain.setValueAtTime(0.25, now + totalDuration - 0.3);
-  masterGain.gain.linearRampToValueAtTime(0, now + totalDuration);
 
   return { duration: totalDuration };
 }

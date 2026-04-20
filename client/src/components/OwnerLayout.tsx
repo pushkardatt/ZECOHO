@@ -45,6 +45,7 @@ import {
   AlertTriangle,
   Menu,
   CreditCard,
+  Gift,
 } from "lucide-react";
 
 interface OwnerLayoutProps {
@@ -59,6 +60,7 @@ const fullMenuItems = [
   { title: "Earnings", icon: IndianRupee, path: "/owner/earnings" },
   { title: "Reviews", icon: Star, path: "/owner/reviews" },
   { title: "Subscription", icon: CreditCard, path: "/owner/subscription" },
+  { title: "Refer & Earn", icon: Gift, path: "/owner/refer" },
   { title: "Settings", icon: Settings, path: "/owner/settings" },
 ];
 

@@ -102,6 +102,7 @@ import OwnerReviews from "@/pages/owner-reviews";
 import OwnerSettings from "@/pages/owner-settings";
 import OwnerKyc from "@/pages/owner-kyc";
 import OwnerSubscriptionPage from "@/pages/owner/SubscriptionPage";
+import OwnerRefer from "@/pages/owner-refer";
 import ChooseListingMode from "@/pages/choose-listing-mode";
 import WriteReview from "@/pages/write-review";
 import Terms from "@/pages/terms";
@@ -134,6 +135,7 @@ function Router() {
       <Route path="/owner/reviews" component={OwnerReviews} />
       <Route path="/owner/settings" component={OwnerSettings} />
       <Route path="/owner/subscription" component={OwnerSubscriptionPage} />
+      <Route path="/owner/refer" component={OwnerRefer} />
       <Route path="/owner/kyc" component={OwnerKyc} />
       <Route path="/owner/choose-mode" component={ChooseListingMode} />
       <Route path="/owner/:rest*">

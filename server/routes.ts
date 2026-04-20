@@ -6239,6 +6239,23 @@ export async function registerRoutes(
       }
 
       const review = await storage.createReview(validatedData);
+
+      // Notify property owner of new review
+      try {
+        const { sendReviewPush } = require("./services/pushService");
+        const reviewProperty = await storage.getProperty(validatedData.propertyId);
+        if (reviewProperty) {
+          const guestName = `${user.firstName || ""} ${user.lastName || ""}`.trim() || "A guest";
+          await sendReviewPush(
+            reviewProperty.ownerId,
+            guestName,
+            reviewProperty.title,
+            validatedData.rating,
+            review.id,
+          );
+        }
+      } catch {}
+
       res.json(review);
     } catch (error: any) {
       console.error("Error creating review:", error);
@@ -6718,6 +6735,17 @@ export async function registerRoutes(
           propertyTitle: property.title,
         });
 
+        // Send push notification to owner (works when offline/background)
+        try {
+          const { sendPushNotification } = require("./services/pushService");
+          await sendPushNotification(property.ownerId, {
+            title: "Property Approved! 🎉",
+            body: `Your property "${property.title}" is now live on Zecoho.`,
+            tag: `property-approved-${property.id}`,
+            data: { url: "/owner/property" },
+          });
+        } catch {}
+
         // Send email notification
         if (owner.email) {
           sendPropertyLiveEmail(
@@ -6778,6 +6806,17 @@ export async function registerRoutes(
           propertyTitle: property.title,
           reason: notes,
         });
+
+        // Send push notification to owner (works when offline/background)
+        try {
+          const { sendPushNotification } = require("./services/pushService");
+          await sendPushNotification(property.ownerId, {
+            title: "Property Needs Attention",
+            body: `"${property.title}" requires updates: ${notes}`,
+            tag: `property-rejected-${property.id}`,
+            data: { url: "/owner/property" },
+          });
+        } catch {}
 
         res.json(updated);
       } catch (error) {
@@ -8729,6 +8768,29 @@ export async function registerRoutes(
           ).catch(console.error);
         }
 
+        // Push notifications for no-show
+        try {
+          const { sendPushNotification } = require("./services/pushService");
+          const noShowProperty = await storage.getProperty(booking.propertyId);
+          const bookingCode = booking.bookingCode || booking.id.slice(0, 8).toUpperCase();
+          // Notify guest
+          await sendPushNotification(booking.guestId, {
+            title: "No-Show Recorded",
+            body: `Booking ${bookingCode} at ${noShowProperty?.title || "property"} has been marked as no-show.`,
+            tag: `no-show-${booking.id}`,
+            data: { url: "/my-bookings" },
+          });
+          // Notify owner
+          if (noShowProperty) {
+            await sendPushNotification(noShowProperty.ownerId, {
+              title: "Guest No-Show",
+              body: `Booking ${bookingCode} has been marked as no-show.`,
+              tag: `no-show-owner-${booking.id}`,
+              data: { url: "/owner/bookings" },
+            });
+          }
+        } catch {}
+
         res.json(updated);
       } catch (error) {
         console.error("Error admin marking no-show:", error);
@@ -8872,6 +8934,28 @@ export async function registerRoutes(
         }
 
         const updated = await storage.adminForceCheckIn(req.params.id, userId);
+
+        // Push to guest and owner on check-in
+        try {
+          const { sendPushNotification } = require("./services/pushService");
+          const ciProperty = await storage.getProperty(booking.propertyId);
+          const bookingCode = booking.bookingCode || booking.id.slice(0, 8).toUpperCase();
+          await sendPushNotification(booking.guestId, {
+            title: "Check-In Confirmed",
+            body: `Welcome! Your check-in at ${ciProperty?.title || "the property"} (${bookingCode}) has been recorded.`,
+            tag: `checkin-${booking.id}`,
+            data: { url: "/my-bookings" },
+          });
+          if (ciProperty) {
+            await sendPushNotification(ciProperty.ownerId, {
+              title: "Guest Checked In",
+              body: `Booking ${bookingCode} — guest has checked in.`,
+              tag: `checkin-owner-${booking.id}`,
+              data: { url: "/owner/bookings" },
+            });
+          }
+        } catch {}
+
         res.json(updated);
       } catch (error) {
         console.error("Error admin force check-in:", error);
@@ -8901,6 +8985,28 @@ export async function registerRoutes(
         }
 
         const updated = await storage.adminForceCheckOut(req.params.id, userId);
+
+        // Push to guest and owner on check-out
+        try {
+          const { sendPushNotification } = require("./services/pushService");
+          const coProperty = await storage.getProperty(booking.propertyId);
+          const bookingCode = booking.bookingCode || booking.id.slice(0, 8).toUpperCase();
+          await sendPushNotification(booking.guestId, {
+            title: "Check-Out Recorded",
+            body: `Your stay at ${coProperty?.title || "the property"} (${bookingCode}) is complete. Thanks for staying with us!`,
+            tag: `checkout-${booking.id}`,
+            data: { url: "/my-bookings" },
+          });
+          if (coProperty) {
+            await sendPushNotification(coProperty.ownerId, {
+              title: "Guest Checked Out",
+              body: `Booking ${bookingCode} — guest has checked out.`,
+              tag: `checkout-owner-${booking.id}`,
+              data: { url: "/owner/bookings" },
+            });
+          }
+        } catch {}
+
         res.json(updated);
       } catch (error) {
         console.error("Error admin force check-out:", error);
@@ -12271,6 +12377,18 @@ export async function registerRoutes(
           };
           broadcastToUser(guest.id, notification);
         }
+
+        // Push notification to guest for stay extension
+        try {
+          const { sendPushNotification } = require("./services/pushService");
+          const newCheckOutStr = extensionCheckOut.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
+          await sendPushNotification(parentBooking.guestId, {
+            title: "Stay Extended",
+            body: `Your stay at ${property.title} has been extended until ${newCheckOutStr}. Additional ₹${totalPrice.toLocaleString("en-IN")} payable at hotel.`,
+            tag: `stay-extension-${extensionBooking.id}`,
+            data: { url: "/my-bookings" },
+          });
+        } catch {}
 
         res.json({
           extensionBooking,
