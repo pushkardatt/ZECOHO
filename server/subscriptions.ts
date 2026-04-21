@@ -42,7 +42,7 @@ router.get("/owner/subscription-status/:ownerId", async (req, res) => {
 router.get("/owner/plan-features", async (req, res) => {
   if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
   try {
-    const ownerId = (req.user as any).id;
+    const ownerId = (req.user as any).claims?.sub ?? (req.user as any).id;
     const features = await storage.getOwnerActivePlanFeatures(ownerId);
     res.json(features ?? {
       bookingManagementEnabled: false,
@@ -119,6 +119,7 @@ router.get("/admin/owner-subscriptions", async (req, res) => {
 });
 /* OWNER — request subscription */
 router.post("/owner/subscribe", async (req, res) => {
+  if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
   try {
     const {
       planId,
@@ -129,7 +130,7 @@ router.post("/owner/subscribe", async (req, res) => {
       screenshotUrl,
       paymentMethod,
     } = req.body;
-    const ownerId = (req.user as any)?.id;
+    const ownerId = (req.user as any).claims?.sub ?? (req.user as any).id;
 
     // Block submission if no payment proof provided
     if (!transactionId || !transactionId.trim()) {
@@ -221,7 +222,7 @@ router.post("/admin/owner-subscriptions/:id/extend", async (req, res) => {
 router.post("/admin/owner-subscriptions/:id/activate", async (req, res) => {
   try {
     const { note, startDate, endDate } = req.body;
-    const adminId = (req.user as any)?.id;
+    const adminId = (req.user as any).claims?.sub ?? (req.user as any)?.id;
     await storage.updateOwnerSubscriptionDates(
       req.params.id,
       new Date(startDate),
@@ -425,7 +426,7 @@ router.post("/admin/owner-subscriptions/:id/cancel", async (req, res) => {
 /* ADMIN — waive */
 router.post("/admin/owner-subscriptions/:id/waive", async (req, res) => {
   try {
-    const adminId = (req.user as any)?.id;
+    const adminId = (req.user as any).claims?.sub ?? (req.user as any)?.id;
     const days = parseInt(req.body.days, 10);
     if (!days || days < 1 || days > 3650) {
       return res.status(400).json({ error: "days must be between 1 and 3650" });
