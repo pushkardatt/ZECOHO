@@ -719,6 +719,7 @@ export interface IStorage {
     id: string,
     adminId: string,
     note: string,
+    days: number,
   ): Promise<OwnerSubscription | undefined>;
   getAllOwnerSubscriptions(): Promise<OwnerSubscription[]>;
   getAllOwnerSubscriptionsForAdmin(): Promise<
@@ -3797,10 +3798,7 @@ export class DatabaseStorage implements IStorage {
       .where(
         and(
           eq(ownerSubscriptions.ownerId, ownerId),
-          or(
-            eq(ownerSubscriptions.status, "active"),
-            eq(ownerSubscriptions.isWaived, true), // admin-waived subs always grant access
-          ),
+          eq(ownerSubscriptions.status, "active"),
         ),
       )
       .orderBy(desc(ownerSubscriptions.createdAt))
@@ -3889,6 +3887,7 @@ export class DatabaseStorage implements IStorage {
     id: string,
     adminId: string,
     note: string,
+    days: number,
   ): Promise<OwnerSubscription | undefined> {
     const [sub] = await db
       .select()
@@ -3898,13 +3897,7 @@ export class DatabaseStorage implements IStorage {
 
     const startDate = new Date();
     const endDate = new Date();
-    const duration = sub.duration || "monthly";
-    if (duration === "monthly") endDate.setMonth(endDate.getMonth() + 1);
-    else if (duration === "quarterly") endDate.setMonth(endDate.getMonth() + 3);
-    else if (duration === "half_yearly")
-      endDate.setMonth(endDate.getMonth() + 6);
-    else if (duration === "yearly")
-      endDate.setFullYear(endDate.getFullYear() + 1);
+    endDate.setDate(endDate.getDate() + days);
 
     const [updated] = await db
       .update(ownerSubscriptions)

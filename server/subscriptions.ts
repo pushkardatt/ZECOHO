@@ -426,10 +426,15 @@ router.post("/admin/owner-subscriptions/:id/cancel", async (req, res) => {
 router.post("/admin/owner-subscriptions/:id/waive", async (req, res) => {
   try {
     const adminId = (req.user as any)?.id;
+    const days = parseInt(req.body.days, 10);
+    if (!days || days < 1 || days > 3650) {
+      return res.status(400).json({ error: "days must be between 1 and 3650" });
+    }
     const sub = await storage.waiveOwnerSubscription(
       req.params.id,
       adminId,
       req.body.note,
+      days,
     );
     res.json(sub);
   } catch (error) {

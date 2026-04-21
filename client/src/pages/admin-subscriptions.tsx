@@ -775,6 +775,7 @@ export default function AdminSubscriptions() {
     "activate" | "cancel" | "waive" | null
   >(null);
   const [note, setNote] = useState("");
+  const [waiverDays, setWaiverDays] = useState("30");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [extendDialogOpen, setExtendDialogOpen] = useState(false);
@@ -858,11 +859,11 @@ export default function AdminSubscriptions() {
   });
 
   const waiveMutation = useMutation({
-    mutationFn: async ({ id, note }: { id: string; note: string }) => {
+    mutationFn: async ({ id, note, days }: { id: string; note: string; days: number }) => {
       const res = await apiRequest(
         "POST",
         `/api/admin/owner-subscriptions/${id}/waive`,
-        { note },
+        { note, days },
       );
       if (!res.ok) throw new Error("Failed to waive");
       return res.json();
@@ -914,6 +915,7 @@ export default function AdminSubscriptions() {
     setSelectedSub(null);
     setActionType(null);
     setNote("");
+    setWaiverDays("30");
     setStartDate("");
     setEndDate("");
   };
@@ -1181,7 +1183,7 @@ export default function AdminSubscriptions() {
     if (actionType === "cancel")
       cancelMutation.mutate({ id: selectedSub.id, reason: note });
     if (actionType === "waive")
-      waiveMutation.mutate({ id: selectedSub.id, note });
+      waiveMutation.mutate({ id: selectedSub.id, note, days: parseInt(waiverDays, 10) });
   };
   const isActionLoading =
     activateMutation.isPending ||
@@ -1906,14 +1908,30 @@ export default function AdminSubscriptions() {
                   </div>
                 )}
                 {actionType === "waive" && (
-                  <div className="space-y-1">
-                    <Label className="text-xs">Waiver Note</Label>
-                    <Textarea
-                      placeholder="e.g. Early adopter benefit, no payment required"
-                      value={note}
-                      onChange={(e) => setNote(e.target.value)}
-                      rows={3}
-                    />
+                  <div className="space-y-3">
+                    <div className="space-y-1">
+                      <Label className="text-xs">Waiver Duration (days)</Label>
+                      <Input
+                        type="number"
+                        min={1}
+                        max={3650}
+                        value={waiverDays}
+                        onChange={(e) => setWaiverDays(e.target.value)}
+                        placeholder="e.g. 30"
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Access will expire after this many days.
+                      </p>
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Waiver Note</Label>
+                      <Textarea
+                        placeholder="e.g. Early adopter benefit, no payment required"
+                        value={note}
+                        onChange={(e) => setNote(e.target.value)}
+                        rows={3}
+                      />
+                    </div>
                   </div>
                 )}
               </div>
@@ -1931,7 +1949,7 @@ export default function AdminSubscriptions() {
                   disabled={
                     isActionLoading ||
                     (actionType === "cancel" && !note) ||
-                    (actionType === "waive" && !note)
+                    (actionType === "waive" && (!note || !waiverDays || parseInt(waiverDays, 10) < 1))
                   }
                   variant={actionType === "cancel" ? "destructive" : "default"}
                 >

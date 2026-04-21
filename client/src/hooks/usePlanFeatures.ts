@@ -28,7 +28,7 @@ export function usePlanFeatures() {
     queryFn: () =>
       apiRequest("GET", "/api/owner/plan-features").then((r) => r.json()),
     enabled: !!user && isAuthenticated && (user as any).userRole === "owner",
-    staleTime: 60 * 1000,
+    staleTime: 0,
   });
 
   return {

@@ -104,6 +104,7 @@ import OwnerSettings from "@/pages/owner-settings";
 import OwnerKyc from "@/pages/owner-kyc";
 import OwnerSubscriptionPage from "@/pages/owner/SubscriptionPage";
 import OwnerRefer from "@/pages/owner-refer";
+import OwnerAnalytics from "@/pages/owner-analytics";
 import ChooseListingMode from "@/pages/choose-listing-mode";
 import WriteReview from "@/pages/write-review";
 import Terms from "@/pages/terms";
@@ -124,6 +125,7 @@ function Router() {
       <Route path="/my-bookings" component={MyBookings} />
       <Route path="/owner/dashboard" component={OwnerDashboard} />
       <Route path="/owner/bookings" component={OwnerBookings} />
+      <Route path="/owner/analytics" component={OwnerAnalytics} />
       <Route path="/owner/messages" component={OwnerMessagesPage} />
       <Route path="/owner/property" component={OwnerProperty} />
       <Route path="/owner/properties" component={OwnerProperties} />

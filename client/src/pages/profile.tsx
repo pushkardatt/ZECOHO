@@ -616,10 +616,16 @@ export default function Profile() {
                         {user?.lastName || "Not provided"}
                       </p>
                     </div>
-                    <div className="md:col-span-2">
+                    <div>
                       <Label className="text-muted-foreground">Email</Label>
                       <p className="text-base font-medium">
                         {user?.email || "Not provided"}
+                      </p>
+                    </div>
+                    <div>
+                      <Label className="text-muted-foreground">Mobile number</Label>
+                      <p className="text-base font-medium">
+                        {user?.phone || "Not provided"}
                       </p>
                     </div>
                   </div>

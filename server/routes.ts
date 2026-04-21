@@ -11635,6 +11635,52 @@ export async function registerRoutes(
     },
   );
 
+  // Get property view counts for owner's properties (analytics)
+  app.get("/api/owner/analytics/views", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      if (!user || !userHasRole(user, "owner")) {
+        return res.status(403).json({ message: "Only owners can access analytics" });
+      }
+      const days = parseInt(req.query.days as string) || 30;
+      const since = new Date();
+      since.setDate(since.getDate() - days);
+
+      const ownerProps = await storage.getOwnerProperties(userId);
+      if (ownerProps.length === 0) return res.json({ properties: [], totalViews: 0 });
+
+      const propertyIds = ownerProps.map((p: any) => p.id);
+
+      const viewRows = await db
+        .select({
+          propertyId: propertyViews.propertyId,
+          count: sql<number>`count(*)::int`,
+        })
+        .from(propertyViews)
+        .where(
+          and(
+            inArray(propertyViews.propertyId, propertyIds),
+            gte(propertyViews.createdAt, since),
+          ),
+        )
+        .groupBy(propertyViews.propertyId);
+
+      const viewMap = new Map(viewRows.map((r: any) => [r.propertyId, r.count]));
+      const result = ownerProps.map((p: any) => ({
+        id: p.id,
+        title: p.title,
+        status: p.status,
+        views: viewMap.get(p.id) ?? 0,
+      }));
+      const totalViews = result.reduce((sum: number, p: any) => sum + p.views, 0);
+      res.json({ properties: result, totalViews, days });
+    } catch (error) {
+      console.error("Error fetching analytics views:", error);
+      res.status(500).json({ message: "Failed to fetch analytics" });
+    }
+  });
+
   // Get room utilization for owner's property
   app.get(
     "/api/owner/properties/:propertyId/utilization",

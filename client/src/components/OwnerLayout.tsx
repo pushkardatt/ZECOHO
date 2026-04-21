@@ -46,6 +46,7 @@ import {
   Menu,
   CreditCard,
   Gift,
+  BarChart2,
 } from "lucide-react";
 
 interface OwnerLayoutProps {
@@ -55,6 +56,7 @@ interface OwnerLayoutProps {
 const fullMenuItems = [
   { title: "Dashboard", icon: LayoutDashboard, path: "/owner/dashboard" },
   { title: "Bookings", icon: CalendarCheck, path: "/owner/bookings" },
+  { title: "Analytics", icon: BarChart2, path: "/owner/analytics" },
   { title: "Messages", icon: MessageSquare, path: "/owner/messages" },
   { title: "Property", icon: Building2, path: "/owner/property" },
   { title: "Earnings", icon: IndianRupee, path: "/owner/earnings" },
