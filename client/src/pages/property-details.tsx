@@ -851,26 +851,6 @@ export default function PropertyDetails() {
     [],
   );
 
-  // Auto-validate prefilled guest details when entering details step
-  useEffect(() => {
-    if (bookingStep === "details" && user) {
-      const hasName = !!(user.firstName || user.lastName);
-      const hasEmail = !!user.email;
-      if (hasName && hasEmail) {
-        setGuestDetailsValid(true);
-        setGuestDetailsData({
-          guestName: [user.firstName, user.lastName].filter(Boolean).join(" "),
-          guestMobile: user.phone?.replace(/^\+91\s?/, "") || "",
-          guestEmail: user.email || "",
-          hasGst: false,
-          gstNumber: "",
-          specialRequests: "",
-          adults: adults,
-          childrenCount: children,
-        });
-      }
-    }
-  }, [bookingStep, user, adults, children]);
 
   // On desktop: scroll to the traveller details form when Reserve is clicked
   useEffect(() => {
@@ -1196,36 +1176,9 @@ export default function PropertyDetails() {
       return;
     }
 
-    // If on select step, prefill and skip details step if user data exists
     if (bookingStep === "select") {
-      const prefillData = {
-        guestName: [user.firstName, user.lastName].filter(Boolean).join(" "),
-        guestMobile: user.phone?.replace(/^\+91\s?/, "") || "",
-        guestEmail: user.email || "",
-        hasGst: false,
-        gstNumber: "",
-        specialRequests: "",
-        adults: adults,
-        childrenCount: children,
-      };
-      setGuestDetailsValid(true);
-      setGuestDetailsData(prefillData);
       setBookingStep("details");
       return;
-    }
-
-    // On details step, use prefilled data if guestDetailsData is null
-    if (!guestDetailsData && user) {
-      setGuestDetailsData({
-        guestName: [user.firstName, user.lastName].filter(Boolean).join(" "),
-        guestMobile: user.phone?.replace(/^\+91\s?/, "") || "",
-        guestEmail: user.email || "",
-        hasGst: false,
-        gstNumber: "",
-        specialRequests: "",
-        adults: adults,
-        childrenCount: children,
-      });
     }
 
     bookingMutation.mutate();
@@ -2900,7 +2853,8 @@ export default function PropertyDetails() {
                     !selectedRoomTypeId ||
                     hasDateOverlap ||
                     hasBlockedDateOverlap ||
-                    isBookingDisabled
+                    isBookingDisabled ||
+                    (bookingStep === "details" && !guestDetailsValid)
                   }
                   data-testid="button-reserve"
                 >
@@ -3025,7 +2979,8 @@ export default function PropertyDetails() {
           !checkOut ||
           !selectedRoomTypeId ||
           hasDateOverlap ||
-          hasBlockedDateOverlap
+          hasBlockedDateOverlap ||
+          (bookingStep === "details" && !guestDetailsValid)
         }
         disabledReason={
           !selectedRoomTypeId

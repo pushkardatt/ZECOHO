@@ -234,8 +234,6 @@ export default function OwnerBookings() {
           action,
           channel: "web_push",
         }).catch(console.error);
-        setUrgentAlert(null);
-        setShowBanner(null);
       }
     };
 
@@ -295,51 +293,6 @@ export default function OwnerBookings() {
   const { toast } = useToast();
   const { isKycRejected } = useKycGuard();
   const { features: planFeatures, isLoading: planLoading } = usePlanFeatures();
-
-  if (isKycRejected) {
-    return (
-      <OwnerLayout>
-        <Alert
-          variant="destructive"
-          className="mb-6"
-          data-testid="kyc-rejected-block"
-        >
-          <XCircle className="h-5 w-5" />
-          <AlertTitle>Access Restricted</AlertTitle>
-          <AlertDescription className="flex flex-col gap-3">
-            <span>
-              Your KYC has been rejected. Please fix your KYC to access
-              bookings.
-            </span>
-            <Link href="/owner/kyc">
-              <Button variant="destructive" size="sm" data-testid="btn-fix-kyc">
-                Fix KYC & Resubmit
-              </Button>
-            </Link>
-          </AlertDescription>
-        </Alert>
-      </OwnerLayout>
-    );
-  }
-
-  if (!planLoading && !planFeatures.bookingManagementEnabled) {
-    return (
-      <OwnerLayout>
-        <Alert className="mb-6">
-          <AlertTitle>Booking Management Not Included</AlertTitle>
-          <AlertDescription className="flex flex-col gap-3">
-            <span>
-              Your current subscription plan does not include booking management.
-              Upgrade to a Standard or Premium plan to access and manage bookings.
-            </span>
-            <Link href="/owner/subscription">
-              <Button size="sm">Upgrade Plan</Button>
-            </Link>
-          </AlertDescription>
-        </Alert>
-      </OwnerLayout>
-    );
-  }
 
   const updateStatusMutation = useMutation({
     mutationFn: async ({
@@ -1382,6 +1335,51 @@ export default function OwnerBookings() {
       </CardContent>
     </Card>
   );
+
+  if (isKycRejected) {
+    return (
+      <OwnerLayout>
+        <Alert
+          variant="destructive"
+          className="mb-6"
+          data-testid="kyc-rejected-block"
+        >
+          <XCircle className="h-5 w-5" />
+          <AlertTitle>Access Restricted</AlertTitle>
+          <AlertDescription className="flex flex-col gap-3">
+            <span>
+              Your KYC has been rejected. Please fix your KYC to access
+              bookings.
+            </span>
+            <Link href="/owner/kyc">
+              <Button variant="destructive" size="sm" data-testid="btn-fix-kyc">
+                Fix KYC & Resubmit
+              </Button>
+            </Link>
+          </AlertDescription>
+        </Alert>
+      </OwnerLayout>
+    );
+  }
+
+  if (!planLoading && !planFeatures.bookingManagementEnabled) {
+    return (
+      <OwnerLayout>
+        <Alert className="mb-6">
+          <AlertTitle>Booking Management Not Included</AlertTitle>
+          <AlertDescription className="flex flex-col gap-3">
+            <span>
+              Your current subscription plan does not include booking management.
+              Upgrade to a Standard or Premium plan to access and manage bookings.
+            </span>
+            <Link href="/owner/subscription">
+              <Button size="sm">Upgrade Plan</Button>
+            </Link>
+          </AlertDescription>
+        </Alert>
+      </OwnerLayout>
+    );
+  }
 
   return (
     <OwnerLayout>
