@@ -677,7 +677,7 @@ export const roomTypes = pgTable(
     floorNumber: varchar("floor_number", { length: 20 }), // e.g. "2nd floor", "Ground"
 
     // ── In-room amenities ────────────────────────────────────────────────────
-    hasAC: boolean("has_ac").notNull().default(true),
+    hasAC: boolean("has_ac").notNull().default(false),
     hasTV: boolean("has_tv").notNull().default(false),
     hasWifi: boolean("has_wifi").notNull().default(false),
     hasFridge: boolean("has_fridge").notNull().default(false),

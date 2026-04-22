@@ -2463,7 +2463,7 @@ function RoomTypeCard({
   );
 
   // ── Amenities ──────────────────────────────────────────────────────────────
-  const [editHasAC, setEditHasAC] = useState((room as any).hasAC ?? true);
+  const [editHasAC, setEditHasAC] = useState((room as any).hasAC ?? false);
   const [editHasTV, setEditHasTV] = useState((room as any).hasTV ?? false);
   const [editHasWifi, setEditHasWifi] = useState(
     (room as any).hasWifi ?? false,
@@ -2553,7 +2553,7 @@ function RoomTypeCard({
     setEditDoublePrice(String((room as any).doubleOccupancyPrice || ""));
     setEditTriplePrice(String((room as any).tripleOccupancyPrice || ""));
     setEditOriginalPrice(room.originalPrice || "");
-    setEditHasAC((room as any).hasAC ?? true);
+    setEditHasAC((room as any).hasAC ?? false);
     setEditHasTV((room as any).hasTV ?? false);
     setEditHasWifi((room as any).hasWifi ?? false);
     setEditHasFridge((room as any).hasFridge ?? false);

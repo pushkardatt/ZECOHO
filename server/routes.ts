@@ -1712,6 +1712,19 @@ export async function registerRoutes(
                   maxGuests: maxGuests,
                   totalRooms: totalRooms,
                   isActive: true,
+                  bedType: rt.bedType || null,
+                  viewType: rt.viewType || null,
+                  bathroomType: rt.bathroomType || null,
+                  smokingPolicy: rt.smokingAllowed ? "Smoking" : "Non-smoking",
+                  roomSizeSqft: rt.roomSizeSqft ? parseInt(rt.roomSizeSqft) : null,
+                  hasAC: rt.hasAC ?? false,
+                  hasTV: rt.hasTV ?? false,
+                  hasWifi: rt.hasWifi ?? false,
+                  hasFridge: rt.hasFridge ?? false,
+                  hasKettle: rt.hasKettle ?? false,
+                  hasSafe: rt.hasSafe ?? false,
+                  hasBalcony: rt.hasBalcony ?? false,
+                  hasHeater: rt.hasHeater ?? false,
                 });
 
                 // Create meal options for this room type
@@ -1932,6 +1945,19 @@ export async function registerRoutes(
                 maxGuests: maxGuests,
                 totalRooms: totalRooms,
                 isActive: true,
+                bedType: rt.bedType || null,
+                viewType: rt.viewType || null,
+                bathroomType: rt.bathroomType || null,
+                smokingPolicy: rt.smokingAllowed ? "Smoking" : "Non-smoking",
+                roomSizeSqft: rt.roomSizeSqft ? parseInt(rt.roomSizeSqft) : null,
+                hasAC: rt.hasAC ?? false,
+                hasTV: rt.hasTV ?? false,
+                hasWifi: rt.hasWifi ?? false,
+                hasFridge: rt.hasFridge ?? false,
+                hasKettle: rt.hasKettle ?? false,
+                hasSafe: rt.hasSafe ?? false,
+                hasBalcony: rt.hasBalcony ?? false,
+                hasHeater: rt.hasHeater ?? false,
               });
 
               // Create meal options for this room type
@@ -2280,9 +2306,11 @@ export async function registerRoutes(
               hasAC: rt.hasAC ?? false,
               hasTV: rt.hasTV ?? false,
               hasWifi: rt.hasWifi ?? false,
-              hasFridge: rt.hasRefrigerator ?? rt.hasFridge ?? false,
-              hasBalcony: rt.hasBalcony ?? false,
+              hasFridge: rt.hasFridge ?? false,
+              hasKettle: rt.hasKettle ?? false,
               hasSafe: rt.hasSafe ?? false,
+              hasBalcony: rt.hasBalcony ?? false,
+              hasHeater: rt.hasHeater ?? false,
             });
             // Create meal options
             if (rt.mealOptions && Array.isArray(rt.mealOptions)) {

@@ -155,36 +155,42 @@ export function PriceCalendar({ propertyId, roomTypes }: PriceCalendarProps) {
       setSelectedDates(new Set());
       setPriceInput("");
     },
-    onError: () =>
+    onError: (err: Error) =>
       toast({
-        title: "Error",
-        description: "Failed to save prices. Please try again.",
+        title: "Failed to save prices",
+        description: err?.message || "Please try again.",
         variant: "destructive",
       }),
   });
 
   const setMealPriceMutation = useMutation({
-    mutationFn: ({ roomOptionId, startDate, endDate, price }: any) =>
-      apiRequest(
-        "PUT",
-        `/api/owner/room-options/${roomOptionId}/meal-plan-price-overrides`,
-        { startDate, endDate, price },
-      ).then((r) => r.json()),
-    onSuccess: () => {
+    mutationFn: async ({ roomOptionId, dates, price }: { roomOptionId: string; dates: string[]; price: number }) => {
+      await Promise.all(
+        dates.map((d) =>
+          apiRequest(
+            "PUT",
+            `/api/owner/room-options/${roomOptionId}/meal-plan-price-overrides`,
+            { startDate: d, endDate: d, price },
+          ).then((r) => r.json()),
+        ),
+      );
+      return dates.length;
+    },
+    onSuccess: (count) => {
       queryClient.invalidateQueries({
         queryKey: ["/api/properties", propertyId, "pricing-calendar"],
       });
       toast({
         title: "Meal prices saved",
-        description: `${selectedDates.size} date(s) updated.`,
+        description: `${count} date(s) updated.`,
       });
       setSelectedDates(new Set());
       setPriceInput("");
     },
-    onError: () =>
+    onError: (err: Error) =>
       toast({
-        title: "Error",
-        description: "Failed to save.",
+        title: "Failed to save meal prices",
+        description: err?.message || "Please try again.",
         variant: "destructive",
       }),
   });
@@ -314,14 +320,11 @@ export function PriceCalendar({ propertyId, roomTypes }: PriceCalendarProps) {
         price,
       });
     } else {
-      sorted.forEach((d) =>
-        setMealPriceMutation.mutate({
-          roomOptionId: selectedRoomOptionId,
-          startDate: d,
-          endDate: d,
-          price,
-        }),
-      );
+      setMealPriceMutation.mutate({
+        roomOptionId: selectedRoomOptionId,
+        dates: sorted,
+        price,
+      });
     }
   }
 
