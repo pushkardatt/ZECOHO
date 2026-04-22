@@ -781,13 +781,19 @@ export default function ListPropertyWizard() {
         });
       }
 
-      // Pre-fill amenities if available
+      // Pre-fill amenities if available (server-side data takes precedence; don't restore from localStorage in complete mode)
       if (draftProperty.amenityIds && Array.isArray(draftProperty.amenityIds)) {
         setSelectedAmenities(draftProperty.amenityIds.map(String));
+      } else {
+        setSelectedAmenities([]); // clear localStorage-restored amenities in complete mode
       }
 
-      // Pre-fill step 4 (Property Details) fields
+      // Restore saved location coordinates
       const dp = draftProperty as any;
+      if (dp.latitude) setPropertyLatitude(parseFloat(dp.latitude));
+      if (dp.longitude) setPropertyLongitude(parseFloat(dp.longitude));
+
+      // Pre-fill step 4 (Property Details) fields
       if (dp.starRating) setWizardStarRating(dp.starRating);
       if (dp.channelManagerEnabled) setWizardChannelManagerEnabled(dp.channelManagerEnabled);
       if (dp.channelManagerName) setWizardChannelManagerName(dp.channelManagerName);
@@ -1080,7 +1086,8 @@ export default function ListPropertyWizard() {
       ) {
         setKycDocuments(draftData.kycDocuments);
       }
-      if (Array.isArray(draftData.selectedAmenities)) {
+      // In complete mode the server draft is the source of truth for amenities — skip localStorage restoration
+      if (!isCompleteMode && Array.isArray(draftData.selectedAmenities)) {
         setSelectedAmenities(draftData.selectedAmenities);
       }
       if (Array.isArray(draftData.videos)) {
@@ -1679,6 +1686,8 @@ export default function ListPropertyWizard() {
           propDistrict: data.propDistrict,
           propState: data.propState,
           propPincode: data.propPincode,
+          latitude: propertyLatitude,
+          longitude: propertyLongitude,
           checkInTime: data.checkInTime || "14:00",
           checkOutTime: data.checkOutTime || "11:00",
           coupleFriendly: data.coupleFriendly,
@@ -4016,6 +4025,7 @@ export default function ListPropertyWizard() {
                   {wizardRoomTypes.length > 0 && (() => {
                     const activeRtId = amenitiesSelectedRoomTypeId || wizardRoomTypes[0]?.id || "";
                     const activeRt = wizardRoomTypes.find((r) => r.id === activeRtId) || wizardRoomTypes[0];
+                    const rtAmenityIds: string[] = (activeRt as any)?.roomAmenityIds ?? [];
                     return (
                       <Card>
                         <CardHeader>
@@ -4023,9 +4033,9 @@ export default function ListPropertyWizard() {
                             <Bed className="h-5 w-5" />
                             Room-Type Amenities
                           </CardTitle>
-                          <CardDescription>Select the in-room amenities available for each room type</CardDescription>
+                          <CardDescription>Select all amenities available for each room type</CardDescription>
                         </CardHeader>
-                        <CardContent className="space-y-4">
+                        <CardContent className="space-y-5">
                           <div className="space-y-2">
                             <label className="text-sm font-medium">Select Room Type</label>
                             <select
@@ -4039,33 +4049,82 @@ export default function ListPropertyWizard() {
                             </select>
                           </div>
                           {activeRt && (
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 pt-2">
-                              {[
-                                { key: "hasAC", label: "Air Conditioning" },
-                                { key: "hasTV", label: "TV" },
-                                { key: "hasWifi", label: "WiFi" },
-                                { key: "hasFridge", label: "Refrigerator" },
-                                { key: "hasKettle", label: "Electric Kettle" },
-                                { key: "hasSafe", label: "In-room Safe" },
-                                { key: "hasBalcony", label: "Balcony" },
-                                { key: "hasHeater", label: "Heater" },
-                              ].map(({ key, label }) => (
-                                <div key={key} className="flex items-center gap-2">
-                                  <Checkbox
-                                    id={`amenity-rt-${activeRt.id}-${key}`}
-                                    checked={!!(activeRt as any)[key]}
-                                    onCheckedChange={(checked) => {
-                                      setWizardRoomTypes((prev) =>
-                                        prev.map((r) =>
-                                          r.id === activeRt.id ? { ...r, [key]: !!checked } : r,
-                                        ),
-                                      );
-                                    }}
-                                  />
-                                  <label htmlFor={`amenity-rt-${activeRt.id}-${key}`} className="text-sm cursor-pointer">{label}</label>
+                            <>
+                              {/* In-room basics */}
+                              <div>
+                                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">In-Room Basics</p>
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                                  {[
+                                    { key: "hasAC", label: "Air Conditioning" },
+                                    { key: "hasTV", label: "TV" },
+                                    { key: "hasWifi", label: "WiFi" },
+                                    { key: "hasFridge", label: "Refrigerator" },
+                                    { key: "hasKettle", label: "Electric Kettle" },
+                                    { key: "hasSafe", label: "In-room Safe" },
+                                    { key: "hasBalcony", label: "Balcony" },
+                                    { key: "hasHeater", label: "Heater" },
+                                  ].map(({ key, label }) => (
+                                    <div key={key} className="flex items-center gap-2">
+                                      <Checkbox
+                                        id={`amenity-rt-${activeRt.id}-${key}`}
+                                        checked={!!(activeRt as any)[key]}
+                                        onCheckedChange={(checked) => {
+                                          setWizardRoomTypes((prev) =>
+                                            prev.map((r) =>
+                                              r.id === activeRt.id ? { ...r, [key]: !!checked } : r,
+                                            ),
+                                          );
+                                        }}
+                                      />
+                                      <label htmlFor={`amenity-rt-${activeRt.id}-${key}`} className="text-sm cursor-pointer">{label}</label>
+                                    </div>
+                                  ))}
                                 </div>
-                              ))}
-                            </div>
+                              </div>
+
+                              {/* Additional amenities from catalog */}
+                              {amenities.length > 0 && (
+                                <div>
+                                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">Additional Amenities</p>
+                                  <div className="space-y-3">
+                                    {["essential", "bathroom", "safety", "services", "outdoor", "family", "food", "entertainment", "accessibility", "work"].map((cat) => {
+                                      const catAmenities = amenities.filter((a) => a.category === cat && a.name !== "Shared Kitchen");
+                                      if (catAmenities.length === 0) return null;
+                                      return (
+                                        <div key={cat}>
+                                          <p className="text-xs text-muted-foreground capitalize mb-1">{cat}</p>
+                                          <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                                            {catAmenities.map((a) => (
+                                              <div key={a.id} className="flex items-center gap-2">
+                                                <Checkbox
+                                                  id={`rt-cat-amenity-${activeRt.id}-${a.id}`}
+                                                  checked={rtAmenityIds.includes(String(a.id))}
+                                                  onCheckedChange={(checked) => {
+                                                    setWizardRoomTypes((prev) =>
+                                                      prev.map((r) => {
+                                                        if (r.id !== activeRt.id) return r;
+                                                        const cur: string[] = (r as any).roomAmenityIds ?? [];
+                                                        return {
+                                                          ...r,
+                                                          roomAmenityIds: checked
+                                                            ? [...cur, String(a.id)]
+                                                            : cur.filter((id) => id !== String(a.id)),
+                                                        };
+                                                      }),
+                                                    );
+                                                  }}
+                                                />
+                                                <label htmlFor={`rt-cat-amenity-${activeRt.id}-${a.id}`} className="text-sm cursor-pointer">{a.name}</label>
+                                              </div>
+                                            ))}
+                                          </div>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
+                              )}
+                            </>
                           )}
                         </CardContent>
                       </Card>

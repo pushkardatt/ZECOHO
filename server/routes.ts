@@ -1725,6 +1725,7 @@ export async function registerRoutes(
                   hasSafe: rt.hasSafe ?? false,
                   hasBalcony: rt.hasBalcony ?? false,
                   hasHeater: rt.hasHeater ?? false,
+                  roomAmenityIds: rt.roomAmenityIds ?? [],
                 });
 
                 // Create meal options for this room type
@@ -1958,6 +1959,7 @@ export async function registerRoutes(
                 hasSafe: rt.hasSafe ?? false,
                 hasBalcony: rt.hasBalcony ?? false,
                 hasHeater: rt.hasHeater ?? false,
+                roomAmenityIds: rt.roomAmenityIds ?? [],
               });
 
               // Create meal options for this room type
@@ -2196,6 +2198,9 @@ export async function registerRoutes(
             propStreetAddress: property.propStreetAddress || null,
             propLocality: property.propLocality || null,
             propPincode: property.propPincode || null,
+            latitude: property.latitude != null ? String(property.latitude) : null,
+            longitude: property.longitude != null ? String(property.longitude) : null,
+            geoVerified: !!(property.latitude && property.longitude),
             checkInTime: property.checkInTime || null,
             checkOutTime: property.checkOutTime || null,
             coupleFriendly: property.coupleFriendly ?? false,
@@ -2226,6 +2231,9 @@ export async function registerRoutes(
               propStreetAddress: property.propStreetAddress || null,
               propLocality: property.propLocality || null,
               propPincode: property.propPincode || null,
+              latitude: property.latitude != null ? String(property.latitude) : null,
+              longitude: property.longitude != null ? String(property.longitude) : null,
+              geoVerified: !!(property.latitude && property.longitude),
               checkInTime: property.checkInTime || null,
               checkOutTime: property.checkOutTime || null,
               coupleFriendly: property.coupleFriendly ?? false,
@@ -2311,6 +2319,7 @@ export async function registerRoutes(
               hasSafe: rt.hasSafe ?? false,
               hasBalcony: rt.hasBalcony ?? false,
               hasHeater: rt.hasHeater ?? false,
+              roomAmenityIds: rt.roomAmenityIds ?? [],
             });
             // Create meal options
             if (rt.mealOptions && Array.isArray(rt.mealOptions)) {
@@ -13947,7 +13956,7 @@ export async function registerRoutes(
         if (!roomType)
           return res.status(404).json({ message: "Room type not found" });
 
-        const property = await storage.getProperty(roomType.propertyId);
+        const property = await storage.getProperty(roomType.propertyId, true);
         if (!property || property.ownerId !== userId) {
           return res.status(403).json({ message: "Not authorized" });
         }
@@ -14030,7 +14039,7 @@ export async function registerRoutes(
         const roomType = await storage.getRoomType(roomOption.roomTypeId);
         if (!roomType)
           return res.status(404).json({ message: "Room type not found" });
-        const property = await storage.getProperty(roomType.propertyId);
+        const property = await storage.getProperty(roomType.propertyId, true);
         if (!property || property.ownerId !== userId) {
           return res.status(403).json({ message: "Not authorized" });
         }

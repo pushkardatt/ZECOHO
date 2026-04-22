@@ -58,6 +58,8 @@ export interface WizardRoomType {
   hasSafe?: boolean;
   hasBalcony?: boolean;
   hasHeater?: boolean;
+  // Additional amenities from catalog
+  roomAmenityIds?: string[];
 }
 
 export interface WizardMealOption {

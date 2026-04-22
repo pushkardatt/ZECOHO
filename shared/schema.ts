@@ -685,6 +685,8 @@ export const roomTypes = pgTable(
     hasSafe: boolean("has_safe").notNull().default(false),
     hasBalcony: boolean("has_balcony").notNull().default(false),
     hasHeater: boolean("has_heater").notNull().default(false),
+    // Additional amenities from the property amenity catalog (IDs from amenities table)
+    roomAmenityIds: jsonb("room_amenity_ids").$type<string[]>().default([]),
 
     // ── Photos ───────────────────────────────────────────────────────────────
     images: text("images")
