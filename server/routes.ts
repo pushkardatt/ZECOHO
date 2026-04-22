@@ -3081,9 +3081,31 @@ export async function registerRoutes(
 
   app.get("/api/properties/:id", async (req, res) => {
     try {
-      const property = await storage.getProperty(req.params.id);
+      // Always fetch bypassing subscription so owners can view their own properties.
+      // Subscription gate is re-applied below for public (non-owner, non-admin) callers.
+      const property = await storage.getProperty(req.params.id, true);
       if (!property) {
         return res.status(404).json({ message: "Property not found" });
+      }
+
+      // Resolve caller identity early so we can decide whether to enforce subscription gate
+      const earlyUserId =
+        req.isAuthenticated() && (req.user as any)
+          ? (req.user as any).claims?.sub || (req.user as any).id
+          : null;
+      const callerIsOwner = earlyUserId === property.ownerId;
+      let callerIsAdmin = false;
+      if (earlyUserId && !callerIsOwner) {
+        const earlyUser = await storage.getUser(earlyUserId);
+        callerIsAdmin = earlyUser?.userRole === "admin";
+      }
+
+      // For public guests (not owner, not admin) enforce the subscription gate
+      if (!callerIsOwner && !callerIsAdmin) {
+        const sub = await storage.checkOwnerSubscriptionStatus(property.ownerId);
+        if (!sub.isActive) {
+          return res.status(404).json({ message: "Property not found" });
+        }
       }
 
       // Get room types to compute starting price from room-level pricing
@@ -4342,7 +4364,10 @@ export async function registerRoutes(
 
         console.log("Room validated data:", validatedData);
 
-        const room = await storage.createRoom(validatedData);
+        const room = await storage.createRoom({
+          ...validatedData,
+          roomAmenityIds: Array.isArray(validatedData.roomAmenityIds) ? (validatedData.roomAmenityIds as string[]) : [],
+        });
 
         console.log("Room created successfully:", room.id);
 

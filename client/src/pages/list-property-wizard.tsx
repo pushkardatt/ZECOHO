@@ -1669,7 +1669,7 @@ export default function ListPropertyWizard() {
   };
 
   // Auto-save draft property between step 3 and step 4 so pricing/availability steps have a propertyId
-  const autoSaveDraft = async (): Promise<string | null> => {
+  const autoSaveDraft = async (overrides?: { latitude?: number | null; longitude?: number | null }): Promise<string | null> => {
     const data = form.getValues();
     if (!data.propertyTitle) return null;
     setIsAutoSaving(true);
@@ -1686,8 +1686,8 @@ export default function ListPropertyWizard() {
           propDistrict: data.propDistrict,
           propState: data.propState,
           propPincode: data.propPincode,
-          latitude: propertyLatitude,
-          longitude: propertyLongitude,
+          latitude: overrides?.latitude !== undefined ? overrides.latitude : propertyLatitude,
+          longitude: overrides?.longitude !== undefined ? overrides.longitude : propertyLongitude,
           checkInTime: data.checkInTime || "14:00",
           checkOutTime: data.checkOutTime || "11:00",
           coupleFriendly: data.coupleFriendly,
@@ -3133,6 +3133,7 @@ export default function ListPropertyWizard() {
                           setPropertyLatitude(lat);
                           setPropertyLongitude(lng);
                           setGeoSource(source || null);
+                          if (autoDraftPropertyId) autoSaveDraft({ latitude: lat, longitude: lng });
                           if (addressData) {
                             if (addressData.streetAddress)
                               form.setValue(
@@ -3720,6 +3721,7 @@ export default function ListPropertyWizard() {
                           setPropertyLatitude(lat);
                           setPropertyLongitude(lng);
                           setGeoSource(source);
+                          if (autoDraftPropertyId) autoSaveDraft({ latitude: lat, longitude: lng });
                           if (addressData) {
                             if (addressData.streetAddress)
                               form.setValue("propStreetAddress", addressData.streetAddress);
