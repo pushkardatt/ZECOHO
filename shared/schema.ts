@@ -532,14 +532,14 @@ export const properties = pgTable("properties", {
     .notNull()
     .default(false), // True when owner explicitly saves policy
   // Guest policies
-  localIdAllowed: boolean("local_id_allowed").notNull().default(true),
+  localIdAllowed: boolean("local_id_allowed").notNull().default(false),
   hourlyBookingAllowed: boolean("hourly_booking_allowed")
     .notNull()
     .default(false),
   foreignGuestsAllowed: boolean("foreign_guests_allowed")
     .notNull()
-    .default(true),
-  coupleFriendly: boolean("couple_friendly").notNull().default(true),
+    .default(false),
+  coupleFriendly: boolean("couple_friendly").notNull().default(false),
   petsAllowed: boolean("pets_allowed").notNull().default(false),
   smokingAllowed: boolean("smoking_allowed").notNull().default(false),
   liquorAllowed: boolean("liquor_allowed").notNull().default(false),

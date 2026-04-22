@@ -498,6 +498,7 @@ export default function ListPropertyWizard() {
   const [isPropertyPincodeLookup, setIsPropertyPincodeLookup] = useState(false);
   const [selectedAmenities, setSelectedAmenities] = useState<string[]>([]);
   const [showAllAmenities, setShowAllAmenities] = useState(false);
+  const [amenitiesSelectedRoomTypeId, setAmenitiesSelectedRoomTypeId] = useState<string>("");
   const [videos, setVideos] = useState<string[]>([]);
   const [categorizedImages, setCategorizedImages] =
     useState<CategorizedPropertyImages>(defaultCategorizedImages);
@@ -4011,11 +4012,72 @@ export default function ListPropertyWizard() {
               {step === 6 && (
                 <div className="space-y-6">
 
+                  {/* Room-type in-room amenities — FIRST */}
+                  {wizardRoomTypes.length > 0 && (() => {
+                    const activeRtId = amenitiesSelectedRoomTypeId || wizardRoomTypes[0]?.id || "";
+                    const activeRt = wizardRoomTypes.find((r) => r.id === activeRtId) || wizardRoomTypes[0];
+                    return (
+                      <Card>
+                        <CardHeader>
+                          <CardTitle className="flex items-center gap-2">
+                            <Bed className="h-5 w-5" />
+                            Room-Type Amenities
+                          </CardTitle>
+                          <CardDescription>Select the in-room amenities available for each room type</CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium">Select Room Type</label>
+                            <select
+                              value={activeRtId}
+                              onChange={(e) => setAmenitiesSelectedRoomTypeId(e.target.value)}
+                              className="w-full border border-input rounded-md px-3 py-2 text-sm bg-background"
+                            >
+                              {wizardRoomTypes.map((rt) => (
+                                <option key={rt.id} value={rt.id}>{rt.name}</option>
+                              ))}
+                            </select>
+                          </div>
+                          {activeRt && (
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 pt-2">
+                              {[
+                                { key: "hasAC", label: "Air Conditioning" },
+                                { key: "hasTV", label: "TV" },
+                                { key: "hasWifi", label: "WiFi" },
+                                { key: "hasFridge", label: "Refrigerator" },
+                                { key: "hasKettle", label: "Electric Kettle" },
+                                { key: "hasSafe", label: "In-room Safe" },
+                                { key: "hasBalcony", label: "Balcony" },
+                                { key: "hasHeater", label: "Heater" },
+                              ].map(({ key, label }) => (
+                                <div key={key} className="flex items-center gap-2">
+                                  <Checkbox
+                                    id={`amenity-rt-${activeRt.id}-${key}`}
+                                    checked={!!(activeRt as any)[key]}
+                                    onCheckedChange={(checked) => {
+                                      setWizardRoomTypes((prev) =>
+                                        prev.map((r) =>
+                                          r.id === activeRt.id ? { ...r, [key]: !!checked } : r,
+                                        ),
+                                      );
+                                    }}
+                                  />
+                                  <label htmlFor={`amenity-rt-${activeRt.id}-${key}`} className="text-sm cursor-pointer">{label}</label>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </CardContent>
+                      </Card>
+                    );
+                  })()}
+
+                  {/* Property-wide amenities */}
                   <Card>
                     <CardHeader>
-                      <CardTitle>Amenities</CardTitle>
+                      <CardTitle>Property Amenities</CardTitle>
                       <CardDescription>
-                        Select the essential amenities your property offers
+                        Select the amenities your property offers to all guests
                       </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
@@ -4148,53 +4210,6 @@ export default function ListPropertyWizard() {
                       )}
                     </CardContent>
                   </Card>
-
-                  {/* Room-type in-room amenities */}
-                  {wizardRoomTypes.length > 0 && (
-                    <Card>
-                      <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
-                          <Bed className="h-5 w-5" />
-                          Room-Type Amenities
-                        </CardTitle>
-                        <CardDescription>Set in-room amenities for each room type</CardDescription>
-                      </CardHeader>
-                      <CardContent className="space-y-6">
-                        {wizardRoomTypes.map((rt) => (
-                          <div key={rt.id} className="border rounded-lg p-4 space-y-3">
-                            <p className="font-medium text-sm">{rt.name}</p>
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                              {[
-                                { key: "hasAC", label: "Air Conditioning" },
-                                { key: "hasTV", label: "TV" },
-                                { key: "hasWifi", label: "WiFi" },
-                                { key: "hasFridge", label: "Refrigerator" },
-                                { key: "hasKettle", label: "Electric Kettle" },
-                                { key: "hasSafe", label: "In-room Safe" },
-                                { key: "hasBalcony", label: "Balcony" },
-                                { key: "hasHeater", label: "Heater" },
-                              ].map(({ key, label }) => (
-                                <div key={key} className="flex items-center gap-2">
-                                  <Checkbox
-                                    id={`${rt.id}-${key}`}
-                                    checked={!!(rt as any)[key]}
-                                    onCheckedChange={(checked) => {
-                                      setWizardRoomTypes((prev) =>
-                                        prev.map((r) =>
-                                          r.id === rt.id ? { ...r, [key]: !!checked } : r,
-                                        ),
-                                      );
-                                    }}
-                                  />
-                                  <label htmlFor={`${rt.id}-${key}`} className="text-sm cursor-pointer">{label}</label>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        ))}
-                      </CardContent>
-                    </Card>
-                  )}
                 </div>
               )}
 

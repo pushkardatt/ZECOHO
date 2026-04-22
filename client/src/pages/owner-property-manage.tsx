@@ -1555,16 +1555,16 @@ function CancellationPolicyCard({ property }: { property: Property }) {
 function GuestPoliciesCard({ property }: { property: Property }) {
   const { toast } = useToast();
   const [localIdAllowed, setLocalIdAllowed] = useState(
-    property.localIdAllowed ?? true,
+    property.localIdAllowed ?? false,
   );
   const [hourlyBookingAllowed, setHourlyBookingAllowed] = useState(
     property.hourlyBookingAllowed ?? false,
   );
   const [foreignGuestsAllowed, setForeignGuestsAllowed] = useState(
-    property.foreignGuestsAllowed ?? true,
+    property.foreignGuestsAllowed ?? false,
   );
   const [coupleFriendly, setCoupleFriendly] = useState(
-    property.coupleFriendly ?? true,
+    property.coupleFriendly ?? false,
   );
 
   const updatePoliciesMutation = useMutation({
@@ -1588,13 +1588,13 @@ function GuestPoliciesCard({ property }: { property: Property }) {
     onError: (_error, variables) => {
       // Revert to original values on error
       if ("localIdAllowed" in variables)
-        setLocalIdAllowed(property.localIdAllowed ?? true);
+        setLocalIdAllowed(property.localIdAllowed ?? false);
       if ("hourlyBookingAllowed" in variables)
         setHourlyBookingAllowed(property.hourlyBookingAllowed ?? false);
       if ("foreignGuestsAllowed" in variables)
-        setForeignGuestsAllowed(property.foreignGuestsAllowed ?? true);
+        setForeignGuestsAllowed(property.foreignGuestsAllowed ?? false);
       if ("coupleFriendly" in variables)
-        setCoupleFriendly(property.coupleFriendly ?? true);
+        setCoupleFriendly(property.coupleFriendly ?? false);
       toast({
         title: "Error",
         description:

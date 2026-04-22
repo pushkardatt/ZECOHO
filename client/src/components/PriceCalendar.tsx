@@ -301,6 +301,11 @@ export function PriceCalendar({ propertyId, roomTypes }: PriceCalendarProps) {
       return;
     }
 
+    if (!selectedRoomTypeId) {
+      toast({ title: "No room type selected", variant: "destructive" });
+      return;
+    }
+
     const sorted = Array.from(selectedDates).sort();
     if (editMode === "room") {
       setRoomPriceMutation.mutate({
