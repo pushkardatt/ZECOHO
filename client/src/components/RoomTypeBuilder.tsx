@@ -12,6 +12,13 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Plus,
   Trash2,
   Edit,
@@ -69,19 +76,37 @@ const DEFAULT_MEAL_OPTIONS: Omit<WizardMealOption, "id">[] = [
   },
   {
     name: "Breakfast Included",
-    priceAdjustment: 300,
-    inclusions: "Daily breakfast buffet",
+    priceAdjustment: 0,
+    inclusions: "Daily breakfast",
   },
   {
     name: "Breakfast + Dinner/Lunch",
-    priceAdjustment: 600,
-    inclusions: "Breakfast and dinner or lunch included",
+    priceAdjustment: 0,
+    inclusions: "Breakfast and dinner or lunch",
   },
   {
     name: "All Meals Included",
-    priceAdjustment: 900,
-    inclusions: "All meals included (breakfast, lunch, dinner)",
+    priceAdjustment: 0,
+    inclusions: "All meals (breakfast, lunch, dinner)",
   },
+];
+
+const ROOM_TYPE_TEMPLATES = [
+  "Standard Room",
+  "Deluxe Room",
+  "Superior Room",
+  "Premium Room",
+  "Luxury Room",
+  "Suite",
+  "Junior Suite",
+  "Executive Suite",
+  "Family Room",
+  "Double Room",
+  "Twin Room",
+  "Single Room",
+  "Triple Room",
+  "Studio",
+  "Dormitory / Dorm Bed",
 ];
 
 export function RoomTypeBuilder({
@@ -266,6 +291,21 @@ export function RoomTypeBuilder({
               <CardTitle className="text-base">New Room Type</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label>Quick Select Room Type</Label>
+                <Select
+                  onValueChange={(val) => { if (val) setNewRoomName(val); }}
+                >
+                  <SelectTrigger data-testid="select-room-template">
+                    <SelectValue placeholder="Choose a template to prefill name…" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {ROOM_TYPE_TEMPLATES.map((t) => (
+                      <SelectItem key={t} value={t}>{t}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
                   <Label>Room Type Name *</Label>

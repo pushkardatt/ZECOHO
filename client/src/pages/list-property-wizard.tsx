@@ -3967,16 +3967,12 @@ export default function ListPropertyWizard() {
                       </div>
                     </CardContent>
                   </Card>
-                </div>
-              )}
 
-              {/* Step 6: Amenities */}
-              {step === 6 && (
-                <div className="space-y-6">
-
+                  {/* House Rules — kept under Policy step */}
                   <Card>
                     <CardHeader>
-                      <CardTitle>House Rules & Policies</CardTitle>
+                      <CardTitle>House Rules</CardTitle>
+                      <CardDescription>Additional rules for your guests</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
                       <FormField
@@ -3999,6 +3995,12 @@ export default function ListPropertyWizard() {
                       />
                     </CardContent>
                   </Card>
+                </div>
+              )}
+
+              {/* Step 6: Amenities */}
+              {step === 6 && (
+                <div className="space-y-6">
 
                   <Card>
                     <CardHeader>
@@ -4017,8 +4019,8 @@ export default function ListPropertyWizard() {
                           {amenities
                             .filter(
                               (a) =>
-                                a.category === "essential" ||
-                                a.name === "Hot water",
+                                (a.category === "essential" || a.name === "Hot water") &&
+                                a.name !== "Shared Kitchen",
                             )
                             .map((amenity) => (
                               <div
@@ -4086,7 +4088,8 @@ export default function ListPropertyWizard() {
                             const categoryAmenities = amenities.filter(
                               (a) =>
                                 a.category === category &&
-                                a.name !== "Hot water",
+                                a.name !== "Hot water" &&
+                                a.name !== "Shared Kitchen",
                             );
                             if (categoryAmenities.length === 0) return null;
                             return (
@@ -4482,87 +4485,21 @@ export default function ListPropertyWizard() {
               {/* Step 8: Photos & Submit */}
               {step === 8 && (
                 <div className="space-y-6">
-                  {/* Photo Category Progress Summary */}
-                  <Card className="border-primary/20 bg-primary/5">
-                    <CardHeader className="pb-3">
-                      <CardTitle className="text-lg flex items-center gap-2">
-                        <Camera className="h-5 w-5 text-primary" />
-                        Photo Upload Progress
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <Camera className="h-5 w-5" />
+                        Property Photos
                       </CardTitle>
                       <CardDescription>
-                        Complete all categories for better visibility.
-                        Properties with more photos get 3x more bookings!
+                        Upload high-quality photos to showcase your property. Properties with more photos get 3x more bookings!
+                        {getIncompleteRequiredCategories().length > 0 && getTotalImageCount() > 0 && (
+                          <span className="block mt-1 text-amber-600 dark:text-amber-400">
+                            Missing required: {getIncompleteRequiredCategories().map((c) => c.label).join(", ")}
+                          </span>
+                        )}
                       </CardDescription>
                     </CardHeader>
-                    <CardContent>
-                      <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                        {getPhotoCategoryStats().map((cat) => (
-                          <div
-                            key={cat.id}
-                            className={`flex items-center gap-2 p-2 rounded-lg border ${
-                              cat.hasAny
-                                ? cat.isComplete
-                                  ? "bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-800"
-                                  : "bg-yellow-50 dark:bg-yellow-950 border-yellow-200 dark:border-yellow-800"
-                                : cat.required
-                                  ? "bg-red-50 dark:bg-red-950 border-red-200 dark:border-red-800"
-                                  : "bg-muted/50 border-muted"
-                            }`}
-                          >
-                            {cat.hasAny ? (
-                              cat.isComplete ? (
-                                <CheckCircle className="h-4 w-4 text-green-600 flex-shrink-0" />
-                              ) : (
-                                <Clock className="h-4 w-4 text-yellow-600 flex-shrink-0" />
-                              )
-                            ) : cat.required ? (
-                              <XCircle className="h-4 w-4 text-red-500 flex-shrink-0" />
-                            ) : (
-                              <div className="h-4 w-4 rounded-full border-2 border-muted-foreground/30 flex-shrink-0" />
-                            )}
-                            <div className="min-w-0 flex-1">
-                              <p
-                                className={`text-xs font-medium truncate ${
-                                  cat.hasAny
-                                    ? ""
-                                    : cat.required
-                                      ? "text-red-700 dark:text-red-400"
-                                      : "text-muted-foreground"
-                                }`}
-                              >
-                                {cat.label}
-                                {cat.required && !cat.hasAny && " *"}
-                              </p>
-                              <p className="text-xs text-muted-foreground">
-                                {cat.count}/{cat.minRecommended} photos
-                              </p>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-
-                      {getCompletedCategoriesCount() < 6 && (
-                        <div className="mt-4 p-3 bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-lg">
-                          <p className="text-sm text-amber-800 dark:text-amber-200 flex items-start gap-2">
-                            <AlertTriangle className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                            <span>
-                              <strong>Tip:</strong> Upload photos in all
-                              categories to increase your property's appeal.
-                              {getIncompleteRequiredCategories().length > 0 && (
-                                <span className="block mt-1">
-                                  <strong className="text-red-600 dark:text-red-400">
-                                    Required:
-                                  </strong>{" "}
-                                  {getIncompleteRequiredCategories()
-                                    .map((c) => c.label)
-                                    .join(", ")}
-                                </span>
-                              )}
-                            </span>
-                          </p>
-                        </div>
-                      )}
-                    </CardContent>
                   </Card>
 
                   <PropertyImageUploader

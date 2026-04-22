@@ -73,6 +73,13 @@ export function PriceCalendar({ propertyId, roomTypes }: PriceCalendarProps) {
   const [selectedRoomTypeId, setSelectedRoomTypeId] = useState<string>(
     roomTypes[0]?.id ?? "",
   );
+
+  // Initialize when roomTypes load after mount
+  useEffect(() => {
+    if (!selectedRoomTypeId && roomTypes.length > 0) {
+      setSelectedRoomTypeId(String(roomTypes[0].id));
+    }
+  }, [roomTypes, selectedRoomTypeId]);
   const [selectedRoomOptionId, setSelectedRoomOptionId] = useState<string>("");
   const [selectedOccupancy, setSelectedOccupancy] = useState<1 | 2 | 3>(1);
   const [selectedDates, setSelectedDates] = useState<Set<string>>(new Set());

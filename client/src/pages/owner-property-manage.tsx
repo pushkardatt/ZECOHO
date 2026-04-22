@@ -102,7 +102,7 @@ export default function OwnerPropertyManage() {
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("property-details");
 
-  const { data: property, isLoading } = useQuery<Property>({
+  const { data: property, isLoading, isError } = useQuery<Property>({
     queryKey: ["/api/properties", id],
     enabled: !!id,
   });
@@ -132,17 +132,30 @@ export default function OwnerPropertyManage() {
     );
   }
 
-  if (!property) {
+  if (isError || !property) {
     return (
       <OwnerLayout>
         <div className="text-center py-12">
-          <h2 className="text-xl font-semibold">Property not found</h2>
-          <Link href="/owner/properties">
-            <Button variant="outline" className="mt-4">
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to Properties
+          <h2 className="text-xl font-semibold">
+            {isError ? "Could not load property" : "Property not found"}
+          </h2>
+          <p className="text-sm text-muted-foreground mt-2">
+            {isError
+              ? "Please check your connection or try again. Your session may have expired."
+              : "This property could not be found."}
+          </p>
+          <div className="flex justify-center gap-3 mt-4">
+            <Button variant="outline" onClick={() => window.location.reload()}>
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Retry
             </Button>
-          </Link>
+            <Link href="/owner/properties">
+              <Button variant="outline">
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Back to Properties
+              </Button>
+            </Link>
+          </div>
         </div>
       </OwnerLayout>
     );
@@ -272,7 +285,7 @@ export default function OwnerPropertyManage() {
           </TabsContent>
 
           <TabsContent value="amenities" className="mt-6">
-            <AmenitiesSection property={property} />
+            <AmenitiesSection property={property} roomTypes={roomTypes} />
           </TabsContent>
 
           <TabsContent value="availability" className="mt-6">
@@ -1770,6 +1783,9 @@ function RoomsSection({
         queryKey: ["/api/properties", propertyId],
       });
       queryClient.invalidateQueries({ queryKey: ["/api/properties"] });
+      queryClient.invalidateQueries({
+        queryKey: ["/api/properties", propertyId, "pricing-calendar"],
+      });
       setShowAddForm(false);
       resetForm();
       toast({
@@ -1808,6 +1824,9 @@ function RoomsSection({
         queryKey: ["/api/properties", propertyId],
       });
       queryClient.invalidateQueries({ queryKey: ["/api/properties"] });
+      queryClient.invalidateQueries({
+        queryKey: ["/api/properties", propertyId, "pricing-calendar"],
+      });
       setEditingRoom(null);
       toast({
         title: "Room Updated",
@@ -1996,6 +2015,20 @@ function RoomsSection({
                 <CardTitle className="text-lg">New Room Type</CardTitle>
               </CardHeader>
               <CardContent className="space-y-5">
+                {/* Template selector */}
+                <div className="space-y-1.5">
+                  <Label>Quick Select Room Type</Label>
+                  <Select onValueChange={(val) => { if (val) setNewRoomName(val); }}>
+                    <SelectTrigger data-testid="select-room-template">
+                      <SelectValue placeholder="Choose a template to prefill name…" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {["Standard Room","Deluxe Room","Superior Room","Premium Room","Luxury Room","Suite","Junior Suite","Executive Suite","Family Room","Double Room","Twin Room","Single Room","Triple Room","Studio","Dormitory / Dorm Bed"].map((t) => (
+                        <SelectItem key={t} value={t}>{t}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
                 {/* Row 1: Name + capacity */}
                 <div className="grid gap-4 md:grid-cols-4">
                   <div className="md:col-span-2 space-y-1.5">
@@ -3055,10 +3088,19 @@ function MealOptionsManager({ roomTypeId }: { roomTypeId: string }) {
           <span className="text-sm font-medium min-w-[140px]">{opt.name}</span>
 
           {/* Price edit */}
-          {Number(opt.priceAdjustment) === 0 ? (
+          {Number(opt.priceAdjustment) === 0 && opt.name === "Room Only (Best Price)" ? (
             <Badge variant="secondary" className="text-xs">
-              Included
+              Base price
             </Badge>
+          ) : Number(opt.priceAdjustment) === 0 ? (
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-7 px-2 text-xs text-amber-600 border-amber-300"
+              onClick={() => { setEditingPriceId(opt.id); setEditPrice(""); }}
+            >
+              Set price/person
+            </Button>
           ) : editingPriceId === opt.id ? (
             <div className="flex items-center gap-1">
               <span className="text-xs text-muted-foreground">₹</span>
@@ -3448,6 +3490,9 @@ const FOREIGN_ID_OPTIONS = ["Passport", "Visa", "OCI Card"];
 function PolicySection({ property }: { property: Property }) {
   const { toast } = useToast();
 
+  // House rules
+  const [houseRules, setHouseRules] = useState((property as any).policies || "");
+
   // Check-in / Check-out
   const [checkInTime, setCheckInTime] = useState(property.checkInTime || "14:00");
   const [checkOutTime, setCheckOutTime] = useState(property.checkOutTime || "11:00");
@@ -3534,6 +3579,7 @@ function PolicySection({ property }: { property: Property }) {
       liquorAllowed,
       visitorsAllowed,
       hourlyBookingAllowed,
+      policies: houseRules,
     });
   };
 
@@ -3755,6 +3801,30 @@ function PolicySection({ property }: { property: Property }) {
         </CardContent>
       </Card>
 
+      {/* House Rules */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Shield className="h-5 w-5" />
+            House Rules
+          </CardTitle>
+          <CardDescription>Additional rules guests must follow during their stay</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-2">
+            <Label htmlFor="house-rules-input">House Rules (Optional)</Label>
+            <Textarea
+              id="house-rules-input"
+              value={houseRules}
+              onChange={(e) => setHouseRules(e.target.value)}
+              placeholder="No smoking in rooms, No outside food, Quiet hours after 10pm, etc."
+              rows={4}
+              data-testid="input-policies"
+            />
+          </div>
+        </CardContent>
+      </Card>
+
       <div className="flex justify-end">
         <Button
           onClick={handleSave}
@@ -3773,7 +3843,18 @@ function PolicySection({ property }: { property: Property }) {
 // AmenitiesSection
 // ─────────────────────────────────────────────────────────────────────────────
 
-function AmenitiesSection({ property }: { property: Property }) {
+const ROOM_IN_AMENITIES = [
+  { key: "hasAC", label: "Air Conditioning" },
+  { key: "hasTV", label: "TV" },
+  { key: "hasWifi", label: "WiFi" },
+  { key: "hasFridge", label: "Refrigerator" },
+  { key: "hasKettle", label: "Electric Kettle" },
+  { key: "hasSafe", label: "In-room Safe" },
+  { key: "hasBalcony", label: "Balcony" },
+  { key: "hasHeater", label: "Heater" },
+] as const;
+
+function AmenitiesSection({ property, roomTypes }: { property: Property; roomTypes: RoomType[] }) {
   const { toast } = useToast();
   const { data: allAmenities = [] } = useQuery<any[]>({
     queryKey: ["/api/amenities"],
@@ -3782,15 +3863,22 @@ function AmenitiesSection({ property }: { property: Property }) {
     queryKey: ["/api/properties", property.id, "amenities"],
   });
   const [selectedAmenityIds, setSelectedAmenityIds] = useState<string[]>([]);
-  const [policies, setPolicies] = useState((property as any).policies || "");
+  const [selectedRoomTypeId, setSelectedRoomTypeId] = useState<string>("");
+  const [roomAmenityEdits, setRoomAmenityEdits] = useState<Record<string, Record<string, boolean>>>({});
 
   useEffect(() => {
     setSelectedAmenityIds(propertyAmenities.map((a: any) => a.amenityId || a.id));
   }, [propertyAmenities]);
 
+  useEffect(() => {
+    if (!selectedRoomTypeId && roomTypes.length > 0) {
+      setSelectedRoomTypeId(String(roomTypes[0].id));
+    }
+  }, [roomTypes, selectedRoomTypeId]);
+
   const updateMutation = useMutation({
     mutationFn: async () =>
-      apiRequest("PATCH", `/api/properties/${property.id}`, { policies, amenityIds: selectedAmenityIds }),
+      apiRequest("PATCH", `/api/properties/${property.id}`, { amenityIds: selectedAmenityIds }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/properties", property.id] });
       queryClient.invalidateQueries({ queryKey: ["/api/properties", property.id, "amenities"] });
@@ -3799,24 +3887,61 @@ function AmenitiesSection({ property }: { property: Property }) {
     onError: () => toast({ title: "Error", description: "Failed to save.", variant: "destructive" }),
   });
 
+  const updateRoomAmenityMutation = useMutation({
+    mutationFn: async ({ roomId, data }: { roomId: string; data: Record<string, boolean> }) =>
+      apiRequest("PATCH", `/api/properties/${property.id}/rooms/${roomId}`, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/properties", property.id, "rooms"] });
+      toast({ title: "Saved", description: "Room amenities updated." });
+    },
+    onError: () => toast({ title: "Error", description: "Failed to save room amenities.", variant: "destructive" }),
+  });
+
   const toggleAmenity = (id: string) => {
     setSelectedAmenityIds((prev) =>
       prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
     );
   };
 
-  const essentialAmenities = allAmenities.filter((a: any) => a.category === "essential" || a.name === "Hot water");
+  const selectedRoom = roomTypes.find((r) => String(r.id) === selectedRoomTypeId);
+  const roomAmenityCurrent = selectedRoomTypeId
+    ? (roomAmenityEdits[selectedRoomTypeId] ?? {
+        hasAC: selectedRoom?.hasAC ?? true,
+        hasTV: selectedRoom?.hasTV ?? false,
+        hasWifi: selectedRoom?.hasWifi ?? false,
+        hasFridge: selectedRoom?.hasFridge ?? false,
+        hasKettle: (selectedRoom as any)?.hasKettle ?? false,
+        hasSafe: (selectedRoom as any)?.hasSafe ?? false,
+        hasBalcony: (selectedRoom as any)?.hasBalcony ?? false,
+        hasHeater: (selectedRoom as any)?.hasHeater ?? false,
+      })
+    : {};
+
+  const toggleRoomAmenity = (key: string) => {
+    setRoomAmenityEdits((prev) => ({
+      ...prev,
+      [selectedRoomTypeId]: {
+        ...roomAmenityCurrent,
+        [key]: !roomAmenityCurrent[key as keyof typeof roomAmenityCurrent],
+      },
+    }));
+  };
+
+  const essentialAmenities = allAmenities.filter(
+    (a: any) => (a.category === "essential" || a.name === "Hot water") && a.name !== "Shared Kitchen",
+  );
   const otherCategories = ["bathroom","safety","services","outdoor","family","food","entertainment","accessibility","work"];
 
   return (
     <div className="space-y-6">
+      {/* Property-wide amenities */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Sparkles className="h-5 w-5" />
-            Essential Amenities
+            Property Amenities
           </CardTitle>
-          <CardDescription>Select what your property offers</CardDescription>
+          <CardDescription>Select what your property offers to all guests</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
@@ -3835,7 +3960,9 @@ function AmenitiesSection({ property }: { property: Property }) {
             <summary className="text-sm text-muted-foreground cursor-pointer">Show more amenity categories</summary>
             <div className="space-y-4 mt-3 border-t pt-3">
               {otherCategories.map((cat) => {
-                const catAmenities = allAmenities.filter((a: any) => a.category === cat && a.name !== "Hot water");
+                const catAmenities = allAmenities.filter(
+                  (a: any) => a.category === cat && a.name !== "Hot water" && a.name !== "Shared Kitchen",
+                );
                 if (!catAmenities.length) return null;
                 return (
                   <div key={cat}>
@@ -3860,29 +3987,64 @@ function AmenitiesSection({ property }: { property: Property }) {
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>House Rules</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="policies-input">House Rules (Optional)</Label>
-            <Textarea
-              id="policies-input"
-              value={policies}
-              onChange={(e) => setPolicies(e.target.value)}
-              placeholder="No smoking in rooms, No outside food, Quiet hours after 10pm, etc."
-              rows={4}
-              data-testid="input-policies"
-            />
-          </div>
-        </CardContent>
-      </Card>
+      {/* Room-type level amenities */}
+      {roomTypes.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Bed className="h-5 w-5" />
+              Room-Type Amenities
+            </CardTitle>
+            <CardDescription>Set in-room amenities for each room type</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label>Select Room Type</Label>
+              <Select value={selectedRoomTypeId} onValueChange={setSelectedRoomTypeId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a room type" />
+                </SelectTrigger>
+                <SelectContent>
+                  {roomTypes.map((rt) => (
+                    <SelectItem key={rt.id} value={String(rt.id)}>{rt.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            {selectedRoomTypeId && (
+              <>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 pt-2">
+                  {ROOM_IN_AMENITIES.map(({ key, label }) => (
+                    <div key={key} className="flex items-center gap-2">
+                      <Checkbox
+                        id={`room-amenity-${key}`}
+                        checked={!!roomAmenityCurrent[key as keyof typeof roomAmenityCurrent]}
+                        onCheckedChange={() => toggleRoomAmenity(key)}
+                      />
+                      <label htmlFor={`room-amenity-${key}`} className="text-sm cursor-pointer">{label}</label>
+                    </div>
+                  ))}
+                </div>
+                <div className="flex justify-end">
+                  <Button
+                    size="sm"
+                    onClick={() => updateRoomAmenityMutation.mutate({ roomId: selectedRoomTypeId, data: roomAmenityEdits[selectedRoomTypeId] ?? roomAmenityCurrent })}
+                    disabled={updateRoomAmenityMutation.isPending}
+                  >
+                    <Save className="h-4 w-4 mr-2" />
+                    Save Room Amenities
+                  </Button>
+                </div>
+              </>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       <div className="flex justify-end">
         <Button onClick={() => updateMutation.mutate()} disabled={updateMutation.isPending} data-testid="button-save-amenities">
           <Save className="h-4 w-4 mr-2" />
-          {updateMutation.isPending ? "Saving..." : "Save Amenities"}
+          {updateMutation.isPending ? "Saving..." : "Save Property Amenities"}
         </Button>
       </div>
     </div>
