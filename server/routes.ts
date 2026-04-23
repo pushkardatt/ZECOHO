@@ -159,8 +159,10 @@ function resolveOccupancyPrice(
   const adults = Math.max(1, adultsCount || 1);
 
   if (overrideEntry !== undefined) {
-    if (adults >= 3 && overrideEntry.triple !== undefined) return overrideEntry.triple;
-    if (adults >= 2 && overrideEntry.double !== undefined) return overrideEntry.double;
+    if (adults >= 3 && overrideEntry.triple !== undefined)
+      return overrideEntry.triple;
+    if (adults >= 2 && overrideEntry.double !== undefined)
+      return overrideEntry.double;
     if (overrideEntry.base !== undefined) {
       return overrideEntry.base + occupancyIncrement(roomType, adults);
     }
@@ -182,7 +184,10 @@ function calculateNightlyRoomCost(
   roomsCount: number,
   checkIn: Date,
   checkOut: Date,
-  overridesMap: Map<string, { base?: number; double?: number; triple?: number }>,
+  overridesMap: Map<
+    string,
+    { base?: number; double?: number; triple?: number }
+  >,
 ): number {
   let total = 0;
   const cursor = new Date(checkIn);
@@ -1066,7 +1071,10 @@ export async function registerRoutes(
   // ── Sub-Admin Permission Management ──────────────────────────────────────
 
   // Helper: check full admin OR specific sub-admin permission
-  async function canAdminAccess(req: any, permission?: string): Promise<{ user: any; ok: boolean }> {
+  async function canAdminAccess(
+    req: any,
+    permission?: string,
+  ): Promise<{ user: any; ok: boolean }> {
     const userId = req.user?.claims?.sub ?? req.user?.id;
     const user = await storage.getUser(userId);
     if (!user) return { user: null, ok: false };
@@ -1082,33 +1090,51 @@ export async function registerRoutes(
   }
 
   // GET /api/admin/my-permissions — frontend uses this to know what to show
-  app.get("/api/admin/my-permissions", isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.user?.claims?.sub ?? req.user?.id;
-      const user = await storage.getUser(userId);
-      if (!user) return res.status(401).json({ error: "Unauthorized" });
-      if (user.userRole === "admin") {
-        return res.json({
-          isFullAdmin: true,
-          permissions: ["accounts","subscriptions","reports","properties","bookings","kyc","content","support","coming_soon"],
+  app.get(
+    "/api/admin/my-permissions",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const userId = req.user?.claims?.sub ?? req.user?.id;
+        const user = await storage.getUser(userId);
+        if (!user) return res.status(401).json({ error: "Unauthorized" });
+        if (user.userRole === "admin") {
+          return res.json({
+            isFullAdmin: true,
+            permissions: [
+              "accounts",
+              "subscriptions",
+              "reports",
+              "properties",
+              "bookings",
+              "kyc",
+              "content",
+              "support",
+              "coming_soon",
+            ],
+          });
+        }
+        const [row] = await db
+          .select()
+          .from(adminPermissions)
+          .where(eq(adminPermissions.userId, userId))
+          .limit(1);
+        res.json({
+          isFullAdmin: false,
+          permissions: (row?.permissions as string[]) ?? [],
         });
+      } catch (e) {
+        res.status(500).json({ error: "Failed" });
       }
-      const [row] = await db
-        .select()
-        .from(adminPermissions)
-        .where(eq(adminPermissions.userId, userId))
-        .limit(1);
-      res.json({ isFullAdmin: false, permissions: (row?.permissions as string[]) ?? [] });
-    } catch (e) {
-      res.status(500).json({ error: "Failed" });
-    }
-  });
+    },
+  );
 
   // GET /api/admin/sub-admins — list all sub-admins
   app.get("/api/admin/sub-admins", isAuthenticated, async (req: any, res) => {
     try {
       const { user, ok } = await canAdminAccess(req);
-      if (!ok || user?.userRole !== "admin") return res.status(403).json({ error: "Full admin required" });
+      if (!ok || user?.userRole !== "admin")
+        return res.status(403).json({ error: "Full admin required" });
       const rows = await db
         .select({
           id: adminPermissions.id,
@@ -1133,28 +1159,48 @@ export async function registerRoutes(
   app.post("/api/admin/sub-admins", isAuthenticated, async (req: any, res) => {
     try {
       const { user, ok } = await canAdminAccess(req);
-      if (!ok || user?.userRole !== "admin") return res.status(403).json({ error: "Full admin required" });
+      if (!ok || user?.userRole !== "admin")
+        return res.status(403).json({ error: "Full admin required" });
       const { email, permissions } = req.body;
-      if (!email || !Array.isArray(permissions)) return res.status(400).json({ error: "email and permissions required" });
-      if (!email.endsWith("@zecoho.com")) return res.status(400).json({ error: "Only @zecoho.com email addresses can be granted sub-admin access" });
+      if (!email || !Array.isArray(permissions))
+        return res
+          .status(400)
+          .json({ error: "email and permissions required" });
+      if (!email.endsWith("@zecoho.com"))
+        return res.status(400).json({
+          error:
+            "Only @zecoho.com email addresses can be granted sub-admin access",
+        });
       const targetUser = await storage.getUserByEmail(email.toLowerCase());
-      if (!targetUser) return res.status(404).json({ error: "No account found with that email. The user must sign up first." });
+      if (!targetUser)
+        return res.status(404).json({
+          error:
+            "No account found with that email. The user must sign up first.",
+        });
       // Upsert: if row exists, update it
-      const [existing] = await db.select().from(adminPermissions).where(eq(adminPermissions.userId, targetUser.id)).limit(1);
+      const [existing] = await db
+        .select()
+        .from(adminPermissions)
+        .where(eq(adminPermissions.userId, targetUser.id))
+        .limit(1);
       if (existing) {
-        const [updated] = await db.update(adminPermissions)
+        const [updated] = await db
+          .update(adminPermissions)
           .set({ permissions, updatedAt: new Date() })
           .where(eq(adminPermissions.id, existing.id))
           .returning();
         return res.json(updated);
       }
       const adminId = req.user?.claims?.sub ?? req.user?.id;
-      const [created] = await db.insert(adminPermissions).values({
-        userId: targetUser.id,
-        email: email.toLowerCase(),
-        grantedBy: adminId,
-        permissions,
-      }).returning();
+      const [created] = await db
+        .insert(adminPermissions)
+        .values({
+          userId: targetUser.id,
+          email: email.toLowerCase(),
+          grantedBy: adminId,
+          permissions,
+        })
+        .returning();
       res.json(created);
     } catch (e) {
       console.error("sub-admin grant error:", e);
@@ -1163,195 +1209,349 @@ export async function registerRoutes(
   });
 
   // PATCH /api/admin/sub-admins/:id — update permissions
-  app.patch("/api/admin/sub-admins/:id", isAuthenticated, async (req: any, res) => {
-    try {
-      const { user, ok } = await canAdminAccess(req);
-      if (!ok || user?.userRole !== "admin") return res.status(403).json({ error: "Full admin required" });
-      const { permissions } = req.body;
-      if (!Array.isArray(permissions)) return res.status(400).json({ error: "permissions array required" });
-      const [updated] = await db.update(adminPermissions)
-        .set({ permissions, updatedAt: new Date() })
-        .where(eq(adminPermissions.id, req.params.id))
-        .returning();
-      if (!updated) return res.status(404).json({ error: "Not found" });
-      res.json(updated);
-    } catch (e) {
-      res.status(500).json({ error: "Failed to update" });
-    }
-  });
+  app.patch(
+    "/api/admin/sub-admins/:id",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const { user, ok } = await canAdminAccess(req);
+        if (!ok || user?.userRole !== "admin")
+          return res.status(403).json({ error: "Full admin required" });
+        const { permissions } = req.body;
+        if (!Array.isArray(permissions))
+          return res.status(400).json({ error: "permissions array required" });
+        const [updated] = await db
+          .update(adminPermissions)
+          .set({ permissions, updatedAt: new Date() })
+          .where(eq(adminPermissions.id, req.params.id))
+          .returning();
+        if (!updated) return res.status(404).json({ error: "Not found" });
+        res.json(updated);
+      } catch (e) {
+        res.status(500).json({ error: "Failed to update" });
+      }
+    },
+  );
 
   // DELETE /api/admin/sub-admins/:id — revoke access
-  app.delete("/api/admin/sub-admins/:id", isAuthenticated, async (req: any, res) => {
-    try {
-      const { user, ok } = await canAdminAccess(req);
-      if (!ok || user?.userRole !== "admin") return res.status(403).json({ error: "Full admin required" });
-      await db.delete(adminPermissions).where(eq(adminPermissions.id, req.params.id));
-      res.json({ success: true });
-    } catch (e) {
-      res.status(500).json({ error: "Failed to revoke" });
-    }
-  });
+  app.delete(
+    "/api/admin/sub-admins/:id",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const { user, ok } = await canAdminAccess(req);
+        if (!ok || user?.userRole !== "admin")
+          return res.status(403).json({ error: "Full admin required" });
+        await db
+          .delete(adminPermissions)
+          .where(eq(adminPermissions.id, req.params.id));
+        res.json({ success: true });
+      } catch (e) {
+        res.status(500).json({ error: "Failed to revoke" });
+      }
+    },
+  );
 
   // ── Admin CSV Exports ─────────────────────────────────────────────────────
 
   function csvEscape(val: any): string {
     if (val === null || val === undefined) return "";
     const str = String(val);
-    if (str.includes(",") || str.includes('"') || str.includes("\n")) return `"${str.replace(/"/g, '""')}"`;
+    if (str.includes(",") || str.includes('"') || str.includes("\n"))
+      return `"${str.replace(/"/g, '""')}"`;
     return str;
   }
   function buildCsv(headers: string[], rows: any[][]): string {
-    return [headers.join(","), ...rows.map((r) => r.map(csvEscape).join(","))].join("\n");
+    return [
+      headers.join(","),
+      ...rows.map((r) => r.map(csvEscape).join(",")),
+    ].join("\n");
   }
 
   // Owners export
-  app.get("/api/admin/export/owners", isAuthenticated, async (req: any, res) => {
-    try {
-      const { ok } = await canAdminAccess(req, "reports");
-      if (!ok) return res.status(403).json({ error: "Access denied" });
-      const allOwners = await db.select().from(users).where(eq(users.userRole, "owner")).orderBy(users.createdAt);
-      const headers = ["ID","First Name","Last Name","Email","Phone","Alt Phone","KYC Status","Suspended","Created At"];
-      const rows = allOwners.map((u) => [
-        u.id, u.firstName, u.lastName, u.email, u.phone, u.alternativePhone,
-        u.kycStatus, u.suspendedAt ? "Yes" : "No",
-        u.createdAt ? new Date(u.createdAt).toLocaleDateString("en-IN") : "",
-      ]);
-      const fmt = (req.query.format as string) || "csv";
-      res.setHeader("Content-Type", "text/csv");
-      res.setHeader("Content-Disposition", `attachment; filename="zecoho-owners-${new Date().toISOString().slice(0,10)}.csv"`);
-      res.send(buildCsv(headers, rows));
-    } catch (e) {
-      res.status(500).json({ error: "Export failed" });
-    }
-  });
+  app.get(
+    "/api/admin/export/owners",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const { ok } = await canAdminAccess(req, "reports");
+        if (!ok) return res.status(403).json({ error: "Access denied" });
+        const allOwners = await db
+          .select()
+          .from(users)
+          .where(eq(users.userRole, "owner"))
+          .orderBy(users.createdAt);
+        const headers = [
+          "ID",
+          "First Name",
+          "Last Name",
+          "Email",
+          "Phone",
+          "Alt Phone",
+          "KYC Status",
+          "Suspended",
+          "Created At",
+        ];
+        const rows = allOwners.map((u) => [
+          u.id,
+          u.firstName,
+          u.lastName,
+          u.email,
+          u.phone,
+          u.alternativePhone,
+          u.kycStatus,
+          u.suspendedAt ? "Yes" : "No",
+          u.createdAt ? new Date(u.createdAt).toLocaleDateString("en-IN") : "",
+        ]);
+        const fmt = (req.query.format as string) || "csv";
+        res.setHeader("Content-Type", "text/csv");
+        res.setHeader(
+          "Content-Disposition",
+          `attachment; filename="zecoho-owners-${new Date().toISOString().slice(0, 10)}.csv"`,
+        );
+        res.send(buildCsv(headers, rows));
+      } catch (e) {
+        res.status(500).json({ error: "Export failed" });
+      }
+    },
+  );
 
   // Customers export
-  app.get("/api/admin/export/customers", isAuthenticated, async (req: any, res) => {
-    try {
-      const { ok } = await canAdminAccess(req, "reports");
-      if (!ok) return res.status(403).json({ error: "Access denied" });
-      const guests = await db.select().from(users).where(eq(users.userRole, "guest")).orderBy(users.createdAt);
-      const headers = ["ID","First Name","Last Name","Email","Phone","Deactivated","Created At"];
-      const rows = guests.map((u) => [
-        u.id, u.firstName, u.lastName, u.email, u.phone,
-        u.isDeactivated ? "Yes" : "No",
-        u.createdAt ? new Date(u.createdAt).toLocaleDateString("en-IN") : "",
-      ]);
-      res.setHeader("Content-Type", "text/csv");
-      res.setHeader("Content-Disposition", `attachment; filename="zecoho-customers-${new Date().toISOString().slice(0,10)}.csv"`);
-      res.send(buildCsv(headers, rows));
-    } catch (e) {
-      res.status(500).json({ error: "Export failed" });
-    }
-  });
+  app.get(
+    "/api/admin/export/customers",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const { ok } = await canAdminAccess(req, "reports");
+        if (!ok) return res.status(403).json({ error: "Access denied" });
+        const guests = await db
+          .select()
+          .from(users)
+          .where(eq(users.userRole, "guest"))
+          .orderBy(users.createdAt);
+        const headers = [
+          "ID",
+          "First Name",
+          "Last Name",
+          "Email",
+          "Phone",
+          "Deactivated",
+          "Created At",
+        ];
+        const rows = guests.map((u) => [
+          u.id,
+          u.firstName,
+          u.lastName,
+          u.email,
+          u.phone,
+          u.isDeactivated ? "Yes" : "No",
+          u.createdAt ? new Date(u.createdAt).toLocaleDateString("en-IN") : "",
+        ]);
+        res.setHeader("Content-Type", "text/csv");
+        res.setHeader(
+          "Content-Disposition",
+          `attachment; filename="zecoho-customers-${new Date().toISOString().slice(0, 10)}.csv"`,
+        );
+        res.send(buildCsv(headers, rows));
+      } catch (e) {
+        res.status(500).json({ error: "Export failed" });
+      }
+    },
+  );
 
   // Bookings export
-  app.get("/api/admin/export/bookings", isAuthenticated, async (req: any, res) => {
-    try {
-      const { ok } = await canAdminAccess(req, "reports");
-      if (!ok) return res.status(403).json({ error: "Access denied" });
-      const allBookings = await db.select({
-        id: bookings.id,
-        propertyId: bookings.propertyId,
-        guestId: bookings.guestId,
-        status: bookings.status,
-        checkIn: bookings.checkIn,
-        checkOut: bookings.checkOut,
-        guests: bookings.guests,
-        totalPrice: bookings.totalPrice,
-        guestName: bookings.guestName,
-        guestEmail: bookings.guestEmail,
-        guestMobile: bookings.guestMobile,
-        createdAt: bookings.createdAt,
-      }).from(bookings).orderBy(desc(bookings.createdAt));
-      const headers = ["Booking ID","Property ID","Guest ID","Guest Name","Guest Email","Guest Mobile","Status","Check In","Check Out","Guests","Total Price","Created At"];
-      const rows = allBookings.map((b) => [
-        b.id, b.propertyId, b.guestId, b.guestName, b.guestEmail, b.guestMobile,
-        b.status,
-        b.checkIn ? new Date(b.checkIn).toLocaleDateString("en-IN") : "",
-        b.checkOut ? new Date(b.checkOut).toLocaleDateString("en-IN") : "",
-        b.guests, b.totalPrice,
-        b.createdAt ? new Date(b.createdAt).toLocaleDateString("en-IN") : "",
-      ]);
-      res.setHeader("Content-Type", "text/csv");
-      res.setHeader("Content-Disposition", `attachment; filename="zecoho-bookings-${new Date().toISOString().slice(0,10)}.csv"`);
-      res.send(buildCsv(headers, rows));
-    } catch (e) {
-      res.status(500).json({ error: "Export failed" });
-    }
-  });
+  app.get(
+    "/api/admin/export/bookings",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const { ok } = await canAdminAccess(req, "reports");
+        if (!ok) return res.status(403).json({ error: "Access denied" });
+        const allBookings = await db
+          .select({
+            id: bookings.id,
+            propertyId: bookings.propertyId,
+            guestId: bookings.guestId,
+            status: bookings.status,
+            checkIn: bookings.checkIn,
+            checkOut: bookings.checkOut,
+            guests: bookings.guests,
+            totalPrice: bookings.totalPrice,
+            guestName: bookings.guestName,
+            guestEmail: bookings.guestEmail,
+            guestMobile: bookings.guestMobile,
+            createdAt: bookings.createdAt,
+          })
+          .from(bookings)
+          .orderBy(desc(bookings.createdAt));
+        const headers = [
+          "Booking ID",
+          "Property ID",
+          "Guest ID",
+          "Guest Name",
+          "Guest Email",
+          "Guest Mobile",
+          "Status",
+          "Check In",
+          "Check Out",
+          "Guests",
+          "Total Price",
+          "Created At",
+        ];
+        const rows = allBookings.map((b) => [
+          b.id,
+          b.propertyId,
+          b.guestId,
+          b.guestName,
+          b.guestEmail,
+          b.guestMobile,
+          b.status,
+          b.checkIn ? new Date(b.checkIn).toLocaleDateString("en-IN") : "",
+          b.checkOut ? new Date(b.checkOut).toLocaleDateString("en-IN") : "",
+          b.guests,
+          b.totalPrice,
+          b.createdAt ? new Date(b.createdAt).toLocaleDateString("en-IN") : "",
+        ]);
+        res.setHeader("Content-Type", "text/csv");
+        res.setHeader(
+          "Content-Disposition",
+          `attachment; filename="zecoho-bookings-${new Date().toISOString().slice(0, 10)}.csv"`,
+        );
+        res.send(buildCsv(headers, rows));
+      } catch (e) {
+        res.status(500).json({ error: "Export failed" });
+      }
+    },
+  );
 
   // Properties export
-  app.get("/api/admin/export/properties", isAuthenticated, async (req: any, res) => {
-    try {
-      const { ok } = await canAdminAccess(req, "reports");
-      if (!ok) return res.status(403).json({ error: "Access denied" });
-      const allProps = await db.select({
-        id: propertiesTable.id,
-        title: propertiesTable.title,
-        ownerId: propertiesTable.ownerId,
-        status: propertiesTable.status,
-        city: propertiesTable.propCity,
-        state: propertiesTable.propState,
-        propertyType: propertiesTable.propertyType,
-        pricePerNight: propertiesTable.pricePerNight,
-        rating: propertiesTable.rating,
-        reviewCount: propertiesTable.reviewCount,
-        createdAt: propertiesTable.createdAt,
-      }).from(propertiesTable).orderBy(desc(propertiesTable.createdAt));
-      const headers = ["Property ID","Title","Owner ID","Status","City","State","Type","Price/Night","Rating","Reviews","Created At"];
-      const rows = allProps.map((p) => [
-        p.id, p.title, p.ownerId, p.status, p.city, p.state, p.propertyType,
-        p.pricePerNight, p.rating, p.reviewCount,
-        p.createdAt ? new Date(p.createdAt).toLocaleDateString("en-IN") : "",
-      ]);
-      res.setHeader("Content-Type", "text/csv");
-      res.setHeader("Content-Disposition", `attachment; filename="zecoho-properties-${new Date().toISOString().slice(0,10)}.csv"`);
-      res.send(buildCsv(headers, rows));
-    } catch (e) {
-      res.status(500).json({ error: "Export failed" });
-    }
-  });
+  app.get(
+    "/api/admin/export/properties",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const { ok } = await canAdminAccess(req, "reports");
+        if (!ok) return res.status(403).json({ error: "Access denied" });
+        const allProps = await db
+          .select({
+            id: propertiesTable.id,
+            title: propertiesTable.title,
+            ownerId: propertiesTable.ownerId,
+            status: propertiesTable.status,
+            city: propertiesTable.propCity,
+            state: propertiesTable.propState,
+            propertyType: propertiesTable.propertyType,
+            pricePerNight: propertiesTable.pricePerNight,
+            rating: propertiesTable.rating,
+            reviewCount: propertiesTable.reviewCount,
+            createdAt: propertiesTable.createdAt,
+          })
+          .from(propertiesTable)
+          .orderBy(desc(propertiesTable.createdAt));
+        const headers = [
+          "Property ID",
+          "Title",
+          "Owner ID",
+          "Status",
+          "City",
+          "State",
+          "Type",
+          "Price/Night",
+          "Rating",
+          "Reviews",
+          "Created At",
+        ];
+        const rows = allProps.map((p) => [
+          p.id,
+          p.title,
+          p.ownerId,
+          p.status,
+          p.city,
+          p.state,
+          p.propertyType,
+          p.pricePerNight,
+          p.rating,
+          p.reviewCount,
+          p.createdAt ? new Date(p.createdAt).toLocaleDateString("en-IN") : "",
+        ]);
+        res.setHeader("Content-Type", "text/csv");
+        res.setHeader(
+          "Content-Disposition",
+          `attachment; filename="zecoho-properties-${new Date().toISOString().slice(0, 10)}.csv"`,
+        );
+        res.send(buildCsv(headers, rows));
+      } catch (e) {
+        res.status(500).json({ error: "Export failed" });
+      }
+    },
+  );
 
   // Subscriptions export
-  app.get("/api/admin/export/subscriptions", isAuthenticated, async (req: any, res) => {
-    try {
-      const { ok } = await canAdminAccess(req, "reports");
-      if (!ok) return res.status(403).json({ error: "Access denied" });
-      const subs = await db.select({
-        id: ownerSubscriptions.id,
-        ownerId: ownerSubscriptions.ownerId,
-        tier: ownerSubscriptions.tier,
-        status: ownerSubscriptions.status,
-        duration: ownerSubscriptions.duration,
-        pricePaid: ownerSubscriptions.pricePaid,
-        isWaived: ownerSubscriptions.isWaived,
-        startDate: ownerSubscriptions.startDate,
-        endDate: ownerSubscriptions.endDate,
-        createdAt: ownerSubscriptions.createdAt,
-        ownerEmail: users.email,
-        ownerFirst: users.firstName,
-        ownerLast: users.lastName,
-      }).from(ownerSubscriptions)
-        .leftJoin(users, eq(ownerSubscriptions.ownerId, users.id))
-        .orderBy(desc(ownerSubscriptions.createdAt));
-      const headers = ["Sub ID","Owner ID","Owner Name","Owner Email","Tier","Status","Duration","Price Paid","Waived","Start Date","End Date","Created At"];
-      const rows = subs.map((s) => [
-        s.id, s.ownerId,
-        `${s.ownerFirst ?? ""} ${s.ownerLast ?? ""}`.trim(),
-        s.ownerEmail, s.tier, s.status, s.duration, s.pricePaid,
-        s.isWaived ? "Yes" : "No",
-        s.startDate ? new Date(s.startDate).toLocaleDateString("en-IN") : "",
-        s.endDate ? new Date(s.endDate).toLocaleDateString("en-IN") : "",
-        s.createdAt ? new Date(s.createdAt).toLocaleDateString("en-IN") : "",
-      ]);
-      res.setHeader("Content-Type", "text/csv");
-      res.setHeader("Content-Disposition", `attachment; filename="zecoho-subscriptions-${new Date().toISOString().slice(0,10)}.csv"`);
-      res.send(buildCsv(headers, rows));
-    } catch (e) {
-      res.status(500).json({ error: "Export failed" });
-    }
-  });
+  app.get(
+    "/api/admin/export/subscriptions",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const { ok } = await canAdminAccess(req, "reports");
+        if (!ok) return res.status(403).json({ error: "Access denied" });
+        const subs = await db
+          .select({
+            id: ownerSubscriptions.id,
+            ownerId: ownerSubscriptions.ownerId,
+            tier: ownerSubscriptions.tier,
+            status: ownerSubscriptions.status,
+            duration: ownerSubscriptions.duration,
+            pricePaid: ownerSubscriptions.pricePaid,
+            isWaived: ownerSubscriptions.isWaived,
+            startDate: ownerSubscriptions.startDate,
+            endDate: ownerSubscriptions.endDate,
+            createdAt: ownerSubscriptions.createdAt,
+            ownerEmail: users.email,
+            ownerFirst: users.firstName,
+            ownerLast: users.lastName,
+          })
+          .from(ownerSubscriptions)
+          .leftJoin(users, eq(ownerSubscriptions.ownerId, users.id))
+          .orderBy(desc(ownerSubscriptions.createdAt));
+        const headers = [
+          "Sub ID",
+          "Owner ID",
+          "Owner Name",
+          "Owner Email",
+          "Tier",
+          "Status",
+          "Duration",
+          "Price Paid",
+          "Waived",
+          "Start Date",
+          "End Date",
+          "Created At",
+        ];
+        const rows = subs.map((s) => [
+          s.id,
+          s.ownerId,
+          `${s.ownerFirst ?? ""} ${s.ownerLast ?? ""}`.trim(),
+          s.ownerEmail,
+          s.tier,
+          s.status,
+          s.duration,
+          s.pricePaid,
+          s.isWaived ? "Yes" : "No",
+          s.startDate ? new Date(s.startDate).toLocaleDateString("en-IN") : "",
+          s.endDate ? new Date(s.endDate).toLocaleDateString("en-IN") : "",
+          s.createdAt ? new Date(s.createdAt).toLocaleDateString("en-IN") : "",
+        ]);
+        res.setHeader("Content-Type", "text/csv");
+        res.setHeader(
+          "Content-Disposition",
+          `attachment; filename="zecoho-subscriptions-${new Date().toISOString().slice(0, 10)}.csv"`,
+        );
+        res.send(buildCsv(headers, rows));
+      } catch (e) {
+        res.status(500).json({ error: "Export failed" });
+      }
+    },
+  );
 
   // Test/Development admin login endpoint - only for testing admin features
   app.post("/api/test/admin-login", async (req: any, res) => {
@@ -1656,10 +1856,17 @@ export async function registerRoutes(
               createdProperty = updatedProp;
             } else {
               // Check for an existing draft property (wizard state may have been lost on refresh)
-              const ownerProps = await storage.getProperties({ ownerId: userId });
-              const existingDraft = ownerProps.find((p: any) => p.status === "draft");
+              const ownerProps = await storage.getProperties({
+                ownerId: userId,
+              });
+              const existingDraft = ownerProps.find(
+                (p: any) => p.status === "draft",
+              );
               if (existingDraft) {
-                const updatedProp = await storage.updateProperty(existingDraft.id, propertyPayload);
+                const updatedProp = await storage.updateProperty(
+                  existingDraft.id,
+                  propertyPayload,
+                );
                 if (!updatedProp) throw new Error("Draft property not found");
                 createdProperty = updatedProp;
               } else {
@@ -1713,10 +1920,16 @@ export async function registerRoutes(
                   name: rt.name,
                   description: rt.description || null,
                   basePrice: String(basePrice),
-                  originalPrice: rt.originalPrice ? String(rt.originalPrice) : null,
+                  originalPrice: rt.originalPrice
+                    ? String(rt.originalPrice)
+                    : null,
                   singleOccupancyPrice: String(basePrice),
-                  doubleOccupancyPrice: rt.doubleOccupancyAdjustment ? String(rt.doubleOccupancyAdjustment) : null,
-                  tripleOccupancyPrice: rt.tripleOccupancyAdjustment ? String(rt.tripleOccupancyAdjustment) : null,
+                  doubleOccupancyPrice: rt.doubleOccupancyAdjustment
+                    ? String(rt.doubleOccupancyAdjustment)
+                    : null,
+                  tripleOccupancyPrice: rt.tripleOccupancyAdjustment
+                    ? String(rt.tripleOccupancyAdjustment)
+                    : null,
                   maxGuests: maxGuests,
                   totalRooms: totalRooms,
                   isActive: true,
@@ -1724,7 +1937,9 @@ export async function registerRoutes(
                   viewType: rt.viewType || null,
                   bathroomType: rt.bathroomType || null,
                   smokingPolicy: rt.smokingAllowed ? "Smoking" : "Non-smoking",
-                  roomSizeSqft: rt.roomSizeSqft ? parseInt(rt.roomSizeSqft) : null,
+                  roomSizeSqft: rt.roomSizeSqft
+                    ? parseInt(rt.roomSizeSqft)
+                    : null,
                   hasAC: rt.hasAC ?? false,
                   hasTV: rt.hasTV ?? false,
                   hasWifi: rt.hasWifi ?? false,
@@ -1897,10 +2112,17 @@ export async function registerRoutes(
             createdProperty = updatedProp2;
           } else {
             // Check for an existing draft property (wizard state may have been lost on refresh)
-            const ownerProps2 = await storage.getProperties({ ownerId: userId });
-            const existingDraft2 = ownerProps2.find((p: any) => p.status === "draft");
+            const ownerProps2 = await storage.getProperties({
+              ownerId: userId,
+            });
+            const existingDraft2 = ownerProps2.find(
+              (p: any) => p.status === "draft",
+            );
             if (existingDraft2) {
-              const updatedProp2b = await storage.updateProperty(existingDraft2.id, propertyPayload2);
+              const updatedProp2b = await storage.updateProperty(
+                existingDraft2.id,
+                propertyPayload2,
+              );
               if (!updatedProp2b) throw new Error("Draft property not found");
               createdProperty = updatedProp2b;
             } else {
@@ -1951,10 +2173,16 @@ export async function registerRoutes(
                 name: rt.name,
                 description: rt.description || null,
                 basePrice: String(basePrice),
-                originalPrice: rt.originalPrice ? String(rt.originalPrice) : null,
+                originalPrice: rt.originalPrice
+                  ? String(rt.originalPrice)
+                  : null,
                 singleOccupancyPrice: String(basePrice),
-                doubleOccupancyPrice: rt.doubleOccupancyAdjustment ? String(rt.doubleOccupancyAdjustment) : null,
-                tripleOccupancyPrice: rt.tripleOccupancyAdjustment ? String(rt.tripleOccupancyAdjustment) : null,
+                doubleOccupancyPrice: rt.doubleOccupancyAdjustment
+                  ? String(rt.doubleOccupancyAdjustment)
+                  : null,
+                tripleOccupancyPrice: rt.tripleOccupancyAdjustment
+                  ? String(rt.tripleOccupancyAdjustment)
+                  : null,
                 maxGuests: maxGuests,
                 totalRooms: totalRooms,
                 isActive: true,
@@ -1962,7 +2190,9 @@ export async function registerRoutes(
                 viewType: rt.viewType || null,
                 bathroomType: rt.bathroomType || null,
                 smokingPolicy: rt.smokingAllowed ? "Smoking" : "Non-smoking",
-                roomSizeSqft: rt.roomSizeSqft ? parseInt(rt.roomSizeSqft) : null,
+                roomSizeSqft: rt.roomSizeSqft
+                  ? parseInt(rt.roomSizeSqft)
+                  : null,
                 hasAC: rt.hasAC ?? false,
                 hasTV: rt.hasTV ?? false,
                 hasWifi: rt.hasWifi ?? false,
@@ -2210,8 +2440,10 @@ export async function registerRoutes(
             propStreetAddress: property.propStreetAddress || null,
             propLocality: property.propLocality || null,
             propPincode: property.propPincode || null,
-            latitude: property.latitude != null ? String(property.latitude) : null,
-            longitude: property.longitude != null ? String(property.longitude) : null,
+            latitude:
+              property.latitude != null ? String(property.latitude) : null,
+            longitude:
+              property.longitude != null ? String(property.longitude) : null,
             geoVerified: !!(property.latitude && property.longitude),
             checkInTime: property.checkInTime || null,
             checkOutTime: property.checkOutTime || null,
@@ -2227,14 +2459,19 @@ export async function registerRoutes(
           });
         } else {
           // Before creating a new draft, check if owner already has one (prevents duplicates on page refresh/remount)
-          const ownerProperties = await storage.getProperties({ ownerId: userId });
-          const existingDraft = ownerProperties.find((p: any) => p.status === "draft");
+          const ownerProperties = await storage.getProperties({
+            ownerId: userId,
+          });
+          const existingDraft = ownerProperties.find(
+            (p: any) => p.status === "draft",
+          );
 
           if (existingDraft) {
             // Reuse the existing draft instead of creating a duplicate
             savedProperty = await storage.updateProperty(existingDraft.id, {
               title: property.title,
-              description: property.description || `Welcome to ${property.title}`,
+              description:
+                property.description || `Welcome to ${property.title}`,
               propertyType: property.propertyType || "hotel",
               destination: property.propCity || property.destination || "",
               propCity: property.propCity || null,
@@ -2243,8 +2480,10 @@ export async function registerRoutes(
               propStreetAddress: property.propStreetAddress || null,
               propLocality: property.propLocality || null,
               propPincode: property.propPincode || null,
-              latitude: property.latitude != null ? String(property.latitude) : null,
-              longitude: property.longitude != null ? String(property.longitude) : null,
+              latitude:
+                property.latitude != null ? String(property.latitude) : null,
+              longitude:
+                property.longitude != null ? String(property.longitude) : null,
               geoVerified: !!(property.latitude && property.longitude),
               checkInTime: property.checkInTime || null,
               checkOutTime: property.checkOutTime || null,
@@ -2252,7 +2491,8 @@ export async function registerRoutes(
               localIdAllowed: property.localIdAllowed ?? false,
               foreignGuestsAllowed: property.foreignGuestsAllowed ?? false,
               hourlyBookingAllowed: property.hourlyBookingAllowed ?? false,
-              cancellationPolicyType: property.cancellationPolicyType || "flexible",
+              cancellationPolicyType:
+                property.cancellationPolicyType || "flexible",
               freeCancellationHours: property.freeCancellationHours ?? 24,
               partialRefundPercent: property.partialRefundPercent ?? 50,
               policies: property.policies || null,
@@ -2262,7 +2502,8 @@ export async function registerRoutes(
             const basePrice = roomTypes?.[0]?.basePrice || 1000;
             savedProperty = await storage.createProperty({
               title: property.title,
-              description: property.description || `Welcome to ${property.title}`,
+              description:
+                property.description || `Welcome to ${property.title}`,
               propertyType: property.propertyType || "hotel",
               destination: property.propCity || property.destination || "",
               propCity: property.propCity || null,
@@ -2289,7 +2530,8 @@ export async function registerRoutes(
               localIdAllowed: property.localIdAllowed ?? false,
               foreignGuestsAllowed: property.foreignGuestsAllowed ?? false,
               hourlyBookingAllowed: property.hourlyBookingAllowed ?? false,
-              cancellationPolicyType: property.cancellationPolicyType || "flexible",
+              cancellationPolicyType:
+                property.cancellationPolicyType || "flexible",
               freeCancellationHours: property.freeCancellationHours ?? 24,
               partialRefundPercent: property.partialRefundPercent ?? 50,
             });
@@ -2318,8 +2560,12 @@ export async function registerRoutes(
               basePrice: String(basePrice),
               originalPrice: rt.originalPrice ? String(rt.originalPrice) : null,
               singleOccupancyPrice: String(basePrice),
-              doubleOccupancyPrice: rt.doubleOccupancyAdjustment ? String(rt.doubleOccupancyAdjustment) : null,
-              tripleOccupancyPrice: rt.tripleOccupancyAdjustment ? String(rt.tripleOccupancyAdjustment) : null,
+              doubleOccupancyPrice: rt.doubleOccupancyAdjustment
+                ? String(rt.doubleOccupancyAdjustment)
+                : null,
+              tripleOccupancyPrice: rt.tripleOccupancyAdjustment
+                ? String(rt.tripleOccupancyAdjustment)
+                : null,
               maxGuests: parseInt(rt.maxGuests) || 2,
               totalRooms: parseInt(rt.totalRooms) || 1,
               bedType: rt.bedType || null,
@@ -3028,65 +3274,74 @@ export async function registerRoutes(
         }
       }
 
-      // For published properties, include owner contact info and room-type pricing
-      const propertiesWithDetails = await Promise.all(
-        properties.map(async (property) => {
-          // Get room types to compute starting price from room-level pricing
-          const propertyRoomTypes = await storage.getRoomTypes(property.id);
+      // Batch fetch — 2 queries total instead of 2 per property (N+1 fix)
+      const propertyIds = properties.map((p) => p.id);
+      const uniqueOwnerIds = [...new Set(properties.map((p) => p.ownerId))];
 
-          // Calculate starting price from minimum room-type base price
-          let startingRoomPrice: string | null = null;
-          let startingRoomOriginalPrice: string | null = null;
+      const [allRoomTypes, allOwners] = await Promise.all([
+        storage.getRoomTypesByPropertyIds(propertyIds),
+        storage.getUsersByIds(uniqueOwnerIds),
+      ]);
 
-          if (propertyRoomTypes.length > 0) {
-            // Find the room type with the lowest base price
-            const sortedRoomTypes = [...propertyRoomTypes].sort(
-              (a, b) => parseFloat(a.basePrice) - parseFloat(b.basePrice),
-            );
-            const cheapestRoomType = sortedRoomTypes[0];
-            startingRoomPrice = cheapestRoomType.basePrice;
+      const roomTypesByProperty = new Map<string, typeof allRoomTypes>();
+      for (const rt of allRoomTypes) {
+        if (!roomTypesByProperty.has(rt.propertyId))
+          roomTypesByProperty.set(rt.propertyId, []);
+        roomTypesByProperty.get(rt.propertyId)!.push(rt);
+      }
+      const ownersById = new Map(allOwners.map((o) => [o.id, o]));
 
-            // Include original price for strike-off display if available
-            if (
-              cheapestRoomType.originalPrice &&
-              parseFloat(cheapestRoomType.originalPrice) >
-                parseFloat(cheapestRoomType.basePrice)
-            ) {
-              startingRoomOriginalPrice = cheapestRoomType.originalPrice;
-            }
+      const propertiesWithDetails = properties.map((property) => {
+        const propertyRoomTypes = roomTypesByProperty.get(property.id) || [];
+
+        let startingRoomPrice: string | null = null;
+        let startingRoomOriginalPrice: string | null = null;
+
+        if (propertyRoomTypes.length > 0) {
+          const sortedRoomTypes = [...propertyRoomTypes].sort(
+            (a, b) => parseFloat(a.basePrice) - parseFloat(b.basePrice),
+          );
+          const cheapestRoomType = sortedRoomTypes[0];
+          startingRoomPrice = cheapestRoomType.basePrice;
+          if (
+            cheapestRoomType.originalPrice &&
+            parseFloat(cheapestRoomType.originalPrice) >
+              parseFloat(cheapestRoomType.basePrice)
+          ) {
+            startingRoomOriginalPrice = cheapestRoomType.originalPrice;
           }
+        }
 
-          if (property.status === "published") {
-            const owner = await storage.getUser(property.ownerId);
-            const ownerPhone =
-              owner?.phone && owner.phone.trim() ? owner.phone.trim() : null;
-            const canCall =
-              requestUserId !== null &&
-              (requestUserId === property.ownerId ||
-                guestBookedPropertyIds.has(property.id));
-            return {
-              ...property,
-              startingRoomPrice,
-              startingRoomOriginalPrice,
-              ownerContact: owner
-                ? {
-                    name:
-                      owner.firstName && owner.lastName
-                        ? `${owner.firstName} ${owner.lastName}`
-                        : owner.firstName || null,
-                    canCall,
-                    ...(canCall ? { phone: ownerPhone } : {}),
-                  }
-                : null,
-            };
-          }
+        if (property.status === "published") {
+          const owner = ownersById.get(property.ownerId);
+          const ownerPhone =
+            owner?.phone && owner.phone.trim() ? owner.phone.trim() : null;
+          const canCall =
+            requestUserId !== null &&
+            (requestUserId === property.ownerId ||
+              guestBookedPropertyIds.has(property.id));
           return {
             ...property,
             startingRoomPrice,
             startingRoomOriginalPrice,
+            ownerContact: owner
+              ? {
+                  name:
+                    owner.firstName && owner.lastName
+                      ? `${owner.firstName} ${owner.lastName}`
+                      : owner.firstName || null,
+                  canCall,
+                  ...(canCall ? { phone: ownerPhone } : {}),
+                }
+              : null,
           };
-        }),
-      );
+        }
+        return {
+          ...property,
+          startingRoomPrice,
+          startingRoomOriginalPrice,
+        };
+      });
 
       res.json(propertiesWithDetails);
     } catch (error) {
@@ -3118,7 +3373,9 @@ export async function registerRoutes(
 
       // For public guests (not owner, not admin) enforce the subscription gate
       if (!callerIsOwner && !callerIsAdmin) {
-        const sub = await storage.checkOwnerSubscriptionStatus(property.ownerId);
+        const sub = await storage.checkOwnerSubscriptionStatus(
+          property.ownerId,
+        );
         if (!sub.isActive) {
           return res.status(404).json({ message: "Property not found" });
         }
@@ -4382,7 +4639,9 @@ export async function registerRoutes(
 
         const room = await storage.createRoom({
           ...validatedData,
-          roomAmenityIds: Array.isArray(validatedData.roomAmenityIds) ? (validatedData.roomAmenityIds as string[]) : [],
+          roomAmenityIds: Array.isArray(validatedData.roomAmenityIds)
+            ? (validatedData.roomAmenityIds as string[])
+            : [],
         });
 
         console.log("Room created successfully:", room.id);
@@ -5154,12 +5413,24 @@ export async function registerRoutes(
             startKey,
             endKey,
           );
-          const overridesMap = new Map<string, { base?: number; double?: number; triple?: number }>(
-            overrideRows.map((r) => [r.date, {
-              base: r.roomPrice != null ? Number(r.roomPrice) : undefined,
-              double: r.doublePriceOverride != null ? Number(r.doublePriceOverride) : undefined,
-              triple: r.triplePriceOverride != null ? Number(r.triplePriceOverride) : undefined,
-            }]),
+          const overridesMap = new Map<
+            string,
+            { base?: number; double?: number; triple?: number }
+          >(
+            overrideRows.map((r) => [
+              r.date,
+              {
+                base: r.roomPrice != null ? Number(r.roomPrice) : undefined,
+                double:
+                  r.doublePriceOverride != null
+                    ? Number(r.doublePriceOverride)
+                    : undefined,
+                triple:
+                  r.triplePriceOverride != null
+                    ? Number(r.triplePriceOverride)
+                    : undefined,
+              },
+            ]),
           );
 
           // Sum nightly prices: each night uses tier override or base+increment
@@ -5192,7 +5463,9 @@ export async function registerRoutes(
               const mc = new Date(checkIn);
               while (mc < checkOut) {
                 const dk = mc.toISOString().split("T")[0];
-                mealSubtotal += (mealOverridesMap.get(dk) ?? Number(mealOption.priceAdjustment)) * guestCount;
+                mealSubtotal +=
+                  (mealOverridesMap.get(dk) ??
+                    Number(mealOption.priceAdjustment)) * guestCount;
                 mc.setDate(mc.getDate() + 1);
               }
             }
@@ -12019,50 +12292,62 @@ export async function registerRoutes(
   );
 
   // Get property view counts for owner's properties (analytics)
-  app.get("/api/owner/analytics/views", isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
-      if (!user || !userHasRole(user, "owner")) {
-        return res.status(403).json({ message: "Only owners can access analytics" });
+  app.get(
+    "/api/owner/analytics/views",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const userId = req.user.claims.sub;
+        const user = await storage.getUser(userId);
+        if (!user || !userHasRole(user, "owner")) {
+          return res
+            .status(403)
+            .json({ message: "Only owners can access analytics" });
+        }
+        const days = parseInt(req.query.days as string) || 30;
+        const since = new Date();
+        since.setDate(since.getDate() - days);
+
+        const ownerProps = await storage.getOwnerProperties(userId);
+        if (ownerProps.length === 0)
+          return res.json({ properties: [], totalViews: 0 });
+
+        const propertyIds = ownerProps.map((p: any) => p.id);
+
+        const viewRows = await db
+          .select({
+            propertyId: propertyViews.propertyId,
+            count: sql<number>`count(*)::int`,
+          })
+          .from(propertyViews)
+          .where(
+            and(
+              inArray(propertyViews.propertyId, propertyIds),
+              gte(propertyViews.createdAt, since),
+            ),
+          )
+          .groupBy(propertyViews.propertyId);
+
+        const viewMap = new Map(
+          viewRows.map((r: any) => [r.propertyId, r.count]),
+        );
+        const result = ownerProps.map((p: any) => ({
+          id: p.id,
+          title: p.title,
+          status: p.status,
+          views: viewMap.get(p.id) ?? 0,
+        }));
+        const totalViews = result.reduce(
+          (sum: number, p: any) => sum + p.views,
+          0,
+        );
+        res.json({ properties: result, totalViews, days });
+      } catch (error) {
+        console.error("Error fetching analytics views:", error);
+        res.status(500).json({ message: "Failed to fetch analytics" });
       }
-      const days = parseInt(req.query.days as string) || 30;
-      const since = new Date();
-      since.setDate(since.getDate() - days);
-
-      const ownerProps = await storage.getOwnerProperties(userId);
-      if (ownerProps.length === 0) return res.json({ properties: [], totalViews: 0 });
-
-      const propertyIds = ownerProps.map((p: any) => p.id);
-
-      const viewRows = await db
-        .select({
-          propertyId: propertyViews.propertyId,
-          count: sql<number>`count(*)::int`,
-        })
-        .from(propertyViews)
-        .where(
-          and(
-            inArray(propertyViews.propertyId, propertyIds),
-            gte(propertyViews.createdAt, since),
-          ),
-        )
-        .groupBy(propertyViews.propertyId);
-
-      const viewMap = new Map(viewRows.map((r: any) => [r.propertyId, r.count]));
-      const result = ownerProps.map((p: any) => ({
-        id: p.id,
-        title: p.title,
-        status: p.status,
-        views: viewMap.get(p.id) ?? 0,
-      }));
-      const totalViews = result.reduce((sum: number, p: any) => sum + p.views, 0);
-      res.json({ properties: result, totalViews, days });
-    } catch (error) {
-      console.error("Error fetching analytics views:", error);
-      res.status(500).json({ message: "Failed to fetch analytics" });
-    }
-  });
+    },
+  );
 
   // Get room utilization for owner's property
   app.get(
@@ -13132,12 +13417,24 @@ export async function registerRoutes(
               startKey,
               endKey,
             );
-            const overridesMap = new Map<string, { base?: number; double?: number; triple?: number }>(
-              overrideRows.map((r) => [r.date, {
-                base: r.roomPrice != null ? Number(r.roomPrice) : undefined,
-                double: r.doublePriceOverride != null ? Number(r.doublePriceOverride) : undefined,
-                triple: r.triplePriceOverride != null ? Number(r.triplePriceOverride) : undefined,
-              }]),
+            const overridesMap = new Map<
+              string,
+              { base?: number; double?: number; triple?: number }
+            >(
+              overrideRows.map((r) => [
+                r.date,
+                {
+                  base: r.roomPrice != null ? Number(r.roomPrice) : undefined,
+                  double:
+                    r.doublePriceOverride != null
+                      ? Number(r.doublePriceOverride)
+                      : undefined,
+                  triple:
+                    r.triplePriceOverride != null
+                      ? Number(r.triplePriceOverride)
+                      : undefined,
+                },
+              ]),
             );
 
             roomSubtotal = calculateNightlyRoomCost(
@@ -13168,7 +13465,9 @@ export async function registerRoutes(
                 const mc = new Date(extensionCheckIn);
                 while (mc < extensionCheckOut) {
                   const dk = mc.toISOString().split("T")[0];
-                  mealSubtotal += (mealOverridesMap.get(dk) ?? Number(mealOption.priceAdjustment)) * guestCount;
+                  mealSubtotal +=
+                    (mealOverridesMap.get(dk) ??
+                      Number(mealOption.priceAdjustment)) * guestCount;
                   mc.setDate(mc.getDate() + 1);
                 }
               }
@@ -13929,12 +14228,21 @@ export async function registerRoutes(
             startDate,
             endDate,
           );
-          const overrideMap: Record<string, { base?: number; double?: number; triple?: number }> = {};
+          const overrideMap: Record<
+            string,
+            { base?: number; double?: number; triple?: number }
+          > = {};
           for (const o of overrides) {
             overrideMap[o.date] = {
               base: o.roomPrice != null ? parseFloat(o.roomPrice) : undefined,
-              double: o.doublePriceOverride != null ? parseFloat(o.doublePriceOverride) : undefined,
-              triple: o.triplePriceOverride != null ? parseFloat(o.triplePriceOverride) : undefined,
+              double:
+                o.doublePriceOverride != null
+                  ? parseFloat(o.doublePriceOverride)
+                  : undefined,
+              triple:
+                o.triplePriceOverride != null
+                  ? parseFloat(o.triplePriceOverride)
+                  : undefined,
             };
           }
           return {
@@ -14027,7 +14335,9 @@ export async function registerRoutes(
 
         const tier = Number(occupancyTier) as 1 | 2 | 3;
         if (![1, 2, 3].includes(tier)) {
-          return res.status(400).json({ message: "occupancyTier must be 1, 2, or 3" });
+          return res
+            .status(400)
+            .json({ message: "occupancyTier must be 1, 2, or 3" });
         }
 
         const roomType = await storage.getRoomType(roomTypeId);

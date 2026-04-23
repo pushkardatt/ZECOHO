@@ -49,7 +49,7 @@ export const otpCodes = pgTable(
       .primaryKey()
       .default(sql`gen_random_uuid()`),
     email: varchar("email", { length: 255 }),
-  
+
     phone: varchar("phone", { length: 20 }),
     code: varchar("code", { length: 6 }).notNull(),
     purpose: otpPurposeEnum("purpose").notNull().default("signup"),
@@ -401,8 +401,8 @@ export const users = pgTable("users", {
     .array()
     .default(sql`ARRAY[]::text[]`),
   phone: varchar("phone", { length: 20 }),
-    alternativePhone: varchar("alternative_phone", { length: 20 }),
-    passwordHash: varchar("password_hash", { length: 255 }),
+  alternativePhone: varchar("alternative_phone", { length: 20 }),
+  passwordHash: varchar("password_hash", { length: 255 }),
   registrationMethod: registrationMethodEnum("registration_method")
     .notNull()
     .default("replit"),
@@ -450,124 +450,136 @@ export const users = pgTable("users", {
 });
 
 // Properties table
-export const properties = pgTable("properties", {
-  id: varchar("id")
-    .primaryKey()
-    .default(sql`gen_random_uuid()`),
-  propertyCode: varchar("property_code", { length: 20 }).unique(),
-  ownerId: varchar("owner_id")
-    .notNull()
-    .references(() => users.id, { onDelete: "cascade" }),
-  title: varchar("title", { length: 255 }).notNull(),
-  description: text("description").notNull(),
-  propertyType: propertyTypeEnum("property_type").notNull(),
-  destination: varchar("destination", { length: 255 }).notNull(),
-  address: text("address"),
-  propFlatNo: varchar("prop_flat_no", { length: 50 }),
-  propHouseNo: varchar("prop_house_no", { length: 50 }),
-  propStreetAddress: varchar("prop_street_address", { length: 255 }),
-  propLandmark: varchar("prop_landmark", { length: 255 }),
-  propLocality: varchar("prop_locality", { length: 255 }),
-  propCity: varchar("prop_city", { length: 100 }),
-  propDistrict: varchar("prop_district", { length: 100 }),
-  propState: varchar("prop_state", { length: 100 }),
-  propPincode: varchar("prop_pincode", { length: 10 }),
-  latitude: decimal("latitude", { precision: 10, scale: 7 }),
-  longitude: decimal("longitude", { precision: 10, scale: 7 }),
-  geoVerified: boolean("geo_verified").notNull().default(false),
-  geoSource: geoSourceEnum("geo_source"),
-  images: text("images")
-    .array()
-    .notNull()
-    .default(sql`ARRAY[]::text[]`),
-  categorizedImages: jsonb("categorized_images"),
-  videos: text("videos")
-    .array()
-    .notNull()
-    .default(sql`ARRAY[]::text[]`),
-  pricePerNight: decimal("price_per_night", {
-    precision: 10,
-    scale: 2,
-  }).notNull(),
-  originalPrice: decimal("original_price", { precision: 10, scale: 2 }),
-  // Occupancy-based pricing
-  singleOccupancyPrice: decimal("single_occupancy_price", {
-    precision: 10,
-    scale: 2,
-  }),
-  doubleOccupancyPrice: decimal("double_occupancy_price", {
-    precision: 10,
-    scale: 2,
-  }),
-  tripleOccupancyPrice: decimal("triple_occupancy_price", {
-    precision: 10,
-    scale: 2,
-  }),
-  maxGuests: integer("max_guests").notNull().default(2),
-  bedrooms: integer("bedrooms").notNull().default(1),
-  beds: integer("beds").notNull().default(1),
-  bathrooms: integer("bathrooms").notNull().default(1),
-  rating: decimal("rating", { precision: 3, scale: 2 }).default("0"),
-  reviewCount: integer("review_count").default(0),
-  status: propertyStatusEnum("status").notNull().default("draft"),
-  inquiryOnly: boolean("inquiry_only").notNull().default(false),
-  verificationNotes: text("verification_notes"),
-  verifiedAt: timestamp("verified_at"),
-  verifiedBy: varchar("verified_by").references(() => users.id),
-  policies: text("policies"),
-  checkInTime: varchar("check_in_time", { length: 20 }),
-  checkOutTime: varchar("check_out_time", { length: 20 }),
-  receptionNumber: varchar("reception_number", { length: 20 }),
-  safetyFeatures: text("safety_features")
-    .array()
-    .default(sql`ARRAY[]::text[]`),
-  cancellationPolicy: text("cancellation_policy"),
-  // Structured cancellation policy
-  cancellationPolicyType: cancellationPolicyTypeEnum(
-    "cancellation_policy_type",
-  ).default("flexible"),
-  freeCancellationHours: integer("free_cancellation_hours").default(24), // Hours before check-in for free cancellation
-  partialRefundPercent: integer("partial_refund_percent").default(50), // Refund percentage for moderate policy
-  cancellationPolicyConfigured: boolean("cancellation_policy_configured")
-    .notNull()
-    .default(false), // True when owner explicitly saves policy
-  // Guest policies
-  localIdAllowed: boolean("local_id_allowed").notNull().default(false),
-  hourlyBookingAllowed: boolean("hourly_booking_allowed")
-    .notNull()
-    .default(false),
-  foreignGuestsAllowed: boolean("foreign_guests_allowed")
-    .notNull()
-    .default(false),
-  coupleFriendly: boolean("couple_friendly").notNull().default(false),
-  petsAllowed: boolean("pets_allowed").notNull().default(false),
-  smokingAllowed: boolean("smoking_allowed").notNull().default(false),
-  liquorAllowed: boolean("liquor_allowed").notNull().default(false),
-  visitorsAllowed: boolean("visitors_allowed").notNull().default(false),
-  // Accepted ID types for check-in
-  acceptedLocalIdTypes: text("accepted_local_id_types")
-    .array()
-    .default(sql`ARRAY[]::text[]`),
-  acceptedForeignIdTypes: text("accepted_foreign_id_types")
-    .array()
-    .default(sql`ARRAY[]::text[]`),
-  // Channel manager integration
-  channelManagerEnabled: boolean("channel_manager_enabled").notNull().default(false),
-  channelManagerName: varchar("channel_manager_name", { length: 100 }),
-  channelManagerNameCustom: varchar("channel_manager_name_custom", { length: 255 }),
-  // Star rating (1–5)
-  starRating: smallint("star_rating"),
-  // Private contact fields — never returned in public API responses
-  contactEmail: varchar("contact_email", { length: 255 }),
-  contactPhone: varchar("contact_phone", { length: 20 }),
-  whatsappNumber: varchar("whatsapp_number", { length: 20 }),
-  // Admin suspension - property-level suspension when owner is suspended
-  suspended: boolean("suspended").notNull().default(false),
-  suspendedAt: timestamp("suspended_at"),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-});
-
+export const properties = pgTable(
+  "properties",
+  {
+    id: varchar("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    propertyCode: varchar("property_code", { length: 20 }).unique(),
+    ownerId: varchar("owner_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    title: varchar("title", { length: 255 }).notNull(),
+    description: text("description").notNull(),
+    propertyType: propertyTypeEnum("property_type").notNull(),
+    destination: varchar("destination", { length: 255 }).notNull(),
+    address: text("address"),
+    propFlatNo: varchar("prop_flat_no", { length: 50 }),
+    propHouseNo: varchar("prop_house_no", { length: 50 }),
+    propStreetAddress: varchar("prop_street_address", { length: 255 }),
+    propLandmark: varchar("prop_landmark", { length: 255 }),
+    propLocality: varchar("prop_locality", { length: 255 }),
+    propCity: varchar("prop_city", { length: 100 }),
+    propDistrict: varchar("prop_district", { length: 100 }),
+    propState: varchar("prop_state", { length: 100 }),
+    propPincode: varchar("prop_pincode", { length: 10 }),
+    latitude: decimal("latitude", { precision: 10, scale: 7 }),
+    longitude: decimal("longitude", { precision: 10, scale: 7 }),
+    geoVerified: boolean("geo_verified").notNull().default(false),
+    geoSource: geoSourceEnum("geo_source"),
+    images: text("images")
+      .array()
+      .notNull()
+      .default(sql`ARRAY[]::text[]`),
+    categorizedImages: jsonb("categorized_images"),
+    videos: text("videos")
+      .array()
+      .notNull()
+      .default(sql`ARRAY[]::text[]`),
+    pricePerNight: decimal("price_per_night", {
+      precision: 10,
+      scale: 2,
+    }).notNull(),
+    originalPrice: decimal("original_price", { precision: 10, scale: 2 }),
+    // Occupancy-based pricing
+    singleOccupancyPrice: decimal("single_occupancy_price", {
+      precision: 10,
+      scale: 2,
+    }),
+    doubleOccupancyPrice: decimal("double_occupancy_price", {
+      precision: 10,
+      scale: 2,
+    }),
+    tripleOccupancyPrice: decimal("triple_occupancy_price", {
+      precision: 10,
+      scale: 2,
+    }),
+    maxGuests: integer("max_guests").notNull().default(2),
+    bedrooms: integer("bedrooms").notNull().default(1),
+    beds: integer("beds").notNull().default(1),
+    bathrooms: integer("bathrooms").notNull().default(1),
+    rating: decimal("rating", { precision: 3, scale: 2 }).default("0"),
+    reviewCount: integer("review_count").default(0),
+    status: propertyStatusEnum("status").notNull().default("draft"),
+    inquiryOnly: boolean("inquiry_only").notNull().default(false),
+    verificationNotes: text("verification_notes"),
+    verifiedAt: timestamp("verified_at"),
+    verifiedBy: varchar("verified_by").references(() => users.id),
+    policies: text("policies"),
+    checkInTime: varchar("check_in_time", { length: 20 }),
+    checkOutTime: varchar("check_out_time", { length: 20 }),
+    receptionNumber: varchar("reception_number", { length: 20 }),
+    safetyFeatures: text("safety_features")
+      .array()
+      .default(sql`ARRAY[]::text[]`),
+    cancellationPolicy: text("cancellation_policy"),
+    // Structured cancellation policy
+    cancellationPolicyType: cancellationPolicyTypeEnum(
+      "cancellation_policy_type",
+    ).default("flexible"),
+    freeCancellationHours: integer("free_cancellation_hours").default(24), // Hours before check-in for free cancellation
+    partialRefundPercent: integer("partial_refund_percent").default(50), // Refund percentage for moderate policy
+    cancellationPolicyConfigured: boolean("cancellation_policy_configured")
+      .notNull()
+      .default(false), // True when owner explicitly saves policy
+    // Guest policies
+    localIdAllowed: boolean("local_id_allowed").notNull().default(false),
+    hourlyBookingAllowed: boolean("hourly_booking_allowed")
+      .notNull()
+      .default(false),
+    foreignGuestsAllowed: boolean("foreign_guests_allowed")
+      .notNull()
+      .default(false),
+    coupleFriendly: boolean("couple_friendly").notNull().default(false),
+    petsAllowed: boolean("pets_allowed").notNull().default(false),
+    smokingAllowed: boolean("smoking_allowed").notNull().default(false),
+    liquorAllowed: boolean("liquor_allowed").notNull().default(false),
+    visitorsAllowed: boolean("visitors_allowed").notNull().default(false),
+    // Accepted ID types for check-in
+    acceptedLocalIdTypes: text("accepted_local_id_types")
+      .array()
+      .default(sql`ARRAY[]::text[]`),
+    acceptedForeignIdTypes: text("accepted_foreign_id_types")
+      .array()
+      .default(sql`ARRAY[]::text[]`),
+    // Channel manager integration
+    channelManagerEnabled: boolean("channel_manager_enabled")
+      .notNull()
+      .default(false),
+    channelManagerName: varchar("channel_manager_name", { length: 100 }),
+    channelManagerNameCustom: varchar("channel_manager_name_custom", {
+      length: 255,
+    }),
+    // Star rating (1–5)
+    starRating: smallint("star_rating"),
+    // Private contact fields — never returned in public API responses
+    contactEmail: varchar("contact_email", { length: 255 }),
+    contactPhone: varchar("contact_phone", { length: 20 }),
+    whatsappNumber: varchar("whatsapp_number", { length: 20 }),
+    // Admin suspension - property-level suspension when owner is suspended
+    suspended: boolean("suspended").notNull().default(false),
+    suspendedAt: timestamp("suspended_at"),
+    createdAt: timestamp("created_at").defaultNow(),
+    updatedAt: timestamp("updated_at").defaultNow(),
+  },
+  (table) => [
+    index("IDX_property_status").on(table.status),
+    index("IDX_property_owner").on(table.ownerId),
+    index("IDX_property_destination").on(table.destination),
+    index("IDX_property_status_owner").on(table.status, table.ownerId),
+  ],
+);
 // Admin Audit Logs table - tracks all admin actions for accountability
 export const adminAuditLogs = pgTable(
   "admin_audit_logs",
@@ -1126,8 +1138,8 @@ export const kycApplications = pgTable(
     lastName: varchar("last_name", { length: 100 }).notNull(),
     email: varchar("email", { length: 255 }).notNull(),
     phone: varchar("phone", { length: 20 }).notNull(),
-      alternativePhone: varchar("alternative_phone", { length: 20 }),
-      businessName: varchar("business_name", { length: 255 }).notNull(),
+    alternativePhone: varchar("alternative_phone", { length: 20 }),
+    businessName: varchar("business_name", { length: 255 }).notNull(),
     flatNo: varchar("flat_no", { length: 50 }),
     houseNo: varchar("house_no", { length: 50 }),
     streetAddress: varchar("street_address", { length: 255 }).notNull(),
@@ -2400,8 +2412,14 @@ export const roomPriceOverrides = pgTable(
       .references(() => roomTypes.id, { onDelete: "cascade" }),
     date: varchar("date", { length: 10 }).notNull(), // ISO date string "YYYY-MM-DD"
     roomPrice: decimal("room_price", { precision: 10, scale: 2 }), // single/base override (nullable)
-    doublePriceOverride: decimal("double_price_override", { precision: 10, scale: 2 }),
-    triplePriceOverride: decimal("triple_price_override", { precision: 10, scale: 2 }),
+    doublePriceOverride: decimal("double_price_override", {
+      precision: 10,
+      scale: 2,
+    }),
+    triplePriceOverride: decimal("triple_price_override", {
+      precision: 10,
+      scale: 2,
+    }),
     createdBy: varchar("created_by").references(() => users.id),
     createdAt: timestamp("created_at").defaultNow(),
   },

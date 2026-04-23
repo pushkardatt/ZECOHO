@@ -196,7 +196,8 @@ export interface IStorage {
   deleteRoom(id: string): Promise<void>;
   getRoomType(id: string): Promise<RoomType | undefined>;
   getRoomTypes(propertyId: string): Promise<RoomType[]>;
-
+  getRoomTypesByPropertyIds(propertyIds: string[]): Promise<RoomType[]>;
+  getUsersByIds(userIds: string[]): Promise<User[]>;
   getRoomOptions(roomTypeId: string): Promise<RoomOption[]>;
   getRoomOption(id: string): Promise<RoomOption | undefined>;
   createRoomOption(option: InsertRoomOption): Promise<RoomOption>;
@@ -983,6 +984,19 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(roomTypes)
       .where(eq(roomTypes.propertyId, propertyId));
+  }
+
+  async getRoomTypesByPropertyIds(propertyIds: string[]): Promise<RoomType[]> {
+    if (propertyIds.length === 0) return [];
+    return await db
+      .select()
+      .from(roomTypes)
+      .where(inArray(roomTypes.propertyId, propertyIds));
+  }
+
+  async getUsersByIds(userIds: string[]): Promise<User[]> {
+    if (userIds.length === 0) return [];
+    return await db.select().from(users).where(inArray(users.id, userIds));
   }
 
   async getRoomOptions(roomTypeId: string): Promise<RoomOption[]> {
@@ -3135,7 +3149,10 @@ export class DatabaseStorage implements IStorage {
       .from(roomTypes)
       .where(
         roomTypeId
-          ? and(eq(roomTypes.propertyId, propertyId), eq(roomTypes.id, roomTypeId))
+          ? and(
+              eq(roomTypes.propertyId, propertyId),
+              eq(roomTypes.id, roomTypeId),
+            )
           : eq(roomTypes.propertyId, propertyId),
       );
     const checkStartDate = startDate || new Date();
@@ -3666,8 +3683,19 @@ export class DatabaseStorage implements IStorage {
     price: number,
     occupancyTier: 1 | 2 | 3 = 1,
   ): Promise<RoomPriceOverride> {
-    type InsertVal = { propertyId: string; roomTypeId: string; date: string; roomPrice?: string; doublePriceOverride?: string; triplePriceOverride?: string };
-    type UpdateSet = { roomPrice?: string; doublePriceOverride?: string; triplePriceOverride?: string };
+    type InsertVal = {
+      propertyId: string;
+      roomTypeId: string;
+      date: string;
+      roomPrice?: string;
+      doublePriceOverride?: string;
+      triplePriceOverride?: string;
+    };
+    type UpdateSet = {
+      roomPrice?: string;
+      doublePriceOverride?: string;
+      triplePriceOverride?: string;
+    };
     const insertValues: InsertVal = { propertyId, roomTypeId, date };
     const updateSet: UpdateSet = {};
     if (occupancyTier === 2) {
