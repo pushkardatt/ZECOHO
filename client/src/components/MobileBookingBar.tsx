@@ -514,24 +514,10 @@ export function MobileBookingBar({
                     </div>
                   )}
 
-                {bookingStep === "details" && detailsContent && (
-                  <div className="space-y-4">{detailsContent}</div>
-                )}
               </div>
 
               {/* Reserve Button */}
               <div className="sticky bottom-0 pt-4 pb-6 bg-background border-t mt-4">
-                {bookingStep === "details" && onBackToSelect && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="w-full mb-2"
-                    onClick={onBackToSelect}
-                    data-testid="mobile-button-back-to-select"
-                  >
-                    Back to Room Selection
-                  </Button>
-                )}
                 <Button
                   className="w-full"
                   size="lg"
@@ -542,9 +528,7 @@ export function MobileBookingBar({
                   {isReserving ? "Processing..." : disabledReason || "Reserve"}
                 </Button>
                 <p className="text-center text-sm text-muted-foreground mt-2">
-                  {bookingStep === "details"
-                    ? "Pay directly at the hotel"
-                    : "No payment required now"}
+                  No payment required now
                 </p>
               </div>
             </SheetContent>

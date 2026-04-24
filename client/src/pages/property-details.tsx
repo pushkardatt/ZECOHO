@@ -1334,12 +1334,18 @@ export default function PropertyDetails() {
       return;
     }
 
-    if (bookingStep === "select") {
-      setBookingStep("details");
-      return;
-    }
-
-    bookingMutation.mutate();
+    // Navigate to the dedicated checkout page (MMT-style)
+    const params = new URLSearchParams({
+      propertyId: propertyId || "",
+      roomTypeId: selectedRoomTypeId,
+      checkIn,
+      checkOut,
+      adults: adults.toString(),
+      children: children.toString(),
+      rooms: rooms.toString(),
+    });
+    if (selectedMealOptionId) params.set("mealOptionId", selectedMealOptionId);
+    setLocation(`/checkout?${params.toString()}`);
   };
 
   // Get minimum price from room types for mobile booking bar (moved before early returns)
@@ -2956,101 +2962,26 @@ export default function PropertyDetails() {
                       );
                     })()}
 
-                  {bookingStep === "details" &&
-                    nights > 0 &&
-                    selectedRoomTypeId &&
-                    (() => {
-                      const rt = roomTypes.find(
-                        (rt: any) => rt.id === selectedRoomTypeId,
-                      );
-                      if (!rt) return null;
-
-                      const adultsPerRoom = Math.ceil(adults / rooms);
-                      let occupancyLabel = "";
-                      if (adultsPerRoom >= 3 && rt.tripleOccupancyPrice) {
-                        occupancyLabel = "Triple occupancy";
-                      } else if (
-                        adultsPerRoom >= 2 &&
-                        rt.doubleOccupancyPrice
-                      ) {
-                        occupancyLabel = "Double occupancy";
-                      } else if (rt.singleOccupancyPrice) {
-                        occupancyLabel = "Single occupancy";
-                      }
-
-                      let originalPrice: number | null = null;
-                      if (
-                        rt.originalPrice &&
-                        parseFloat(rt.originalPrice) > parseFloat(rt.basePrice)
-                      ) {
-                        originalPrice = Number(rt.originalPrice);
-                      }
-
-                      let mealOptionName = "";
-                      let mealOptionPrice = 0;
-                      if (selectedMealOptionId && rt.mealOptions) {
-                        const sel = rt.mealOptions.find(
-                          (opt: any) => opt.id === selectedMealOptionId,
-                        );
-                        if (sel) {
-                          mealOptionName = sel.name;
-                          mealOptionPrice = Number(sel.priceAdjustment);
-                        }
-                      }
-
-                      const breakdownData = getPriceBreakdownComponents();
-                      if (!breakdownData) return null;
-
-                      return (
-                        <div className="space-y-4" ref={travellerDetailsRef}>
-                          <GuestDetailsForm
-                            user={user ?? null}
-                            adults={adults}
-                            children={children}
-                            onValidChange={handleGuestDetailsChange}
-                          />
-                          <BookingPriceSummary breakdown={breakdownData} />
-                        </div>
-                      );
-                    })()}
-
-                  {bookingStep === "details" && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="w-full mb-2"
-                      onClick={() => setBookingStep("select")}
-                      data-testid="button-back-to-select"
-                    >
-                      Back to Room Selection
-                    </Button>
-                  )}
 
                   <Button
                     className="w-full"
                     size="lg"
                     onClick={handleBooking}
                     disabled={
-                      bookingMutation.isPending ||
                       !checkIn ||
                       !checkOut ||
                       !selectedRoomTypeId ||
                       hasDateOverlap ||
                       hasBlockedDateOverlap ||
-                      isBookingDisabled ||
-                      (bookingStep === "details" && !guestDetailsValid)
+                      isBookingDisabled
                     }
                     data-testid="button-reserve"
                   >
-                    {bookingMutation.isPending
-                      ? "Processing..."
-                      : !selectedRoomTypeId
-                        ? "Select Room Type"
-                        : isBookingDisabled
-                          ? "Not Available"
-                          : bookingStep === "select"
-                            ? "Reserve"
-                            : "Confirm Booking"}
+                    {!selectedRoomTypeId
+                      ? "Select Room Type"
+                      : isBookingDisabled
+                        ? "Not Available"
+                        : "Reserve"}
                   </Button>
 
                   <div className="text-center mt-2 space-y-1">
@@ -3183,26 +3114,21 @@ export default function PropertyDetails() {
           onRoomTypeSelect={setSelectedRoomTypeId}
           onMealOptionSelect={setSelectedMealOptionId}
           onReserve={handleBooking}
-          isReserving={bookingMutation.isPending}
+          isReserving={false}
           isDisabled={
             isBookingDisabled ||
             !checkIn ||
             !checkOut ||
             !selectedRoomTypeId ||
             hasDateOverlap ||
-            hasBlockedDateOverlap ||
-            (bookingStep === "details" && !guestDetailsValid)
+            hasBlockedDateOverlap
           }
           disabledReason={
             !selectedRoomTypeId
               ? "Select Room Type"
               : isBookingDisabled
                 ? "Not Available"
-                : bookingStep === "select"
-                  ? "Reserve"
-                  : !guestDetailsValid
-                    ? "Fill Traveller Details"
-                    : "Confirm Booking"
+                : undefined
           }
           totalPrice={totalPrice}
           nights={nights}
@@ -3210,28 +3136,6 @@ export default function PropertyDetails() {
           hasBlockedDateOverlap={hasBlockedDateOverlap}
           bookedDates={bookedDatesForCalendar}
           blockedDates={blockedDatesForCalendar}
-          bookingStep={bookingStep}
-          onBackToSelect={() => setBookingStep("select")}
-          detailsContent={
-            bookingStep === "details" && selectedRoomTypeId
-              ? (() => {
-                  const breakdownData = getPriceBreakdownComponents();
-                  if (!breakdownData) return null;
-
-                  return (
-                    <>
-                      <GuestDetailsForm
-                        user={user ?? null}
-                        adults={adults}
-                        children={children}
-                        onValidChange={handleGuestDetailsChange}
-                      />
-                      <BookingPriceSummary breakdown={breakdownData} />
-                    </>
-                  );
-                })()
-              : undefined
-          }
         />
       </div>
 
