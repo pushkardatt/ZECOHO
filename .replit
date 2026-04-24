@@ -58,3 +58,7 @@ VAPID_PUBLIC_KEY = "BEQoTPsYLZBe-sHxwi_pQzUhpZy-cYxXOvBMYgTbZ5dAWVx_D6DwNtMYN3nn
 VITE_VAPID_PUBLIC_KEY = "BPLw9SQ1N9QGhTFRO_OSd-g9602LNee718G9ackrlk1Cd0s1G3eFuYB_6c57440rTh-rOJG3l3qBNPj3HRl80yA"
 
 [userenv.production]
+
+[postMerge]
+path = "scripts/post-merge.sh"
+timeoutMs = 20000
