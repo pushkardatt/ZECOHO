@@ -106,14 +106,6 @@ export default function Home() {
     wishlists.map((w: any) => w.propertyId),
   );
 
-  const handleSearch = (params: any) => {
-    const searchParams = new URLSearchParams();
-    if (params.destination) searchParams.set("destination", params.destination);
-    if (params.checkIn) searchParams.set("checkIn", params.checkIn);
-    if (params.checkOut) searchParams.set("checkOut", params.checkOut);
-    if (params.guests) searchParams.set("guests", params.guests.toString());
-    setLocation(`/search?${searchParams.toString()}`);
-  };
 
   const categories = [
     { icon: Hotel, label: "Hotels", type: "hotel" },
@@ -161,12 +153,7 @@ export default function Home() {
                   className="bg-background rounded-2xl shadow-xl border p-3 overflow-visible"
                   style={{ overflow: "visible" }}
                 >
-                  <SearchBar
-                    onSearch={handleSearch}
-                    compact={false}
-                    showDates={true}
-                    showGuests={true}
-                  />
+                  <SearchBar />
                 </div>
               </div>
             </div>
@@ -238,12 +225,7 @@ export default function Home() {
                 className="bg-background rounded-2xl shadow-xl border p-4 overflow-visible"
                 style={{ overflow: "visible" }}
               >
-                <SearchBar
-                  onSearch={handleSearch}
-                  compact={false}
-                  showDates={true}
-                  showGuests={true}
-                />
+                <SearchBar />
               </div>
             </div>
 

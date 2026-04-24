@@ -97,18 +97,6 @@ export default function Landing() {
     .filter((p) => p.status === "published")
     .slice(0, 8);
 
-  const handleSearch = (params: any) => {
-    const searchParams = new URLSearchParams();
-    if (params.destination) searchParams.set("destination", params.destination);
-    if (params.checkIn) searchParams.set("checkIn", params.checkIn);
-    if (params.checkOut) searchParams.set("checkOut", params.checkOut);
-    if (params.guests) searchParams.set("guests", params.guests.toString());
-    if (params.adults) searchParams.set("adults", params.adults.toString());
-    if (params.children !== undefined)
-      searchParams.set("children", params.children.toString());
-    if (params.rooms) searchParams.set("rooms", params.rooms.toString());
-    setLocation(`/search?${searchParams.toString()}`);
-  };
 
   const categories = [
     { icon: Hotel, label: "Hotels", type: "hotel" },
@@ -188,13 +176,7 @@ export default function Landing() {
             {/* Search Bar - First on Mobile */}
             <div className="mb-6">
               <div className="bg-background rounded-2xl shadow-xl border p-3">
-                <SearchBar
-                  onSearch={handleSearch}
-                  compact={false}
-                  showDates={true}
-                  showGuests={true}
-                  ctaText="Book Now"
-                />
+                <SearchBar ctaText="Book Now" />
               </div>
             </div>
 
@@ -268,13 +250,7 @@ export default function Landing() {
             {/* Search Bar */}
             <div className="max-w-4xl mx-auto mb-6">
               <div className="bg-background rounded-2xl shadow-xl border p-4">
-                <SearchBar
-                  onSearch={handleSearch}
-                  compact={false}
-                  showDates={true}
-                  showGuests={true}
-                  ctaText="Book Now"
-                />
+                <SearchBar ctaText="Book Now" />
               </div>
             </div>
 
