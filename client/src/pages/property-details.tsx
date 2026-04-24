@@ -71,7 +71,10 @@ import {
   Minus,
   Plus,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   Info,
+  X,
 } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
 import { NearbyPlaces } from "@/components/NearbyPlaces";
@@ -97,7 +100,6 @@ import {
   RoomTypeCards,
   type RoomInventory,
 } from "@/components/RoomTypeCard";
-import { ImageLightbox } from "@/components/ImageLightbox";
 import {
   GuestDetailsForm,
   type GuestDetailsFormData,
@@ -189,6 +191,14 @@ export default function PropertyDetails() {
   const [guestDetailsData, setGuestDetailsData] =
     useState<GuestDetailsFormData | null>(null);
   const travellerDetailsRef = useRef<HTMLDivElement>(null);
+  const overviewRef = useRef<HTMLDivElement>(null);
+  const roomsRef = useRef<HTMLDivElement>(null);
+  const amenitiesRef = useRef<HTMLDivElement>(null);
+  const locationRef = useRef<HTMLDivElement>(null);
+  const rulesRef = useRef<HTMLDivElement>(null);
+  const reviewsRef = useRef<HTMLDivElement>(null);
+  const tabsBarRef = useRef<HTMLDivElement>(null);
+  const galleryTouchStartX = useRef(0);
   const [profileDialogOpen, setProfileDialogOpen] = useState(false);
   const [pendingContactAction, setPendingContactAction] = useState<
     "chat" | "call" | null
@@ -201,8 +211,9 @@ export default function PropertyDetails() {
   const [ownerResponseDialogOpen, setOwnerResponseDialogOpen] = useState(false);
   const [selectedReviewId, setSelectedReviewId] = useState<string | null>(null);
   const [amenitiesDialogOpen, setAmenitiesDialogOpen] = useState(false);
-  const [lightboxOpen, setLightboxOpen] = useState(false);
-  const [lightboxIndex, setLightboxIndex] = useState(0);
+  const [galleryOpen, setGalleryOpen] = useState(false);
+  const [galleryIndex, setGalleryIndex] = useState(0);
+  const [activeTab, setActiveTab] = useState("overview");
   const getHelpfulStorageKey = () =>
     user?.id ? `markedHelpfulReviews_${user.id}` : "markedHelpfulReviews";
 
@@ -586,6 +597,15 @@ export default function PropertyDetails() {
     return selectedRoomInventory.isLowStock === true;
   }, [selectedRoomInventory]);
 
+  // Total available rooms across all room types — used for low-inventory badge in sidebar
+  const totalAvailableRooms = useMemo(() => {
+    if (!roomInventory.length || !checkIn || !checkOut) return null;
+    return roomInventory.reduce(
+      (sum: number, ri: any) => sum + (ri.isSoldOut ? 0 : (ri.availableRooms ?? 0)),
+      0,
+    );
+  }, [roomInventory, checkIn, checkOut]);
+
   // Auto-adjust rooms when guest count changes (both adults and children affect room count)
   useEffect(() => {
     if (adults > 0) {
@@ -901,6 +921,61 @@ export default function PropertyDetails() {
       }, 100);
     }
   }, [bookingStep]);
+
+  // Gallery keyboard navigation + body scroll lock
+  const goGalleryNext = useCallback(() => {
+    setGalleryIndex((i) => {
+      const len = property?.images?.length;
+      return len && len > 1 ? (i + 1) % len : 0;
+    });
+  }, [property?.images?.length]);
+
+  const goGalleryPrev = useCallback(() => {
+    setGalleryIndex((i) => {
+      const len = property?.images?.length;
+      return len && len > 1 ? (i - 1 + len) % len : 0;
+    });
+  }, [property?.images?.length]);
+
+  useEffect(() => {
+    if (!galleryOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setGalleryOpen(false);
+      else if (e.key === "ArrowRight") goGalleryNext();
+      else if (e.key === "ArrowLeft") goGalleryPrev();
+    };
+    document.addEventListener("keydown", onKey);
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.body.style.overflow = "";
+    };
+  }, [galleryOpen, goGalleryNext, goGalleryPrev]);
+
+  useEffect(() => {
+    if (!galleryOpen) return;
+    const onTouchStart = (e: TouchEvent) => {
+      galleryTouchStartX.current = e.touches[0].clientX;
+    };
+    const onTouchEnd = (e: TouchEvent) => {
+      const delta = e.changedTouches[0].clientX - galleryTouchStartX.current;
+      if (Math.abs(delta) > 50) delta < 0 ? goGalleryNext() : goGalleryPrev();
+    };
+    document.addEventListener("touchstart", onTouchStart);
+    document.addEventListener("touchend", onTouchEnd);
+    return () => {
+      document.removeEventListener("touchstart", onTouchStart);
+      document.removeEventListener("touchend", onTouchEnd);
+    };
+  }, [galleryOpen, goGalleryNext, goGalleryPrev]);
+
+  const scrollToSection = (ref: { current: HTMLDivElement | null }, tab: string) => {
+    setActiveTab(tab);
+    const tabsBarHeight = tabsBarRef.current?.offsetHeight ?? 48;
+    const top = (ref.current?.getBoundingClientRect().top ?? 0) + window.scrollY - 64 - tabsBarHeight;
+    window.scrollTo({ top, behavior: "smooth" });
+  };
+
   const bookingMutation = useMutation({
     mutationFn: async () => {
       if (!checkIn || !checkOut) {
@@ -1412,27 +1487,35 @@ export default function PropertyDetails() {
   }
 
   const mainImage = property.images?.[0] || "/placeholder-property.jpg";
-  const additionalImages = property.images?.slice(1, 5) || [];
+  const sideImages = property.images?.slice(1, 3) ?? [];
+  const allImages = (property.images?.length ?? 0) > 0 ? property.images! : [mainImage];
 
   return (
     <>
       <div className="min-h-screen pb-24 md:pb-16">
         <Helmet>
           <title>
-            {property.title} in {property.destination} — Book Direct, Save
-            15-25% | ZECOHO
+            {property.title}, {property.propCity || property.destination} - Book Direct at Best Price | ZECOHO
           </title>
           <meta
             name="description"
-            content={`Book ${property.title} directly on ZECOHO. No commission, no hidden fees. Save 15-25% vs MakeMyTrip & OYO. ${property.description?.slice(0, 100) || ""}`}
+            content={
+              property.description
+                ? property.description.slice(0, 155)
+                : `Book ${property.title} directly on ZECOHO. No commission, no hidden fees.`
+            }
           />
           <meta
             property="og:title"
-            content={`${property.title} — Direct Booking | ZECOHO`}
+            content={`${property.title}, ${property.propCity || property.destination} | ZECOHO`}
           />
           <meta
             property="og:description"
-            content={`Book ${property.title} in ${property.destination} directly. Zero commission. Save 15-25%.`}
+            content={
+              property.description
+                ? property.description.slice(0, 155)
+                : `Book ${property.title} directly on ZECOHO.`
+            }
           />
           <link
             rel="canonical"
@@ -1446,11 +1529,44 @@ export default function PropertyDetails() {
               description: property.description,
               address: {
                 "@type": "PostalAddress",
-                addressLocality: property.destination,
+                streetAddress: property.propStreetAddress || undefined,
+                addressLocality: property.propCity || property.destination,
+                addressRegion: property.propState || undefined,
+                postalCode: property.propPincode || undefined,
                 addressCountry: "IN",
               },
-              priceRange: `₹${property.pricePerNight}`,
+              ...((property as any).starRating
+                ? { starRating: { "@type": "Rating", ratingValue: (property as any).starRating } }
+                : {}),
+              ...(minPrice ? { priceRange: `₹${minPrice}+` } : {}),
+              amenityFeature: propertyAmenities.map((a) => ({
+                "@type": "LocationFeatureSpecification",
+                name: a.name,
+                value: true,
+              })),
               url: `https://www.zecoho.com/properties/${property.id}`,
+            })}
+          </script>
+          <script type="application/ld+json">
+            {JSON.stringify({
+              "@context": "https://schema.org",
+              "@type": "BreadcrumbList",
+              itemListElement: [
+                { "@type": "ListItem", position: 1, name: "Home", item: "https://www.zecoho.com/" },
+                { "@type": "ListItem", position: 2, name: "Search", item: "https://www.zecoho.com/search" },
+                {
+                  "@type": "ListItem",
+                  position: 3,
+                  name: property.propCity || property.destination,
+                  item: `https://www.zecoho.com/search?city=${encodeURIComponent(property.propCity || property.destination || "")}`,
+                },
+                {
+                  "@type": "ListItem",
+                  position: 4,
+                  name: property.title,
+                  item: `https://www.zecoho.com/properties/${property.id}`,
+                },
+              ],
             })}
           </script>
         </Helmet>
@@ -1512,85 +1628,135 @@ export default function PropertyDetails() {
             </div>
           </div>
 
-          {/* Image Gallery */}
-          <div className="mb-8">
-            {additionalImages.length > 0 ? (
-              <div className="relative grid grid-cols-4 gap-2 rounded-xl overflow-hidden h-[500px]">
+          {/* Image Gallery — 1 large + 2 stacked side images (MMT style) */}
+          <div className="mb-6">
+            {sideImages.length > 0 ? (
+              <div
+                className="relative rounded-xl overflow-hidden flex gap-2"
+                style={{ height: "420px" }}
+              >
+                {/* Main image */}
                 <div
-                  className="col-span-4 md:col-span-2 md:row-span-2 cursor-pointer"
-                  onClick={() => {
-                    setLightboxIndex(0);
-                    setLightboxOpen(true);
-                  }}
+                  className="flex-[2] overflow-hidden cursor-pointer"
+                  onClick={() => { setGalleryIndex(0); setGalleryOpen(true); }}
                   data-testid="button-image-main"
                 >
                   <img
                     src={mainImage}
                     alt={property.title}
-                    className="w-full h-full object-cover hover:opacity-90 transition-opacity"
+                    className="w-full h-full object-cover hover:scale-[1.02] transition-transform duration-300"
                   />
                 </div>
-                {additionalImages.map((img, idx) => (
-                  <div
-                    key={idx}
-                    className="col-span-2 md:col-span-1 cursor-pointer"
-                    onClick={() => {
-                      setLightboxIndex(idx + 1);
-                      setLightboxOpen(true);
-                    }}
-                    data-testid={`button-image-${idx + 1}`}
-                  >
-                    <img
-                      src={img}
-                      alt={`${property.title} ${idx + 2}`}
-                      className="w-full h-full object-cover hover:opacity-90 transition-opacity"
-                    />
-                  </div>
-                ))}
-                {/* View all photos button */}
-                {(property.images?.length ?? 0) > 5 && (
+                {/* Side images */}
+                <div className="flex-1 flex flex-col gap-2">
+                  {sideImages[0] && (
+                    <div
+                      className="flex-1 overflow-hidden cursor-pointer rounded-tr-xl"
+                      onClick={() => { setGalleryIndex(1); setGalleryOpen(true); }}
+                      data-testid="button-image-1"
+                    >
+                      <img
+                        src={sideImages[0]}
+                        alt={`${property.title} 2`}
+                        className="w-full h-full object-cover hover:scale-[1.02] transition-transform duration-300"
+                      />
+                    </div>
+                  )}
+                  {sideImages[1] && (
+                    <div
+                      className="flex-1 overflow-hidden cursor-pointer rounded-br-xl"
+                      onClick={() => { setGalleryIndex(2); setGalleryOpen(true); }}
+                      data-testid="button-image-2"
+                    >
+                      <img
+                        src={sideImages[1]}
+                        alt={`${property.title} 3`}
+                        className="w-full h-full object-cover hover:scale-[1.02] transition-transform duration-300"
+                      />
+                    </div>
+                  )}
+                </div>
+                {/* View all photos */}
+                {allImages.length > 1 && (
                   <button
-                    className="absolute bottom-4 right-4 bg-white/95 text-foreground rounded-lg px-3 py-1.5 text-sm font-medium shadow-md flex items-center gap-1.5 hover:bg-white transition-colors border border-border/50"
-                    onClick={() => { setLightboxIndex(0); setLightboxOpen(true); }}
+                    className="absolute bottom-4 right-4 bg-white/95 text-foreground rounded-lg px-3 py-2 text-sm font-medium shadow-md flex items-center gap-2 hover:bg-white transition-colors border border-border/50"
+                    onClick={(e) => { e.stopPropagation(); setGalleryIndex(0); setGalleryOpen(true); }}
                     data-testid="button-view-all-photos"
                   >
                     <span className="text-base leading-none">⊞</span>
-                    View all {property.images?.length} photos
+                    View all {allImages.length} photos
                   </button>
                 )}
               </div>
             ) : (
+              /* Single image or placeholder */
               <div
-                className="aspect-[2/1] rounded-xl overflow-hidden cursor-pointer"
-                onClick={() => {
-                  setLightboxIndex(0);
-                  setLightboxOpen(true);
-                }}
+                className="relative rounded-xl overflow-hidden cursor-pointer group"
+                style={{ height: "420px" }}
+                onClick={() => { setGalleryIndex(0); setGalleryOpen(true); }}
                 data-testid="button-image-single"
               >
                 <img
                   src={mainImage}
                   alt={property.title}
-                  className="w-full h-full object-cover hover:opacity-90 transition-opacity"
+                  className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-300"
                 />
+                {allImages.length > 1 && (
+                  <button
+                    className="absolute bottom-4 right-4 bg-white/95 text-foreground rounded-lg px-3 py-2 text-sm font-medium shadow-md flex items-center gap-2 hover:bg-white transition-colors border border-border/50"
+                    onClick={(e) => { e.stopPropagation(); setGalleryIndex(0); setGalleryOpen(true); }}
+                    data-testid="button-view-all-photos-single"
+                  >
+                    <span className="text-base leading-none">⊞</span>
+                    View all {allImages.length} photos
+                  </button>
+                )}
               </div>
             )}
           </div>
 
-          {/* Image Lightbox */}
-          <ImageLightbox
-            images={property.images || [mainImage]}
-            initialIndex={lightboxIndex}
-            isOpen={lightboxOpen}
-            onClose={() => setLightboxOpen(false)}
-            alt={property.title}
-          />
+          {/* Tab Navigation */}
+          <div
+            ref={tabsBarRef}
+            className="sticky top-16 z-20 bg-background border-b mb-8 -mx-4 md:-mx-6 px-4 md:px-6"
+          >
+            <nav
+              className="flex overflow-x-auto"
+              style={{ scrollbarWidth: "none" }}
+              aria-label="Property sections"
+            >
+              {(
+                [
+                  { id: "overview", label: "Overview", ref: overviewRef },
+                  { id: "rooms", label: "Rooms", ref: roomsRef },
+                  { id: "amenities", label: "Amenities", ref: amenitiesRef },
+                  { id: "location", label: "Location", ref: locationRef },
+                  { id: "rules", label: "Rules", ref: rulesRef },
+                  { id: "reviews", label: "Reviews", ref: reviewsRef },
+                ] as { id: string; label: string; ref: { current: HTMLDivElement | null } }[]
+              ).map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => scrollToSection(tab.ref, tab.id)}
+                  className={`flex-shrink-0 px-4 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
+                    activeTab === tab.id
+                      ? "border-primary text-primary"
+                      : "border-transparent text-muted-foreground hover:text-foreground hover:border-muted-foreground/50"
+                  }`}
+                  aria-current={activeTab === tab.id ? "true" : undefined}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </nav>
+          </div>
 
           {/* Content Grid */}
           <div className="grid md:grid-cols-3 gap-8">
             {/* Main Content */}
             <div className="md:col-span-2 space-y-8">
               {/* Quick Info */}
+              <div ref={overviewRef} className="scroll-mt-36">
               <Card>
                 <CardContent className="p-6">
                   <h2 className="text-xl font-semibold mb-4">
@@ -1632,6 +1798,7 @@ export default function PropertyDetails() {
                   </div>
                 </CardContent>
               </Card>
+              </div>
 
               {/* Description */}
               <div>
@@ -1643,8 +1810,45 @@ export default function PropertyDetails() {
                 </p>
               </div>
 
+              {/* Rooms */}
+              <div ref={roomsRef} className="scroll-mt-36">
+                <h2 className="text-xl font-semibold mb-4">Available Rooms</h2>
+                {roomTypes.length > 0 ? (
+                  <RoomTypeCards
+                    roomTypes={roomTypes.filter((rt: any) => rt.isActive !== false)}
+                    propertyImages={property?.images || []}
+                    selectedRoomTypeId={selectedRoomTypeId}
+                    selectedMealOptionId={selectedMealOptionId}
+                    onRoomTypeSelect={(id) => {
+                      setSelectedRoomTypeId(id);
+                      setSelectedMealOptionId(null);
+                    }}
+                    onMealOptionSelect={setSelectedMealOptionId}
+                    inventoryMap={Object.fromEntries(
+                      roomInventory.map((ri: any) => [
+                        ri.roomTypeId,
+                        {
+                          roomTypeId: ri.roomTypeId,
+                          availableRooms: ri.availableRooms,
+                          isSoldOut: ri.isSoldOut || false,
+                          isLowStock: ri.isLowStock || false,
+                        },
+                      ]),
+                    )}
+                    showDatesContext={!!(checkIn && checkOut)}
+                    adults={adults}
+                    guests={guests}
+                    nights={nights}
+                  />
+                ) : (
+                  <p className="text-muted-foreground text-sm">
+                    No room types have been configured for this property.
+                  </p>
+                )}
+              </div>
+
               {/* Amenities */}
-              <div>
+              <div ref={amenitiesRef} className="scroll-mt-36">
                 <h2 className="text-xl font-semibold mb-6">
                   What this place offers
                 </h2>
@@ -1718,7 +1922,7 @@ export default function PropertyDetails() {
               </div>
 
               {/* Location Map */}
-              <div>
+              <div ref={locationRef} className="scroll-mt-36">
                 <h2 className="text-xl font-semibold mb-2">Where you'll be</h2>
                 {property.latitude && property.longitude ? (
                   <>
@@ -1802,7 +2006,7 @@ export default function PropertyDetails() {
                   property.safetyFeatures.length > 0) ||
                 property.cancellationPolicy ||
                 property.maxGuests) && (
-                <div>
+                <div ref={rulesRef} className="scroll-mt-36">
                   <h2 className="text-xl font-semibold mb-6">Things to know</h2>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                     {/* House Rules */}
@@ -1971,7 +2175,7 @@ export default function PropertyDetails() {
               )}
 
               {/* Reviews Section */}
-              <div>
+              <div ref={reviewsRef} className="scroll-mt-36">
                 <div className="flex items-center justify-between mb-6">
                   <div>
                     <h2 className="text-xl font-semibold mb-2">
@@ -2305,7 +2509,7 @@ export default function PropertyDetails() {
             </div>
 
             {/* Booking Card - Hidden on mobile, shown on desktop */}
-            <div className="hidden md:block md:sticky md:top-24 h-fit">
+            <div className="hidden md:block md:sticky md:top-20 h-fit">
               <Card>
                 <CardContent className="p-6">
                   <div className="mb-6">
@@ -2387,6 +2591,14 @@ export default function PropertyDetails() {
                           ({property.reviewCount} reviews)
                         </span>
                       </div>
+                    )}
+                    {totalAvailableRooms !== null && totalAvailableRooms > 0 && totalAvailableRooms < 3 && (
+                      <p
+                        className="text-sm font-semibold text-red-600 dark:text-red-400 mt-2"
+                        data-testid="text-low-inventory-warning"
+                      >
+                        Only {totalAvailableRooms} room{totalAvailableRooms !== 1 ? "s" : ""} left!
+                      </p>
                     )}
                   </div>
 
@@ -2964,7 +3176,7 @@ export default function PropertyDetails() {
 
 
                   <Button
-                    className="w-full"
+                    className="w-full bg-teal-600 hover:bg-teal-700 text-white font-semibold"
                     size="lg"
                     onClick={handleBooking}
                     disabled={
@@ -2981,7 +3193,7 @@ export default function PropertyDetails() {
                       ? "Select Room Type"
                       : isBookingDisabled
                         ? "Not Available"
-                        : "Reserve"}
+                        : "Book Now"}
                   </Button>
 
                   <div className="text-center mt-2 space-y-1">
@@ -3138,6 +3350,88 @@ export default function PropertyDetails() {
           blockedDates={blockedDatesForCalendar}
         />
       </div>
+
+      {/* Full-screen gallery modal — keyboard (arrows/esc), swipe, click-outside */}
+      {galleryOpen && (
+        <div
+          className="fixed inset-0 z-[60] bg-black/95 flex flex-col"
+          onClick={() => setGalleryOpen(false)}
+          data-testid="gallery-modal"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Property photo gallery"
+        >
+          <button
+            onClick={(e) => { e.stopPropagation(); setGalleryOpen(false); }}
+            className="absolute top-4 right-4 z-10 text-white bg-white/10 hover:bg-white/20 rounded-full p-2 transition-colors"
+            aria-label="Close gallery"
+            data-testid="button-gallery-close"
+          >
+            <X className="h-6 w-6" />
+          </button>
+
+          <div className="absolute top-5 left-1/2 -translate-x-1/2 z-10">
+            <span className="text-white text-sm bg-black/50 px-3 py-1 rounded-full" data-testid="text-gallery-counter">
+              {galleryIndex + 1} / {allImages.length}
+            </span>
+          </div>
+
+          {allImages.length > 1 && (
+            <>
+              <button
+                onClick={(e) => { e.stopPropagation(); goGalleryPrev(); }}
+                className="absolute left-4 top-1/2 -translate-y-1/2 z-10 text-white bg-white/10 hover:bg-white/20 rounded-full p-3 transition-colors"
+                aria-label="Previous photo"
+                data-testid="button-gallery-prev"
+              >
+                <ChevronLeft className="h-6 w-6" />
+              </button>
+              <button
+                onClick={(e) => { e.stopPropagation(); goGalleryNext(); }}
+                className="absolute right-4 top-1/2 -translate-y-1/2 z-10 text-white bg-white/10 hover:bg-white/20 rounded-full p-3 transition-colors"
+                aria-label="Next photo"
+                data-testid="button-gallery-next"
+              >
+                <ChevronRight className="h-6 w-6" />
+              </button>
+            </>
+          )}
+
+          <div className="flex-1 flex items-center justify-center p-4 md:p-12">
+            <img
+              src={allImages[galleryIndex]}
+              alt={`${property.title} photo ${galleryIndex + 1}`}
+              className="max-w-full max-h-full object-contain select-none"
+              onClick={(e) => e.stopPropagation()}
+              draggable={false}
+              data-testid="gallery-image"
+            />
+          </div>
+
+          {allImages.length > 1 && (
+            <div
+              className="flex gap-2 p-4 overflow-x-auto justify-center bg-black/40"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {allImages.map((img, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => setGalleryIndex(idx)}
+                  className={`flex-shrink-0 w-16 h-12 rounded overflow-hidden border-2 transition-all ${
+                    idx === galleryIndex
+                      ? "border-white"
+                      : "border-transparent opacity-60 hover:opacity-100"
+                  }`}
+                  aria-label={`Go to photo ${idx + 1}`}
+                  data-testid={`button-gallery-thumb-${idx}`}
+                >
+                  <img src={img} alt="" className="w-full h-full object-cover" />
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       <ProfileCompletionDialog
         open={profileDialogOpen}
