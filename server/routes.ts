@@ -41,7 +41,32 @@ import {
   updateKYCSchema,
   becomeOwnerSchema,
   insertKycApplicationSchema,
+  type User,
+  type Property,
 } from "@shared/schema";
+
+type SafeConversationUser = Omit<
+  User,
+  | "phone"
+  | "kycAddress"
+  | "governmentIdType"
+  | "governmentIdNumber"
+  | "kycStatus"
+  | "kycVerifiedAt"
+>;
+
+function sanitizeConversationUser(user: User): SafeConversationUser {
+  const {
+    phone,
+    kycAddress,
+    governmentIdType,
+    governmentIdNumber,
+    kycStatus,
+    kycVerifiedAt,
+    ...safe
+  } = user;
+  return safe;
+}
 import {
   ObjectStorageService,
   ObjectNotFoundError,
@@ -3312,6 +3337,17 @@ export async function registerRoutes(
           }
         }
 
+        // Strip private contact fields — never returned in public listing responses.
+        // Only the owner, admin, or a guest with a confirmed booking may see them
+        // (enforced per-property in GET /api/properties/:id).
+        const {
+          receptionNumber: _rn,
+          contactEmail: _ce,
+          contactPhone: _cp,
+          whatsappNumber: _wn,
+          ...publicProperty
+        } = property;
+
         if (property.status === "published") {
           const owner = ownersById.get(property.ownerId);
           const ownerPhone =
@@ -3321,7 +3357,7 @@ export async function registerRoutes(
             (requestUserId === property.ownerId ||
               guestBookedPropertyIds.has(property.id));
           return {
-            ...property,
+            ...publicProperty,
             startingRoomPrice,
             startingRoomOriginalPrice,
             ownerContact: owner
@@ -3337,7 +3373,7 @@ export async function registerRoutes(
           };
         }
         return {
-          ...property,
+          ...publicProperty,
           startingRoomPrice,
           startingRoomOriginalPrice,
         };
@@ -6761,7 +6797,16 @@ export async function registerRoutes(
     try {
       const userId = req.user.claims.sub;
       const conversations = await storage.getConversationsByUser(userId);
-      res.json(conversations);
+
+      // Strip sensitive KYC / identity fields from both guest and owner before
+      // returning — the messaging feature only needs basic profile info.
+      const safeConversations = conversations.map((conv) => ({
+        ...conv,
+        guest: sanitizeConversationUser(conv.guest),
+        owner: sanitizeConversationUser(conv.owner),
+      }));
+
+      res.json(safeConversations);
     } catch (error) {
       console.error("Error fetching conversations:", error);
       res.status(500).json({ message: "Failed to fetch conversations" });
