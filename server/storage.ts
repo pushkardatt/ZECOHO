@@ -30,6 +30,8 @@ import {
   supportMessages,
   supportTickets,
   pushSubscriptions,
+  chatLogs,
+  callLogs,
   type User,
   type UpsertUser,
   type Property,
@@ -940,6 +942,9 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteProperty(id: string): Promise<void> {
+    // chat_logs and call_logs have no cascade delete on their propertyId FK
+    await db.delete(chatLogs).where(eq(chatLogs.propertyId, id));
+    await db.delete(callLogs).where(eq(callLogs.propertyId, id));
     await db.delete(properties).where(eq(properties.id, id));
   }
 
