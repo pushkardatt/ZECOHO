@@ -4,6 +4,7 @@ import { Helmet } from "react-helmet-async";
 import { ChevronRight } from "lucide-react";
 import { PropertyCard } from "@/components/PropertyCard";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import type { Property } from "@shared/schema";
 import NotFound from "@/pages/not-found";
@@ -225,20 +226,42 @@ export default function CityHotels() {
             ))}
           </div>
         ) : (
-          <div className="text-center py-16">
+          <div className="text-center py-12 md:py-20 max-w-2xl mx-auto px-4">
+            <h2
+              className="text-2xl md:text-3xl font-bold mb-3"
+              data-testid="text-empty-heading"
+            >
+              Be the first hotel in {cityName} on ZECOHO!
+            </h2>
             <p
-              className="text-lg text-muted-foreground mb-4"
-              data-testid="text-no-hotels"
+              className="text-muted-foreground mb-6"
+              data-testid="text-empty-subtext"
             >
-              No hotels available in {cityName} yet.
+              We're actively onboarding hotels in {cityName}. List your
+              property today — zero commission, zero hidden charges. Join
+              India's fastest growing direct hotel booking platform.
             </p>
-            <Link
-              href="/search"
-              className="text-primary hover:underline"
-              data-testid="link-browse-all"
+            <div className="flex flex-col sm:flex-row gap-3 justify-center mb-4">
+              <Button asChild size="lg" data-testid="button-list-property">
+                <Link href="/list-property">List Your Property Free</Link>
+              </Button>
+              <Button
+                asChild
+                size="lg"
+                variant="outline"
+                data-testid="button-browse-hotels"
+              >
+                <Link href="/search">Browse All Hotels</Link>
+              </Button>
+            </div>
+            <div
+              className="flex flex-wrap justify-center gap-x-4 gap-y-1 text-xs text-muted-foreground"
+              data-testid="text-empty-trust"
             >
-              Browse all hotels
-            </Link>
+              <span>✓ Free listing</span>
+              <span>✓ Zero commission</span>
+              <span>✓ Direct bookings</span>
+            </div>
           </div>
         )}
       </div>
