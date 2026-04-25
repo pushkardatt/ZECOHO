@@ -54,6 +54,7 @@ import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import Landing from "@/pages/landing";
 import Search from "@/pages/search";
+import CityHotels from "@/pages/city-hotels";
 import SearchHistoryPage from "@/pages/search-history";
 import PropertyDetails from "@/pages/property-details";
 import Wishlist from "@/pages/wishlist";
@@ -187,6 +188,7 @@ function Router() {
       <Route path="/search" component={Search} />
       <Route path="/properties" component={Search} />
       <Route path="/properties/:id" component={PropertyDetails} />
+      <Route path="/hotels/:citySlug" component={CityHotels} />
       <Route path="/property/:propertyId/review" component={WriteReview} />
       <Route path="/destinations" component={Destinations} />
       <Route path="/destinations/:id" component={DestinationDetails} />
