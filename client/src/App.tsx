@@ -187,6 +187,7 @@ function Router() {
       <Route path="/kyc" component={KYC} />
       <Route path="/search" component={Search} />
       <Route path="/properties" component={Search} />
+      <Route path="/hotels/:citySlug/:propertySlug" component={PropertyDetails} />
       <Route path="/properties/:id" component={PropertyDetails} />
       <Route path="/hotels/:citySlug" component={CityHotels} />
       <Route path="/property/:propertyId/review" component={WriteReview} />

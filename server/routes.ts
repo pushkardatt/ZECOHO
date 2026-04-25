@@ -2,7 +2,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { OAuth2Client } from "google-auth-library";
-import { storage } from "./storage";
+import { storage, generatePropertySlug } from "./storage";
 import { db, pool } from "./db";
 import { eq, sql, inArray, desc, and, gte, lte } from "drizzle-orm";
 import {
@@ -239,6 +239,46 @@ export async function registerRoutes(
   // Replaces the previous static client/public/sitemap.xml.
   // Includes static pages, all 6 city landing pages, and every published
   // property. Blog posts are skipped — no blog table exists in the schema.
+  app.post(
+    "/api/admin/backfill-slugs",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const userId = req.user.claims.sub;
+        const caller = await storage.getUser(userId);
+        if (caller?.userRole !== "admin") {
+          return res.status(403).json({ error: "Admin only" });
+        }
+        const allProps = await storage.getProperties({
+          includeAllStatuses: true,
+        });
+        let updated = 0;
+        for (const prop of allProps) {
+          if (!prop.slug) {
+            const slug = generatePropertySlug(
+              prop.title || "",
+              prop.propCity || prop.destination || "",
+              prop.propertyCode || prop.id.substring(0, 8),
+            );
+            await db
+              .update(propertiesTable)
+              .set({ slug })
+              .where(eq(propertiesTable.id, prop.id));
+            updated++;
+          }
+        }
+        return res.json({
+          success: true,
+          updated,
+          message: `${updated} properties backfilled`,
+        });
+      } catch (error) {
+        console.error("Backfill slugs error:", error);
+        return res.status(500).json({ error: "Backfill failed" });
+      }
+    },
+  );
+
   app.get("/sitemap.xml", async (_req, res) => {
     try {
       const ORIGIN = "https://www.zecoho.com";
@@ -3552,6 +3592,23 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error fetching properties:", error);
       res.status(500).json({ message: "Failed to fetch properties" });
+    }
+  });
+
+  app.get("/api/properties/by-slug/:slug", async (req, res) => {
+    try {
+      const [property] = await db
+        .select()
+        .from(propertiesTable)
+        .where(eq(propertiesTable.slug, req.params.slug))
+        .limit(1);
+      if (!property) {
+        return res.status(404).json({ error: "Property not found" });
+      }
+      return res.json(property);
+    } catch (error) {
+      console.error("by-slug lookup error:", error);
+      return res.status(500).json({ error: "Server error" });
     }
   });
 

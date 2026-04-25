@@ -147,6 +147,17 @@ async function generatePropertyCode(): Promise<string> {
   return `PROP-${Date.now().toString(36).toUpperCase().slice(-6)}`;
 }
 
+export function generatePropertySlug(title: string, city: string, propertyCode: string): string {
+  const base = `${title} ${city}`
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, "")
+    .trim()
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-")
+    .substring(0, 80);
+  return `${base}-${propertyCode.toLowerCase()}`;
+}
+
 async function generateBookingCode(): Promise<string> {
   for (let attempt = 0; attempt < 10; attempt++) {
     const code = `BKG-${generateRandomCode(6)}`;
@@ -921,9 +932,14 @@ export class DatabaseStorage implements IStorage {
   }
   async createProperty(propertyData: InsertProperty): Promise<Property> {
     const propertyCode = await generatePropertyCode();
+    const slug = generatePropertySlug(
+      propertyData.title || "",
+      propertyData.propCity || propertyData.destination || "",
+      propertyCode,
+    );
     const [property] = await db
       .insert(properties)
-      .values({ ...propertyData, propertyCode })
+      .values({ ...propertyData, propertyCode, slug })
       .returning();
     return property;
   }
