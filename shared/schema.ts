@@ -572,12 +572,14 @@ export const properties = pgTable(
     suspendedAt: timestamp("suspended_at"),
     createdAt: timestamp("created_at").defaultNow(),
     updatedAt: timestamp("updated_at").defaultNow(),
+    slug: varchar("slug", { length: 255 }),
   },
   (table) => [
     index("IDX_property_status").on(table.status),
     index("IDX_property_owner").on(table.ownerId),
     index("IDX_property_destination").on(table.destination),
     index("IDX_property_status_owner").on(table.status, table.ownerId),
+    index("IDX_property_slug").on(table.slug),
   ],
 );
 // Admin Audit Logs table - tracks all admin actions for accountability
