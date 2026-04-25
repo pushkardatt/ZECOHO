@@ -57,6 +57,7 @@ import Search from "@/pages/search";
 import CityHotels from "@/pages/city-hotels";
 import SearchHistoryPage from "@/pages/search-history";
 import PropertyDetails from "@/pages/property-details";
+import HotelProperty from "@/pages/hotel-property";
 import Wishlist from "@/pages/wishlist";
 import Messages from "@/pages/messages";
 import OwnerProperties from "@/pages/owner-properties";
@@ -187,7 +188,7 @@ function Router() {
       <Route path="/kyc" component={KYC} />
       <Route path="/search" component={Search} />
       <Route path="/properties" component={Search} />
-      <Route path="/hotels/:citySlug/:propertySlug" component={PropertyDetails} />
+      <Route path="/hotels/:citySlug/:propertySlug" component={HotelProperty} />
       <Route path="/properties/:id" component={PropertyDetails} />
       <Route path="/hotels/:citySlug" component={CityHotels} />
       <Route path="/property/:propertyId/review" component={WriteReview} />

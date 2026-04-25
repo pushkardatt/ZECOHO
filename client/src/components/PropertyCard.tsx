@@ -90,6 +90,20 @@ export function PropertyCard({
     }
   };
 
+  // Build the slug-or-uuid base path. Falls back to /properties/:id when
+  // either the property has no slug yet or the city cannot be slugified.
+  const buildPropertyPath = (): string => {
+    const citySlug = (property.propCity || property.destination || "")
+      .toLowerCase()
+      .replace(/[^a-z0-9\s-]/g, "")
+      .trim()
+      .replace(/\s+/g, "-");
+    if (property.slug && citySlug) {
+      return `/hotels/${citySlug}/${property.slug}`;
+    }
+    return `/properties/${property.id}`;
+  };
+
   // Build property URL with search params
   const buildPropertyUrl = () => {
     const params = new URLSearchParams();
@@ -104,7 +118,7 @@ export function PropertyCard({
     if (searchParams?.rooms) params.set("rooms", searchParams.rooms.toString());
 
     const queryString = params.toString();
-    return `/properties/${property.id}${queryString ? `?${queryString}` : ""}`;
+    return `${buildPropertyPath()}${queryString ? `?${queryString}` : ""}`;
   };
 
   const propertyUrl = buildPropertyUrl();
@@ -115,7 +129,7 @@ export function PropertyCard({
 
     if (typeof window === "undefined") return;
 
-    const shareUrl = `${window.location.origin}/properties/${property.id}`;
+    const shareUrl = `${window.location.origin}${buildPropertyPath()}`;
 
     const copyToClipboard = async () => {
       if (
@@ -352,7 +366,7 @@ export function PropertyCard({
                   onClick={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
-                    setLocation(`/properties/${property.id}`);
+                    setLocation(buildPropertyPath());
                   }}
                   data-testid={`button-book-direct-${property.id}`}
                 >
@@ -530,7 +544,7 @@ export function PropertyCard({
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
-              setLocation(`/properties/${property.id}`);
+              setLocation(buildPropertyPath());
             }}
             data-testid={`button-book-direct-${property.id}`}
           >

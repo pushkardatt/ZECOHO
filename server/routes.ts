@@ -227,6 +227,94 @@ function calculateNightlyRoomCost(
   return total;
 }
 
+async function shapePropertyResponse(
+  property: any,
+  requestUserId: string | null,
+): Promise<any | null> {
+  const callerIsOwner = requestUserId === property.ownerId;
+  let callerIsAdmin = false;
+  if (requestUserId && !callerIsOwner) {
+    const caller = await storage.getUser(requestUserId);
+    callerIsAdmin = caller?.userRole === "admin";
+  }
+
+  if (!callerIsOwner && !callerIsAdmin) {
+    const sub = await storage.checkOwnerSubscriptionStatus(property.ownerId);
+    if (!sub.isActive) return null;
+  }
+
+  const propertyRoomTypes = await storage.getRoomTypes(property.id);
+  let startingRoomPrice: string | null = null;
+  let startingRoomOriginalPrice: string | null = null;
+  if (propertyRoomTypes.length > 0) {
+    const sortedRoomTypes = [...propertyRoomTypes].sort(
+      (a, b) => parseFloat(a.basePrice) - parseFloat(b.basePrice),
+    );
+    const cheapestRoomType = sortedRoomTypes[0];
+    startingRoomPrice = cheapestRoomType.basePrice;
+    if (
+      cheapestRoomType.originalPrice &&
+      parseFloat(cheapestRoomType.originalPrice) >
+        parseFloat(cheapestRoomType.basePrice)
+    ) {
+      startingRoomOriginalPrice = cheapestRoomType.originalPrice;
+    }
+  }
+
+  let hasConfirmedBooking = false;
+  if (requestUserId && !callerIsOwner && !callerIsAdmin) {
+    const guestBookings = await storage.getBookingsByGuest(requestUserId);
+    hasConfirmedBooking = guestBookings.some(
+      (b: any) => b.propertyId === property.id && b.status === "confirmed",
+    );
+  }
+
+  const canSeeContactFields =
+    callerIsOwner || callerIsAdmin || hasConfirmedBooking;
+
+  const {
+    receptionNumber,
+    contactEmail,
+    contactPhone,
+    whatsappNumber,
+    ...publicProperty
+  } = property;
+
+  const contactFields = canSeeContactFields
+    ? { receptionNumber, contactEmail, contactPhone, whatsappNumber }
+    : {};
+
+  if (property.status === "published") {
+    const owner = await storage.getUser(property.ownerId);
+    const ownerPhone =
+      owner?.phone && owner.phone.trim() ? owner.phone.trim() : null;
+    const canCall = canSeeContactFields;
+    return {
+      ...publicProperty,
+      ...contactFields,
+      startingRoomPrice,
+      startingRoomOriginalPrice,
+      ownerContact: owner
+        ? {
+            name:
+              owner.firstName && owner.lastName
+                ? `${owner.firstName} ${owner.lastName}`
+                : owner.firstName || null,
+            canCall,
+            ...(canCall ? { phone: ownerPhone } : {}),
+          }
+        : null,
+    };
+  }
+
+  return {
+    ...publicProperty,
+    ...contactFields,
+    startingRoomPrice,
+    startingRoomOriginalPrice,
+  };
+}
+
 export async function registerRoutes(
   app: Express,
   existingServer?: Server,
@@ -358,8 +446,17 @@ export async function registerRoutes(
         status: "published",
       });
       for (const p of publishedProperties) {
+        const citySlug = (p.propCity || p.destination || "")
+          .toLowerCase()
+          .replace(/[^a-z0-9\s-]/g, "")
+          .trim()
+          .replace(/\s+/g, "-");
+        const loc =
+          p.slug && citySlug
+            ? `${ORIGIN}/hotels/${citySlug}/${p.slug}`
+            : `${ORIGIN}/properties/${p.id}`;
         entries.push({
-          loc: `${ORIGIN}/properties/${p.id}`,
+          loc,
           lastmod: p.updatedAt
             ? new Date(p.updatedAt).toISOString()
             : undefined,
@@ -3595,7 +3692,7 @@ export async function registerRoutes(
     }
   });
 
-  app.get("/api/properties/by-slug/:slug", async (req, res) => {
+  app.get("/api/properties/by-slug/:slug", async (req: any, res) => {
     try {
       const [property] = await db
         .select()
@@ -3603,139 +3700,38 @@ export async function registerRoutes(
         .where(eq(propertiesTable.slug, req.params.slug))
         .limit(1);
       if (!property) {
-        return res.status(404).json({ error: "Property not found" });
+        return res.status(404).json({ message: "Property not found" });
       }
-      return res.json(property);
+      const requestUserId =
+        req.isAuthenticated() && req.user
+          ? req.user.claims?.sub || req.user.id
+          : null;
+      const shaped = await shapePropertyResponse(property, requestUserId);
+      if (!shaped) {
+        return res.status(404).json({ message: "Property not found" });
+      }
+      return res.json(shaped);
     } catch (error) {
       console.error("by-slug lookup error:", error);
-      return res.status(500).json({ error: "Server error" });
+      return res.status(500).json({ message: "Failed to fetch property" });
     }
   });
 
-  app.get("/api/properties/:id", async (req, res) => {
+  app.get("/api/properties/:id", async (req: any, res) => {
     try {
-      // Always fetch bypassing subscription so owners can view their own properties.
-      // Subscription gate is re-applied below for public (non-owner, non-admin) callers.
       const property = await storage.getProperty(req.params.id, true);
       if (!property) {
         return res.status(404).json({ message: "Property not found" });
       }
-
-      // Resolve caller identity early so we can decide whether to enforce subscription gate
-      const earlyUserId =
-        req.isAuthenticated() && (req.user as any)
-          ? (req.user as any).claims?.sub || (req.user as any).id
-          : null;
-      const callerIsOwner = earlyUserId === property.ownerId;
-      let callerIsAdmin = false;
-      if (earlyUserId && !callerIsOwner) {
-        const earlyUser = await storage.getUser(earlyUserId);
-        callerIsAdmin = earlyUser?.userRole === "admin";
-      }
-
-      // For public guests (not owner, not admin) enforce the subscription gate
-      if (!callerIsOwner && !callerIsAdmin) {
-        const sub = await storage.checkOwnerSubscriptionStatus(
-          property.ownerId,
-        );
-        if (!sub.isActive) {
-          return res.status(404).json({ message: "Property not found" });
-        }
-      }
-
-      // Get room types to compute starting price from room-level pricing
-      const propertyRoomTypes = await storage.getRoomTypes(property.id);
-
-      // Calculate starting price from minimum room-type base price
-      let startingRoomPrice: string | null = null;
-      let startingRoomOriginalPrice: string | null = null;
-
-      if (propertyRoomTypes.length > 0) {
-        const sortedRoomTypes = [...propertyRoomTypes].sort(
-          (a, b) => parseFloat(a.basePrice) - parseFloat(b.basePrice),
-        );
-        const cheapestRoomType = sortedRoomTypes[0];
-        startingRoomPrice = cheapestRoomType.basePrice;
-
-        if (
-          cheapestRoomType.originalPrice &&
-          parseFloat(cheapestRoomType.originalPrice) >
-            parseFloat(cheapestRoomType.basePrice)
-        ) {
-          startingRoomOriginalPrice = cheapestRoomType.originalPrice;
-        }
-      }
-
-      // Determine caller identity and authorisation level
       const requestUserId =
-        req.isAuthenticated() && (req.user as any)
-          ? (req.user as any).claims?.sub || (req.user as any).id
+        req.isAuthenticated() && req.user
+          ? req.user.claims?.sub || req.user.id
           : null;
-
-      let isOwner = false;
-      let hasConfirmedBooking = false;
-      let isAdmin = false;
-
-      if (requestUserId) {
-        isOwner = requestUserId === property.ownerId;
-        if (!isOwner) {
-          const caller = await storage.getUser(requestUserId);
-          isAdmin = caller?.userRole === "admin";
-          if (!isAdmin) {
-            const guestBookings =
-              await storage.getBookingsByGuest(requestUserId);
-            hasConfirmedBooking = guestBookings.some(
-              (b) => b.propertyId === property.id && b.status === "confirmed",
-            );
-          }
-        }
+      const shaped = await shapePropertyResponse(property, requestUserId);
+      if (!shaped) {
+        return res.status(404).json({ message: "Property not found" });
       }
-
-      const canSeeContactFields = isOwner || isAdmin || hasConfirmedBooking;
-
-      // Strip private contact fields — only expose to authorised callers
-      const {
-        receptionNumber,
-        contactEmail,
-        contactPhone,
-        whatsappNumber,
-        ...publicProperty
-      } = property as any;
-
-      const contactFields = canSeeContactFields
-        ? { receptionNumber, contactEmail, contactPhone, whatsappNumber }
-        : {};
-
-      // For published properties, also include owner phone via ownerContact
-      if (property.status === "published") {
-        const owner = await storage.getUser(property.ownerId);
-        const ownerPhone =
-          owner?.phone && owner.phone.trim() ? owner.phone.trim() : null;
-        const canCall = isOwner || isAdmin || hasConfirmedBooking;
-        return res.json({
-          ...publicProperty,
-          ...contactFields,
-          startingRoomPrice,
-          startingRoomOriginalPrice,
-          ownerContact: owner
-            ? {
-                name:
-                  owner.firstName && owner.lastName
-                    ? `${owner.firstName} ${owner.lastName}`
-                    : owner.firstName || null,
-                canCall,
-                ...(canCall ? { phone: ownerPhone } : {}),
-              }
-            : null,
-        });
-      }
-
-      res.json({
-        ...publicProperty,
-        ...contactFields,
-        startingRoomPrice,
-        startingRoomOriginalPrice,
-      });
+      return res.json(shaped);
     } catch (error) {
       console.error("Error fetching property:", error);
       res.status(500).json({ message: "Failed to fetch property" });
