@@ -116,16 +116,24 @@ export default function OwnerPropertyManage() {
     enabled: !!id,
   });
 
-  const { data: overrides = [], isLoading: overridesLoading } = useQuery<
-    AvailabilityOverride[]
-  >({
+  const {
+    data: overrides = [],
+    isLoading: overridesLoading,
+    isError: overridesError,
+    isFetching: overridesFetching,
+    refetch: refetchOverrides,
+  } = useQuery<AvailabilityOverride[]>({
     queryKey: ["/api/properties", id, "availability-overrides"],
     enabled: !!id,
   });
 
-  const { data: roomTypes = [], isLoading: roomTypesLoading } = useQuery<
-    RoomType[]
-  >({
+  const {
+    data: roomTypes = [],
+    isLoading: roomTypesLoading,
+    isError: roomTypesError,
+    isFetching: roomTypesFetching,
+    refetch: refetchRoomTypes,
+  } = useQuery<RoomType[]>({
     queryKey: ["/api/properties", id, "rooms"],
     enabled: !!id,
   });
@@ -279,14 +287,22 @@ export default function OwnerPropertyManage() {
           </TabsContent>
 
           <TabsContent value="room-type-pricing" className="mt-6">
-            <div className="space-y-6">
-              <RoomsSection
-                propertyId={id!}
-                roomTypes={roomTypes}
-                isLoading={roomTypesLoading}
+            {roomTypesError ? (
+              <TabLoadError
+                message="Couldn't load your room types. Please retry."
+                onRetry={() => refetchRoomTypes()}
+                isRetrying={roomTypesFetching}
               />
-              <PriceCalendar propertyId={id!} roomTypes={roomTypes} />
-            </div>
+            ) : (
+              <div className="space-y-6">
+                <RoomsSection
+                  propertyId={id!}
+                  roomTypes={roomTypes}
+                  isLoading={roomTypesLoading}
+                />
+                <PriceCalendar propertyId={id!} roomTypes={roomTypes} />
+              </div>
+            )}
           </TabsContent>
 
           <TabsContent value="policy" className="mt-6">
@@ -294,20 +310,53 @@ export default function OwnerPropertyManage() {
           </TabsContent>
 
           <TabsContent value="amenities" className="mt-6">
-            <AmenitiesSection property={property} roomTypes={roomTypes} />
-          </TabsContent>
-
-          <TabsContent value="availability" className="mt-6">
-            <AvailabilitySection
-              propertyId={id!}
-              overrides={overrides}
-              isLoading={overridesLoading}
+            {roomTypesError && (
+              <TabLoadError
+                message="Couldn't load your room types — room-level amenities can't be edited until you retry."
+                onRetry={() => refetchRoomTypes()}
+                isRetrying={roomTypesFetching}
+              />
+            )}
+            <AmenitiesSection
+              property={property}
               roomTypes={roomTypes}
+              roomTypesUnavailable={roomTypesError}
             />
           </TabsContent>
 
+          <TabsContent value="availability" className="mt-6">
+            {overridesError || roomTypesError ? (
+              <TabLoadError
+                message="Couldn't load availability data. Please retry."
+                onRetry={() => {
+                  if (overridesError) refetchOverrides();
+                  if (roomTypesError) refetchRoomTypes();
+                }}
+                isRetrying={overridesFetching || roomTypesFetching}
+              />
+            ) : (
+              <AvailabilitySection
+                propertyId={id!}
+                overrides={overrides}
+                isLoading={overridesLoading}
+                roomTypes={roomTypes}
+              />
+            )}
+          </TabsContent>
+
           <TabsContent value="photos" className="mt-6">
-            <PhotosSection property={property} roomTypes={roomTypes} />
+            {roomTypesError && (
+              <TabLoadError
+                message="Couldn't load your room types — room-level photos can't be edited until you retry."
+                onRetry={() => refetchRoomTypes()}
+                isRetrying={roomTypesFetching}
+              />
+            )}
+            <PhotosSection
+              property={property}
+              roomTypes={roomTypes}
+              roomTypesUnavailable={roomTypesError}
+            />
           </TabsContent>
 
           <TabsContent value="status" className="mt-6">
@@ -316,6 +365,37 @@ export default function OwnerPropertyManage() {
         </Tabs>
       </div>
     </OwnerLayout>
+  );
+}
+
+function TabLoadError({
+  message,
+  onRetry,
+  isRetrying,
+}: {
+  message: string;
+  onRetry: () => void;
+  isRetrying?: boolean;
+}) {
+  return (
+    <Alert variant="destructive" className="my-2">
+      <AlertTriangle className="h-4 w-4" />
+      <AlertDescription className="flex items-center justify-between gap-3 flex-wrap">
+        <span>{message}</span>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={onRetry}
+          disabled={isRetrying}
+          data-testid="button-tab-retry"
+        >
+          <RefreshCw
+            className={`h-3 w-3 mr-1 ${isRetrying ? "animate-spin" : ""}`}
+          />
+          {isRetrying ? "Retrying…" : "Retry"}
+        </Button>
+      </AlertDescription>
+    </Alert>
   );
 }
 
@@ -859,17 +939,23 @@ function StatusSection({ property }: { property: Property }) {
   >("deactivate");
 
   // Check if there's a pending deactivation request
-  const { data: pendingRequest, isLoading: isLoadingRequest } = useQuery({
+  const pendingRequestQuery = useQuery({
     queryKey: ["/api/properties", property.id, "deactivation-request"],
     queryFn: async () => {
       const res = await fetch(
         `/api/properties/${property.id}/deactivation-request`,
         { credentials: "include" },
       );
-      if (!res.ok) return null;
+      if (!res.ok) {
+        // 404 = no pending request (legitimate state). Other errors = real failure.
+        if (res.status === 404) return null;
+        throw new Error("Failed to load deactivation status");
+      }
       return res.json();
     },
   });
+  const pendingRequest = pendingRequestQuery.data;
+  const isLoadingRequest = pendingRequestQuery.isLoading;
 
   const updateStatusMutation = useMutation({
     mutationFn: async (action: "pause" | "resume") => {
@@ -987,6 +1073,18 @@ function StatusSection({ property }: { property: Property }) {
       });
     },
   });
+
+  // FIX 5: surface load failure for the deactivation-request check.
+  // Showing the false-empty UI here risks the owner submitting a duplicate request.
+  if (pendingRequestQuery.isError) {
+    return (
+      <TabLoadError
+        message="Couldn't load deactivation status. Please retry."
+        onRetry={() => pendingRequestQuery.refetch()}
+        isRetrying={pendingRequestQuery.isFetching}
+      />
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -3063,13 +3161,15 @@ function MealOptionsManager({ roomTypeId }: { roomTypeId: string }) {
   const [editingPriceId, setEditingPriceId] = useState<string | null>(null);
   const [editPrice, setEditPrice] = useState("");
 
-  const { data: mealOptions = [], isLoading } = useQuery<any[]>({
+  const mealOptionsQuery = useQuery<any[]>({
     queryKey: ["/api/rooms", roomTypeId, "options"],
     queryFn: () =>
       apiRequest("GET", `/api/rooms/${roomTypeId}/options`).then((r) =>
         r.json(),
       ),
   });
+  const mealOptions = mealOptionsQuery.data ?? [];
+  const isLoading = mealOptionsQuery.isLoading;
 
   const updateMutation = useMutation({
     mutationFn: async ({
@@ -3102,6 +3202,17 @@ function MealOptionsManager({ roomTypeId }: { roomTypeId: string }) {
   });
 
   if (isLoading) return <Skeleton className="h-20 w-full" />;
+  // FIX 5: distinguish "load failed" from "really no meal plans" — without
+  // this, owners can't tell if their meal plans were lost or just unloaded.
+  if (mealOptionsQuery.isError) {
+    return (
+      <TabLoadError
+        message="Couldn't load meal plans. Please retry."
+        onRetry={() => mealOptionsQuery.refetch()}
+        isRetrying={mealOptionsQuery.isFetching}
+      />
+    );
+  }
   if (mealOptions.length === 0)
     return (
       <p className="text-xs text-muted-foreground">No meal plans found.</p>
@@ -4044,28 +4155,36 @@ const ROOM_IN_AMENITIES = [
 function AmenitiesSection({
   property,
   roomTypes,
+  roomTypesUnavailable,
 }: {
   property: Property;
   roomTypes: RoomType[];
+  roomTypesUnavailable?: boolean;
 }) {
   const { toast } = useToast();
-  const { data: allAmenities = [] } = useQuery<any[]>({
+  const allAmenitiesQuery = useQuery<any[]>({
     queryKey: ["/api/amenities"],
   });
-  const { data: propertyAmenities = [] } = useQuery<any[]>({
+  const propertyAmenitiesQuery = useQuery<any[]>({
     queryKey: ["/api/properties", property.id, "amenities"],
   });
+  const allAmenities = allAmenitiesQuery.data ?? [];
+  const propertyAmenities = propertyAmenitiesQuery.data ?? [];
   const [selectedAmenityIds, setSelectedAmenityIds] = useState<string[]>([]);
   const [selectedRoomTypeId, setSelectedRoomTypeId] = useState<string>("");
   const [roomAmenityEdits, setRoomAmenityEdits] = useState<
     Record<string, Record<string, boolean>>
   >({});
 
+  // Only initialize from server data after a successful fetch — avoids the
+  // "fetch failed → empty UI → user clicks Save → overwrites with []" trap.
   useEffect(() => {
-    setSelectedAmenityIds(
-      propertyAmenities.map((a: any) => a.amenityId || a.id),
-    );
-  }, [propertyAmenities]);
+    if (propertyAmenitiesQuery.isSuccess) {
+      setSelectedAmenityIds(
+        propertyAmenities.map((a: any) => a.amenityId || a.id),
+      );
+    }
+  }, [propertyAmenitiesQuery.isSuccess, propertyAmenities]);
 
   useEffect(() => {
     if (!selectedRoomTypeId && roomTypes.length > 0) {
@@ -4074,10 +4193,21 @@ function AmenitiesSection({
   }, [roomTypes, selectedRoomTypeId]);
 
   const updateMutation = useMutation({
-    mutationFn: async () =>
-      apiRequest("PATCH", `/api/properties/${property.id}`, {
+    mutationFn: async () => {
+      // Save guard: never write against unverified state. If the original
+      // fetch never succeeded, refuse — user is editing in the dark.
+      if (!propertyAmenitiesQuery.isSuccess) {
+        throw new Error("STALE_VIEW");
+      }
+      // Refetch right before save to confirm we still have a connection.
+      const refetchResult = await propertyAmenitiesQuery.refetch();
+      if (refetchResult.isError) {
+        throw new Error("STALE_VIEW");
+      }
+      return apiRequest("PATCH", `/api/properties/${property.id}`, {
         amenityIds: selectedAmenityIds,
-      }),
+      });
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: ["/api/properties", property.id],
@@ -4087,12 +4217,21 @@ function AmenitiesSection({
       });
       toast({ title: "Saved", description: "Amenities updated." });
     },
-    onError: () =>
+    onError: (err: Error) => {
+      if (err.message === "STALE_VIEW") {
+        toast({
+          title: "Couldn't verify your amenities",
+          description: "Please reload the page and try again.",
+          variant: "destructive",
+        });
+        return;
+      }
       toast({
         title: "Error",
         description: "Failed to save.",
         variant: "destructive",
-      }),
+      });
+    },
   });
 
   const updateRoomAmenityMutation = useMutation({
@@ -4153,6 +4292,22 @@ function AmenitiesSection({
       },
     }));
   };
+
+  // FIX 5: surface query failures instead of silently rendering empty UI.
+  if (allAmenitiesQuery.isError || propertyAmenitiesQuery.isError) {
+    return (
+      <TabLoadError
+        message="Couldn't load amenities. Please retry."
+        onRetry={() => {
+          if (allAmenitiesQuery.isError) allAmenitiesQuery.refetch();
+          if (propertyAmenitiesQuery.isError) propertyAmenitiesQuery.refetch();
+        }}
+        isRetrying={
+          allAmenitiesQuery.isFetching || propertyAmenitiesQuery.isFetching
+        }
+      />
+    );
+  }
 
   const essentialAmenities = allAmenities.filter(
     (a: any) =>
@@ -4316,7 +4471,10 @@ function AmenitiesSection({
                           roomAmenityCurrent,
                       })
                     }
-                    disabled={updateRoomAmenityMutation.isPending}
+                    disabled={
+                      updateRoomAmenityMutation.isPending ||
+                      roomTypesUnavailable
+                    }
                   >
                     <Save className="h-4 w-4 mr-2" />
                     Save Room Amenities
@@ -4349,9 +4507,11 @@ function AmenitiesSection({
 function PhotosSection({
   property,
   roomTypes,
+  roomTypesUnavailable,
 }: {
   property: Property;
   roomTypes: RoomType[];
+  roomTypesUnavailable?: boolean;
 }) {
   const { toast } = useToast();
   const [categorizedImages, setCategorizedImages] =
@@ -4389,22 +4549,46 @@ function PhotosSection({
       }),
   });
 
+  // FIX 3: report per-room save success/failure together rather than spamming
+  // a generic toast per failure with no indication of which rooms failed.
   const handleRoomTypeImagesChange = async (
     images: Record<string, string[]>,
   ) => {
     setRoomTypeImages(images);
+    if (roomTypesUnavailable) {
+      toast({
+        title: "Couldn't save room photos",
+        description:
+          "Room data didn't load — please retry the room types tab and try again.",
+        variant: "destructive",
+      });
+      return;
+    }
+    const failedRoomNames: string[] = [];
+    let savedCount = 0;
     for (const [roomTypeId, imgs] of Object.entries(images)) {
       try {
         await apiRequest("PATCH", `/api/owner/room-types/${roomTypeId}`, {
           images: imgs,
         });
+        savedCount++;
       } catch {
-        toast({
-          title: "Error",
-          description: "Failed to save room type photos.",
-          variant: "destructive",
-        });
+        const rt = roomTypes.find((r) => String(r.id) === roomTypeId);
+        failedRoomNames.push(rt?.name || "an unnamed room");
       }
+    }
+    const total = savedCount + failedRoomNames.length;
+    if (failedRoomNames.length > 0) {
+      toast({
+        title: "Some room photos didn't save",
+        description: `Saved ${savedCount} of ${total}. Failed: ${failedRoomNames.join(", ")}. Please try again.`,
+        variant: "destructive",
+      });
+    } else if (savedCount > 0) {
+      toast({
+        title: "Saved",
+        description: `Updated photos for ${savedCount} room${savedCount === 1 ? "" : "s"}.`,
+      });
     }
   };
 
