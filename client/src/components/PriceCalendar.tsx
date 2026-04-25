@@ -48,9 +48,9 @@ interface PricingCalendarData {
     singleOccupancyPrice: number | null;
     doubleOccupancyPrice: number | null;
     tripleOccupancyPrice: number | null;
-    overrides: Record<string, { base?: number; double?: number; triple?: number }>; // date → per-tier override
+    overrides: Record<string, { id: string; base?: number; double?: number; triple?: number }>; // date → override row
   }[];
-  mealPlanOverrides: Record<string, Record<string, number>>; // date → roomOptionId → price
+  mealPlanOverrides: Record<string, Record<string, { id: string; price: number }>>; // date → roomOptionId → override row
   roomOptions: Record<
     string,
     { name: string; roomTypeId: string; defaultPrice: number }
@@ -196,6 +196,34 @@ export function PriceCalendar({ propertyId, roomTypes }: PriceCalendarProps) {
       }),
   });
 
+  const deletePriceMutation = useMutation({
+    mutationFn: async ({
+      id,
+      type,
+    }: {
+      id: string;
+      type: "room" | "mealplan";
+    }) => {
+      await apiRequest(
+        "DELETE",
+        `/api/owner/price-overrides/${id}?type=${type}`,
+      ).then((r) => r.json());
+      return id;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["/api/properties", propertyId, "pricing-calendar"],
+      });
+      toast({ title: "Price reset to default" });
+    },
+    onError: (err: Error) =>
+      toast({
+        title: "Failed to reset price",
+        description: err?.message || "Please try again.",
+        variant: "destructive",
+      }),
+  });
+
   const days = useMemo(
     () =>
       eachDayOfInterval({
@@ -253,7 +281,7 @@ export function PriceCalendar({ propertyId, roomTypes }: PriceCalendarProps) {
     if (editMode === "mealplan" && selectedRoomOptionId && calendarData) {
       const override =
         calendarData.mealPlanOverrides[dateStr]?.[selectedRoomOptionId];
-      if (override !== undefined) return { price: override, isOverride: true };
+      if (override !== undefined) return { price: override.price, isOverride: true };
       // Show default price from roomOptions index
       const opt = calendarData.roomOptions[selectedRoomOptionId];
       if (opt) return { price: opt.defaultPrice, isOverride: false };
@@ -295,9 +323,50 @@ export function PriceCalendar({ propertyId, roomTypes }: PriceCalendarProps) {
     dragStartDate.current = null;
   }
 
+  function handleTouchStart(dateStr: string) {
+    if (isPastDate(dateStr)) return;
+    isDragging.current = true;
+    dragStartDate.current = dateStr;
+    dragMode.current = selectedDates.has(dateStr) ? "deselect" : "select";
+    setSelectedDates((prev) => {
+      const next = new Set(prev);
+      dragMode.current === "select" ? next.add(dateStr) : next.delete(dateStr);
+      return next;
+    });
+  }
+
+  function handleTouchMove(e: React.TouchEvent) {
+    if (!isDragging.current || !dragStartDate.current) return;
+    const touch = e.changedTouches[0];
+    if (!touch) return;
+    const el = document.elementFromPoint(touch.clientX, touch.clientY);
+    if (!el) return;
+    const cell = (el as Element).closest("[data-date]") as HTMLElement | null;
+    if (!cell) return;
+    const dateStr = cell.getAttribute("data-date");
+    if (!dateStr || isPastDate(dateStr)) return;
+    const [a, b] = [dragStartDate.current, dateStr].sort();
+    const range = eachDayOfInterval({ start: parseISO(a), end: parseISO(b) })
+      .map((d) => format(d, "yyyy-MM-dd"))
+      .filter((d) => !isPastDate(d));
+    setSelectedDates((prev) => {
+      const next = new Set(prev);
+      range.forEach((d) =>
+        dragMode.current === "select" ? next.add(d) : next.delete(d),
+      );
+      return next;
+    });
+  }
+
   useEffect(() => {
     window.addEventListener("mouseup", handleMouseUp);
-    return () => window.removeEventListener("mouseup", handleMouseUp);
+    window.addEventListener("touchend", handleMouseUp);
+    window.addEventListener("touchcancel", handleMouseUp);
+    return () => {
+      window.removeEventListener("mouseup", handleMouseUp);
+      window.removeEventListener("touchend", handleMouseUp);
+      window.removeEventListener("touchcancel", handleMouseUp);
+    };
   }, []);
 
   // ── Apply price ───────────────────────────────────────────────────────────
@@ -360,17 +429,24 @@ export function PriceCalendar({ propertyId, roomTypes }: PriceCalendarProps) {
     setRoomPriceMutation.isPending || setMealPriceMutation.isPending;
   const sortedSelected = Array.from(selectedDates).sort();
 
-  const overridesThisMonth = useMemo(() => {
+  const overridesThisMonth = useMemo<
+    Array<{ date: string; price: number; id: string }>
+  >(() => {
     if (editMode === "room" && selectedRoomType) {
       return Object.entries(selectedRoomType.overrides)
         .filter(([d]) => d >= startDate && d <= endDate)
-        .map(([d, o]): [string, number] | null => {
-          if (selectedOccupancy === 3 && o.triple !== undefined) return [d, o.triple];
-          if (selectedOccupancy === 2 && o.double !== undefined) return [d, o.double];
-          if (o.base !== undefined) return [d, o.base + getOccupancyIncrement(selectedRoomType)];
-          return null;
+        .map(([d, o]) => {
+          let price: number | null = null;
+          if (selectedOccupancy === 3 && o.triple !== undefined) price = o.triple;
+          else if (selectedOccupancy === 2 && o.double !== undefined) price = o.double;
+          else if (o.base !== undefined)
+            price = o.base + getOccupancyIncrement(selectedRoomType);
+          if (price === null) return null;
+          return { date: d, price, id: o.id };
         })
-        .filter((x): x is [string, number] => x !== null);
+        .filter(
+          (x): x is { date: string; price: number; id: string } => x !== null,
+        );
     }
     if (editMode === "mealplan" && selectedRoomOptionId && calendarData) {
       return Object.entries(calendarData.mealPlanOverrides)
@@ -380,11 +456,12 @@ export function PriceCalendar({ propertyId, roomTypes }: PriceCalendarProps) {
             d <= endDate &&
             opts[selectedRoomOptionId] !== undefined,
         )
-        .map(
-          ([d, opts]) => [d, opts[selectedRoomOptionId]] as [string, number],
-        );
+        .map(([d, opts]) => {
+          const ov = opts[selectedRoomOptionId];
+          return { date: d, price: ov.price, id: ov.id };
+        });
     }
-    return [] as [string, number][];
+    return [];
   }, [
     calendarData,
     editMode,
@@ -634,11 +711,14 @@ export function PriceCalendar({ propertyId, roomTypes }: PriceCalendarProps) {
                   return (
                     <div
                       key={dateStr}
+                      data-date={dateStr}
                       onMouseDown={() => handleMouseDown(dateStr)}
                       onMouseEnter={() => handleMouseEnter(dateStr)}
+                      onTouchStart={() => handleTouchStart(dateStr)}
+                      onTouchMove={handleTouchMove}
                       className={`
                         relative flex flex-col items-center justify-center rounded-xl
-                        min-h-[4rem] py-1.5 px-1 transition-all duration-100
+                        min-h-[4rem] py-1.5 px-1 transition-all duration-100 touch-none
                         ${past ? "opacity-25 cursor-not-allowed" : "cursor-pointer"}
                         ${
                           selected
@@ -674,10 +754,7 @@ export function PriceCalendar({ propertyId, roomTypes }: PriceCalendarProps) {
                                 : "text-gray-400"
                           }`}
                         >
-                          ₹
-                          {price >= 1000
-                            ? `${(price / 1000).toFixed(1)}k`
-                            : price}
+                          ₹{price.toLocaleString("en-IN")}
                         </span>
                       )}
 
@@ -847,48 +924,31 @@ export function PriceCalendar({ propertyId, roomTypes }: PriceCalendarProps) {
                 Custom Prices — {format(currentMonth, "MMM yyyy")}
               </h4>
               <div className="space-y-1.5 max-h-52 overflow-y-auto pr-1">
-                {(overridesThisMonth as [string, number][])
-                  .sort(([a], [b]) => a.localeCompare(b))
-                  .map(([dateStr, price]) => (
+                {[...overridesThisMonth]
+                  .sort((a, b) => a.date.localeCompare(b.date))
+                  .map((ov) => (
                     <div
-                      key={dateStr}
+                      key={ov.date}
                       className="flex items-center justify-between px-3 py-2 rounded-xl bg-orange-50 border border-orange-100"
                     >
                       <span className="text-xs font-semibold text-gray-700">
-                        {format(parseISO(dateStr), "EEE, d MMM")}
+                        {format(parseISO(ov.date), "EEE, d MMM")}
                       </span>
                       <div className="flex items-center gap-2">
                         <span className="text-sm font-bold text-orange-600">
-                          ₹{Number(price).toLocaleString("en-IN")}
+                          ₹{ov.price.toLocaleString("en-IN")}
                         </span>
                         <button
                           type="button"
-                          title="Select this date to revert to default"
-                          className="p-1 rounded-lg hover:bg-orange-200 text-orange-300 hover:text-orange-700 transition-colors"
-                          onClick={() => {
-                            setSelectedDates(new Set([dateStr]));
-                            if (editMode === "room" && selectedRoomType) {
-                              setPriceInput(
-                                String(getOccupancyBasePrice(selectedRoomType)),
-                              );
-                            } else if (
-                              editMode === "mealplan" &&
-                              selectedRoomOptionId &&
-                              calendarData?.roomOptions[selectedRoomOptionId]
-                            ) {
-                              setPriceInput(
-                                String(
-                                  calendarData.roomOptions[selectedRoomOptionId]
-                                    .defaultPrice,
-                                ),
-                              );
-                            }
-                            toast({
-                              title: "Ready to revert",
-                              description:
-                                "Hit Apply to reset this date to the default price.",
-                            });
-                          }}
+                          title="Reset to default price"
+                          disabled={deletePriceMutation.isPending}
+                          className="p-1 rounded-lg hover:bg-orange-200 text-orange-300 hover:text-orange-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                          onClick={() =>
+                            deletePriceMutation.mutate({
+                              id: ov.id,
+                              type: editMode === "room" ? "room" : "mealplan",
+                            })
+                          }
                         >
                           <RotateCcw className="h-3 w-3" />
                         </button>

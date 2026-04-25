@@ -14572,10 +14572,11 @@ export async function registerRoutes(
           );
           const overrideMap: Record<
             string,
-            { base?: number; double?: number; triple?: number }
+            { id: string; base?: number; double?: number; triple?: number }
           > = {};
           for (const o of overrides) {
             overrideMap[o.date] = {
+              id: o.id,
               base: o.roomPrice != null ? parseFloat(o.roomPrice) : undefined,
               double:
                 o.doublePriceOverride != null
@@ -14617,11 +14618,17 @@ export async function registerRoutes(
         startDate,
         endDate,
       );
-      // Group by date → roomOptionId → price
-      const mealPlanData: Record<string, Record<string, number>> = {};
+      // Group by date → roomOptionId → { id, price }
+      const mealPlanData: Record<
+        string,
+        Record<string, { id: string; price: number }>
+      > = {};
       for (const o of mealOverrides) {
         if (!mealPlanData[o.date]) mealPlanData[o.date] = {};
-        mealPlanData[o.date][o.roomOptionId] = parseFloat(o.price);
+        mealPlanData[o.date][o.roomOptionId] = {
+          id: o.id,
+          price: parseFloat(o.price),
+        };
       }
 
       // Also include roomOptions metadata so client can resolve names
