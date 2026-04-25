@@ -235,6 +235,127 @@ export async function registerRoutes(
   await setupAuth(app);
   app.use("/api", subscriptionRoutes);
 
+  // ── Dynamic sitemap.xml ──────────────────────────────────────────────────
+  // Replaces the previous static client/public/sitemap.xml.
+  // Includes static pages, all 6 city landing pages, and every published
+  // property. Blog posts are skipped — no blog table exists in the schema.
+  app.get("/sitemap.xml", async (_req, res) => {
+    try {
+      const ORIGIN = "https://www.zecoho.com";
+      const xmlEscape = (s: string) =>
+        s
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;")
+          .replace(/'/g, "&apos;");
+
+      type Entry = {
+        loc: string;
+        lastmod?: string;
+        changefreq: string;
+        priority: string;
+      };
+      const entries: Entry[] = [];
+
+      // Home
+      entries.push({
+        loc: `${ORIGIN}/`,
+        changefreq: "daily",
+        priority: "1.0",
+      });
+
+      // Static high-value pages
+      for (const path of [
+        "/search",
+        "/destinations",
+        "/list-property",
+        "/about-us",
+        "/contact",
+      ]) {
+        entries.push({
+          loc: `${ORIGIN}${path}`,
+          changefreq: "weekly",
+          priority: "0.8",
+        });
+      }
+
+      // Blog index (carried over from previous static sitemap; individual posts
+      // are not enumerated because no blog table exists in shared/schema.ts)
+      entries.push({
+        loc: `${ORIGIN}/blog`,
+        changefreq: "weekly",
+        priority: "0.7",
+      });
+
+      // Legal pages (low priority, carried over from previous static sitemap)
+      for (const path of ["/terms", "/privacy"]) {
+        entries.push({
+          loc: `${ORIGIN}${path}`,
+          changefreq: "monthly",
+          priority: "0.3",
+        });
+      }
+
+      // City landing pages — primary SEO targets
+      for (const slug of [
+        "goa",
+        "indore",
+        "manali",
+        "shimla",
+        "jaipur",
+        "delhi",
+      ]) {
+        entries.push({
+          loc: `${ORIGIN}/hotels/${slug}`,
+          changefreq: "daily",
+          priority: "0.9",
+        });
+      }
+
+      // Every published property
+      const publishedProperties = await storage.getProperties({
+        status: "published",
+      });
+      for (const p of publishedProperties) {
+        entries.push({
+          loc: `${ORIGIN}/properties/${p.id}`,
+          lastmod: p.updatedAt
+            ? new Date(p.updatedAt).toISOString()
+            : undefined,
+          changefreq: "weekly",
+          priority: "0.7",
+        });
+      }
+
+      const body =
+        `<?xml version="1.0" encoding="UTF-8"?>\n` +
+        `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n` +
+        entries
+          .map((e) => {
+            const lastmodLine = e.lastmod
+              ? `\n    <lastmod>${e.lastmod}</lastmod>`
+              : "";
+            return (
+              `  <url>\n` +
+              `    <loc>${xmlEscape(e.loc)}</loc>${lastmodLine}\n` +
+              `    <changefreq>${e.changefreq}</changefreq>\n` +
+              `    <priority>${e.priority}</priority>\n` +
+              `  </url>`
+            );
+          })
+          .join("\n") +
+        `\n</urlset>\n`;
+
+      res.setHeader("Content-Type", "application/xml; charset=utf-8");
+      res.setHeader("Cache-Control", "public, max-age=3600");
+      res.send(body);
+    } catch (err) {
+      console.error("Error generating sitemap:", err);
+      res.status(500).send("Error generating sitemap");
+    }
+  });
+
   // Helper: verify a Firebase ID token by checking signature against Google's public certs
   async function verifyFirebaseIdToken(idToken: string): Promise<Record<string, any>> {
     // Prefer the server-scoped FIREBASE_PROJECT_ID env var; fall back to the
