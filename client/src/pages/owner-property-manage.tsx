@@ -4152,6 +4152,19 @@ const ROOM_IN_AMENITIES = [
   { key: "hasHeater", label: "Heater" },
 ] as const;
 
+// Maps each in-room boolean flag to candidate catalog amenity names so that
+// turning on a flag also turns on the matching property-wide amenity.
+const FLAG_TO_AMENITY_NAMES: Record<string, string[]> = {
+  hasAC: ["Air Conditioning", "AC"],
+  hasTV: ["TV", "Television"],
+  hasWifi: ["Wifi", "Wi-Fi", "WiFi"],
+  hasFridge: ["Refrigerator", "Fridge", "Mini Fridge"],
+  hasKettle: ["Electric Kettle", "Kettle"],
+  hasSafe: ["In-room Safe", "Safe"],
+  hasBalcony: ["Balcony"],
+  hasHeater: ["Heater", "Room Heater"],
+};
+
 function AmenitiesSection({
   property,
   roomTypes,
@@ -4173,7 +4186,20 @@ function AmenitiesSection({
   const [selectedAmenityIds, setSelectedAmenityIds] = useState<string[]>([]);
   const [selectedRoomTypeId, setSelectedRoomTypeId] = useState<string>("");
   const [roomAmenityEdits, setRoomAmenityEdits] = useState<
-    Record<string, Record<string, boolean>>
+    Record<
+      string,
+      {
+        hasAC?: boolean;
+        hasTV?: boolean;
+        hasWifi?: boolean;
+        hasFridge?: boolean;
+        hasKettle?: boolean;
+        hasSafe?: boolean;
+        hasBalcony?: boolean;
+        hasHeater?: boolean;
+        roomAmenityIds?: string[];
+      }
+    >
   >({});
 
   // Only initialize from server data after a successful fetch — avoids the
@@ -4240,7 +4266,7 @@ function AmenitiesSection({
       data,
     }: {
       roomId: string;
-      data: Record<string, boolean>;
+      data: Record<string, boolean | string[]>;
     }) =>
       apiRequest(
         "PATCH",
@@ -4270,27 +4296,73 @@ function AmenitiesSection({
   const selectedRoom = roomTypes.find(
     (r) => String(r.id) === selectedRoomTypeId,
   );
-  const roomAmenityCurrent = selectedRoomTypeId
-    ? (roomAmenityEdits[selectedRoomTypeId] ?? {
-        hasAC: selectedRoom?.hasAC ?? true,
-        hasTV: selectedRoom?.hasTV ?? false,
-        hasWifi: selectedRoom?.hasWifi ?? false,
-        hasFridge: selectedRoom?.hasFridge ?? false,
-        hasKettle: (selectedRoom as any)?.hasKettle ?? false,
-        hasSafe: (selectedRoom as any)?.hasSafe ?? false,
-        hasBalcony: (selectedRoom as any)?.hasBalcony ?? false,
-        hasHeater: (selectedRoom as any)?.hasHeater ?? false,
-      })
-    : {};
+  const roomEdit = selectedRoomTypeId
+    ? roomAmenityEdits[selectedRoomTypeId]
+    : undefined;
+  const roomAmenityCurrent = {
+    hasAC: roomEdit?.hasAC ?? selectedRoom?.hasAC ?? true,
+    hasTV: roomEdit?.hasTV ?? selectedRoom?.hasTV ?? false,
+    hasWifi: roomEdit?.hasWifi ?? selectedRoom?.hasWifi ?? false,
+    hasFridge: roomEdit?.hasFridge ?? selectedRoom?.hasFridge ?? false,
+    hasKettle: roomEdit?.hasKettle ?? (selectedRoom as any)?.hasKettle ?? false,
+    hasSafe: roomEdit?.hasSafe ?? (selectedRoom as any)?.hasSafe ?? false,
+    hasBalcony:
+      roomEdit?.hasBalcony ?? (selectedRoom as any)?.hasBalcony ?? false,
+    hasHeater:
+      roomEdit?.hasHeater ?? (selectedRoom as any)?.hasHeater ?? false,
+    roomAmenityIds:
+      roomEdit?.roomAmenityIds ??
+      (((selectedRoom as any)?.roomAmenityIds ?? []) as string[]),
+  };
 
-  const toggleRoomAmenity = (key: string) => {
+  // Map a boolean flag (e.g. hasAC) to amenity IDs in the catalog by name.
+  const findAmenityIdsForFlag = (flagKey: string): string[] => {
+    const names = FLAG_TO_AMENITY_NAMES[flagKey] ?? [];
+    if (names.length === 0) return [];
+    const lc = names.map((n) => n.toLowerCase());
+    return allAmenities
+      .filter((a: any) => lc.includes(String(a.name).toLowerCase()))
+      .map((a: any) => a.id as string);
+  };
+
+  // Auto-sync: when a room amenity is added, surface it on the property too.
+  // We only ADD on toggle-on; turning off a room flag does not remove the
+  // property-level amenity (another room may still need it, or owner may
+  // have set it property-wide).
+  const addToPropertySelection = (ids: string[]) => {
+    if (ids.length === 0) return;
+    setSelectedAmenityIds((prev) => {
+      const next = new Set(prev);
+      ids.forEach((id) => next.add(id));
+      return Array.from(next);
+    });
+  };
+
+  const toggleRoomFlag = (key: string) => {
+    const next = !roomAmenityCurrent[key as keyof typeof roomAmenityCurrent];
     setRoomAmenityEdits((prev) => ({
       ...prev,
       [selectedRoomTypeId]: {
         ...roomAmenityCurrent,
-        [key]: !roomAmenityCurrent[key as keyof typeof roomAmenityCurrent],
+        [key]: next,
       },
     }));
+    if (next) addToPropertySelection(findAmenityIdsForFlag(key));
+  };
+
+  const toggleRoomCatalogAmenity = (amenityId: string) => {
+    const has = roomAmenityCurrent.roomAmenityIds.includes(amenityId);
+    const nextIds = has
+      ? roomAmenityCurrent.roomAmenityIds.filter((id) => id !== amenityId)
+      : [...roomAmenityCurrent.roomAmenityIds, amenityId];
+    setRoomAmenityEdits((prev) => ({
+      ...prev,
+      [selectedRoomTypeId]: {
+        ...roomAmenityCurrent,
+        roomAmenityIds: nextIds,
+      },
+    }));
+    if (!has) addToPropertySelection([amenityId]);
   };
 
   // FIX 5: surface query failures instead of silently rendering empty UI.
@@ -4328,9 +4400,166 @@ function AmenitiesSection({
     "work",
   ];
 
+  const roomCatalogCategories = [
+    "essential",
+    "bathroom",
+    "safety",
+    "services",
+    "outdoor",
+    "family",
+    "food",
+    "entertainment",
+    "accessibility",
+    "work",
+  ];
+
   return (
     <div className="space-y-6">
-      {/* Property-wide amenities */}
+      {/* Room-type level amenities — appears first so the property-wide list
+          can be auto-populated from per-room selections. */}
+      {roomTypes.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Bed className="h-5 w-5" />
+              Room-Type Amenities
+            </CardTitle>
+            <CardDescription>
+              Set in-room amenities for each room type. Anything you select
+              here is also added to your property's amenity list below.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label>Select Room Type</Label>
+              <Select
+                value={selectedRoomTypeId}
+                onValueChange={setSelectedRoomTypeId}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a room type" />
+                </SelectTrigger>
+                <SelectContent>
+                  {roomTypes.map((rt) => (
+                    <SelectItem key={rt.id} value={String(rt.id)}>
+                      {rt.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            {selectedRoomTypeId && (
+              <>
+                {/* In-Room Basics: the eight boolean flags */}
+                <div className="space-y-2 pt-2">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    In-Room Basics
+                  </p>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    {ROOM_IN_AMENITIES.map(({ key, label }) => (
+                      <div key={key} className="flex items-center gap-2">
+                        <Checkbox
+                          id={`room-amenity-${key}`}
+                          checked={
+                            !!roomAmenityCurrent[
+                              key as keyof typeof roomAmenityCurrent
+                            ]
+                          }
+                          onCheckedChange={() => toggleRoomFlag(key)}
+                        />
+                        <label
+                          htmlFor={`room-amenity-${key}`}
+                          className="text-sm cursor-pointer"
+                        >
+                          {label}
+                        </label>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Additional Room Amenities: full catalog grouped by category */}
+                <div className="space-y-3 pt-3 border-t">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    Additional Room Amenities
+                  </p>
+                  {roomCatalogCategories.map((cat) => {
+                    const catAmenities = allAmenities.filter(
+                      (a: any) =>
+                        a.category === cat && a.name !== "Shared Kitchen",
+                    );
+                    if (!catAmenities.length) return null;
+                    return (
+                      <div key={`room-cat-${cat}`}>
+                        <p className="text-xs text-muted-foreground capitalize mb-1">
+                          {cat}
+                        </p>
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                          {catAmenities.map((amenity: any) => (
+                            <div
+                              key={`room-cat-amenity-${amenity.id}`}
+                              className="flex items-center gap-2"
+                            >
+                              <Checkbox
+                                id={`room-cat-amenity-${selectedRoomTypeId}-${amenity.id}`}
+                                checked={roomAmenityCurrent.roomAmenityIds.includes(
+                                  String(amenity.id),
+                                )}
+                                onCheckedChange={() =>
+                                  toggleRoomCatalogAmenity(String(amenity.id))
+                                }
+                              />
+                              <label
+                                htmlFor={`room-cat-amenity-${selectedRoomTypeId}-${amenity.id}`}
+                                className="text-sm cursor-pointer"
+                              >
+                                {amenity.name}
+                              </label>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <div className="flex justify-end">
+                  <Button
+                    size="sm"
+                    onClick={() =>
+                      updateRoomAmenityMutation.mutate({
+                        roomId: selectedRoomTypeId,
+                        data: {
+                          hasAC: roomAmenityCurrent.hasAC,
+                          hasTV: roomAmenityCurrent.hasTV,
+                          hasWifi: roomAmenityCurrent.hasWifi,
+                          hasFridge: roomAmenityCurrent.hasFridge,
+                          hasKettle: roomAmenityCurrent.hasKettle,
+                          hasSafe: roomAmenityCurrent.hasSafe,
+                          hasBalcony: roomAmenityCurrent.hasBalcony,
+                          hasHeater: roomAmenityCurrent.hasHeater,
+                          roomAmenityIds: roomAmenityCurrent.roomAmenityIds,
+                        },
+                      })
+                    }
+                    disabled={
+                      updateRoomAmenityMutation.isPending ||
+                      roomTypesUnavailable
+                    }
+                  >
+                    <Save className="h-4 w-4 mr-2" />
+                    Save Room Amenities
+                  </Button>
+                </div>
+              </>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Property-wide amenities — appears below rooms; pre-populated by
+          per-room selections via the auto-sync above. Owners can also add
+          property-only amenities here (pool, parking, restaurant, etc.). */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -4405,86 +4634,6 @@ function AmenitiesSection({
           </details>
         </CardContent>
       </Card>
-
-      {/* Room-type level amenities */}
-      {roomTypes.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Bed className="h-5 w-5" />
-              Room-Type Amenities
-            </CardTitle>
-            <CardDescription>
-              Set in-room amenities for each room type
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label>Select Room Type</Label>
-              <Select
-                value={selectedRoomTypeId}
-                onValueChange={setSelectedRoomTypeId}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select a room type" />
-                </SelectTrigger>
-                <SelectContent>
-                  {roomTypes.map((rt) => (
-                    <SelectItem key={rt.id} value={String(rt.id)}>
-                      {rt.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            {selectedRoomTypeId && (
-              <>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 pt-2">
-                  {ROOM_IN_AMENITIES.map(({ key, label }) => (
-                    <div key={key} className="flex items-center gap-2">
-                      <Checkbox
-                        id={`room-amenity-${key}`}
-                        checked={
-                          !!roomAmenityCurrent[
-                            key as keyof typeof roomAmenityCurrent
-                          ]
-                        }
-                        onCheckedChange={() => toggleRoomAmenity(key)}
-                      />
-                      <label
-                        htmlFor={`room-amenity-${key}`}
-                        className="text-sm cursor-pointer"
-                      >
-                        {label}
-                      </label>
-                    </div>
-                  ))}
-                </div>
-                <div className="flex justify-end">
-                  <Button
-                    size="sm"
-                    onClick={() =>
-                      updateRoomAmenityMutation.mutate({
-                        roomId: selectedRoomTypeId,
-                        data:
-                          roomAmenityEdits[selectedRoomTypeId] ??
-                          roomAmenityCurrent,
-                      })
-                    }
-                    disabled={
-                      updateRoomAmenityMutation.isPending ||
-                      roomTypesUnavailable
-                    }
-                  >
-                    <Save className="h-4 w-4 mr-2" />
-                    Save Room Amenities
-                  </Button>
-                </div>
-              </>
-            )}
-          </CardContent>
-        </Card>
-      )}
 
       <div className="flex justify-end">
         <Button

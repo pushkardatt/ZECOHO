@@ -618,6 +618,41 @@ export default function ListPropertyWizard() {
     queryKey: ["/api/amenities"],
   });
 
+  // Maps each in-room boolean flag to candidate catalog amenity names so
+  // that turning on a room flag also adds the matching property-wide amenity.
+  // Match is case-insensitive against the amenities catalog name.
+  const FLAG_TO_AMENITY_NAMES: Record<string, string[]> = {
+    hasAC: ["Air Conditioning", "AC"],
+    hasTV: ["TV", "Television"],
+    hasWifi: ["Wifi", "Wi-Fi", "WiFi"],
+    hasFridge: ["Refrigerator", "Fridge", "Mini Fridge"],
+    hasKettle: ["Electric Kettle", "Kettle"],
+    hasSafe: ["In-room Safe", "Safe"],
+    hasBalcony: ["Balcony"],
+    hasHeater: ["Heater", "Room Heater"],
+  };
+
+  const findAmenityIdsForFlag = (flagKey: string): string[] => {
+    const names = FLAG_TO_AMENITY_NAMES[flagKey] ?? [];
+    if (names.length === 0) return [];
+    const lc = names.map((n) => n.toLowerCase());
+    return amenities
+      .filter((a) => lc.includes(String(a.name).toLowerCase()))
+      .map((a) => String(a.id));
+  };
+
+  // Auto-sync: only ADDS to selectedAmenities (never removes). Disabling a
+  // room flag does not remove the property-level amenity, since another
+  // room may still need it or the owner set it property-wide explicitly.
+  const addAmenitiesToProperty = (ids: string[]) => {
+    if (ids.length === 0) return;
+    setSelectedAmenities((prev) => {
+      const next = new Set(prev);
+      ids.forEach((id) => next.add(id));
+      return Array.from(next);
+    });
+  };
+
   // Initialize step based on KYC status when data loads
   const hasInitializedStep = useRef(false);
   useEffect(() => {
@@ -1498,6 +1533,7 @@ export default function ListPropertyWizard() {
             hasSafe: rt.hasSafe ?? false,
             hasBalcony: rt.hasBalcony ?? false,
             hasHeater: rt.hasHeater ?? false,
+            roomAmenityIds: rt.roomAmenityIds ?? [],
             mealOptions: rt.mealOptions.map((mo) => ({
               name: mo.name,
               inclusions: mo.inclusions,
@@ -4076,6 +4112,9 @@ export default function ListPropertyWizard() {
                                               r.id === activeRt.id ? { ...r, [key]: !!checked } : r,
                                             ),
                                           );
+                                          if (checked) {
+                                            addAmenitiesToProperty(findAmenityIdsForFlag(key));
+                                          }
                                         }}
                                       />
                                       <label htmlFor={`amenity-rt-${activeRt.id}-${key}`} className="text-sm cursor-pointer">{label}</label>
@@ -4114,6 +4153,9 @@ export default function ListPropertyWizard() {
                                                         };
                                                       }),
                                                     );
+                                                    if (checked) {
+                                                      addAmenitiesToProperty([String(a.id)]);
+                                                    }
                                                   }}
                                                 />
                                                 <label htmlFor={`rt-cat-amenity-${activeRt.id}-${a.id}`} className="text-sm cursor-pointer">{a.name}</label>
