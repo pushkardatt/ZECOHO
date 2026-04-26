@@ -463,6 +463,24 @@ router.post("/admin/owner-subscriptions/:id/waive", isAuthenticated, requireAdmi
             verifiedAt: new Date(),
             verifiedBy: adminId,
           });
+
+          if (owner.email) {
+            try {
+              const { sendPropertyLiveEmail } = await import(
+                "./emailService"
+              );
+              sendPropertyLiveEmail(
+                owner.email,
+                owner.firstName || "Property Owner",
+                property.title,
+              ).catch(console.error);
+            } catch (emailErr) {
+              console.error(
+                "[WAIVE] sendPropertyLiveEmail failed:",
+                emailErr,
+              );
+            }
+          }
         }
       }
     } catch (publishError) {
@@ -540,6 +558,24 @@ router.post(
               verifiedAt: new Date(),
               verifiedBy: adminId,
             });
+
+            if (owner.email) {
+              try {
+                const { sendPropertyLiveEmail } = await import(
+                  "./emailService"
+                );
+                sendPropertyLiveEmail(
+                  owner.email,
+                  owner.firstName || "Property Owner",
+                  property.title,
+                ).catch(console.error);
+              } catch (emailErr) {
+                console.error(
+                  "[CREATE-AND-WAIVE] sendPropertyLiveEmail failed:",
+                  emailErr,
+                );
+              }
+            }
           }
         }
       } catch (publishError) {

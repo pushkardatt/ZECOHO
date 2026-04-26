@@ -83,6 +83,7 @@ import {
   sendPropertyLiveEmail,
   sendPasswordChangedEmail,
   sendPropertyStatusEmail,
+  sendPropertyRejectedEmail,
   sendBookingConfirmationEmail,
   sendBookingRequestToOwnerEmail,
   sendBookingCreatedGuestEmail,
@@ -4601,6 +4602,39 @@ export async function registerRoutes(
             .json({ message: "End date must be after start date" });
         }
 
+        // Block when overlapping with active reservations on this property.
+        // Active = locked at the booking layer: confirmed, customer_confirmed, checked_in.
+        // pending / cancelled / rejected / completed do NOT block (per spec).
+        const ACTIVE_STATUSES = [
+          "confirmed",
+          "customer_confirmed",
+          "checked_in",
+        ];
+        const allBookings = await storage.getBookingsByProperty(req.params.id);
+        const conflictingBookings = allBookings
+          .filter((b: any) => {
+            if (!ACTIVE_STATUSES.includes(b.status)) return false;
+            if (roomTypeId && b.roomTypeId && b.roomTypeId !== roomTypeId)
+              return false;
+            const bIn = new Date(b.checkIn);
+            const bOut = new Date(b.checkOut);
+            return bIn < end && bOut > start;
+          })
+          .map((b: any) => ({
+            bookingCode: b.bookingCode || b.id.slice(0, 8).toUpperCase(),
+            checkIn: b.checkIn,
+            checkOut: b.checkOut,
+            guestName: b.guestName || null,
+          }));
+
+        if (conflictingBookings.length > 0) {
+          return res.status(409).json({
+            error: "conflict",
+            message: "Cannot block dates with existing bookings",
+            conflictingBookings,
+          });
+        }
+
         const override = await storage.createAvailabilityOverride({
           propertyId: req.params.id,
           overrideType,
@@ -8071,6 +8105,24 @@ export async function registerRoutes(
             data: { url: "/owner/property" },
           });
         } catch {}
+
+        // Send rejection email to owner (fire-and-forget; don't block response)
+        try {
+          const owner = await storage.getUser(property.ownerId);
+          if (owner?.email) {
+            sendPropertyRejectedEmail(
+              owner.email,
+              owner.firstName || "Property Owner",
+              property.title,
+              notes,
+            ).catch(console.error);
+          }
+        } catch (emailErr) {
+          console.error(
+            "Property rejection email lookup failed:",
+            emailErr,
+          );
+        }
 
         res.json(updated);
       } catch (error) {
@@ -13293,14 +13345,31 @@ export async function registerRoutes(
           };
 
           if (status === "confirmed") {
-            // Send confirmed emails to both guest and owner (skipping guest confirmation step)
-            sendBookingConfirmedGuestEmail(
-              guest.email,
-              guest.firstName || "",
-              bookingEmailData,
-            ).catch(console.error);
-
             const owner = await storage.getUser(property.ownerId);
+            const ownerDisplayName =
+              owner?.firstName && owner?.lastName
+                ? `${owner.firstName} ${owner.lastName}`
+                : owner?.firstName || undefined;
+
+            const acceptedEmailData = {
+              ...bookingEmailData,
+              checkInTime: property.checkInTime || undefined,
+              checkOutTime: property.checkOutTime || undefined,
+              ownerName: ownerDisplayName,
+            };
+
+            // Owner just accepted — send the booking-confirmed email to the guest.
+            // Skip if the booking was already past pending (avoid duplicate sends on retry).
+            if (booking.status !== "customer_confirmed") {
+              sendBookingOwnerAcceptedEmail(
+                guest.email,
+                guest.firstName || "",
+                acceptedEmailData,
+                responseMessage,
+              ).catch(console.error);
+            }
+
+            // Owner-side confirmation email (kept on the existing template)
             if (owner?.email) {
               sendBookingConfirmedOwnerEmail(
                 owner.email,

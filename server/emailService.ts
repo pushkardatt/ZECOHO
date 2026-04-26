@@ -607,6 +607,96 @@ export async function sendPropertyStatusEmail(
   }
 }
 
+export async function sendPropertyRejectedEmail(
+  email: string,
+  firstName: string,
+  propertyName: string,
+  rejectionNotes: string,
+): Promise<boolean> {
+  try {
+    console.log(`Sending property rejection email to:`, email);
+    const { client, fromEmail } = await getResendClient();
+
+    const reasonBlock = rejectionNotes
+      ? `
+        <div style="background: #fef2f2; border-left: 4px solid #dc2626; padding: 12px 16px; margin: 0 0 24px 0; border-radius: 4px;">
+          <p style="color: #991b1b; font-size: 13px; font-weight: 600; margin: 0 0 4px 0;">Reason</p>
+          <p style="color: #7f1d1d; font-size: 14px; line-height: 1.5; margin: 0;">${rejectionNotes}</p>
+        </div>
+      `
+      : "";
+
+    const { data, error } = await client.emails.send({
+      from: fromEmail || "ZECOHO <noreply@zecoho.com>",
+      to: [email],
+      subject: "Your property listing needs attention | ZECOHO",
+      html: `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        </head>
+        <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 0; background-color: #f5f5f5;">
+          <div style="max-width: 480px; margin: 40px auto; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+            ${getEmailHeader()}
+
+            <div style="padding: 32px;">
+              <div style="text-align: center; margin-bottom: 24px;">
+                <div style="width: 64px; height: 64px; background: #fef2f2; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center;">
+                  <span style="font-size: 32px; color: #dc2626;">&#9888;</span>
+                </div>
+              </div>
+
+              <h2 style="color: #1f2937; margin: 0 0 16px 0; font-size: 20px; text-align: center;">Your property listing needs attention</h2>
+              <p style="color: #6b7280; margin: 0 0 16px 0; line-height: 1.5;">
+                Hi ${firstName || "Property Owner"},
+              </p>
+              <p style="color: #6b7280; margin: 0 0 16px 0; line-height: 1.5;">
+                Your property <strong>${propertyName}</strong> was not approved.
+              </p>
+
+              ${reasonBlock}
+
+              <p style="color: #6b7280; margin: 0 0 24px 0; line-height: 1.5;">
+                Please review the feedback above and resubmit from your dashboard.
+              </p>
+
+              <div style="text-align: center;">
+                <a href="${getAppBaseUrl()}/owner/properties" style="display: inline-block; background: #10b981; color: white; text-decoration: none; padding: 12px 32px; border-radius: 8px; font-weight: 600;">
+                  Manage Property
+                </a>
+              </div>
+            </div>
+
+            <div style="background: #f9fafb; padding: 20px; text-align: center; border-top: 1px solid #e5e7eb;">
+              <p style="color: #9ca3af; font-size: 12px; margin: 0;">
+                ZECOHO - Zero Commission Hotel Booking<br>
+                Enjoy ZERO commission on all bookings!
+              </p>
+            </div>
+          </div>
+        </body>
+        </html>
+      `,
+    });
+
+    if (error) {
+      console.error("Failed to send property rejection email:", error);
+      return false;
+    }
+
+    console.log("Property rejection email sent successfully:", data?.id);
+    return true;
+  } catch (error: any) {
+    console.error(
+      "Failed to send property rejection email:",
+      error?.message || error,
+    );
+    return false;
+  }
+}
+
 export async function sendAdminDeactivationRequestEmail(
   adminEmails: string[],
   ownerName: string,
@@ -1100,6 +1190,9 @@ interface BookingEmailData {
   propertyId?: string;
   checkIn: string;
   checkOut?: string;
+  checkInTime?: string;
+  checkOutTime?: string;
+  ownerName?: string;
   guests: number;
   rooms: number;
   totalPrice: string;
@@ -1371,10 +1464,22 @@ export async function sendBookingOwnerAcceptedEmail(
          </div>`
       : "";
 
+    const checkInLine = data.checkInTime
+      ? `${data.checkIn} at ${data.checkInTime}`
+      : data.checkIn;
+    const checkOutLine = data.checkOut
+      ? data.checkOutTime
+        ? `${data.checkOut} at ${data.checkOutTime}`
+        : data.checkOut
+      : "";
+    const acceptedByLine = data.ownerName
+      ? `Great news! ${data.ownerName} has accepted your booking request.`
+      : "Great news! The property owner has accepted your booking request.";
+
     const { error, data: emailData } = await client.emails.send({
       from: fromEmail || "ZECOHO <noreply@zecoho.com>",
       to: [guestEmail],
-      subject: `Action Required: ${data.propertyName} Accepted Your Request! (${data.bookingCode})`,
+      subject: "Booking Confirmed! | ZECOHO",
       html: `
         <!DOCTYPE html>
         <html>
@@ -1385,54 +1490,46 @@ export async function sendBookingOwnerAcceptedEmail(
         <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 0; background-color: #f5f5f5;">
           <div style="max-width: 480px; margin: 40px auto; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
             ${getEmailHeader()}
-            
+
             <div style="padding: 32px;">
               <div style="text-align: center; margin-bottom: 24px;">
                 <div style="width: 64px; height: 64px; background: #dcfce7; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center;">
-                  <span style="font-size: 32px;">&#127881;</span>
+                  <span style="font-size: 32px; color: #10b981;">&#10003;</span>
                 </div>
               </div>
-              
-              <h2 style="color: #1f2937; margin: 0 0 16px 0; font-size: 20px; text-align: center;">Great News! Your Request is Accepted</h2>
+
+              <h2 style="color: #1f2937; margin: 0 0 16px 0; font-size: 20px; text-align: center;">Your booking is confirmed!</h2>
               <p style="color: #6b7280; margin: 0 0 16px 0; line-height: 1.5;">
                 Hi ${guestFirstName || "there"},
               </p>
               <p style="color: #6b7280; margin: 0 0 24px 0; line-height: 1.5;">
-                The property <strong>"${data.propertyName}"</strong> has accepted your booking request! Please confirm your reservation to complete the booking.
+                ${acceptedByLine}
               </p>
-              
+
               ${messageSection}
-              
-              <div style="background: #f3f4f6; border-radius: 8px; padding: 16px; margin-bottom: 16px;">
-                <p style="color: #1f2937; margin: 0 0 4px 0; font-weight: 600;">Booking Reference</p>
-                <p style="color: #10b981; margin: 0; font-size: 20px; font-weight: 700; letter-spacing: 1px;">${data.bookingCode}</p>
-              </div>
-              
+
               <div style="background: #f3f4f6; border-radius: 8px; padding: 16px; margin-bottom: 24px;">
-                <p style="color: #1f2937; margin: 0 0 12px 0; font-weight: 600;">Booking Details:</p>
+                <p style="color: #1f2937; margin: 0 0 12px 0; font-weight: 600;">Booking Details</p>
                 <p style="color: #6b7280; margin: 0 0 8px 0;"><strong>Property:</strong> ${data.propertyName}</p>
-                <p style="color: #6b7280; margin: 0 0 8px 0;"><strong>Check-in:</strong> ${data.checkIn}</p>
-                <p style="color: #6b7280; margin: 0 0 8px 0;"><strong>Check-out:</strong> ${data.checkOut}</p>
+                <p style="color: #6b7280; margin: 0 0 8px 0;"><strong>Check-in:</strong> ${checkInLine}</p>
+                ${checkOutLine ? `<p style="color: #6b7280; margin: 0 0 8px 0;"><strong>Check-out:</strong> ${checkOutLine}</p>` : ""}
                 <p style="color: #6b7280; margin: 0 0 8px 0;"><strong>Guests:</strong> ${data.guests}</p>
-                ${data.bookingCreatedAt ? `<p style="color: #6b7280; margin: 0 0 8px 0;"><strong>Booked On:</strong> ${data.bookingCreatedAt}</p>` : ""}
-                ${generatePropertyDetailsSection(data, { showStatus: false })}
-                <p style="color: #1f2937; margin: 16px 0 0 0; font-weight: 600; font-size: 18px; padding-top: 12px; border-top: 1px solid #e5e7eb;">Total: Rs. ${data.totalPrice}</p>
+                <p style="color: #6b7280; margin: 0 0 0 0;"><strong>Booking reference:</strong> #${data.bookingCode}</p>
               </div>
-              
-              <div style="background: #fef3c7; border-radius: 8px; padding: 16px; margin-bottom: 24px; border-left: 4px solid #f59e0b;">
-                <p style="color: #92400e; margin: 0; font-weight: 500;">Action Required</p>
-                <p style="color: #a16207; margin: 8px 0 0 0; font-size: 14px;">
-                  Please confirm your booking to secure your reservation. If you don't confirm within 24 hours, the booking may expire.
+
+              <div style="background: #ecfdf5; border-radius: 8px; padding: 16px; margin-bottom: 24px; border-left: 4px solid #10b981;">
+                <p style="color: #065f46; margin: 0; font-size: 14px; line-height: 1.5;">
+                  Pay directly at the hotel at check-in. No advance payment required.
                 </p>
               </div>
-              
+
               <div style="text-align: center;">
-                <a href="${getAppBaseUrl()}/my-bookings?bookingRef=${data.bookingCode}" style="display: inline-block; background: #10b981; color: white; text-decoration: none; padding: 14px 36px; border-radius: 8px; font-weight: 600; font-size: 16px;">
-                  Confirm Your Booking
+                <a href="${getAppBaseUrl()}/my-bookings" style="display: inline-block; background: #10b981; color: white; text-decoration: none; padding: 14px 36px; border-radius: 8px; font-weight: 600; font-size: 16px;">
+                  View your booking
                 </a>
               </div>
             </div>
-            
+
             <div style="background: #f9fafb; padding: 20px; text-align: center; border-top: 1px solid #e5e7eb;">
               <p style="color: #9ca3af; font-size: 12px; margin: 0;">
                 ZECOHO - Zero Commission Hotel Booking<br>

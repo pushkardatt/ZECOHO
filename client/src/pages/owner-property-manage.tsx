@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { useParams, Link } from "wouter";
+import { useParams, Link, useLocation } from "wouter";
 import { OwnerLayout } from "@/components/OwnerLayout";
 import {
   Card,
@@ -589,12 +589,21 @@ function AvailabilitySection({
   roomTypes?: RoomType[];
 }) {
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
   const [startDate, setStartDate] = useState<Date>();
   const [endDate, setEndDate] = useState<Date>();
   const [overrideType, setOverrideType] = useState<string>("hold");
   const [reason, setReason] = useState("");
   const [availableRooms, setAvailableRooms] = useState<string>("");
   const [selectedRoomTypeId, setSelectedRoomTypeId] = useState<string>("");
+  const [conflictBookings, setConflictBookings] = useState<
+    Array<{
+      bookingCode: string;
+      checkIn: string;
+      checkOut: string;
+      guestName: string | null;
+    }>
+  >([]);
 
   const createMutation = useMutation({
     mutationFn: async (data: {
@@ -605,11 +614,28 @@ function AvailabilitySection({
       availableRooms?: number;
       roomTypeId?: string;
     }) => {
-      return apiRequest(
-        "POST",
+      // Use raw fetch so we can read the 409 conflict body.
+      const res = await fetch(
         `/api/properties/${propertyId}/availability-overrides`,
-        data,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify(data),
+        },
       );
+      if (res.status === 409) {
+        const body = await res.json();
+        const err = new Error("conflict") as Error & {
+          conflictingBookings?: typeof conflictBookings;
+        };
+        err.conflictingBookings = body.conflictingBookings ?? [];
+        throw err;
+      }
+      if (!res.ok) {
+        throw new Error(`${res.status}: ${await res.text()}`);
+      }
+      return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({
@@ -625,7 +651,15 @@ function AvailabilitySection({
         description: "The selected dates have been marked as unavailable.",
       });
     },
-    onError: () => {
+    onError: (
+      error: Error & {
+        conflictingBookings?: typeof conflictBookings;
+      },
+    ) => {
+      if (error.message === "conflict" && error.conflictingBookings?.length) {
+        setConflictBookings(error.conflictingBookings);
+        return;
+      }
       toast({
         title: "Error",
         description: "Failed to block dates.",
@@ -924,6 +958,69 @@ function AvailabilitySection({
           )}
         </CardContent>
       </Card>
+
+      <Dialog
+        open={conflictBookings.length > 0}
+        onOpenChange={(open) => {
+          if (!open) setConflictBookings([]);
+        }}
+      >
+        <DialogContent data-testid="dialog-block-conflict">
+          <DialogHeader>
+            <DialogTitle>Cannot block these dates</DialogTitle>
+            <DialogDescription>
+              {conflictBookings.length} confirmed booking
+              {conflictBookings.length === 1 ? "" : "s"} exist for the
+              selected range:
+            </DialogDescription>
+          </DialogHeader>
+          <ul className="space-y-2 text-sm">
+            {conflictBookings.map((b) => (
+              <li
+                key={b.bookingCode}
+                className="rounded-md border p-2 bg-muted/30"
+                data-testid={`conflict-booking-${b.bookingCode}`}
+              >
+                <div className="font-medium">
+                  Booking #{b.bookingCode}
+                  {b.guestName ? ` — ${b.guestName}` : ""}
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  {new Date(b.checkIn).toLocaleDateString("en-IN", {
+                    day: "numeric",
+                    month: "short",
+                    year: "numeric",
+                  })}{" "}
+                  →{" "}
+                  {new Date(b.checkOut).toLocaleDateString("en-IN", {
+                    day: "numeric",
+                    month: "short",
+                    year: "numeric",
+                  })}
+                </div>
+              </li>
+            ))}
+          </ul>
+          <DialogFooter className="gap-2 sm:gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setConflictBookings([])}
+              data-testid="button-conflict-close"
+            >
+              Close
+            </Button>
+            <Button
+              onClick={() => {
+                setConflictBookings([]);
+                setLocation("/owner/bookings");
+              }}
+              data-testid="button-view-bookings"
+            >
+              View Bookings
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -3351,6 +3448,7 @@ function PropertyDetailsSection({ property }: { property: Property }) {
   const { toast } = useToast();
 
   const [title, setTitle] = useState(property.title || "");
+  const [description, setDescription] = useState(property.description || "");
   const [propertyType, setPropertyType] = useState<string>(
     property.propertyType || "",
   );
@@ -3401,8 +3499,18 @@ function PropertyDetailsSection({ property }: { property: Property }) {
       toast({ title: "Property name is required.", variant: "destructive" });
       return;
     }
+    if (description.trim().length < 50) {
+      toast({
+        title: "Description too short",
+        description:
+          "Please write at least 50 characters describing your property.",
+        variant: "destructive",
+      });
+      return;
+    }
     updateMutation.mutate({
       title: title.trim(),
+      description: description.trim(),
       propertyType: propertyType || undefined,
       starRating: starRating ?? null,
       channelManagerEnabled,
@@ -3440,6 +3548,37 @@ function PropertyDetailsSection({ property }: { property: Property }) {
               placeholder="e.g. The Grand Residency"
               data-testid="input-pd-title"
             />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="pd-description">
+              Property Description <span className="text-destructive">*</span>
+            </Label>
+            <Textarea
+              id="pd-description"
+              rows={5}
+              maxLength={2000}
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Describe your property, surroundings, and what makes it special..."
+              data-testid="input-pd-description"
+            />
+            <div className="flex justify-between text-xs">
+              <span
+                className={
+                  description.trim().length < 50
+                    ? "text-destructive"
+                    : "text-muted-foreground"
+                }
+              >
+                {description.trim().length < 50
+                  ? `${50 - description.trim().length} more characters needed`
+                  : "Looks good"}
+              </span>
+              <span className="text-muted-foreground">
+                {description.length}/2000
+              </span>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
