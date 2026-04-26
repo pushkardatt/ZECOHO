@@ -2365,6 +2365,38 @@ export const insertSiteSettingsSchema = createInsertSchema(siteSettings).omit({
 });
 export type InsertSiteSettingsData = z.infer<typeof insertSiteSettingsSchema>;
 
+// Platform-wide pricing/fee settings (singleton row, id="default")
+export const platformSettings = pgTable("platform_settings", {
+  id: varchar("id").primaryKey().default("default"),
+  gstInclusive: boolean("gst_inclusive").notNull().default(true),
+  platformFeePercent: decimal("platform_fee_percent", {
+    precision: 5,
+    scale: 2,
+  })
+    .notNull()
+    .default("0"),
+  advancePaymentPercent: decimal("advance_payment_percent", {
+    precision: 5,
+    scale: 2,
+  })
+    .notNull()
+    .default("0"),
+  updatedAt: timestamp("updated_at").defaultNow(),
+  updatedBy: varchar("updated_by").references(() => users.id),
+});
+
+export type PlatformSettings = typeof platformSettings.$inferSelect;
+export type InsertPlatformSettings = typeof platformSettings.$inferInsert;
+export const insertPlatformSettingsSchema = createInsertSchema(
+  platformSettings,
+).omit({
+  id: true,
+  updatedAt: true,
+});
+export type InsertPlatformSettingsData = z.infer<
+  typeof insertPlatformSettingsSchema
+>;
+
 // Waitlist — visitors who submit their info while site is in Coming Soon mode
 export const waitlist = pgTable("waitlist", {
   id: varchar("id")

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -125,6 +126,7 @@ export function RoomTypeBuilder({
   onChange,
   propertyType,
 }: RoomTypeBuilderProps) {
+  const { toast } = useToast();
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingRoom, setEditingRoom] = useState<string | null>(null);
   const [expandedRooms, setExpandedRooms] = useState<Set<string>>(new Set());
@@ -174,6 +176,15 @@ export function RoomTypeBuilder({
     if (!newRoomName || !newRoomPrice || isNaN(price) || price < 100) return;
     if (isNaN(maxGuests) || maxGuests < 1) return;
     if (isNaN(totalRooms) || totalRooms < 1) return;
+    // Single + double occupancy pricing required; triple is optional.
+    if (doubleAdj === undefined || isNaN(doubleAdj) || doubleAdj < 100) {
+      toast({
+        title: "Occupancy pricing required",
+        description: "Please set pricing for single and double occupancy",
+        variant: "destructive",
+      });
+      return;
+    }
     // Validate original price must be greater than selling price
     if (originalPrice !== undefined && originalPrice <= price) return;
 
@@ -446,17 +457,17 @@ export function RoomTypeBuilder({
                   <Label className="text-sm font-medium">
                     Occupancy-Based Pricing
                   </Label>
-                  <Badge variant="secondary" className="text-xs">
-                    Optional
-                  </Badge>
                 </div>
                 <p className="text-xs text-muted-foreground">
                   Set the price charged per night based on number of guests.
-                  Leave 2-guest and 3-guest prices blank to use the base price for all.
+                  Single and double occupancy are required; triple is optional.
                 </p>
                 <div className="grid gap-4 md:grid-cols-3">
                   <div className="space-y-2">
-                    <Label className="text-xs font-medium">1 Guest — Price/Night (₹)</Label>
+                    <Label className="text-xs font-medium">
+                      Single occupancy (1 guest) ₹{" "}
+                      <span className="text-destructive">*</span>
+                    </Label>
                     <Input
                       type="number"
                       min="100"
@@ -469,10 +480,13 @@ export function RoomTypeBuilder({
                     <p className="text-xs text-muted-foreground">Same as selling price above</p>
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-xs font-medium">2 Guests — Price/Night (₹)</Label>
+                    <Label className="text-xs font-medium">
+                      Double occupancy (2 guests) ₹{" "}
+                      <span className="text-destructive">*</span>
+                    </Label>
                     <Input
                       type="number"
-                      min="0"
+                      min="100"
                       value={newDoubleOccupancyAdjustment}
                       onChange={(e) =>
                         setNewDoubleOccupancyAdjustment(e.target.value)
@@ -487,7 +501,9 @@ export function RoomTypeBuilder({
                     )}
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-xs font-medium">3+ Guests — Price/Night (₹)</Label>
+                    <Label className="text-xs font-medium">
+                      Triple occupancy (3+ guests) — Optional
+                    </Label>
                     <Input
                       type="number"
                       min="0"
@@ -516,7 +532,11 @@ export function RoomTypeBuilder({
                 <Button
                   type="button"
                   onClick={handleAddRoom}
-                  disabled={!newRoomName || !newRoomPrice}
+                  disabled={
+                    !newRoomName ||
+                    !newRoomPrice ||
+                    !newDoubleOccupancyAdjustment
+                  }
                   data-testid="button-save-new-room"
                 >
                   Add Room Type
@@ -570,7 +590,7 @@ export function RoomTypeBuilder({
 
         {value.length > 0 && (
           <div className="bg-muted/50 rounded-lg p-3 text-sm text-muted-foreground">
-            <strong>Tip:</strong> Expand a room type to manage meal plans. Guest price = 1-guest price + meal plan add-on per person. Set 2-guest and 3-guest prices for occupancy-based rates.
+            <strong>Tip:</strong> Expand a room type to manage meal plans. Guest price = single-occupancy price + meal plan add-on per person. Triple-occupancy pricing is optional.
           </div>
         )}
       </CardContent>
@@ -606,6 +626,7 @@ function RoomTypeCard({
     updates: Partial<WizardMealOption>,
   ) => void;
 }) {
+  const { toast } = useToast();
   const [editName, setEditName] = useState(room.name);
   const [editDescription, setEditDescription] = useState(
     room.description || "",
@@ -652,6 +673,14 @@ function RoomTypeCard({
     if (isNaN(price) || price < 100) return;
     if (isNaN(maxGuests) || maxGuests < 1) return;
     if (isNaN(totalRooms) || totalRooms < 1) return;
+    if (doubleAdj === undefined || isNaN(doubleAdj) || doubleAdj < 100) {
+      toast({
+        title: "Occupancy pricing required",
+        description: "Please set pricing for single and double occupancy",
+        variant: "destructive",
+      });
+      return;
+    }
     // Validate original price must be greater than selling price
     if (originalPrice !== undefined && originalPrice <= price) return;
 
@@ -924,16 +953,16 @@ function RoomTypeCard({
                 <Label className="text-xs font-medium">
                   Occupancy-Based Pricing
                 </Label>
-                <Badge variant="secondary" className="text-xs">
-                  Optional
-                </Badge>
               </div>
               <p className="text-xs text-muted-foreground">
-                Set price per night per occupancy level. Leave 2-guest / 3-guest blank to use the base price.
+                Single and double occupancy are required; triple is optional.
               </p>
               <div className="grid gap-3 md:grid-cols-3">
                 <div className="space-y-1">
-                  <Label className="text-xs font-medium">1 Guest — ₹/Night</Label>
+                  <Label className="text-xs font-medium">
+                    Single occupancy (1 guest) ₹{" "}
+                    <span className="text-destructive">*</span>
+                  </Label>
                   <Input
                     type="number"
                     min="100"
@@ -944,13 +973,16 @@ function RoomTypeCard({
                   <p className="text-xs text-muted-foreground">Same as selling price</p>
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-xs font-medium">2 Guests — ₹/Night</Label>
+                  <Label className="text-xs font-medium">
+                    Double occupancy (2 guests) ₹{" "}
+                    <span className="text-destructive">*</span>
+                  </Label>
                   <Input
                     type="number"
-                    min="0"
+                    min="100"
                     value={editDoubleOccupancy}
                     onChange={(e) => setEditDoubleOccupancy(e.target.value)}
-                    placeholder="Leave blank for same as 1 guest"
+                    placeholder="e.g., 2500"
                     data-testid={`edit-room-double-occupancy-${room.id}`}
                   />
                   {editDoubleOccupancy && editPrice && (
@@ -960,13 +992,15 @@ function RoomTypeCard({
                   )}
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-xs font-medium">3+ Guests — ₹/Night</Label>
+                  <Label className="text-xs font-medium">
+                    Triple occupancy (3+ guests) — Optional
+                  </Label>
                   <Input
                     type="number"
                     min="0"
                     value={editTripleOccupancy}
                     onChange={(e) => setEditTripleOccupancy(e.target.value)}
-                    placeholder="Leave blank for same as 1 guest"
+                    placeholder="Leave blank if unavailable"
                     data-testid={`edit-room-triple-occupancy-${room.id}`}
                   />
                   {editTripleOccupancy && editPrice && (

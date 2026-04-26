@@ -215,6 +215,14 @@ export default function AdminKYC() {
   const [selectedRevocationReasons, setSelectedRevocationReasons] = useState<Record<string, boolean>>({});
   const [customRevocationReason, setCustomRevocationReason] = useState("");
 
+  // Post-approval subscription waive flow
+  const [waiveDialogOpen, setWaiveDialogOpen] = useState(false);
+  const [waiveStep, setWaiveStep] = useState<"ask" | "form">("ask");
+  const [waiveOwnerId, setWaiveOwnerId] = useState<string | null>(null);
+  const [waiveDays, setWaiveDays] = useState("365");
+  const [waiveNote, setWaiveNote] = useState("");
+  const [waivePlanId, setWaivePlanId] = useState<string>("");
+
   const resetRejectionForm = () => {
     setSelectedRejectionSections({
       personal: { selected: false, message: "" },
@@ -249,6 +257,14 @@ export default function AdminKYC() {
     enabled: !authLoading && isAuthenticated && isAdmin,
   });
 
+  // Subscription plans — used to pick a plan for the post-approval waive flow.
+  const { data: subscriptionPlans = [] } = useQuery<
+    Array<{ id: string; name: string; tier: string; price: string }>
+  >({
+    queryKey: ["/api/subscription-plans"],
+    enabled: isAuthenticated && isAdmin,
+  });
+
   // Refetch when auth state changes
   useEffect(() => {
     if (!authLoading && isAuthenticated && isAdmin) {
@@ -259,12 +275,12 @@ export default function AdminKYC() {
   const updateStatusMutation = useMutation({
     mutationFn: async ({ id, status }: { id: string; status: "verified" | "rejected" }) => {
       const payload: any = { reviewNotes };
-      
+
       if (status === "rejected") {
         const rejectionItems: KycRejectionItem[] = [];
         for (const [sectionId, data] of Object.entries(selectedRejectionSections)) {
           if (data.selected) {
-            const finalMessage = data.message === "custom" 
+            const finalMessage = data.message === "custom"
               ? (data.customMessage || "Please review and correct this section")
               : (data.message || "Please review and correct this section");
             rejectionItems.push({
@@ -275,15 +291,24 @@ export default function AdminKYC() {
         }
         payload.rejectionDetails = { sections: rejectionItems };
       }
-      
+
       await apiRequest("PATCH", `/api/admin/kyc/${id}/${status}`, payload);
+      return { status };
     },
-    onSuccess: () => {
+    onSuccess: (result, variables) => {
       toast({
         title: "Status Updated",
         description: "KYC application status has been updated successfully.",
       });
       queryClient.invalidateQueries({ queryKey: ["/api/admin/kyc"] });
+
+      // After approve: ask whether to also waive a subscription so the owner can go live immediately.
+      if (variables.status === "verified" && selectedApp?.userId) {
+        setWaiveOwnerId(selectedApp.userId);
+        setWaiveStep("ask");
+        setWaiveDialogOpen(true);
+      }
+
       setSelectedApp(null);
       resetRejectionForm();
     },
@@ -291,6 +316,45 @@ export default function AdminKYC() {
       toast({
         title: "Error",
         description: error.message || "Failed to update status",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const createAndWaiveMutation = useMutation({
+    mutationFn: async ({
+      ownerId,
+      planId,
+      days,
+      note,
+    }: {
+      ownerId: string;
+      planId: string;
+      days: number;
+      note: string;
+    }) => {
+      await apiRequest(
+        "POST",
+        "/api/admin/owner-subscriptions/create-and-waive",
+        { ownerId, planId, days, note },
+      );
+    },
+    onSuccess: () => {
+      toast({
+        title: "Subscription activated",
+        description: "Property will go live shortly.",
+      });
+      setWaiveDialogOpen(false);
+      setWaiveOwnerId(null);
+      setWaiveDays("365");
+      setWaiveNote("");
+      setWaivePlanId("");
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/kyc"] });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Could not waive subscription",
+        description: error.message || "Please try again.",
         variant: "destructive",
       });
     },
@@ -918,6 +982,143 @@ export default function AdminKYC() {
             </DialogContent>
           </Dialog>
         )}
+
+        <Dialog
+          open={waiveDialogOpen}
+          onOpenChange={(open) => {
+            if (!open) {
+              setWaiveDialogOpen(false);
+              setWaiveStep("ask");
+              setWaiveOwnerId(null);
+              setWaiveDays("365");
+              setWaiveNote("");
+              setWaivePlanId("");
+            }
+          }}
+        >
+          <DialogContent data-testid="dialog-post-kyc-waive">
+            {waiveStep === "ask" && (
+              <>
+                <DialogHeader>
+                  <DialogTitle>Activate a subscription too?</DialogTitle>
+                  <DialogDescription>
+                    KYC is approved. Would you like to also activate a
+                    subscription for this owner so their property can go live
+                    immediately?
+                  </DialogDescription>
+                </DialogHeader>
+                <DialogFooter className="gap-2 sm:gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => setWaiveDialogOpen(false)}
+                    data-testid="button-skip-waive"
+                  >
+                    Skip — Owner will subscribe themselves
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      const firstActivePlan = subscriptionPlans[0];
+                      if (firstActivePlan) setWaivePlanId(firstActivePlan.id);
+                      setWaiveStep("form");
+                    }}
+                    data-testid="button-open-waive-form"
+                  >
+                    Waive subscription fee
+                  </Button>
+                </DialogFooter>
+              </>
+            )}
+
+            {waiveStep === "form" && (
+              <>
+                <DialogHeader>
+                  <DialogTitle>Waive subscription fee</DialogTitle>
+                  <DialogDescription>
+                    Creates an active, free subscription. Pending properties
+                    auto-publish if KYC is verified.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4 py-2">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="waive-plan">Plan</Label>
+                    <Select
+                      value={waivePlanId}
+                      onValueChange={setWaivePlanId}
+                    >
+                      <SelectTrigger
+                        id="waive-plan"
+                        data-testid="select-waive-plan"
+                      >
+                        <SelectValue placeholder="Select a plan" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {subscriptionPlans.map((p) => (
+                          <SelectItem key={p.id} value={p.id}>
+                            {p.name} ({p.tier})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="waive-days">Duration in days</Label>
+                    <Input
+                      id="waive-days"
+                      type="number"
+                      min={1}
+                      max={3650}
+                      value={waiveDays}
+                      onChange={(e) => setWaiveDays(e.target.value)}
+                      data-testid="input-waive-days"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="waive-note">Note (optional)</Label>
+                    <Textarea
+                      id="waive-note"
+                      value={waiveNote}
+                      onChange={(e) => setWaiveNote(e.target.value)}
+                      placeholder="Reason for waiving the fee"
+                      data-testid="textarea-waive-note"
+                    />
+                  </div>
+                </div>
+                <DialogFooter className="gap-2 sm:gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => setWaiveStep("ask")}
+                    data-testid="button-back-waive-form"
+                  >
+                    Back
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      const days = parseInt(waiveDays, 10);
+                      if (!waiveOwnerId || !waivePlanId || !days) return;
+                      createAndWaiveMutation.mutate({
+                        ownerId: waiveOwnerId,
+                        planId: waivePlanId,
+                        days,
+                        note: waiveNote,
+                      });
+                    }}
+                    disabled={
+                      !waiveOwnerId ||
+                      !waivePlanId ||
+                      !waiveDays ||
+                      createAndWaiveMutation.isPending
+                    }
+                    data-testid="button-confirm-waive"
+                  >
+                    {createAndWaiveMutation.isPending
+                      ? "Waiving..."
+                      : "Confirm & Waive"}
+                  </Button>
+                </DialogFooter>
+              </>
+            )}
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );

@@ -402,6 +402,14 @@ export function PropertyDetailView({ propertyId }: { propertyId: string }) {
     enabled: !!propertyId,
   });
 
+  const { data: platformSettings } = useQuery<{
+    gstInclusive: boolean;
+    platformFeePercent: string;
+    advancePaymentPercent: string;
+  }>({
+    queryKey: ["/api/platform-settings"],
+  });
+
   const { data: allProperties = [] } = useQuery<any[]>({
     queryKey: ["/api/properties"],
     staleTime: 5 * 60 * 1000,
@@ -3125,7 +3133,7 @@ export function PropertyDetailView({ propertyId }: { propertyId: string }) {
                       if (!rt) return null;
 
                       const adultsPerRoom = Math.ceil(adults / rooms);
-                      let occupancyLabel = "";
+                      let occupancyLabel = "Single occupancy";
                       if (adultsPerRoom >= 3 && rt.tripleOccupancyPrice) {
                         occupancyLabel = "Triple occupancy";
                       } else if (
@@ -3133,8 +3141,6 @@ export function PropertyDetailView({ propertyId }: { propertyId: string }) {
                         rt.doubleOccupancyPrice
                       ) {
                         occupancyLabel = "Double occupancy";
-                      } else if (rt.singleOccupancyPrice) {
-                        occupancyLabel = "Single occupancy";
                       }
 
                       let mealOptionName = "";
@@ -3151,37 +3157,55 @@ export function PropertyDetailView({ propertyId }: { propertyId: string }) {
 
                       const mealSubtotal = nights * mealOptionPrice * guests;
                       // roomSubtotal derived from override-aware totalPrice
-                      const roomSubtotal = totalPrice - mealSubtotal;
+                      const roomSubtotal = Math.max(
+                        totalPrice - mealSubtotal,
+                        0,
+                      );
+                      const effectivePricePerNight =
+                        nights > 0 && rooms > 0
+                          ? roomSubtotal / nights / rooms
+                          : 0;
+
+                      // Mirror server slabs: 0/12/18% based on nightly rate.
+                      const slabRate =
+                        effectivePricePerNight < 1000
+                          ? 0
+                          : effectivePricePerNight < 7500
+                            ? 12
+                            : 18;
+                      const gstInclusive =
+                        platformSettings?.gstInclusive ?? true;
+                      const gstAmount =
+                        gstInclusive && slabRate > 0
+                          ? Math.round(
+                              (roomSubtotal * slabRate) / (100 + slabRate),
+                            )
+                          : 0;
 
                       return (
-                        <div className="mb-4 p-4 bg-muted rounded-lg space-y-2">
-                          <div className="flex justify-between text-sm">
-                            <span className="text-muted-foreground">
-                              <span className="font-medium">{rt.name}</span>
-                              {occupancyLabel ? ` (${occupancyLabel})` : ""}
-                              {" × "}
-                              {nights}N × {rooms}R
-                            </span>
-                            <span className="font-semibold">
-                              ₹{roomSubtotal.toLocaleString("en-IN")}
-                            </span>
-                          </div>
-                          {mealOptionPrice > 0 && (
-                            <div className="flex justify-between text-sm">
-                              <span className="text-muted-foreground">
-                                {mealOptionName} × {guests} guests × {nights}N
-                              </span>
-                              <span className="font-semibold">
-                                ₹{mealSubtotal.toLocaleString("en-IN")}
-                              </span>
-                            </div>
-                          )}
-                          <div className="flex justify-between text-base font-semibold pt-2 border-t">
-                            <span>Total</span>
-                            <span data-testid="text-total-price">
-                              ₹{totalPrice.toLocaleString("en-IN")}
-                            </span>
-                          </div>
+                        <div className="mb-4">
+                          <BookingPriceSummary
+                            breakdown={{
+                              roomTypeName: `${rt.name} (${occupancyLabel})`,
+                              basePrice: effectivePricePerNight,
+                              occupancyAdjustment: 0,
+                              occupancyLabel,
+                              mealOptionName,
+                              mealOptionPrice,
+                              nights,
+                              rooms,
+                              guests,
+                              adults,
+                              children,
+                              originalPrice: rt.originalPrice
+                                ? Number(rt.originalPrice)
+                                : null,
+                              bulkDiscountPercent: 0,
+                            }}
+                            gstAmount={gstAmount}
+                            gstRate={slabRate}
+                            gstInclusive={gstInclusive}
+                          />
                         </div>
                       );
                     })()}

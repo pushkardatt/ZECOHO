@@ -82,6 +82,7 @@ import AdminSubscriptions from "@/pages/admin-subscriptions.tsx";
 import AdminHome from "@/pages/admin-home";
 import AdminReports from "@/pages/admin-reports";
 import AdminLogo from "@/pages/admin-logo";
+import AdminPlatformSettings from "@/pages/admin-platform-settings";
 import AdminComingSoon from "@/pages/admin-coming-soon";
 import ComingSoon from "@/pages/coming-soon";
 import ContactUs from "@/pages/contact-us";
@@ -89,6 +90,7 @@ import AboutUs from "@/pages/about-us";
 import OwnerAgreementPage from "@/pages/owner-agreement";
 import KYC from "@/pages/kyc";
 import ListPropertyWizard from "@/pages/list-property-wizard";
+import PropertySubmitted from "@/pages/property-submitted";
 import DevAdminLogin from "@/pages/dev-admin-login";
 import Login from "@/pages/login";
 import Register from "@/pages/register";
@@ -171,6 +173,10 @@ function Router() {
       <Route path="/admin/support" component={AdminSupport} />
       <Route path="/admin/subscriptions" component={AdminSubscriptions} />
       <Route path="/admin/logo" component={AdminLogo} />
+      <Route
+        path="/admin/platform-settings"
+        component={AdminPlatformSettings}
+      />
       <Route path="/admin/coming-soon" component={AdminComingSoon} />
       <Route path="/admin/reports" component={AdminReports} />
       <Route path="/admin/sub-admins" component={AdminSubAdmins} />
@@ -184,6 +190,7 @@ function Router() {
       <Route path="/register" component={Register} />
       <Route path="/forgot-password" component={ForgotPassword} />
       <Route path="/list-property" component={ListPropertyWizard} />
+      <Route path="/property-submitted" component={PropertySubmitted} />
       <Route path="/dev-admin" component={DevAdminLogin} />
       <Route path="/kyc" component={KYC} />
       <Route path="/search" component={Search} />

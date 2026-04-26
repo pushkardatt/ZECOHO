@@ -5315,6 +5315,32 @@ export async function registerRoutes(
     }
   });
 
+  // GST calculation helper — Indian hotel slabs (0% < ₹1000, 12% < ₹7500, 18% otherwise).
+  // Returns extracted GST when gstInclusive=true; otherwise returns gstAmount=0 and the
+  // unmodified room subtotal (caller should add gstAmount on top if exclusive).
+  function calculateGST(
+    pricePerNight: number,
+    nights: number,
+    rooms: number,
+    gstInclusive: boolean,
+  ): { gstRate: number; gstAmount: number; roomSubtotalExGST: number } {
+    const rate = pricePerNight < 1000 ? 0 : pricePerNight < 7500 ? 12 : 18;
+    const totalRoomCharge = pricePerNight * nights * rooms;
+    if (!gstInclusive || rate === 0) {
+      return {
+        gstRate: rate,
+        gstAmount: 0,
+        roomSubtotalExGST: totalRoomCharge,
+      };
+    }
+    const gstAmount = Math.round((totalRoomCharge * rate) / (100 + rate));
+    return {
+      gstRate: rate,
+      gstAmount,
+      roomSubtotalExGST: totalRoomCharge - gstAmount,
+    };
+  }
+
   // Booking routes
   app.post("/api/bookings", isAuthenticated, async (req: any, res) => {
     try {
@@ -5780,19 +5806,34 @@ export async function registerRoutes(
         }
       }
 
-      // Platform fee: ZERO commission model - no platform fee
-      const platformFee = 0;
-      // GST: 12% on room charges for properties with tariff > ₹7500/night, 0% otherwise (ZECOHO zero-commission)
-      const gstRate = 0;
-      const gstAmount = 0;
+      // Fetch admin-configured platform settings (auto-creates default row on first call)
+      const settings = await storage.getPlatformSettings();
 
-      const totalPrice = roomSubtotal + mealSubtotal + platformFee + gstAmount;
+      // Effective per-room per-night rate drives the GST slab. Fall back to the
+      // averaged value when room-type pricing didn't set pricePerNight.
+      const effectivePricePerNight =
+        pricePerNight ??
+        (nights > 0 && roomsCount > 0
+          ? roomSubtotal / nights / roomsCount
+          : 0);
 
-      // Advance payment: configurable percentage (default 0 - pay at hotel model)
-      const ADVANCE_PAYMENT_PERCENT = 0;
-      const advanceAmount = Math.round(
-        (totalPrice * ADVANCE_PAYMENT_PERCENT) / 100,
+      const { gstRate, gstAmount } = calculateGST(
+        effectivePricePerNight,
+        nights,
+        roomsCount,
+        settings.gstInclusive,
       );
+
+      const platformFeePercent = Number(settings.platformFeePercent);
+      const platformFee = Math.round(
+        (roomSubtotal * platformFeePercent) / 100,
+      );
+
+      // In the inclusive model GST is already part of roomSubtotal — don't add it again.
+      const totalPrice = roomSubtotal + mealSubtotal + platformFee;
+
+      const advancePercent = Number(settings.advancePaymentPercent);
+      const advanceAmount = Math.round((totalPrice * advancePercent) / 100);
 
       const booking = await storage.createBooking({
         ...validatedData,
@@ -8768,6 +8809,56 @@ export async function registerRoutes(
       } catch (error) {
         console.error("Error updating site settings:", error);
         res.status(500).json({ message: "Failed to update site settings" });
+      }
+    },
+  );
+
+  // ===============================
+  // PLATFORM SETTINGS (GST, fees)
+  // ===============================
+
+  // Public: Get platform settings (guests need GST info for display)
+  app.get("/api/platform-settings", async (req, res) => {
+    try {
+      const settings = await storage.getPlatformSettings();
+      res.json(settings);
+    } catch (error) {
+      console.error("Error getting platform settings:", error);
+      res.status(500).json({ message: "Failed to get platform settings" });
+    }
+  });
+
+  // Admin: Update platform settings
+  app.patch(
+    "/api/admin/platform-settings",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const userId = req.user.claims.sub;
+        const user = await storage.getUser(userId);
+        if (!user || !userHasRole(user, "admin")) {
+          return res
+            .status(403)
+            .json({ message: "Only admins can update platform settings" });
+        }
+        const { gstInclusive, platformFeePercent, advancePaymentPercent } =
+          req.body ?? {};
+        const patch: Record<string, unknown> = { updatedBy: userId };
+        if (gstInclusive !== undefined) patch.gstInclusive = !!gstInclusive;
+        if (platformFeePercent !== undefined)
+          patch.platformFeePercent = String(platformFeePercent);
+        if (advancePaymentPercent !== undefined)
+          patch.advancePaymentPercent = String(advancePaymentPercent);
+        const updated = await storage.upsertPlatformSettings(patch);
+        res.json({
+          message: "Platform settings updated successfully",
+          settings: updated,
+        });
+      } catch (error) {
+        console.error("Error updating platform settings:", error);
+        res
+          .status(500)
+          .json({ message: "Failed to update platform settings" });
       }
     },
   );

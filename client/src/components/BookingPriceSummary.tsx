@@ -20,9 +20,17 @@ interface PriceBreakdown {
 
 interface BookingPriceSummaryProps {
   breakdown: PriceBreakdown;
+  gstAmount?: number;
+  gstRate?: number;
+  gstInclusive?: boolean;
 }
 
-export function BookingPriceSummary({ breakdown }: BookingPriceSummaryProps) {
+export function BookingPriceSummary({
+  breakdown,
+  gstAmount = 0,
+  gstRate = 0,
+  gstInclusive = true,
+}: BookingPriceSummaryProps) {
   const {
     roomTypeName,
     basePrice,
@@ -46,14 +54,18 @@ export function BookingPriceSummary({ breakdown }: BookingPriceSummaryProps) {
   const priceSavings = originalPrice ? originalSubtotal - roomSubtotal : 0;
 
   const platformFee = 0;
-  const gstAmount = 0;
 
   const subtotal = roomSubtotal + mealSubtotal;
   const bulkDiscount =
     bulkDiscountPercent > 0
       ? Math.round((subtotal * bulkDiscountPercent) / 100)
       : 0;
-  const totalPrice = subtotal - bulkDiscount + platformFee + gstAmount;
+  // GST is included in roomSubtotal when inclusive, so we don't add it again.
+  const totalPrice =
+    subtotal -
+    bulkDiscount +
+    platformFee +
+    (gstInclusive ? 0 : gstAmount);
 
   const fmt = (n: number) => n.toLocaleString("en-IN");
 
@@ -115,7 +127,6 @@ export function BookingPriceSummary({ breakdown }: BookingPriceSummaryProps) {
           data-testid="price-meal-subtotal"
         >
           <span className="text-muted-foreground">
-            // ✅ Clearer breakdown label
             {mealOptionName} (meal): ₹{fmt(mealOptionPrice)}/person × {adults}{" "}
             adults
             {children > 0 ? ` + ${children} children` : ""} × {nights}N
@@ -135,16 +146,31 @@ export function BookingPriceSummary({ breakdown }: BookingPriceSummaryProps) {
         className="flex justify-between text-sm"
         data-testid="price-platform-fee"
       >
-        <span className="text-muted-foreground">Platform Fee</span>
+        <span className="text-muted-foreground">
+          Platform Fee
+          {platformFee === 0 && (
+            <span className="ml-1 text-xs text-green-700 dark:text-green-300">
+              (Zero Commission)
+            </span>
+          )}
+        </span>
         <span className="font-medium text-green-600 dark:text-green-400">
           {platformFee === 0 ? "FREE" : `₹${fmt(platformFee)}`}
         </span>
       </div>
 
       <div className="flex justify-between text-sm" data-testid="price-gst">
-        <span className="text-muted-foreground">GST</span>
+        <span className="text-muted-foreground">
+          {gstInclusive && gstAmount > 0
+            ? `GST included (${gstRate}%)`
+            : "GST"}
+        </span>
         <span className="font-medium">
-          {gstAmount === 0 ? "₹0" : `₹${fmt(gstAmount)}`}
+          {gstAmount === 0
+            ? "Included"
+            : gstInclusive
+              ? `₹${fmt(gstAmount)}`
+              : `+ ₹${fmt(gstAmount)}`}
         </span>
       </div>
 

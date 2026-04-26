@@ -23,6 +23,7 @@ import {
   CheckCircle2,
   FileEdit,
   ArrowRight,
+  Rocket,
   Pause,
   Power,
   Play,
@@ -402,7 +403,12 @@ export default function OwnerDashboard() {
 
   useBookingUpdates({ userId: user?.id });
 
-  const { data: subStatus } = useQuery({
+  const { data: subStatus } = useQuery<{
+    isActive: boolean;
+    tier: string | null;
+    expiresAt: string | null;
+    daysLeft: number | null;
+  }>({
     queryKey: ["/api/owner/subscription-status", user?.id],
     queryFn: () =>
       apiRequest("GET", `/api/owner/subscription-status/${user?.id}`).then(
@@ -411,8 +417,13 @@ export default function OwnerDashboard() {
     enabled: !!user?.id,
   });
 
-  const isSubscriptionActive = subStatus?.status === "active";
-  const subExpired = subStatus?.status === "expired";
+  const isSubscriptionActive = subStatus?.isActive === true;
+  const subExpired =
+    !subStatus?.isActive &&
+    subStatus?.expiresAt !== null &&
+    subStatus?.expiresAt !== undefined;
+  const noSubscription =
+    !!subStatus && !subStatus.isActive && !subStatus.expiresAt;
 
   // ✅ MOVE HERE (IMPORTANT)
   useEffect(() => {
@@ -620,13 +631,34 @@ export default function OwnerDashboard() {
   return (
     <OwnerLayout>
       <div className="space-y-6" data-testid="owner-dashboard">
+        {user?.kycStatus === "verified" && noSubscription && (
+          <Alert
+            className="bg-blue-50 dark:bg-blue-950/30 border-blue-300"
+            data-testid="alert-no-subscription"
+          >
+            <Rocket className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+            <AlertTitle className="text-blue-800 dark:text-blue-200">
+              Activate your subscription to go live
+            </AlertTitle>
+            <AlertDescription className="text-blue-700 dark:text-blue-300">
+              Your KYC is approved! Subscribe to a plan to make your property
+              visible to guests.{" "}
+              <Link
+                href="/owner/subscription"
+                className="font-semibold underline hover:text-blue-900 dark:hover:text-blue-100"
+                data-testid="link-view-plans"
+              >
+                View Subscription Plans →
+              </Link>
+            </AlertDescription>
+          </Alert>
+        )}
+
         {subExpired && (
           <Alert className="bg-amber-50 dark:bg-amber-950/30 border-amber-300">
             <AlertTriangle className="h-4 w-4 text-amber-600" />
             <AlertTitle className="text-amber-800 dark:text-amber-200">
-              {subStatus?.status === "expired"
-                ? "Your subscription has expired"
-                : "No active subscription"}
+              Your subscription has expired
             </AlertTitle>
             <AlertDescription className="text-amber-700 dark:text-amber-300">
               Your property listing may be affected.{" "}

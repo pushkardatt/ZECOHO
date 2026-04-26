@@ -1551,7 +1551,7 @@ export default function ListPropertyWizard() {
         description:
           "Your KYC and property listing have been submitted for review. You'll be notified once approved.",
       });
-      setLocation("/");
+      setLocation("/property-submitted");
     },
     onError: (error: Error) => {
       if (isUnauthorizedError(error)) {

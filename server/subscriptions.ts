@@ -440,9 +440,121 @@ router.post("/admin/owner-subscriptions/:id/waive", isAuthenticated, requireAdmi
       req.body.note,
       days,
     );
+    if (!sub) return res.status(404).json({ error: "Subscription not found" });
+
+    // Auto-publish pending properties if KYC verified — mirrors activate flow.
+    try {
+      const owner = await storage.getUser(sub.ownerId);
+      if (owner?.kycStatus === "verified") {
+        const allProperties = await storage.getProperties({
+          ownerId: sub.ownerId,
+          includeAllStatuses: true,
+          adminView: true,
+        });
+        const pendingProperties = allProperties.filter(
+          (p: any) => p.status === "pending",
+        );
+        for (const property of pendingProperties) {
+          if (!property.latitude || !property.longitude) continue;
+          await storage.updateProperty(property.id, {
+            status: "published",
+            verificationNotes:
+              `Auto-approved on subscription waiver. ${req.body.note || ""}`.trim(),
+            verifiedAt: new Date(),
+            verifiedBy: adminId,
+          });
+        }
+      }
+    } catch (publishError) {
+      console.error("[WAIVE] auto-publish failed:", publishError);
+    }
+
     res.json(sub);
   } catch (error) {
     res.status(500).json({ error: "Failed to waive" });
   }
 });
+
+/* ADMIN — create-and-waive (one-shot for KYC approval flow) */
+router.post(
+  "/admin/owner-subscriptions/create-and-waive",
+  isAuthenticated,
+  requireAdmin,
+  async (req, res) => {
+    try {
+      const adminId = getRequestUserId(req as AuthenticatedRequest);
+      const { ownerId, planId, days, note } = req.body ?? {};
+      if (!ownerId || !planId) {
+        return res
+          .status(400)
+          .json({ error: "ownerId and planId are required" });
+      }
+      const dayCount = parseInt(days, 10);
+      if (!dayCount || dayCount < 1 || dayCount > 3650) {
+        return res
+          .status(400)
+          .json({ error: "days must be between 1 and 3650" });
+      }
+
+      const plan = await storage.getSubscriptionPlan(planId);
+      if (!plan) return res.status(404).json({ error: "Plan not found" });
+
+      const owner = await storage.getUser(ownerId);
+      if (!owner) return res.status(404).json({ error: "Owner not found" });
+
+      const startDate = new Date();
+      const endDate = new Date();
+      endDate.setDate(endDate.getDate() + dayCount);
+
+      const created = await storage.createOwnerSubscription({
+        ownerId,
+        planId,
+        tier: plan.tier,
+        duration: plan.duration,
+        status: "active",
+        isWaived: true,
+        startDate,
+        endDate,
+        pricePaid: "0",
+        activatedBy: adminId,
+        activationNote: note || null,
+      });
+
+      // Auto-publish pending properties if KYC verified.
+      try {
+        if (owner.kycStatus === "verified") {
+          const allProperties = await storage.getProperties({
+            ownerId,
+            includeAllStatuses: true,
+            adminView: true,
+          });
+          const pendingProperties = allProperties.filter(
+            (p: any) => p.status === "pending",
+          );
+          for (const property of pendingProperties) {
+            if (!property.latitude || !property.longitude) continue;
+            await storage.updateProperty(property.id, {
+              status: "published",
+              verificationNotes:
+                `Auto-approved on subscription waiver. ${note || ""}`.trim(),
+              verifiedAt: new Date(),
+              verifiedBy: adminId,
+            });
+          }
+        }
+      } catch (publishError) {
+        console.error(
+          "[CREATE-AND-WAIVE] auto-publish failed:",
+          publishError,
+        );
+      }
+
+      res.json(created);
+    } catch (error) {
+      console.error("Create-and-waive error:", error);
+      res.status(500).json({ error: "Failed to create-and-waive" });
+    }
+  },
+);
+
 export default router;

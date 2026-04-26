@@ -32,6 +32,7 @@ import {
   Trash2,
   Wrench,
   ShieldPlus,
+  Settings,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -199,6 +200,14 @@ const adminSections: AdminSection[] = [
     href: "/admin/logo",
     testId: "admin-nav-logo",
     permission: "content",
+  },
+  {
+    title: "Platform Settings",
+    description: "Configure GST, platform fee, and advance payment",
+    icon: Settings,
+    href: "/admin/platform-settings",
+    testId: "admin-nav-platform-settings",
+    permission: "full_admin",
   },
   {
     title: "Brand Assets",

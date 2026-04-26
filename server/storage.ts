@@ -24,6 +24,7 @@ import {
   aboutUs,
   contactSettings,
   siteSettings,
+  platformSettings,
   contactInteractions,
   adminAuditLogs,
   supportConversations,
@@ -78,6 +79,8 @@ import {
   type InsertContactSettings,
   type SiteSettings,
   type InsertSiteSettings,
+  type PlatformSettings,
+  type InsertPlatformSettings,
   type ContactInteraction,
   type InsertContactInteraction,
   type AdminAuditLog,
@@ -567,6 +570,11 @@ export interface IStorage {
   upsertSiteSettings(
     settings: Partial<InsertSiteSettings>,
   ): Promise<SiteSettings>;
+
+  getPlatformSettings(): Promise<PlatformSettings>;
+  upsertPlatformSettings(
+    settings: Partial<InsertPlatformSettings>,
+  ): Promise<PlatformSettings>;
 
   logContactInteraction(
     data: InsertContactInteraction,
@@ -2756,6 +2764,32 @@ export class DatabaseStorage implements IStorage {
         .returning();
       return created;
     }
+  }
+
+  async getPlatformSettings(): Promise<PlatformSettings> {
+    const [settings] = await db
+      .select()
+      .from(platformSettings)
+      .where(eq(platformSettings.id, "default"))
+      .limit(1);
+    if (settings) return settings;
+    const [created] = await db
+      .insert(platformSettings)
+      .values({ id: "default" })
+      .returning();
+    return created;
+  }
+
+  async upsertPlatformSettings(
+    settings: Partial<InsertPlatformSettings>,
+  ): Promise<PlatformSettings> {
+    await this.getPlatformSettings();
+    const [updated] = await db
+      .update(platformSettings)
+      .set({ ...settings, updatedAt: new Date() })
+      .where(eq(platformSettings.id, "default"))
+      .returning();
+    return updated;
   }
 
   async logContactInteraction(
