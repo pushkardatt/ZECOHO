@@ -8152,11 +8152,53 @@ export async function registerRoutes(
           return res.status(404).json({ message: "Property not found" });
         }
 
+        const activeBookings = await db
+          .select({
+            bookingCode: bookings.bookingCode,
+            status: bookings.status
+          })
+          .from(bookings)
+          .where(
+            and(
+              eq(bookings.propertyId, req.params.id),
+              inArray(bookings.status, [
+                "confirmed",
+                "customer_confirmed",
+                "checked_in"
+              ])
+            )
+          )
+          .limit(5);
+
+        if (activeBookings.length > 0) {
+          return res.status(409).json({
+            message: `Cannot delete — ${activeBookings.length} active booking(s) exist. Cancel them first.`,
+            activeBookings: activeBookings.map(b => b.bookingCode)
+          });
+        }
+
         await storage.deleteProperty(req.params.id);
+
+        const owner = await storage.getUser(property.ownerId);
+        if (owner?.email) {
+          sendPropertyStatusEmail(
+            owner.email,
+            owner.firstName || "",
+            property.title,
+            "deleted",
+          ).catch(console.error);
+        }
+
         res.json({ message: "Property deleted successfully" });
       } catch (error) {
         console.error("Error deleting property:", error);
-        res.status(500).json({ message: "Failed to delete property" });
+        const errorMessage = error instanceof Error
+          ? error.message
+          : String(error);
+        res.status(500).json({
+          message: "Failed to delete property",
+          detail: errorMessage
+        });
       }
     },
   );

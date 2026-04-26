@@ -161,9 +161,17 @@ export default function AdminProperties() {
       setPropertyToDelete(null);
     },
     onError: (error: Error) => {
+      let message = "Failed to delete property.";
+      try {
+        const raw = error.message.replace(/^\d+:\s*/, "");
+        const parsed = JSON.parse(raw);
+        message = parsed.message || parsed.detail || message;
+      } catch {
+        message = error.message || message;
+      }
       toast({
-        title: "Error",
-        description: error.message,
+        title: "Cannot Delete Property",
+        description: message,
         variant: "destructive",
       });
     },
@@ -697,7 +705,7 @@ export default function AdminProperties() {
           <DialogHeader>
             <DialogTitle>Delete Property</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete this property? This action cannot be undone.
+              This is permanent and cannot be undone. All room types, pricing, photos and reviews will be deleted. Properties with active bookings cannot be deleted.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
