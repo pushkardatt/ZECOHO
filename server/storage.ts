@@ -966,6 +966,20 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteProperty(id: string): Promise<void> {
+    const propertyBookings = await db
+      .select({ id: bookings.id })
+      .from(bookings)
+      .where(eq(bookings.propertyId, id));
+
+    const bookingIds = propertyBookings.map((b) => b.id);
+
+    // notification_logs.booking_id has no ON DELETE CASCADE
+    if (bookingIds.length > 0) {
+      await db
+        .delete(notificationLogs)
+        .where(inArray(notificationLogs.bookingId, bookingIds));
+    }
+
     // chat_logs and call_logs have no cascade delete on their propertyId FK
     await db.delete(chatLogs).where(eq(chatLogs.propertyId, id));
     await db.delete(callLogs).where(eq(callLogs.propertyId, id));
